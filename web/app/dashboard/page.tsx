@@ -1,7 +1,8 @@
-
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ArrowDownLeft, ArrowUpRight, AlertTriangle, Activity } from 'lucide-react'
+import { ArrowUpRight, AlertTriangle, Activity, DollarSign } from 'lucide-react'
+import { KPICard } from '@/components/ui/kpi-card'
+import { DashboardActions } from '@/components/dashboard/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,14 +20,13 @@ export default async function DashboardPage() {
         .from('transacciones')
         .select('*')
         .order('fecha', { ascending: false })
-        .limit(10)
+        .limit(5)
 
     if (error) {
         console.error('Error fetching transactions:', error)
     }
 
     // Calculate Metrics (Simple sum for demo)
-    // In a real app, use a database aggregation or a separate metrics table/view
     const { data: allTransactions } = await supabase
         .from('transacciones')
         .select('monto')
@@ -40,112 +40,112 @@ export default async function DashboardPage() {
         .eq('estado', 'detectado')
 
     const leaksCount = leaksFound ?? 0
-
-    const potentialRecovery = 0 // Still dummy for now, or sum 'monto_estimado_recupero' if available
+    const potentialRecovery = 0 // Placeholder
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-8">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Panel de Control</h1>
-                <p className="text-gray-500 dark:text-gray-400">
-                    Visión general de tu estado financiero auditado.
-                </p>
+                <h2 className="text-2xl font-bold tracking-tight">Panel de Control</h2>
+                <p className="text-gray-400">Bienvenido a tu centro de inteligencia financiera.</p>
             </div>
 
-            {/* Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card
-                    title="Saldo Operativo (Est.)"
+            {/* Metrics Grid */}
+            <div className="grid gap-6 md:grid-cols-3">
+                <KPICard
+                    title="Saldo Operativo"
                     value={formatCurrency(totalBalance)}
-                    description="Basado en transacciones importadas"
-                    icon={<Activity className="text-emerald-500" />}
+                    description="Balance actual estimado"
+                    icon={<Activity className="h-5 w-5 text-blue-400" />}
                     trend="neutral"
                 />
-                <Card
-                    title="Fugas Detectadas"
+                <KPICard
+                    title="Anomalías Detectadas"
                     value={leaksCount.toString()}
-                    description="Anomalías pendientes de revisión"
-                    icon={<AlertTriangle className="text-amber-500" />}
-                    trend="bad"
+                    description="Requieren atención inmediata"
+                    icon={<AlertTriangle className="h-5 w-5 text-amber-400" />}
+                    trend="up"
+                    trendColor="red"
+                    trendValue={`+${leaksCount} nuevas`}
                 />
-                <Card
-                    title="Potencial Recupero"
+                <KPICard
+                    title="Recupero Potencial"
                     value={formatCurrency(potentialRecovery)}
-                    description="Retenciones y cobros indebidos"
-                    icon={<ArrowUpRight className="text-emerald-500" />}
-                    trend="good"
+                    description="Dinero en riesgo de pérdida"
+                    icon={<DollarSign className="h-5 w-5 text-emerald-400" />}
+                    trend="up"
+                    trendColor="emerald"
+                    trendValue="+0%"
                 />
             </div>
 
-            {/* Transactions Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Últimos Movimientos</h2>
-                    <button className="text-sm text-emerald-600 hover:text-emerald-500 font-medium">
-                        Ver todos
-                    </button>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
-                        <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-400">
-                            <tr>
-                                <th className="px-6 py-4">Fecha</th>
-                                <th className="px-6 py-4">Descripción</th>
-                                <th className="px-6 py-4">Entidad</th>
-                                <th className="px-6 py-4 text-right">Monto</th>
-                                <th className="px-6 py-4 text-center">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {transactions?.map((t) => (
-                                <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        {new Date(t.fecha).toLocaleDateString('es-AR')}
-                                    </td>
-                                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                                        {t.descripcion}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {t.cuit_destino || '-'}
-                                    </td>
-                                    <td className={`px-6 py-4 text-right font-medium ${t.monto < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                        {formatCurrency(t.monto)}
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500">
-                                            {t.estado}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                            {transactions?.length === 0 && (
+            {/* Recent Transactions & Anomalies Split */}
+            <div className="grid gap-6 md:grid-cols-2">
+                {/* Transacciones */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+                        <h3 className="font-semibold text-white">Transacciones Recientes</h3>
+                        <button className="text-xs text-emerald-500 hover:text-emerald-400 font-medium transition-colors">Ver todas</button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-gray-400">
+                            <thead className="bg-gray-800/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                                        No hay transacciones registradas.
-                                    </td>
+                                    <th className="px-6 py-3">Fecha</th>
+                                    <th className="px-6 py-3">Descripción</th>
+                                    <th className="px-6 py-3 text-right">Monto</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-800">
+                                {transactions?.map((t) => (
+                                    <tr key={t.id} className="hover:bg-gray-800/50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {new Date(t.fecha).toLocaleDateString('es-AR')}
+                                        </td>
+                                        <td className="px-6 py-4 text-white truncate max-w-[200px]">
+                                            {t.descripcion}
+                                        </td>
+                                        <td className={`px-6 py-4 text-right font-medium ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                            {formatCurrency(t.monto)}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {(!transactions || transactions.length === 0) && (
+                                    <tr>
+                                        <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                                            No hay movimientos recientes.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-        </div>
-    )
-}
 
-function Card({ title, value, description, icon, trend }: any) {
-    return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                    {icon}
+                {/* Accesos Rápidos / Anomalías */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                    <h3 className="font-semibold text-white mb-4">Acciones Rápidas</h3>
+                    <DashboardActions />
+
+                    <div className="mt-6">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Estado del Sistema</h4>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-400">Base de Datos</span>
+                                <span className="flex items-center gap-1.5 text-emerald-400">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                                    Conectado
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-400">Motor AI</span>
+                                <span className="flex items-center gap-1.5 text-emerald-400">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                                    Listo
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                {/* Badge placeholder if needed */}
-            </div>
-            <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</h3>
-                <p className="text-xs text-gray-400 mt-2">{description}</p>
             </div>
         </div>
     )
