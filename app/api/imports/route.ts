@@ -5,99 +5,79 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-    try {
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Get organization_id (assuming similar logic to upload route or checking context)
-        // For simplicity reusing the getOrgId helper pattern logic inline or importing it?
-        // Optimally, we should import the helper. I'll duplicate simplified logic for strictness to avoid import errors if helper file structure is unknown, 
-        // but typically helper is in lib. Let's try to be robust. 
-        // I'll query organizations linked to user.
-
-        const { data: orgMember } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-            .single()
-
-        // Fallback for single-user mvp if no members table logic yet (based on previous context we have orgId logic)
-        // Previous route used: const orgId = await getOrgId(supabase, user.id)
-        // I will copy that helper logic here to be safe or assuming standard single org.
-
-        let orgId = orgMember?.organization_id
-
-        if (!orgId) {
-            const { data: org } = await supabase
-                .from('organizations')
-                .select('id')
-                .eq('owner_id', user.id)
-                .single()
-            orgId = org?.id
-        }
-
-        if (!orgId) {
-            return NextResponse.json({ error: 'No organization found' }, { status: 400 })
-        }
-
-        const { data: imports, error } = await supabase
-            .from('archivos_importados')
-            .select('*')
-            .eq('organization_id', orgId)
-            .order('created_at', { ascending: false })
-            .limit(20)
-
-        if (error) throw error
-
-        return NextResponse.json(imports)
-    } catch (error: any) {
-        console.error('Error fetching imports:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Get Organization
+    const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).single()
+    if (!member) return NextResponse.json([])
+
+    const { data: files, error } = await supabase
+        .from('archivos_importados')
+        .select('*')
+        .eq('organization_id', member.organization_id)
+        .order('fecha_carga', { ascending: false })
+        .limit(20)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Enrich with quarantine counts
+    const enriched = await Promise.all(files.map(async (f) => {
+        const { count } = await supabase
+            .from('transacciones_revision')
+            .select('*', { count: 'exact', head: true })
+            .eq('archivo_importacion_id', f.id)
+
+        return {
+            ...f,
+            quarantine_count: count || 0
+        }
+    }))
+
+    return NextResponse.json(enriched)
 }
 
 export async function DELETE(request: Request) {
-    try {
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
 
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 })
 
-        const { searchParams } = new URL(request.url)
-        const id = searchParams.get('id')
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-        if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-        // Verify ownership/org match implicitly via RLS? 
-        // Or explicitly. Best to rely on RLS but for explicit rollback safety:
+    // 1. Delete associated transactions (Rollback)
+    const { error: transError } = await supabase
+        .from('transacciones')
+        .delete()
+        .eq('archivo_importacion_id', id)
 
-        // 1. Delete transactions
-        const { error: deleteTxError } = await supabase
-            .from('transacciones')
-            .delete()
-            .eq('archivo_importacion_id', id)
+    if (transError) console.error('Error deleting transactions:', transError)
 
-        // Note: If user doesn't own the file, RLS should prevent this delete if setup correctly. 
-        // If RLS allows delete based on org, it works.
+    // 2. Delete associated quarantine items
+    const { error: quarantineError } = await supabase
+        .from('transacciones_revision')
+        .delete()
+        .eq('archivo_importacion_id', id)
 
-        if (deleteTxError) throw deleteTxError
+    if (quarantineError) console.error('Error deleting quarantine:', quarantineError)
 
-        // 2. Update import status
-        const { error: updateError } = await supabase
-            .from('archivos_importados')
-            .update({ estado: 'revertido' })
-            .eq('id', id)
+    // 3. Mark as reverted (or delete log? User asked to "eliminar"). 
+    // Let's delete the log entirely to clean up the history as requested.
+    // OR keep it as 'revertido' for audit? 
+    // The user said "liminar las importaciones". I will DELETE the log row.
+    const { error: logError } = await supabase
+        .from('archivos_importados')
+        .delete()
+        .eq('id', id)
 
-        if (updateError) throw updateError
+    if (logError) return NextResponse.json({ error: logError.message }, { status: 500 })
 
-        return NextResponse.json({ success: true, message: 'Importación revertida correctamente' })
-
-    } catch (error: any) {
-        console.error('Error reverting import:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    return NextResponse.json({ success: true })
 }

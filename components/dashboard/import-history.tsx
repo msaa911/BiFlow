@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { FileText, Clock, RotateCcw, RefreshCw } from 'lucide-react'
+import { FileText, Clock, RotateCcw, RefreshCw, Trash2, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 type ImportRecord = {
@@ -11,12 +11,13 @@ type ImportRecord = {
     fecha_carga: string
     estado: 'procesando' | 'completado' | 'error' | 'revertido'
     metadata: Record<string, any>
+    quarantine_count: number
 }
 
 export function ImportHistory() {
     const [imports, setImports] = useState<ImportRecord[]>([])
     const [loading, setLoading] = useState(true)
-    const [reverting, setReverting] = useState<string | null>(null)
+    const [deleting, setDeleting] = useState<string | null>(null)
 
     const fetchImports = async () => {
         try {
@@ -36,24 +37,25 @@ export function ImportHistory() {
         fetchImports()
     }, [])
 
-    const handleRollback = async (id: string) => {
-        if (!confirm('¿Estás seguro de que quieres deshacer esta importación? Se eliminarán todas las transacciones asociadas.')) return
+    const handleDelete = async (id: string, count: number) => {
+        const msg = count > 0
+            ? '¿Borrar esta importación y sus transacciones? Esta acción no se puede deshacer.'
+            : '¿Borrar este registro del historial?'
 
-        setReverting(id)
+        if (!confirm(msg)) return
+
+        setDeleting(id)
         try {
             const res = await fetch(`/api/imports?id=${id}`, { method: 'DELETE' })
             if (res.ok) {
-                await fetchImports() // Refresh list
-                // Optional: Trigger global refresh match? 
-                // For now user sees status change.
-                window.location.reload() // Reload to reflect changes in dashboard stats if needed, or better just refresh list
+                await fetchImports()
             } else {
-                alert('Error al revertir')
+                alert('Error al eliminar')
             }
         } catch (e) {
             alert('Error de conexión')
         } finally {
-            setReverting(null)
+            setDeleting(null)
         }
     }
 
@@ -99,22 +101,25 @@ export function ImportHistory() {
                                     </td>
                                     <td className="px-4 py-3 text-gray-400 text-xs">
                                         {item.metadata?.inserted > 0 ? (
-                                            <span className="text-emerald-400">+{item.metadata.inserted} registros</span>
+                                            <span className="text-emerald-400 font-medium">+{item.metadata.inserted} registros</span>
+                                        ) : item.quarantine_count > 0 ? (
+                                            <span className="text-yellow-500 flex items-center gap-1 font-medium">
+                                                <AlertTriangle className="w-3 h-3" />
+                                                {item.quarantine_count} en revisión
+                                            </span>
                                         ) : (
                                             <span>{item.metadata?.note || '-'}</span>
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-right">
-                                        {item.estado === 'completado' && item.metadata?.inserted > 0 && (
-                                            <button
-                                                onClick={() => handleRollback(item.id)}
-                                                disabled={!!reverting}
-                                                className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
-                                                title="Deshacer Importación"
-                                            >
-                                                {reverting === item.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() => handleDelete(item.id, item.metadata?.inserted || 0)}
+                                            disabled={!!deleting}
+                                            className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50 p-1 hover:bg-gray-800 rounded"
+                                            title="Eliminar del historial"
+                                        >
+                                            {deleting === item.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                        </button>
                                     </td>
                                 </tr>
                             ))}

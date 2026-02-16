@@ -2,10 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, List, Shield, Settings, FileText, LogOut } from 'lucide-react'
+import { Home, List, Shield, Settings, FileText, LogOut, Clock } from 'lucide-react'
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Cargar Archivos', href: '/dashboard/upload', icon: FileText },
+    { name: 'Historial', href: '/dashboard/history', icon: Clock },
     { name: 'Transacciones', href: '/dashboard/transactions', icon: List },
     { name: 'Auditoría AI', href: '/dashboard/analysis', icon: Shield },
     { name: 'Reportes', href: '/dashboard/reports', icon: FileText },
@@ -36,8 +38,8 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
                             key={item.name}
                             href={item.href}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
-                                    ? 'bg-emerald-500/10 text-emerald-400'
-                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                ? 'bg-emerald-500/10 text-emerald-400'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                 }`}
                         >
                             <item.icon className={`h-5 w-5 ${isActive ? 'text-emerald-500' : 'text-gray-500 group-hover:text-gray-300'}`} />
