@@ -189,8 +189,17 @@ export async function POST(request: Request) {
         try {
             const supabase = await createClient()
             await logError(supabase, 'Unhandled Exception', error.message, fileName)
-        } catch (e) { }
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        } catch (e) {
+            console.error('Secondary logging error:', e)
+        }
+
+        // Return detailed error for debugging purposes (Temporary)
+        return NextResponse.json({
+            error: 'Internal server error',
+            details: error.message,
+            stack: error.stack,
+            fileName: fileName
+        }, { status: 500 })
     }
 }
 
