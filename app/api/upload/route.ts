@@ -1,9 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
-const pdf = require('pdf-parse')
+// const pdf = require('pdf-parse')
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
+    const pdf = require('pdf-parse')
     try {
         const formData = await request.formData()
         const file = formData.get('file') as File
