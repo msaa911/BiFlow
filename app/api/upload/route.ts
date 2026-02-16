@@ -117,7 +117,7 @@ export async function POST(request: Request) {
 
         // --- 3.5. Insert Review Items ---
         if (reviewItems && reviewItems.length > 0) {
-            const reviewsWithLink = reviewItems.map(r => ({
+            const reviewsWithLink = reviewItems.map((r: any) => ({
                 ...r,
                 archivo_importacion_id: importId
             }))
@@ -126,14 +126,14 @@ export async function POST(request: Request) {
 
         // --- 4. Store Data & Finish Link ---
         if (transactions.length > 0) {
-            const transactionsWithLink = transactions.map(t => ({
+            const transactionsWithLink = transactions.map((t: any) => ({
                 ...t,
                 archivo_importacion_id: importId
             }))
 
             let minDate = transactionsWithLink[0].fecha
             let maxDate = transactionsWithLink[0].fecha
-            transactionsWithLink.forEach(t => {
+            transactionsWithLink.forEach((t: any) => {
                 if (t.fecha < minDate) minDate = t.fecha
                 if (t.fecha > maxDate) maxDate = t.fecha
             })
@@ -145,8 +145,8 @@ export async function POST(request: Request) {
                 .gte('fecha', minDate)
                 .lte('fecha', maxDate)
 
-            const existingSet = new Set(existing?.map(e => `${e.fecha}-${e.descripcion}-${e.monto}`))
-            const uniqueTransactions = transactionsWithLink.filter(t => !existingSet.has(`${t.fecha}-${t.descripcion}-${t.monto}`))
+            const existingSet = new Set(existing?.map((e: any) => `${e.fecha}-${e.descripcion}-${e.monto}`))
+            const uniqueTransactions = transactionsWithLink.filter((t: any) => !existingSet.has(`${t.fecha}-${t.descripcion}-${t.monto}`))
 
             if (uniqueTransactions.length > 0) {
                 const { error: insError } = await currentSupabase.from('transacciones').insert(uniqueTransactions)
@@ -253,7 +253,7 @@ function parseExcel(buffer: Buffer, orgId: string) {
 
     for (const row of data) {
         if (!row || row.length < 2) continue
-        let fecha = ''
+        let fecha: string | null = ''
         if (typeof row[0] === 'number') {
             const d = XLSX.SSF.parse_date_code(row[0])
             fecha = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`
