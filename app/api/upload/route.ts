@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
     const pdf = require('pdf-parse')
+    let fileName = 'unknown_file'
     try {
         const formData = await request.formData()
         const file = formData.get('file') as File
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
         }
 
         const buffer = Buffer.from(await file.arrayBuffer())
-        const fileName = file.name.toLowerCase()
+        fileName = file.name.toLowerCase()
         const orgId = await getOrgId(supabase, user.id)
 
         // --- 1. Upload Raw File to Storage (Safety Net) ---
@@ -45,13 +46,8 @@ export async function POST(request: Request) {
 
         if (storageError) {
             console.error('Storage Upload Error:', storageError)
-            // We continue even if storage fails? No, "Safety Net" implies we MUST have it.
-            // But for MVP if bucket doesn't exist, maybe we warn?
-            // Let's be strict: If we can't save the raw file, we abort. 
-            // Unless it's a "Bucket not found" and we want to be nice. 
-            // RETRY: PROCEED but log error. User might not have created bucket yet.
-            // actually user said "Listo", so assume bucket exists.
-            return NextResponse.json({ error: 'Error al asegurar el archivo original. Verifique el bucket "raw-imports".' }, { status: 500 })
+            await logError(supabase, 'Storage Upload', storageError.message, fileName)
+            return NextResponse.json({ error: 'Error al asegurar el archivo original (Bucket).' }, { status: 500 })
         }
 
         // --- 2. Create Audit Log (archivos_importados) ---
@@ -69,175 +65,225 @@ export async function POST(request: Request) {
 
         if (dbError || !importLog) {
             console.error('DB Log Error:', dbError)
-            return NextResponse.json({ error: 'Error al iniciar registro de auditoría.' }, { status: 500 })
+            await logError(supabase, 'DB Audit Log Insert', dbError?.message || 'No returned log', fileName)
+            return NextResponse.json({ error: 'Error al iniciar registro de auditoría (DB).' }, { status: 500 })
         }
-
-        const importId = importLog.id
-
-        // --- 3. Parse Content ---
-        // --- 3. Parse Content ---
-        type ReviewItem = {
-            organization_id: string
-            datos_crudos: any
-            motivo: string
-            estado: string
-            fecha?: string
-            descripcion?: string
-            monto?: number
-        }
-        type ParseResult = { transactions: any[], warnings: string[], reviewItems: ReviewItem[] }
-        let parseResult: ParseResult = { transactions: [], warnings: [], reviewItems: [] }
-
-        try {
-            if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileName.endsWith('.dat')) {
-                const text = buffer.toString('utf-8')
-                parseResult = parseText(text, orgId, fileName.endsWith('.csv') ? ',' : undefined)
-            } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-                parseResult = parseExcel(buffer, orgId)
-            } else if (fileName.endsWith('.pdf')) {
-                const pdfData = await pdf(buffer)
-                parseResult = parsePDF(pdfData.text, orgId)
-            } else {
-                throw new Error('Formato no soportado')
-            }
-        } catch (e: any) {
-            console.error('Parsing error', e)
-            // Update Log to Error
+        // ...
+        // ...
+        if (error) {
+            console.error('Database insertion error:', error)
             await supabase.from('archivos_importados').update({
                 estado: 'error',
-                metadata: { error: e.message }
+                metadata: { error: error.message, stage: 'insertion' }
             }).eq('id', importId)
+            await logError(supabase, 'Transaction Insert', error.message, fileName)
+            return NextResponse.json({ error: 'Error al guardar datos.' }, { status: 500 })
+        }
+        // ...
+    } catch (error: any) {
+        console.error('Upload processing error:', error)
+        try {
+            const supabase = await createClient()
+            await logError(supabase, 'Unhandled Exception', error.message, fileName)
+        } catch (e) { }
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+}
 
-            return NextResponse.json({ error: 'Error al leer el archivo. Verifique el formato.' }, { status: 400 })
+async function logError(supabase: any, origin: string, message: string, fileName?: string) {
+    try {
+        await supabase.from('error_logs').insert({
+            nivel: 'error',
+            origen: `api/upload/${origin}`,
+            mensaje: message,
+            metadata: { file: fileName }
+        })
+    } catch (e) {
+        console.error('Logging failed:', e)
+    }
+}
+
+const importId = importLog.id
+
+// --- 3. Parse Content ---
+// --- 3. Parse Content ---
+type ReviewItem = {
+    organization_id: string
+    datos_crudos: any
+    motivo: string
+    estado: string
+    fecha?: string
+    descripcion?: string
+    monto?: number
+}
+type ParseResult = { transactions: any[], warnings: string[], reviewItems: ReviewItem[] }
+let parseResult: ParseResult = { transactions: [], warnings: [], reviewItems: [] }
+
+try {
+    if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileName.endsWith('.dat')) {
+        const text = buffer.toString('utf-8')
+        parseResult = parseText(text, orgId, fileName.endsWith('.csv') ? ',' : undefined)
+    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        parseResult = parseExcel(buffer, orgId)
+    } else if (fileName.endsWith('.pdf')) {
+        const pdfData = await pdf(buffer)
+        parseResult = parsePDF(pdfData.text, orgId)
+    } else {
+        throw new Error('Formato no soportado')
+    }
+} catch (e: any) {
+    console.error('Parsing error', e)
+    // Update Log to Error
+    await supabase.from('archivos_importados').update({
+        estado: 'error',
+        metadata: { error: e.message }
+    }).eq('id', importId)
+
+    return NextResponse.json({ error: 'Error al leer el archivo. Verifique el formato.' }, { status: 400 })
+}
+
+const { transactions, warnings, reviewItems } = parseResult
+
+// --- 3.5. Insert Review Items (Quarantine) ---
+if (reviewItems && reviewItems.length > 0) {
+    const reviewsWithLink = reviewItems.map(r => ({
+        ...r,
+        archivo_importacion_id: importId
+    }))
+
+    const { error: reviewError } = await supabase
+        .from('transacciones_revision')
+        .insert(reviewsWithLink)
+
+    if (reviewError) {
+        console.error('Error inserting review items:', reviewError)
+        warnings.push(`Error al guardar items en cuarentena: ${reviewError.message}`)
+    }
+}
+
+// --- 4. Store Data & Finish Link ---
+if (transactions.length > 0) {
+    // Attach import_id to every transaction
+    const transactionsWithLink = transactions.map(t => ({
+        ...t,
+        archivo_importacion_id: importId
+    }))
+
+    // Optimization: Get min/max dates from new transactions to filter query
+    let minDate = transactionsWithLink[0].fecha
+    let maxDate = transactionsWithLink[0].fecha
+
+    transactionsWithLink.forEach(t => {
+        if (t.fecha < minDate) minDate = t.fecha
+        if (t.fecha > maxDate) maxDate = t.fecha
+    })
+
+    const { data: existing } = await supabase
+        .from('transacciones')
+        .select('fecha, descripcion, monto')
+        .eq('organization_id', orgId)
+        .gte('fecha', minDate)
+        .lte('fecha', maxDate)
+
+    const existingSet = new Set(
+        existing?.map(e => `${e.fecha}-${e.descripcion}-${e.monto}`)
+    )
+
+    const uniqueTransactions = transactionsWithLink.filter(t => {
+        const key = `${t.fecha}-${t.descripcion}-${t.monto}`
+        return !existingSet.has(key)
+    })
+
+    // Insert
+    if (uniqueTransactions.length > 0) {
+        const { error } = await supabase.from('transacciones').insert(uniqueTransactions)
+
+        if (error) {
+            console.error('Database insertion error:', error)
+            await supabase.from('archivos_importados').update({
+                estado: 'error',
+                metadata: { error: error.message, stage: 'insertion' }
+            }).eq('id', importId)
+            return NextResponse.json({ error: 'Error al guardar datos.' }, { status: 500 })
         }
 
-        const { transactions, warnings, reviewItems } = parseResult
-
-        // --- 3.5. Insert Review Items (Quarantine) ---
-        if (reviewItems && reviewItems.length > 0) {
-            const reviewsWithLink = reviewItems.map(r => ({
-                ...r,
-                archivo_importacion_id: importId
-            }))
-
-            const { error: reviewError } = await supabase
-                .from('transacciones_revision')
-                .insert(reviewsWithLink)
-
-            if (reviewError) {
-                console.error('Error inserting review items:', reviewError)
-                warnings.push(`Error al guardar items en cuarentena: ${reviewError.message}`)
-            }
-        }
-
-        // --- 4. Store Data & Finish Link ---
-        if (transactions.length > 0) {
-            // Attach import_id to every transaction
-            const transactionsWithLink = transactions.map(t => ({
-                ...t,
-                archivo_importacion_id: importId
-            }))
-
-            // Optimization: Get min/max dates from new transactions to filter query
-            let minDate = transactionsWithLink[0].fecha
-            let maxDate = transactionsWithLink[0].fecha
-
-            transactionsWithLink.forEach(t => {
-                if (t.fecha < minDate) minDate = t.fecha
-                if (t.fecha > maxDate) maxDate = t.fecha
-            })
-
-            const { data: existing } = await supabase
-                .from('transacciones')
-                .select('fecha, descripcion, monto')
-                .eq('organization_id', orgId)
-                .gte('fecha', minDate)
-                .lte('fecha', maxDate)
-
-            const existingSet = new Set(
-                existing?.map(e => `${e.fecha}-${e.descripcion}-${e.monto}`)
-            )
-
-            const uniqueTransactions = transactionsWithLink.filter(t => {
-                const key = `${t.fecha}-${t.descripcion}-${t.monto}`
-                return !existingSet.has(key)
-            })
-
-            // Insert
-            if (uniqueTransactions.length > 0) {
-                const { error } = await supabase.from('transacciones').insert(uniqueTransactions)
-
-                if (error) {
-                    console.error('Database insertion error:', error)
-                    await supabase.from('archivos_importados').update({
-                        estado: 'error',
-                        metadata: { error: error.message, stage: 'insertion' }
-                    }).eq('id', importId)
-                    return NextResponse.json({ error: 'Error al guardar datos.' }, { status: 500 })
-                }
-
-                // Success Update
-                await supabase.from('archivos_importados').update({
-                    estado: 'completado',
-                    metadata: {
-                        processed: transactions.length,
-                        inserted: uniqueTransactions.length,
-                        warnings: warnings.slice(0, 20)
-                    }
-                }).eq('id', importId)
-
-                return NextResponse.json({
-                    success: true,
-                    count: uniqueTransactions.length,
-                    skipped: transactions.length - uniqueTransactions.length,
-                    reviewCount: reviewItems?.length || 0,
-                    warnings: warnings.slice(0, 50),
-                    message: `Procesado: ${uniqueTransactions.length} OK. ${reviewItems?.length ? reviewItems.length + ' en revisión.' : ''}`
-                })
-            } else {
-                // All dupes
-                await supabase.from('archivos_importados').update({
-                    estado: 'completado',
-                    metadata: {
-                        processed: transactions.length,
-                        inserted: 0,
-                        warnings: warnings.slice(0, 20),
-                        note: 'All duplicates'
-                    }
-                }).eq('id', importId)
-
-                return NextResponse.json({
-                    success: true,
-                    count: 0,
-                    skipped: transactions.length,
-                    warnings: warnings.slice(0, 50),
-                    message: 'Los datos ya existían en el sistema'
-                })
-            }
-        }
-
-        // Fallback (empty file or no transactions found)
+        // Success Update
         await supabase.from('archivos_importados').update({
             estado: 'completado',
             metadata: {
-                processed: 0,
+                processed: transactions.length,
+                inserted: uniqueTransactions.length,
+                warnings: warnings.slice(0, 20)
+            }
+        }).eq('id', importId)
+
+        return NextResponse.json({
+            success: true,
+            count: uniqueTransactions.length,
+            skipped: transactions.length - uniqueTransactions.length,
+            reviewCount: reviewItems?.length || 0,
+            warnings: warnings.slice(0, 50),
+            message: `Procesado: ${uniqueTransactions.length} OK. ${reviewItems?.length ? reviewItems.length + ' en revisión.' : ''}`
+        })
+    } else {
+        // All dupes
+        await supabase.from('archivos_importados').update({
+            estado: 'completado',
+            metadata: {
+                processed: transactions.length,
                 inserted: 0,
                 warnings: warnings.slice(0, 20),
-                note: 'No transactions found'
+                note: 'All duplicates'
             }
         }).eq('id', importId)
 
         return NextResponse.json({
             success: true,
             count: 0,
+            skipped: transactions.length,
             warnings: warnings.slice(0, 50),
-            message: 'Archivo recibido y archivado, pero no se detectaron transacciones válidas.'
+            message: 'Los datos ya existían en el sistema'
         })
-
-    } catch (error) {
-        console.error('Upload processing error:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
+}
+
+// Fallback (empty file or no transactions found)
+await supabase.from('archivos_importados').update({
+    estado: 'completado',
+    metadata: {
+        processed: 0,
+        inserted: 0,
+        warnings: warnings.slice(0, 20),
+        note: 'No transactions found'
+    }
+}).eq('id', importId)
+
+return NextResponse.json({
+    success: true,
+    count: 0,
+    warnings: warnings.slice(0, 50),
+    message: 'Archivo recibido y archivado, pero no se detectaron transacciones válidas.'
+})
+
+    } catch (error: any) {
+    console.error('Upload processing error:', error)
+
+    // Log to database for Admin Panel
+    try {
+        const supabase = await createClient()
+        await supabase.from('error_logs').insert({
+            nivel: 'error',
+            origen: 'api/upload',
+            mensaje: error.message || 'Unknown error',
+            stack_trace: error.stack,
+            metadata: { file: (await request.formData()).get('file')?.name }
+        })
+    } catch (logError) {
+        console.error('Failed to log error to DB:', logError)
+    }
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+}
 }
 
 // --- Parsers ---
