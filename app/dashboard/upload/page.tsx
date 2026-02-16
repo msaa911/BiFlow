@@ -162,7 +162,12 @@ export default function UploadPage() {
                         resolve({ count: 0, skipped: 0, warnings: [] })
                     }
                 } else {
-                    reject(new Error(xhr.statusText || 'Error en servidor'))
+                    try {
+                        const res = JSON.parse(xhr.responseText)
+                        reject(new Error(res.error || xhr.statusText || 'Error en servidor'))
+                    } catch (e) {
+                        reject(new Error(xhr.statusText || 'Error en servidor'))
+                    }
                 }
             }
 
