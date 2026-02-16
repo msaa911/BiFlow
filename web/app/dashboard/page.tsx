@@ -33,14 +33,14 @@ export default async function DashboardPage() {
 
     const totalBalance = allTransactions?.reduce((acc, curr) => acc + curr.monto, 0) || 0
 
-    // Fetch Leaks Count
-    const { count: leaksFound } = await supabase
+    // Fetch Leaks & Potential Recovery
+    const { data: findings, count: leaksFound } = await supabase
         .from('hallazgos')
-        .select('*', { count: 'exact', head: true })
+        .select('monto_estimado_recupero', { count: 'exact' })
         .eq('estado', 'detectado')
 
     const leaksCount = leaksFound ?? 0
-    const potentialRecovery = 0 // Placeholder
+    const potentialRecovery = findings?.reduce((acc, curr) => acc + (Number(curr.monto_estimado_recupero) || 0), 0) || 0
 
     return (
         <div className="space-y-8">

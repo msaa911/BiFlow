@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, Suspense } from 'react'
 import { login, signup } from './actions'
 import { useSearchParams } from 'next/navigation'
 
@@ -8,14 +8,10 @@ const initialState = {
     message: '',
 }
 
-export default function LoginPage() {
+function LoginContent() {
     const searchParams = useSearchParams()
     const error = searchParams.get('error')
     const [state, formAction, isPending] = useActionState(async (prevState: any, formData: FormData) => {
-        // We can't easily use server actions directly in useActionState if they redirect,
-        // so we wrap them or rely on the form action attribute directly for simple cases.
-        // However, for better UX (loading state), we want to use useActionState or useFormStatus.
-        // Let's stick to the simple formAction for now but add visual polish.
         return { message: '' }
     }, initialState)
 
@@ -97,5 +93,17 @@ export default function LoginPage() {
                 </p>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     )
 }
