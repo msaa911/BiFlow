@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-// Rebuild force - timestamp 1547
+// Rebuild force - timestamp 1548
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
-// const pdf = require('pdf-parse')
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +32,6 @@ export async function POST(request: Request) {
         const dateObj = new Date()
         const year = dateObj.getFullYear()
         const month = String(dateObj.getMonth() + 1).padStart(2, '0')
-        // Sanitize filename to avoid weird chars in path
         const safeFileName = fileName.replace(/[^a-z0-9.-]/gi, '_')
         const storagePath = `${orgId}/${year}/${month}/${timestamp}_${safeFileName}`
 
@@ -186,7 +184,6 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, count: 0, warnings: warnings.slice(0, 50), message: 'Archivo recibido y archivado, pero no se detectaron transacciones válidas.' })
 
-
     } catch (error: any) {
         console.error('Upload processing error:', error)
         try {
@@ -218,7 +215,6 @@ function parseText(text: string, orgId: string, delimiter?: string): { transacti
     let warnings: string[] = []
     let reviewItems: any[] = []
 
-    // Auto-detect delimiter if not provided
     const detectDelimiter = (line: string) => {
         if (line.includes(',')) return ','
         if (line.includes(';')) return ';'
@@ -233,15 +229,6 @@ function parseText(text: string, orgId: string, delimiter?: string): { transacti
         if (!line) continue
 
         const parts = line.split(actualDelimiter)
-
-        // Flexible Logic:
-        // 1. Check for standard transaction (Date + Amount)
-        // 2. Check for just CUIT (Client list?) -> Create a dummy transaction or skip (Current: skip if no date/amount)
-        // User want flexible: "Si sólo tenemos CUIT... puede pedir listado..."
-        // For MVP: We try to capture strict transactions. If strict fails, we try to capture "partial" usage?
-        // Current DB requires: fecha, descripcion, monto.
-
-        // Helper to extract CUIT-like
         const findCuit = (p: string[]) => p.find(s => s.match(/^\d{2}-?\d{8}-?\d{1}$/))
 
         let fecha: string | null = null
@@ -249,43 +236,35 @@ function parseText(text: string, orgId: string, delimiter?: string): { transacti
         let descripcion = 'Importado sin descripción'
         let cuit = findCuit(parts) || null
 
-        // Date extraction attempt
         for (const p of parts) {
             const f = normalizeDate(p.trim())
             if (f) { fecha = f; break; }
         }
 
-        // Amount extraction attempt
         for (const p of parts) {
-            const stripped = p.replace(/[^0-9.,-]/g, '') // careful with dates, allow comma for decimals
-            // If it looks like a number and not a date part...
+            const stripped = p.replace(/[^0-9.,-]/g, '')
             if (stripped.match(/^-?\d+([.,]\d+)?$/) && !p.includes('/') && !p.includes('-') && !p.includes(':')) {
-
                 let val: number
                 if (stripped.includes(',') && stripped.includes('.')) {
-                    // 1.000,00 -> 1000.00
                     val = parseFloat(stripped.replace(/\./g, '').replace(',', '.'))
                 } else if (stripped.includes(',')) {
-                    // 1000,00 -> 1000.00
                     val = parseFloat(stripped.replace(',', '.'))
                 } else {
                     val = parseFloat(stripped)
                 }
 
-                if (!isNaN(val) && Math.abs(val) > 0.01) { // Avoid 0 or empty
+                if (!isNaN(val) && Math.abs(val) > 0.01) {
                     monto = val
                     break;
                 }
             }
         }
 
-        // Standard CSV approach check
         if (parts.length >= 3) {
             const f = normalizeDate(parts[0].trim())
             if (f) {
                 fecha = f
                 descripcion = parts[1].trim()
-                // Try parsing amount from 3rd col
                 const mStr = parts[2].trim()
                 let m = 0
                 if (mStr.includes(',') && mStr.includes('.')) {
@@ -295,13 +274,11 @@ function parseText(text: string, orgId: string, delimiter?: string): { transacti
                 } else {
                     m = parseFloat(mStr.replace(/[^0-9.-]/g, ''))
                 }
-
                 if (!isNaN(m)) monto = m
                 if (parts.length > 3) cuit = parts[3].trim()
             }
         }
 
-        // If generic parsing failed but we found a CUIT and no date? 
         if (!fecha && (monto !== 0 || cuit)) {
             fecha = new Date().toISOString().split('T')[0]
             descripcion = `Importación dato parcial (${cuit || 'Sin CUIT'})`
@@ -318,17 +295,13 @@ function parseText(text: string, orgId: string, delimiter?: string): { transacti
                 moneda: 'ARS',
                 estado: 'pendiente'
             })
-            // If line is not empty but we failed to extract Date AND (Amount OR Cuit)
-            // It's a skipped line. Is it noise or data?
-            // If it has numbers or looks like a transaction, send to Quarantine
             if (line.match(/\d/) && line.length > 5) {
-                // warnings.push(`Línea ${i + 1}: Enviada a revisión ("${line.substring(0, 50)}...")`)
                 reviewItems.push({
                     organization_id: orgId,
                     datos_crudos: { line: line, source: 'text_parser', lineNumber: i + 1 },
                     motivo: 'Formato no reconocido (posible fecha/monto inválido)',
                     estado: 'pendiente',
-                    descripcion: line.substring(0, 100) // Suggest the whole line as desc
+                    descripcion: line.substring(0, 100)
                 })
             }
         }
@@ -346,7 +319,6 @@ function parseExcel(buffer: Buffer, orgId: string): { transactions: any[], warni
     const warnings: string[] = []
     const reviewItems: any[] = []
 
-    // Find header row
     let headerRowIndex = -1
     let colMap: any = { date: -1, desc: -1, amount: -1, cuit: -1 }
 
@@ -364,9 +336,8 @@ function parseExcel(buffer: Buffer, orgId: string): { transactions: any[], warni
         }
     }
 
-    // Default column mapping if no header found (0, 1, 2)
     if (headerRowIndex === -1 && jsonData.length > 0) {
-        headerRowIndex = -1 // Start from 0
+        headerRowIndex = -1
         colMap = { date: 0, desc: 1, amount: 2, cuit: 3 }
     }
 
@@ -376,16 +347,13 @@ function parseExcel(buffer: Buffer, orgId: string): { transactions: any[], warni
 
         if (colMap.date > -1 && colMap.amount > -1) {
             let rawDate = row[colMap.date]
-            // Excel dates are numbers (days since 1900)
             let fecha = ''
             if (typeof rawDate === 'number') {
                 const dateObj = XLSX.SSF.parse_date_code(rawDate)
-                // dateObj: {y, m, d, ...}
                 fecha = `${dateObj.y}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`
             } else {
                 fecha = normalizeDate(String(rawDate))
             }
-
             const descripcion = colMap.desc > -1 ? String(row[colMap.desc] || 'Sin descripción').trim() : 'Sin descripción'
             const rawAmount = row[colMap.amount]
             const monto = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount).replace(/[^0-9.-]/g, ''))
@@ -402,18 +370,13 @@ function parseExcel(buffer: Buffer, orgId: string): { transactions: any[], warni
                     moneda: 'ARS',
                     estado: 'pendiente'
                 })
-            } else {
-                // If row has content but failed parsing
-                // Check if it's not just empty cells
-                if (row.some(c => c)) {
-                    // warnings.push(`Fila Excel ${i + 1}: Enviada a revisión`)
-                    reviewItems.push({
-                        organization_id: orgId,
-                        datos_crudos: { row: row, sheet: firstSheetName, rowIndex: i },
-                        motivo: 'Fila con datos pero fecha/monto no identificados',
-                        estado: 'pendiente'
-                    })
-                }
+            } else if (row.some(c => c)) {
+                reviewItems.push({
+                    organization_id: orgId,
+                    datos_crudos: { row: row, sheet: firstSheetName, rowIndex: i },
+                    motivo: 'Fila con datos pero fecha/monto no identificados',
+                    estado: 'pendiente'
+                })
             }
         }
     }
@@ -425,8 +388,6 @@ function parsePDF(text: string, orgId: string): { transactions: any[], warnings:
     const transactions = []
     const warnings: string[] = []
     const reviewItems: any[] = []
-
-    // Regex for DD/MM/YYYY or DD-MM-YYYY
     const dateRegexStart = /^(\d{2}[/-]\d{2}[/-]\d{2,4})/
 
     for (let i = 0; i < lines.length; i++) {
@@ -436,33 +397,22 @@ function parsePDF(text: string, orgId: string): { transactions: any[], warnings:
 
         let parsed = false
         if (match) {
-            // It starts with a date
             const dateStr = match[1]
             const rest = trimmed.substring(match[0].length).trim()
-
-            // Try to find amount at the end
-            // Look for number with optionally - at start, and , or . decimals
-            // E.g. -15.000,00
             const amountMatch = rest.match(/(-?[\d\.,]+)$/)
 
             if (amountMatch) {
                 const amountStr = amountMatch[1]
                 const descripcion = rest.substring(0, rest.length - amountStr.length).trim()
-
-                // Normalizar monto: Euro style (dot thousand, comma decimal) vs US
                 let monto = 0
                 if (amountStr.includes(',') && amountStr.includes('.')) {
-                    // 1.000,00 -> 1000.00
                     monto = parseFloat(amountStr.replace(/\./g, '').replace(',', '.'))
                 } else if (amountStr.includes(',')) {
-                    // 1000,00 -> 1000.00
                     monto = parseFloat(amountStr.replace(',', '.'))
                 } else {
                     monto = parseFloat(amountStr)
                 }
-
                 const fecha = normalizeDate(dateStr)
-
                 if (fecha && !isNaN(monto)) {
                     transactions.push({
                         organization_id: orgId,
@@ -478,9 +428,7 @@ function parsePDF(text: string, orgId: string): { transactions: any[], warnings:
                 }
             }
         }
-
         if (!parsed && trimmed.length > 20 && trimmed.match(/\d/)) {
-            // Heuristic: Long line with numbers but failed to parse
             reviewItems.push({
                 organization_id: orgId,
                 datos_crudos: { line: trimmed, source: 'pdf_parser' },
@@ -490,20 +438,14 @@ function parsePDF(text: string, orgId: string): { transactions: any[], warnings:
             })
         }
     }
-
     return { transactions, warnings, reviewItems }
 }
 
-// Helpers
 function normalizeDate(dateStr: string): string {
-    // Input: DD/MM/YYYY or YYYY-MM-DD
-    // Output: YYYY-MM-DD
     try {
-        if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) return dateStr // Already YYYY-MM-DD
-
+        if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) return dateStr
         const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-')
         if (parts.length === 3) {
-            // Assume DD/MM/YYYY
             const d = parts[0].padStart(2, '0')
             const m = parts[1].padStart(2, '0')
             const y = parts[2].length === 2 ? `20${parts[2]}` : parts[2]
@@ -522,7 +464,6 @@ async function getOrgId(supabase: any, userId: string) {
 
     if (member) return member.organization_id
 
-    // Fallback: Create org if missing
     const { data: org } = await supabase
         .from('organizations')
         .insert({ name: 'Mi Empresa', tier: 'free' })
@@ -534,6 +475,5 @@ async function getOrgId(supabase: any, userId: string) {
         user_id: userId,
         role: 'owner'
     })
-
     return org.id
 }
