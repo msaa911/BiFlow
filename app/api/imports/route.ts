@@ -69,15 +69,26 @@ export async function DELETE(request: Request) {
     if (quarantineError) console.error('Error deleting quarantine:', quarantineError)
 
     // 3. Mark as reverted (or delete log? User asked to "eliminar"). 
-    // Let's delete the log entirely to clean up the history as requested.
-    // OR keep it as 'revertido' for audit? 
-    // The user said "liminar las importaciones". I will DELETE the log row.
+    // And also delete the file from storage!
+    const { data: fileRecord } = await supabase
+        .from('archivos_importados')
+        .select('storage_path')
+        .eq('id', id)
+        .single()
+
     const { error: logError } = await supabase
         .from('archivos_importados')
         .delete()
         .eq('id', id)
 
     if (logError) return NextResponse.json({ error: logError.message }, { status: 500 })
+
+    // 4. Delete from Storage (Best effort)
+    if (fileRecord?.storage_path) {
+        await supabase.storage
+            .from('raw-imports')
+            .remove([fileRecord.storage_path])
+    }
 
     return NextResponse.json({ success: true })
 }
