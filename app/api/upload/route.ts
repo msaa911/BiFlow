@@ -211,35 +211,65 @@ function parseText(text: string, orgId: string, delimiter?: string) {
     for (const line of lines) {
         const trimmed = line.trim()
         if (!trimmed) continue
-        const parts = trimmed.split(actualDelimiter)
-        if (parts.length < 2) continue
 
-        let fecha = normalizeDate(parts[0])
+        let fecha = null
         let monto = 0
-        let descripcion = parts[1] || 'Sin descripción'
+        let descripcion = ''
 
-        const mPart = parts.find(p => p.match(/^-?\d+([.,]\d+)?$/))
-        if (mPart) {
-            monto = parseFloat(mPart.replace(',', '.'))
+        // Strategy A: Delimited (CSV/TXT with separator)
+        const parts = trimmed.split(actualDelimiter)
+        if (parts.length >= 2) {
+            fecha = normalizeDate(parts[0])
+            // Try to find amount in subsequent parts
+            const mPart = parts.find((p, i) => i > 0 && p.match(/^-?\d+([.,]\d+)?$/))
+            if (mPart) {
+                monto = parseFloat(mPart.replace(',', '.'))
+                descripcion = parts[1] === mPart ? (parts[2] || 'Sin descripción') : parts[1]
+            }
         }
 
-        if (fecha && monto !== 0) {
+        // Strategy B: Regex Fallback (for fixed width or messy formats like .dat)
+        if (!fecha || monto === 0) {
+            // Match typical date format (DD/MM/YYYY or YYYY-MM-DD)
+            const dateMatch = trimmed.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/)
+            // Match amount (number with optional negative sign and decimals, allowing thousand separators)
+            // This regex covers: -123.45, 123,45, 1.234,56 etc. simplifying to just find a number-like sequence at end or specific position
+            const amountMatch = trimmed.match(/(-?[\d\.,]+)$/) // simplistic: amount at end of line
+
+            if (dateMatch) {
+                fecha = normalizeDate(dateMatch[1])
+                if (amountMatch) {
+                    // rigorous amount cleanup: remove . if , exists as decimal, etc. 
+                    // assuming standard Argentinian/European format 1.000,00 if comma exists, else 1000.00
+                    const rawAmount = amountMatch[1]
+                    monto = parseFloat(rawAmount.replace(/\./g, '').replace(',', '.'))
+
+                    // Description is everything else
+                    descripcion = trimmed.replace(dateMatch[0], '').replace(rawAmount, '').trim() || 'Desconocido'
+                }
+            }
+        }
+
+        if (fecha && !isNaN(monto) && monto !== 0) {
             transactions.push({
                 organization_id: orgId,
                 fecha,
-                descripcion,
+                descripcion: descripcion.substring(0, 100), // trunc
                 monto,
                 origen_dato: 'text',
                 moneda: 'ARS',
                 estado: 'pendiente'
             })
         } else {
-            reviewItems.push({
-                organization_id: orgId,
-                datos_crudos: { line: trimmed },
-                motivo: 'No se pudo parsear fecha o monto',
-                estado: 'pendiente'
-            })
+            // Keep track of failed lines for debugging but limit noise
+            if (reviewItems.length < 50) {
+                reviewItems.push({
+                    organization_id: orgId,
+                    datos_crudos: { line: trimmed },
+                    motivo: 'No se pudo parsear fecha o monto (Intento CSV + Regex)',
+                    estado: 'pendiente'
+                })
+            }
         }
     }
     return { transactions, warnings, reviewItems }
