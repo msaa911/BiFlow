@@ -182,57 +182,58 @@ export async function POST(request: Request) {
                     }
                 }).eq('id', importId)
 
-                success: true,
+                return NextResponse.json({
+                    success: true,
                     count: uniqueTransactions.length,
-                        skipped: transactions.length - uniqueTransactions.length,
-                            reviewCount: reviewItems?.length || 0,
-                                warnings: warnings.slice(0, 50),
-                                    message: `Procesado: ${uniqueTransactions.length} OK. ${reviewItems?.length ? reviewItems.length + ' en revisión.' : ''}`
-            })
-        } else {
-            // All dupes
-            await supabase.from('archivos_importados').update({
-                estado: 'completado',
-                metadata: {
-                    processed: transactions.length,
-                    inserted: 0,
-                    warnings: warnings.slice(0, 20),
-                    note: 'All duplicates'
-                }
-            }).eq('id', importId)
+                    skipped: transactions.length - uniqueTransactions.length,
+                    reviewCount: reviewItems?.length || 0,
+                    warnings: warnings.slice(0, 50),
+                    message: `Procesado: ${uniqueTransactions.length} OK. ${reviewItems?.length ? reviewItems.length + ' en revisión.' : ''}`
+                })
+            } else {
+                // All dupes
+                await supabase.from('archivos_importados').update({
+                    estado: 'completado',
+                    metadata: {
+                        processed: transactions.length,
+                        inserted: 0,
+                        warnings: warnings.slice(0, 20),
+                        note: 'All duplicates'
+                    }
+                }).eq('id', importId)
 
-            return NextResponse.json({
-                success: true,
-                count: 0,
-                skipped: transactions.length,
-                warnings: warnings.slice(0, 50),
-                message: 'Los datos ya existían en el sistema'
-            })
+                return NextResponse.json({
+                    success: true,
+                    count: 0,
+                    skipped: transactions.length,
+                    warnings: warnings.slice(0, 50),
+                    message: 'Los datos ya existían en el sistema'
+                })
+            }
         }
-    }
 
         // Fallback (empty file or no transactions found)
         await supabase.from('archivos_importados').update({
-        estado: 'completado',
-        metadata: {
-            processed: 0,
-            inserted: 0,
-            warnings: warnings.slice(0, 20),
-            note: 'No transactions found'
-        }
-    }).eq('id', importId)
+            estado: 'completado',
+            metadata: {
+                processed: 0,
+                inserted: 0,
+                warnings: warnings.slice(0, 20),
+                note: 'No transactions found'
+            }
+        }).eq('id', importId)
 
-    return NextResponse.json({
-        success: true,
-        count: 0,
-        warnings: warnings.slice(0, 50),
-        message: 'Archivo recibido y archivado, pero no se detectaron transacciones válidas.'
-    })
+        return NextResponse.json({
+            success: true,
+            count: 0,
+            warnings: warnings.slice(0, 50),
+            message: 'Archivo recibido y archivado, pero no se detectaron transacciones válidas.'
+        })
 
-} catch (error) {
-    console.error('Upload processing error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-}
+    } catch (error) {
+        console.error('Upload processing error:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 }
 
 // --- Parsers ---
