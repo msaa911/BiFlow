@@ -306,9 +306,8 @@ async function getOrgId(supabase: any, userId: string) {
     const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', userId).single()
     if (member) return member.organization_id
 
-    const { data: org, error } = await supabase.from('organizations').insert({ name: 'Mi Empresa', tier: 'free' }).select().single()
-    if (error || !org) throw new Error(`Could not create org: ${error?.message}`)
-
-    await supabase.from('organization_members').insert({ organization_id: org.id, user_id: userId, role: 'owner' })
-    return org.id
+    // Use RPC to bypass RLS issues during creation
+    const { data: orgId, error } = await supabase.rpc('create_new_organization', { org_name: 'Mi Empresa' })
+    if (error) throw new Error(`Could not create org: ${error.message}`)
+    return orgId
 }
