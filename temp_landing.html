@@ -1,0 +1,977 @@
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiFlow Finance — Centro de Comando Financiero para PyMEs</title>
+    <meta name="description"
+        content="Las PyMEs pierden entre 2% y 5% de su facturación en fugas de caja. BiFlow audita tus extractos, detecta cada peso que se escapa y simula tus pagos antes de ejecutarlos. Primer informe en 5 minutos.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        @keyframes particleFloat {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.3;
+            }
+
+            25% {
+                transform: translate(-3.573738764892763px, -31.67121606293197px) scale(1.5);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: translate(-26.24611020065544px, -46.885018686861606px) scale(1);
+                opacity: 0.4;
+            }
+
+            75% {
+                transform: translate(-0.48453679075285905px, -30.303450577847684px) scale(1.3);
+                opacity: 0.6;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ───────────── NAVBAR ───────────── -->
+    <nav class="navbar" id="navbar">
+        <div class="container navbar__inner">
+            <a href="#" class="navbar__logo">
+                <span class="logo-icon">◈</span> BiFlow<span class="logo-accent">Finance</span>
+            </a>
+            <ul class="navbar__links" id="navLinks">
+                <li><a href="#beneficios">Beneficios</a></li>
+                <li><a href="#como-funciona">Cómo funciona</a></li>
+                <li><a href="#pricing">Planes</a></li>
+                <li><a href="#faq">FAQ</a></li>
+                <li><a href="app/login.html" class="navbar__login">Ingresar</a></li>
+                <li><a href="#cta-final" class="navbar__cta">Auditoría gratuita</a></li>
+            </ul>
+            <button class="navbar__hamburger" id="hamburger" aria-label="Menú">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ───────────── HERO ───────────── -->
+    <header class="hero" id="hero">
+        <div class="hero__bg-glow"></div>
+        <div class="hero__particles" id="heroParticles">
+            <div
+                style="position: absolute; width: 2.70912px; height: 1.47108px; background: rgba(0, 214, 143, 0.298); border-radius: 50%; top: 76.658%; left: 43.6365%; animation: 8.32913s ease-in-out 2.44795s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 2.64374px; height: 3.14411px; background: rgba(0, 214, 143, 0.337); border-radius: 50%; top: 69.4394%; left: 83.893%; animation: 12.4549s ease-in-out 4.50694s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 1.41039px; height: 1.72788px; background: rgba(0, 214, 143, 0.2); border-radius: 50%; top: 26.4366%; left: 34.2465%; animation: 6.07117s ease-in-out 3.34363s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 1.24161px; height: 1.61968px; background: rgba(0, 214, 143, 0.11); border-radius: 50%; top: 34.063%; left: 38.2324%; animation: 13.2661s ease-in-out 4.33705s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 2.83367px; height: 1.94536px; background: rgba(0, 214, 143, 0.17); border-radius: 50%; top: 34.8191%; left: 8.40927%; animation: 7.54372s ease-in-out 4.7179s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 1.13358px; height: 2.41862px; background: rgba(0, 214, 143, 0.353); border-radius: 50%; top: 78.8173%; left: 8.47336%; animation: 6.20062s ease-in-out 4.9164s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 3.95996px; height: 2.68294px; background: rgba(0, 214, 143, 0.286); border-radius: 50%; top: 4.263%; left: 92.4822%; animation: 6.22225s ease-in-out 0.761513s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 2.46858px; height: 2.50622px; background: rgba(0, 214, 143, 0.325); border-radius: 50%; top: 49.8166%; left: 51.6982%; animation: 12.4334s ease-in-out 4.31328s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 3.85888px; height: 2.97724px; background: rgba(0, 214, 143, 0.176); border-radius: 50%; top: 81.5933%; left: 27.5089%; animation: 10.6402s ease-in-out 2.73899s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 2.25907px; height: 3.58174px; background: rgba(0, 214, 143, 0.35); border-radius: 50%; top: 18.1004%; left: 91.6579%; animation: 12.5896s ease-in-out 1.12407s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 2.7611px; height: 3.82786px; background: rgba(0, 214, 143, 0.306); border-radius: 50%; top: 88.0074%; left: 63.8356%; animation: 6.72562s ease-in-out 1.12905s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 3.10691px; height: 3.53802px; background: rgba(0, 214, 143, 0.176); border-radius: 50%; top: 42.6469%; left: 86.6979%; animation: 13.955s ease-in-out 2.95598s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 1.70332px; height: 2.27408px; background: rgba(0, 214, 143, 0.118); border-radius: 50%; top: 86.4403%; left: 10.6514%; animation: 10.6643s ease-in-out 3.09987s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 3.72774px; height: 2.25386px; background: rgba(0, 214, 143, 0.173); border-radius: 50%; top: 38.9111%; left: 35.6603%; animation: 12.994s ease-in-out 0.273504s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 2.86729px; height: 1.08121px; background: rgba(0, 214, 143, 0.14); border-radius: 50%; top: 64.2819%; left: 97.6861%; animation: 7.783s ease-in-out 3.89906s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 1.40553px; height: 3.25488px; background: rgba(0, 214, 143, 0.173); border-radius: 50%; top: 66.4046%; left: 70.899%; animation: 10.6583s ease-in-out 4.29514s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 1.42252px; height: 3.2534px; background: rgba(0, 214, 143, 0.314); border-radius: 50%; top: 64.5907%; left: 63.5295%; animation: 12.6411s ease-in-out 4.44405s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 2.97133px; height: 3.909px; background: rgba(0, 214, 143, 0.16); border-radius: 50%; top: 34.2255%; left: 90.1351%; animation: 10.1059s ease-in-out 1.93623s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 2.49005px; height: 2.03385px; background: rgba(0, 214, 143, 0.365); border-radius: 50%; top: 81.4334%; left: 44.5587%; animation: 11.9401s ease-in-out 2.46314s infinite normal none running particleFloat;">
+            </div>
+            <div
+                style="position: absolute; width: 1.53594px; height: 2.38547px; background: rgba(0, 214, 143, 0.33); border-radius: 50%; top: 85.0884%; left: 59.3797%; animation: 9.54121s ease-in-out 2.52832s infinite normal none running particleFloat;">
+            </div>
+        </div>
+        <div class="container hero__content">
+            <div class="hero__badge">Inteligencia Artificial Financiera · Tu Director Financiero con IA</div>
+            <h1 class="hero__headline">
+                Las PyMEs argentinas pierden entre <span class="highlight">2% y 5%</span> de su facturación en fugas de
+                caja
+                que nadie audita.<br>
+                <span class="hero__headline-accent">¿Cuánto se escapa de la tuya?</span>
+            </h1>
+            <p class="hero__sub">
+                Comisiones que tu banco cambió sin avisarte. Retenciones de IIBB y SIRCREB que llevan meses sin
+                reclamar. Lotes
+                de pagos que subiste a Interbanking sin cruzar contra cheques entrantes. Saldos parados en cuenta
+                corriente que
+                la inflación devora día a día. BiFlow usa inteligencia artificial para procesar tus extractos bancarios
+                y
+                archivos Interbanking — detecta cada
+                peso que se escapa y simula tus pagos antes de ejecutarlos. Es como tener un director financiero con IA
+                trabajando 24/7 sobre tu caja. Sin claves bancarias. Sin integración técnica. Subís
+                tus archivos y en 5&nbsp;minutos tienes el diagnóstico.
+            </p>
+            <div class="hero__actions">
+                <a href="#cta-final" class="btn btn--primary btn--lg" id="heroCta">
+                    <!-- TRACKING: hero_cta_click -->
+                    Quiero ver cuánto pierde mi caja
+                    <span class="btn__arrow">→</span>
+                </a>
+
+            </div>
+            <p class="hero__trust-line">Sin tarjeta de crédito · Sin claves bancarias · Primer informe en 5 minutos</p>
+        </div>
+    </header>
+
+    <!-- ───────────── SOCIAL PROOF BAR ───────────── -->
+    <!-- TRACKING: social_proof_bar_view -->
+    <section class="social-proof-bar" id="social-proof">
+        <div class="container">
+            <div class="social-proof-bar__quote">
+                "Ya auditamos la caja de +120 PyMEs argentinas y detectamos fugas en el 78% de ellas."
+            </div>
+            <div class="social-proof-bar__metrics">
+                <div class="metric">
+                    <span class="metric__number counter" data-target="15000" data-prefix="+">0</span>
+                    <span class="metric__label">Archivos procesados</span>
+                </div>
+                <div class="metric__divider"></div>
+                <div class="metric">
+                    <span class="metric__number counter" data-target="120" data-prefix="+">0</span>
+                    <span class="metric__label">PyMEs auditadas</span>
+                </div>
+                <div class="metric__divider"></div>
+                <div class="metric">
+                    <span class="metric__number">2,8%</span>
+                    <span class="metric__label">Fugas promedio detectadas</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── BENEFICIO 1: AUDITORÍA ───────────── -->
+    <section class="benefit" id="beneficios">
+        <div class="container benefit__inner reveal">
+            <div class="benefit__icon-wrap">
+                <div class="benefit__icon">🛡️</div>
+                <span class="benefit__label">Auditoría y Control de Fugas</span>
+            </div>
+            <div class="benefit__content">
+                <h2 class="benefit__title">
+                    El <span class="highlight">78% de las PyMEs</span> que auditamos tenían al menos 3 tipos de fuga
+                    activa.
+                    Comisiones mal cobradas, pagos duplicados y retenciones sin reclamar — todo en el mismo mes.
+                </h2>
+                <p class="benefit__body">
+                    Tu contador revisa los números una vez cada 30 días. En esos 30 días, las retenciones de IIBB y
+                    SIRCREB se
+                    acumulan sin reclamo — son créditos fiscales a tu favor que prescribirán si nadie los gestiona. Las
+                    comisiones
+                    bancarias aumentan sin aviso y nadie las cruza contra el acuerdo comercial firmado. Los pagos
+                    duplicados por
+                    error de carga se procesan sin control. Tu responsable de finanzas lo sabe, pero auditar cada línea
+                    de cada
+                    extracto de cada
+                    banco, cada día, es físicamente imposible.
+                </p>
+                <p class="benefit__body benefit__body--solution">
+                    Nuestra IA procesa el 100% de tus extractos bancarios en PDF y compara cada movimiento contra tus
+                    acuerdos
+                    comerciales y registros anteriores. Detecta anomalías en segundos — pagos duplicados, comisiones que
+                    no
+                    coinciden con lo pactado, retenciones impositivas que puedes reclamar — y te entrega un informe con
+                    acciones
+                    concretas: qué reclamar, a qué banco, por cuánto.
+                </p>
+                <ul class="benefit__bullets">
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Detección de duplicados</strong> — Identifica pagos con montos idénticos al mismo
+                            destino en
+                            ventanas de 7, 15 y 30 días.</div>
+                    </li>
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Auditoría de comisiones</strong> — Cruza cada cargo bancario contra tus convenios
+                            vigentes. Si
+                            el banco te cobró de más, lo señala con monto y fecha.</div>
+                    </li>
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Radar de créditos fiscales</strong> — Extrae y consolida retenciones de IIBB,
+                            SIRCREB y
+                            Ganancias para que tu contador las compense antes de que prescriban.</div>
+                    </li>
+                </ul>
+                <p class="benefit__urgency">
+                    ⚠️ Tus retenciones de IIBB acumuladas tienen fecha de vencimiento. Cada mes sin reclamarlas es un
+                    mes más
+                    cerca de perderlas.
+                </p>
+                <a href="#cta-final" class="btn btn--secondary">
+                    <!-- TRACKING: benefit1_cta_click -->
+                    Descubrí qué fugas tiene tu caja hoy <span class="btn__arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── TESTIMONIO / CASO DE USO ───────────── -->
+    <!-- TRACKING: testimonial_section_view -->
+    <section class="testimonials" id="testimonios">
+        <div class="container">
+            <div class="testimonials__grid reveal">
+                <!-- Testimonio Dueño -->
+                <div class="testimonial-card">
+                    <div class="testimonial-card__quote">
+                        "Pensábamos que nuestro contador controlaba todo. BiFlow encontró $340.000 en retenciones de
+                        IIBB sin
+                        reclamar en nuestros primeros 3 extractos. Recuperamos eso en el primer mes — mucho más de lo
+                        que cuesta el
+                        plan."
+                    </div>
+                    <div class="testimonial-card__author">
+                        <div class="testimonial-card__avatar">MR</div>
+                        <div>
+                            <div class="testimonial-card__name">Martín R.</div>
+                            <div class="testimonial-card__role">Dueño · Distribuidora industrial · 32 empleados</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Testimonio CFO -->
+                <div class="testimonial-card">
+                    <div class="testimonial-card__quote">
+                        "Antes dedicaba 6 horas por semana a conciliar extractos de 4 bancos en Excel. Ahora subo los
+                        archivos,
+                        BiFlow me da el dashboard y yo me enfoco en decisiones, no en data entry."
+                    </div>
+                    <div class="testimonial-card__author">
+                        <div class="testimonial-card__avatar">LC</div>
+                        <div>
+                            <div class="testimonial-card__name">Laura C.</div>
+                            <div class="testimonial-card__role">Gerente Financiera · Empresa de servicios · 58 empleados
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Caso numérico -->
+                <div class="testimonial-card testimonial-card--case">
+                    <div class="testimonial-card__tag">CASO REAL</div>
+                    <div class="testimonial-card__case-title">PyME industrial · 45 empleados · 6 bancos</div>
+                    <div class="testimonial-card__case-stats">
+                        <div class="case-stat">
+                            <span class="case-stat__value">$890.000</span>
+                            <span class="case-stat__label">Fugas detectadas / mes</span>
+                        </div>
+                        <div class="case-stat">
+                            <span class="case-stat__value">$2.670.000</span>
+                            <span class="case-stat__label">Recuperados en 90 días</span>
+                        </div>
+                        <div class="case-stat">
+                            <span class="case-stat__value">7,4x</span>
+                            <span class="case-stat__label">ROI sobre Plan Pro</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-card__quote testimonial-card__quote--small">
+                        "Sabíamos que algo se escapaba, pero no teníamos tiempo de auditar cada extracto. BiFlow lo
+                        encontró en la
+                        primera carga de archivos."
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── BENEFICIO 2: SIMULADOR + LIQUIDEZ ───────────── -->
+    <section class="benefit benefit--alt">
+        <div class="container benefit__inner reveal">
+            <div class="benefit__icon-wrap">
+                <div class="benefit__icon">🚦</div>
+                <span class="benefit__label">Simulador de Cash Flow + Liquidez</span>
+            </div>
+            <div class="benefit__content">
+                <h2 class="benefit__title">
+                    Cada lote de pagos que subís a Interbanking sin simular es una apuesta contra tu saldo. <span
+                        class="highlight">Y cada peso parado en cuenta corriente pierde 0,5% de valor por semana.</span>
+                </h2>
+                <p class="benefit__body">
+                    Hoy armas el lote de pagos con el saldo que ves en pantalla — el de ayer. No cruzas contra el cheque
+                    de $2M
+                    que se acredita mañana ni contra la cobranza que entra en 48&nbsp;horas. Esa decisión con datos
+                    viejos te
+                    obliga a mantener colchones de liquidez innecesarios. Los $5M que dejás "por las dudas" en cuenta
+                    corriente
+                    sin remunerar pierden poder adquisitivo cada día. En un mes, esos $5M ya compran lo que compraban
+                    $4,75M.
+                </p>
+                <p class="benefit__body benefit__body--solution">
+                    La inteligencia artificial de BiFlow intercepta tu archivo de pagos antes de la ejecución. Cruza
+                    cada egreso
+                    contra fondos por ingresar,
+                    cheques en cartera y vencimientos próximos. Te devuelve un borrador optimizado: qué pagar hoy, qué
+                    postergar
+                    48hs, qué agrupar para reducir comisiones. Y sobre el excedente real — el dinero que no necesitas en
+                    las
+                    próximas 72&nbsp;horas — te sugiere colocación inmediata en Money Market para que tu capital trabaje
+                    en lugar
+                    de devaluarse.
+                </p>
+                <ul class="benefit__bullets">
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Stress Test pre-upload</strong> — Simula el impacto del lote completo sobre tu
+                            saldo proyectado
+                            a 72 horas, cruzando ingresos confirmados y probables.</div>
+                    </li>
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Reordenamiento de prioridades</strong> — Sugiere qué pagos adelantar (proveedores
+                            con
+                            descuento) y cuáles postergar sin penalidad, maximizando la caja disponible.</div>
+                    </li>
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Alerta de saldos ociosos</strong> — Te avisa cuando el saldo excede el colchón
+                            operativo
+                            necesario y calcula cuánto perderías por no colocarlo.</div>
+                    </li>
+                </ul>
+                <a href="#cta-final" class="btn btn--secondary">
+                    <!-- TRACKING: benefit2_cta_click -->
+                    Simula tu próximo lote antes de subirlo <span class="btn__arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── BENEFICIO 3: VISIBILIDAD + RIESGO ───────────── -->
+    <section class="benefit">
+        <div class="container benefit__inner reveal">
+            <div class="benefit__icon-wrap">
+                <div class="benefit__icon">👁️</div>
+                <span class="benefit__label">Visibilidad Total + Monitoreo de Riesgo</span>
+            </div>
+            <div class="benefit__content">
+                <h2 class="benefit__title">
+                    Tu responsable de finanzas dedica <span class="highlight">6 horas semanales</span> a descargar
+                    extractos y
+                    armar reportes.
+                    Mientras tanto, aceptas echeqs de clientes que ya figuran en categoría 3 del BCRA.
+                </h2>
+                <p class="benefit__body">
+                    "¿Cómo estamos de caja?" El dueño hace esa pregunta y recibe un Excel armado a mano, con datos del
+                    jueves
+                    pasado, sin visibilidad sobre retenciones pendientes ni cheques por vencer. El reporte llega 3 días
+                    tarde.
+                    Peor: mientras tu equipo concilia datos manualmente, la empresa acepta cheques y echeqs de clientes
+                    cuya
+                    situación crediticia cambió la semana pasada — y nadie lo sabe hasta que el cheque rebota.
+                </p>
+                <p class="benefit__body benefit__body--solution">
+                    La IA de BiFlow centraliza todos tus bancos en un dashboard único. Genera un "Reporte de 1 Minuto"
+                    diario con
+                    3&nbsp;cifras: salud de caja (pesos disponibles vs. compromisos próximos), riesgos detectados
+                    (fugas,
+                    vencimientos, contrapartes deterioradas) y oportunidades de mejora (saldos ociosos, retenciones
+                    recuperables).
+                    El dueño abre, lee, decide — en 60&nbsp;segundos. Y con el monitoreo de riesgo, BiFlow vigila cada
+                    CUIT de
+                    tus clientes en la Central de Deudores del BCRA y te alerta el mismo día que una contraparte baja de
+                    categoría.
+                </p>
+                <ul class="benefit__bullets">
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Dashboard multibanco en tiempo real</strong> — Saldos, movimientos y posición
+                            consolidada de
+                            cada banco, actualizados con cada extracto que subís. Sin tokens ni claves.</div>
+                    </li>
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Reporte de 1 Minuto</strong> — 3 indicadores ejecutivos enviados al dueño cada
+                            mañana: salud,
+                            riesgo y oportunidades. No espera al cierre mensual.</div>
+                    </li>
+                    <li>
+                        <span class="bullet-icon">◆</span>
+                        <div><strong>Alerta de deterioro de contraparte</strong> — Si un cliente que te debe $1M pasa de
+                            categoría 1
+                            a 3 en el BCRA, lo sabes antes de aceptar su próximo cheque.</div>
+                    </li>
+                </ul>
+                <a href="#cta-final" class="btn btn--secondary">
+                    <!-- TRACKING: benefit3_cta_click -->
+                    Genera tu primer reporte ejecutivo <span class="btn__arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── COMPARACIÓN VS STATUS QUO ───────────── -->
+    <!-- TRACKING: comparison_section_view -->
+    <section class="comparison" id="comparacion">
+        <div class="container">
+            <div class="comparison__header reveal">
+                <h2 class="comparison__title">Tu operación actual vs. BiFlow</h2>
+                <p class="comparison__sub">¿Cómo gestionas tu caja hoy? Compará con lo que podrías tener.</p>
+            </div>
+            <div class="comparison__table-wrap reveal">
+                <table class="comparison__table">
+                    <thead>
+                        <tr>
+                            <th>Capacidad</th>
+                            <th class="comparison__col--old">Excel / ERP actual</th>
+                            <th class="comparison__col--new">BiFlow Finance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Auditoría de comisiones bancarias</td>
+                            <td class="comparison__col--old">Manual, 1 vez por mes</td>
+                            <td class="comparison__col--new">Automática, 24/7</td>
+                        </tr>
+                        <tr>
+                            <td>Detección de pagos duplicados</td>
+                            <td class="comparison__col--old">Si alguien lo nota</td>
+                            <td class="comparison__col--new">Algorítmica, en cada carga</td>
+                        </tr>
+                        <tr>
+                            <td>Reclamo de retenciones (IIBB/SIRCREB)</td>
+                            <td class="comparison__col--old">Depende del contador</td>
+                            <td class="comparison__col--new">Radar automático + alertas</td>
+                        </tr>
+                        <tr>
+                            <td>Simulación de flujo de pagos</td>
+                            <td class="comparison__col--old">No existe</td>
+                            <td class="comparison__col--new">Stress test pre-upload</td>
+                        </tr>
+                        <tr>
+                            <td>Optimización de saldos ociosos</td>
+                            <td class="comparison__col--old">No existe</td>
+                            <td class="comparison__col--new">Alerta + sugerencia de colocación</td>
+                        </tr>
+                        <tr>
+                            <td>Monitoreo de riesgo de contraparte</td>
+                            <td class="comparison__col--old">Consulta manual BCRA</td>
+                            <td class="comparison__col--new">Vigilancia automática de CUITs</td>
+                        </tr>
+                        <tr>
+                            <td>Dashboard consolidado multi-banco</td>
+                            <td class="comparison__col--old">Excel manual, datos viejos</td>
+                            <td class="comparison__col--new">Tiempo real, sin claves</td>
+                        </tr>
+                        <tr>
+                            <td>Reporte ejecutivo para el dueño</td>
+                            <td class="comparison__col--old">Pedirlo y esperar</td>
+                            <td class="comparison__col--new">Reporte de 1 Minuto, cada mañana</td>
+                        </tr>
+                        <tr>
+                            <td>Tiempo de setup</td>
+                            <td class="comparison__col--old">Semanas de implementación</td>
+                            <td class="comparison__col--new">5 minutos, sin equipo técnico</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── CÓMO FUNCIONA ───────────── -->
+    <section class="how-it-works" id="como-funciona">
+        <div class="container">
+            <div class="how-it-works__header reveal">
+                <h2 class="how-it-works__title">De cero a diagnóstico en 3 pasos y 5 minutos. <span
+                        class="highlight">Sin equipo
+                        técnico.
+                        Sin permisos bancarios.</span></h2>
+                <p class="how-it-works__sub">BiFlow no pide claves bancarias, no instala nada en tus servidores y no
+                    ejecuta
+                    transacciones. Solo lee los archivos que tu banco ya te entrega — y te muestra lo que encuentra.</p>
+            </div>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step__number">1</div>
+                    <h3 class="step__title">Registrate <span class="step__time">(30 seg)</span></h3>
+                    <p class="step__desc">Nombre, email y teléfono. Verificamos tu correo y activamos tu cuenta de
+                        prueba al
+                        instante.</p>
+                </div>
+                <div class="step__connector"></div>
+                <div class="step">
+                    <div class="step__number">2</div>
+                    <h3 class="step__title">Subí tus archivos <span class="step__time">(2 min)</span></h3>
+                    <p class="step__desc">Arrastra tus extractos bancarios (PDF), archivos de Interbanking (.dat/.txt) y
+                        tu
+                        listado de CUITs a tu centro de comando privado.</p>
+                </div>
+                <div class="step__connector"></div>
+                <div class="step">
+                    <div class="step__number">3</div>
+                    <h3 class="step__title">Recibí el diagnóstico <span class="step__time">(3 min)</span></h3>
+                    <p class="step__desc">Nuestra IA analiza tus archivos y te entrega: fugas detectadas con montos,
+                        simulación de
+                        tu
+                        próximo lote de pagos y estado de riesgo de cada contraparte.</p>
+                </div>
+            </div>
+            <div class="how-it-works__cta reveal">
+                <a href="#cta-final" class="btn btn--secondary">
+                    <!-- TRACKING: how_it_works_cta_click -->
+                    Empezá tu auditoría gratuita ahora <span class="btn__arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── PRICING ───────────── -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div class="pricing__header reveal">
+                <h2 class="pricing__title">
+                    Desde USD 50/mes. Si tu auditoría gratuita no encuentra fugas por encima de esa cifra, no pagas.
+                </h2>
+                <p class="pricing__sub">
+                    Cada plan arranca con una auditoría forense gratuita sobre tus archivos reales. Sin datos de prueba.
+                    Sin demos
+                    genéricas. Ves las fugas de tu empresa — con montos, fechas y bancos — antes de pagar un peso. Sin
+                    permanencia. Sin letra chica.
+                </p>
+            </div>
+
+            <div class="pricing__grid reveal">
+                <!-- Starter -->
+                <div class="pricing-card">
+                    <div class="pricing-card__header">
+                        <h3 class="pricing-card__name">Starter</h3>
+                        <div class="pricing-card__price">
+                            <span class="pricing-card__currency">USD</span>
+                            <span class="pricing-card__amount">50</span>
+                            <span class="pricing-card__period">/mes</span>
+                        </div>
+                        <p class="pricing-card__desc">Para PyMEs con hasta 5 cuentas bancarias que hoy no auditan su
+                            caja.</p>
+                    </div>
+                    <ul class="pricing-card__features">
+                        <li>Procesamiento de archivos Interbanking (.dat/.txt) y extractos PDF</li>
+                        <li>Detección de comisiones indebidas y pagos duplicados</li>
+                        <li>Monitoreo de retenciones impositivas (IIBB, SIRCREB)</li>
+                        <li>Dashboard de flujo de caja consolidado</li>
+                        <li>Reporte de 1 Minuto diario para el dueño</li>
+                        <li>Soporte por email en menos de 24h</li>
+                    </ul>
+                    <a href="#cta-final" class="btn btn--outline btn--full">
+                        <!-- TRACKING: pricing_starter_cta_click -->
+                        Ver qué fugas detecta Starter →
+                    </a>
+                </div>
+
+                <!-- Pro -->
+                <div class="pricing-card pricing-card--featured">
+                    <div class="pricing-card__badge">⭐ Más elegido</div>
+                    <div class="pricing-card__header">
+                        <h3 class="pricing-card__name">Pro</h3>
+                        <div class="pricing-card__price">
+                            <span class="pricing-card__currency">USD</span>
+                            <span class="pricing-card__amount">120</span>
+                            <span class="pricing-card__period">/mes</span>
+                        </div>
+                        <p class="pricing-card__desc">Para empresas con 6+ bancos que necesitan simular pagos, optimizar
+                            liquidez y
+                            monitorear contrapartes.</p>
+                    </div>
+                    <ul class="pricing-card__features">
+                        <li>Todo lo de Starter, más:</li>
+                        <li>Cuentas bancarias ilimitadas</li>
+                        <li>Simulador de Cash Flow: stress test de lotes contra ingresos pendientes</li>
+                        <li>Alerta de saldos ociosos + sugerencia de colocación en Money Market</li>
+                        <li>Monitoreo de CUITs en Central de Deudores (BCRA) con alertas de deterioro</li>
+                        <li>Alertas con montos, bancos y acciones específicas</li>
+                        <li>Reportes semanales: fugas detectadas, evitadas y ahorro acumulado</li>
+                        <li>Soporte prioritario en menos de 4h</li>
+                    </ul>
+                    <a href="#cta-final" class="btn btn--primary btn--full">
+                        <!-- TRACKING: pricing_pro_cta_click -->
+                        Ver qué fugas detecta Pro →
+                    </a>
+                </div>
+
+                <!-- Enterprise -->
+                <div class="pricing-card">
+                    <div class="pricing-card__header">
+                        <h3 class="pricing-card__name">Enterprise</h3>
+                        <div class="pricing-card__price">
+                            <span class="pricing-card__amount pricing-card__amount--custom">A medida</span>
+                        </div>
+                        <p class="pricing-card__desc">Para grupos con 3+ razones sociales que necesitan un centro de
+                            comando
+                            financiero unificado.</p>
+                    </div>
+                    <ul class="pricing-card__features">
+                        <li>Todo lo de Pro, más:</li>
+                        <li>Consolidación multi-empresa con auditoría cruzada entre razones sociales</li>
+                        <li>Validación de escenarios financieros por empresa y consolidados</li>
+                        <li>API de integración con tu ERP existente</li>
+                        <li>Onboarding 1:1 con un especialista en tesorería</li>
+                        <li>SLA de soporte dedicado con canal directo</li>
+                        <li>Reportes ejecutivos a medida para directorio</li>
+                    </ul>
+                    <a href="#cta-final" class="btn btn--outline btn--full">
+                        <!-- TRACKING: pricing_enterprise_cta_click -->
+                        Hablar con un especialista →
+                    </a>
+                </div>
+            </div>
+
+            <p class="pricing__note reveal">
+                ¿No sabes cuánto pierdes por mes? Tu auditoría gratuita escanea archivos reales de tu empresa y te da el
+                número
+                exacto — con detalle de cada fuga, monto y banco.
+                <a href="#cta-final" class="pricing__note-link">Descubrí tu número → Auditoría gratuita</a>
+            </p>
+        </div>
+    </section>
+
+    <!-- ───────────── FAQ / OBJECIONES ───────────── -->
+    <!-- TRACKING: faq_section_view -->
+    <section class="faq" id="faq">
+        <div class="container">
+            <div class="faq__header reveal">
+                <h2 class="faq__title">Preguntas frecuentes</h2>
+            </div>
+            <div class="faq__list reveal">
+                <div class="faq__item" data-faq="">
+                    <button class="faq__question" aria-expanded="false">
+                        <span>¿Ya tengo un ERP — para qué necesito BiFlow?</span>
+                        <span class="faq__toggle">+</span>
+                    </button>
+                    <div class="faq__answer">
+                        <p>Tu ERP registra lo que pasó. BiFlow audita lo que pasa ahora y simula lo que va a pasar. Son
+                            complementarios. Tu ERP no cruza comisiones bancarias contra acuerdos comerciales, no
+                            detecta duplicados
+                            algorítmicamente y no simula flujos de pagos antes de ejecutarlos.</p>
+                    </div>
+                </div>
+                <div class="faq__item" data-faq="">
+                    <button class="faq__question" aria-expanded="false">
+                        <span>No confío en subir archivos financieros a una plataforma</span>
+                        <span class="faq__toggle">+</span>
+                    </button>
+                    <div class="faq__answer">
+                        <p>Procesamos archivos de solo lectura. No accedemos a cuentas ni ejecutamos transacciones. Tus
+                            datos viajan
+                            encriptados con AES-256 en tránsito y en reposo, y se eliminan cuando vos lo decidís. No
+                            pedimos claves
+                            bancarias ni credenciales de ningún tipo.</p>
+                    </div>
+                </div>
+                <div class="faq__item" data-faq="">
+                    <button class="faq__question" aria-expanded="false">
+                        <span>Mi contador ya se encarga de todo esto</span>
+                        <span class="faq__toggle">+</span>
+                    </button>
+                    <div class="faq__answer">
+                        <p>Tu contador revisa 1 vez por mes. BiFlow audita 24/7. Las fugas no esperan al cierre
+                            contable. Los pagos
+                            duplicados se acumulan, las comisiones indebidas se repiten y las retenciones prescriben —
+                            todo entre un
+                            cierre y el siguiente. BiFlow no reemplaza a tu contador: le da datos que hoy no tiene.</p>
+                    </div>
+                </div>
+                <div class="faq__item" data-faq="">
+                    <button class="faq__question" aria-expanded="false">
+                        <span>USD 50/mes es mucho para una PyME</span>
+                        <span class="faq__toggle">+</span>
+                    </button>
+                    <div class="faq__answer">
+                        <p>La auditoría gratuita te muestra cuánto pierdes por mes. Si las fugas detectadas no superan
+                            USD 50, no
+                            tiene sentido contratarnos — y te lo decimos. En el 78% de los casos, las fugas superan
+                            ampliamente el
+                            costo del plan. El ROI promedio es de 7x en los primeros 90 días.</p>
+                    </div>
+                </div>
+                <div class="faq__item" data-faq="">
+                    <button class="faq__question" aria-expanded="false">
+                        <span>¿Qué tan precisa es la detección de fugas?</span>
+                        <span class="faq__toggle">+</span>
+                    </button>
+                    <div class="faq__answer">
+                        <p>BiFlow procesa tus extractos bancarios reales — no estimaciones. Cada fuga que detecta
+                            incluye monto
+                            exacto, fecha, banco y tipo de anomalía. La auditoría gratuita te muestra resultados
+                            concretos con tus
+                            propios archivos antes de que pagues un peso.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── CONFIANZA ───────────── -->
+    <section class="trust" id="confianza">
+        <div class="container trust__inner reveal">
+            <div class="trust__icon">🔒</div>
+            <h2 class="trust__title">Procesamos archivos de solo lectura. No accedemos a tus cuentas. No movemos un
+                peso.
+                Nunca.</h2>
+            <p class="trust__body">
+                BiFlow trabaja exclusivamente con los .dat, .txt y PDF que tu banco ya te entrega. No pedimos
+                credenciales
+                bancarias. No ejecutamos transacciones. No tenemos acceso operativo a tu dinero. Tus datos viajan
+                encriptados
+                con AES-256 en tránsito y en reposo, y se eliminan cuando vos lo decidís. No instalamos nada en tus
+                servidores.
+                Solo leemos los archivos — y te mostramos lo que encontramos.
+            </p>
+            <div class="trust__badges">
+                <div class="trust__badge-item">
+                    <span class="trust__badge-icon">🔐</span>
+                    <span>AES-256 (tránsito y reposo)</span>
+                </div>
+                <div class="trust__badge-item">
+                    <span class="trust__badge-icon">📄</span>
+                    <span>Solo lectura — cero escritura</span>
+                </div>
+                <div class="trust__badge-item">
+                    <span class="trust__badge-icon">🚫</span>
+                    <span>Sin credenciales bancarias</span>
+                </div>
+                <div class="trust__badge-item">
+                    <span class="trust__badge-icon">🗑️</span>
+                    <span>Eliminación bajo tu control</span>
+                </div>
+            </div>
+            <div class="trust__cta">
+                <a href="#cta-final" class="btn btn--secondary">
+                    <!-- TRACKING: trust_cta_click -->
+                    Probá la auditoría gratuita con total seguridad <span class="btn__arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── CTA FINAL CON FORMULARIO ───────────── -->
+    <section class="cta-final" id="cta-final">
+        <div class="container cta-final__inner reveal">
+            <h2 class="cta-final__title">
+                Ahora mismo hay fugas activas en tu caja. Retenciones sin reclamar. Comisiones mal cobradas. Saldos que
+                se
+                devalúan.<br>
+                <span class="cta-final__accent">En 5 minutos puedes ver cuáles son y cuánto te cuestan.</span>
+            </h2>
+            <p class="cta-final__body">
+                Cada día sin auditoría es un día más de retenciones que prescriben, comisiones que se acumulan y saldos
+                que
+                pierden valor. No necesitas instalar nada, ni dar claves, ni esperar a tu contador. Subí tus archivos,
+                mirá el
+                informe forense con montos reales y empezá a decidir con datos de hoy — no del mes pasado.
+            </p>
+            <!-- Formulario de captura -->
+            <form class="cta-form" id="ctaForm" novalidate="">
+                <!-- TRACKING: cta_form_view -->
+                <div class="cta-form__fields">
+                    <div class="cta-form__group">
+                        <label for="ctaName" class="cta-form__label">Nombre</label>
+                        <input type="text" id="ctaName" name="name" class="cta-form__input" placeholder="Tu nombre"
+                            required="">
+                        <div data-lastpass-icon-root=""
+                            style="position: relative !important; height: 0px !important; width: 0px !important; display: initial !important; float: left !important;">
+                        </div>
+                    </div>
+                    <div class="cta-form__group">
+                        <label for="ctaEmail" class="cta-form__label">Email corporativo</label>
+                        <input type="email" id="ctaEmail" name="email" class="cta-form__input"
+                            placeholder="tu@empresa.com" required="">
+                    </div>
+                    <div class="cta-form__group">
+                        <label for="ctaPhone" class="cta-form__label">WhatsApp</label>
+                        <input type="tel" id="ctaPhone" name="phone" class="cta-form__input" placeholder="+54 11 ..."
+                            required="">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn--primary btn--lg btn--full" id="ctaSubmit">
+                    <!-- TRACKING: cta_form_submit -->
+                    Quiero auditar mi caja ahora
+                    <span class="btn__arrow">→</span>
+                </button>
+                <p class="cta-final__trust-line">Sin tarjeta de crédito · Sin claves bancarias · Primer informe en 5
+                    minutos</p>
+            </form>
+            <div class="cta-form__success" id="ctaSuccess" style="display:none;">
+                <div class="cta-form__success-icon">✓</div>
+                <h3>¡Listo! Tu auditoría está en camino.</h3>
+                <p>Te contactamos dentro de las próximas 24 horas para empezar con tus archivos.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ───────────── FOOTER ───────────── -->
+    <footer class="footer">
+        <div class="container footer__inner">
+            <div class="footer__top">
+                <div class="footer__brand">
+                    <span class="logo-icon">◈</span> BiFlow<span class="logo-accent">Finance</span>
+                    <p class="footer__tagline">Centro de Comando Financiero para PyMEs</p>
+                </div>
+                <div class="footer__links">
+                    <div class="footer__col">
+                        <h4>Producto</h4>
+                        <a href="#beneficios">Auditoría de fugas</a>
+                        <a href="#beneficios">Simulador de pagos</a>
+                        <a href="#beneficios">Monitoreo de riesgo</a>
+                        <a href="#pricing">Planes y precios</a>
+                    </div>
+                    <div class="footer__col">
+                        <h4>Recursos</h4>
+                        <a href="#como-funciona">Cómo funciona</a>
+                        <a href="#faq">Preguntas frecuentes</a>
+                        <a href="#confianza">Seguridad de datos</a>
+                    </div>
+                    <div class="footer__col">
+                        <h4>Empresa</h4>
+                        <a href="#">Contacto</a>
+                        <a href="#">Política de privacidad</a>
+                        <a href="#">Términos de servicio</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer__bottom">
+                <p class="footer__copy">© 2026 BiFlow Finance. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- POPUPS (rendered at end of body)           -->
+    <!-- ═══════════════════════════════════════════ -->
+
+    <!-- POPUP OVERLAY (shared) -->
+    <div class="popup-overlay" id="popupOverlay"></div>
+
+    <!-- POPUP 1 — Exit-Intent -->
+    <div class="popup popup--modal" id="popupExitIntent" role="dialog" aria-modal="true" aria-label="Popup de salida">
+        <!-- TRACKING: popup_exit_intent_impression -->
+        <button class="popup__close" aria-label="Cerrar">×</button>
+        <div class="popup__icon">⚠️</div>
+        <h3 class="popup__headline">Antes de irte: ¿sabés cuánto se fugó de tu caja este mes?</h3>
+        <p class="popup__body">
+            Comisiones indebidas. Retenciones de IIBB sin reclamar. Pagos duplicados que nadie detectó.
+            Mientras operás sin auditoría, las fugas se acumulan día tras día.
+        </p>
+        <p class="popup__body">
+            Subí un extracto bancario y en 5 minutos tenés el diagnóstico. Gratis. Sin tarjeta. Sin integración.
+        </p>
+        <p class="popup__cta-lead">Quiero mi diagnóstico de fugas</p>
+        <a href="#cta-final" class="btn btn--primary btn--full popup__cta-primary">
+            <!-- TRACKING: popup_exit_intent_cta_click -->
+            Auditoría gratuita <span class="btn__arrow">→</span>
+        </a>
+        <button class="popup__cta-secondary" data-popup-dismiss="">
+            <!-- TRACKING: popup_exit_intent_dismiss_click -->
+            No, prefiero seguir sin auditar mi caja
+        </button>
+        <p class="popup__trust">✓ 5 min · ✓ Sin tarjeta · ✓ AES-256</p>
+    </div>
+
+    <!-- POPUP 2 — Scroll 50%: Caso de Estudio -->
+    <div class="popup popup--slide" id="popupScroll" role="dialog" aria-modal="false" aria-label="Caso de estudio">
+        <!-- TRACKING: popup_scroll_case_impression -->
+        <button class="popup__close" aria-label="Cerrar">×</button>
+        <div class="popup__tag">CASO REAL</div>
+        <h3 class="popup__headline">Una PyME industrial de 45 empleados recuperó ARS $890.000 en retenciones no
+            reclamadas
+            en su primer mes con BiFlow.</h3>
+        <div class="popup__findings">
+            <div class="popup__finding">🔍 Retenciones de IIBB cobradas de más por 2 bancos</div>
+            <div class="popup__finding">🔍 3 comisiones duplicadas (5 meses sin detectarse)</div>
+            <div class="popup__finding">🔍 1 pago duplicado no identificado por el ERP</div>
+        </div>
+        <blockquote class="popup__quote">
+            "BiFlow lo encontró en la primera carga de archivos."
+            <cite>— Gerente Financiero, PyME industrial</cite>
+        </blockquote>
+        <p class="popup__cta-lead">Descubrí qué se escapa de tu caja</p>
+        <a href="#cta-final" class="btn btn--primary btn--full popup__cta-primary">
+            <!-- TRACKING: popup_scroll_case_cta_click -->
+            Auditoría gratuita <span class="btn__arrow">→</span>
+        </a>
+        <a href="#testimonios" class="popup__cta-secondary-link">Ver más casos de estudio →</a>
+    </div>
+
+    <!-- POPUP 3 — Time-Delayed 45s: Oferta -->
+    <div class="popup popup--modal" id="popupTimedelay" role="dialog" aria-modal="true"
+        aria-label="Oferta de lanzamiento">
+        <!-- TRACKING: popup_time_delay_impression -->
+        <button class="popup__close" aria-label="Cerrar">×</button>
+        <div class="popup__offer-badge">🚀 OFERTA DE LANZAMIENTO</div>
+        <h3 class="popup__headline">Primeras 50 empresas: 3 meses de Plan Pro al precio de Starter.</h3>
+        <p class="popup__body">
+            Estamos en fase de lanzamiento y buscamos 50 PyMEs que quieran probar la auditoría completa — con Borrador
+            Inteligente, cruce contra Central de Deudores y alertas con montos — al precio del plan básico.
+        </p>
+        <ul class="popup__checklist">
+            <li>✓ Auditoría forense inicial gratuita</li>
+            <li>✓ 3 meses de Plan Pro (USD 120/mes) a precio de Starter (USD 50/mes)</li>
+            <li>✓ Ahorro total: USD 210 durante el periodo</li>
+            <li>✓ Sin permanencia — cancelás cuando quieras</li>
+        </ul>
+        <div class="popup__progress">
+            <div class="popup__progress-bar">
+                <div class="popup__progress-fill" style="width: 62%"></div>
+            </div>
+            <span class="popup__progress-text">Quedan 19 de 50 lugares</span>
+        </div>
+        <p class="popup__cta-lead">Quiero mi lugar</p>
+        <a href="#cta-final" class="btn btn--primary btn--full popup__cta-primary">
+            <!-- TRACKING: popup_time_delay_cta_click -->
+            Auditoría gratuita <span class="btn__arrow">→</span>
+        </a>
+        <button class="popup__cta-secondary" data-popup-dismiss="">
+            <!-- TRACKING: popup_time_delay_dismiss_click -->
+            No, prefiero el precio regular
+        </button>
+        <p class="popup__legal">Oferta válida hasta completar las 50 plazas. Al finalizar los 3 meses, el plan pasa a
+            tarifa Pro estándar. Podés cancelar o cambiar de plan en cualquier momento.</p>
+    </div>
+
+    <script src="script.js"></script>
+
+
+    <div class="nav-overlay"></div>
+</body>
+
+</html>
