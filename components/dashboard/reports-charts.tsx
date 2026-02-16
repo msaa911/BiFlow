@@ -60,7 +60,7 @@ export function ReportsCharts({ data }: ReportsChartsProps) {
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', color: '#fff' }}
                                     itemStyle={{ color: '#fff' }}
-                                    formatter={(value: number | undefined | string) => [`$${Number(value || 0).toLocaleString()}`, '']}
+                                    formatter={(value: any) => [`$${Number(value || 0).toLocaleString()}`, '']}
                                 />
                                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
                                 <Area

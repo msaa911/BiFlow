@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState, Suspense } from 'react'
+import { Suspense } from 'react'
+import { useFormState } from 'react-dom'
 import { login, signup } from './actions'
 import { useSearchParams } from 'next/navigation'
 
@@ -11,7 +12,7 @@ const initialState = {
 function LoginContent() {
     const searchParams = useSearchParams()
     const error = searchParams.get('error')
-    const [state, formAction, isPending] = useActionState(async (prevState: any, formData: FormData) => {
+    const [state, formAction] = useFormState(async (prevState: any, formData: FormData) => {
         return { message: '' }
     }, initialState)
 
