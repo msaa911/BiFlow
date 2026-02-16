@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { SupabaseClient } from '@supabase/supabase-js'
+// import { SupabaseClient } from '@supabase/supabase-js'
 
 interface Transaction {
     id: string
@@ -17,7 +17,7 @@ interface Finding {
     severidad: 'low' | 'medium' | 'high' | 'critical'
     estado: 'detectado'
     monto_estimado_recupero: number
-    detalle: any
+    detalle: Record<string, any>
 }
 
 export async function runAnalysis(organizationId: string) {
