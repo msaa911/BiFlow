@@ -1,0 +1,19 @@
+-- Seed Known CUITs for Recurrence Detection
+-- These are common service providers where payments are usually recurrent.
+
+INSERT INTO cuits_conocidos (cuit, razon_social, rubro, frecuencia_dias) VALUES
+('30-50000000-1', 'TELECOM ARGENTINA S.A.', 'SERVICIOS_TIC', 30),
+('30-60000000-2', 'CLARO AMX ARGENTINA S.A.', 'SERVICIOS_TIC', 30),
+('30-70000000-3', 'EDENOR S.A.', 'ENERGIA', 30),
+('30-71000000-4', 'EDESUR S.A.', 'ENERGIA', 30),
+('30-50000001-5', 'METROGAS S.A.', 'GAS', 30),
+('30-50000002-6', 'AYSA S.A.', 'AGUA', 30),
+('33-60000000-9', 'OSDE', 'SALUD', 30),
+('30-50000003-7', 'SWISS MEDICAL S.A.', 'SALUD', 30),
+('30-50000004-8', 'GALENO ARGENTINA S.A.', 'SALUD', 30),
+('30-11111111-1', 'GOOGLE CLOUD ARGENTINA', 'TECNOLOGIA', 30),
+('30-22222222-2', 'AMAZON WEB SERVICES', 'TECNOLOGIA', 30),
+('30-33333333-3', 'FACEBOOK ARGENTINA', 'PUBLICIDAD', 30),
+('30-44444444-4', 'MERCADOLIBRE S.R.L.', 'ECOMMERCE', 0), -- Variable
+('33-55555555-5', 'AFIP', 'IMPUESTOS', 30)
+ON CONFLICT (cuit) DO NOTHING;

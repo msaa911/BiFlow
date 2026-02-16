@@ -1,0 +1,5520 @@
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..2142a43
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,7 @@
++
++# Supabase Configuration
++SUPABASE_URL=YOUR_SUPABASE_URL
++SUPABASE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
++
++# Database Connection (Optional if using Supabase client only, but good for direct PG)
++DB_CONNECTION_STRING=postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres
+diff --git a/BiFlow_Mega_Audit.dat b/BiFlow_Mega_Audit.dat
+new file mode 100644
+index 0000000..c4d8d97
+--- /dev/null
++++ b/BiFlow_Mega_Audit.dat
+@@ -0,0 +1,225 @@
++FECHA;DESCRIPCION;MONTO;CUIT;REFERENCIA
++20250101;TRANSFERENCIA AFIP;-871788.38;30-44444444-4;2AA7AF9C
++20250101;TRANSFERENCIA AFIP;-942773.68;30-44444444-4;8BF3EFB5
++20250101;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-56887.72;30-11111111-1;B87F4949
++20250101;TRANSFERENCIA JUAN PEREZ (ALQUILER);-350805.19;20-66666666-6;F9DE65F9
++20250101;TRANSFERENCIA TELEFONICA ARGENTINA;-149000.00;30-77777777-7;65A2009D
++20250102;TRANSFERENCIA BANCO NACION;-5534.33;33-33333333-3;0E134D8D
++20250102;TRANSFERENCIA ENERGIA SUR S.A.;-216000.00;30-22222222-2;80D614AB
++20250102;TRANSFERENCIA ENERGIA SUR S.A.;-302533.83;30-22222222-2;B0521C91
++20250102;TRANSFERENCIA ENERGIA SUR S.A.;-489000.00;30-22222222-2;5A56C311
++20250104;TRANSFERENCIA BANCO NACION;-68766.74;33-33333333-3;3AD324C9
++20250104;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-24851.25;30-11111111-1;81413C78
++20250104;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-314354.37;30-11111111-1;EF7FF352
++20250104;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-360306.64;30-11111111-1;F0BD6875
++20250104;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-458842.32;30-11111111-1;B730D714
++20250105;RETENCION IIBB BANCO NACION;-6464.58;33-33333333-3;6E84DDF0RET
++20250105;TRANSFERENCIA BANCO NACION;-215485.94;33-33333333-3;6E84DDF0
++20250105;TRANSFERENCIA BANCO NACION;-314238.40;33-33333333-3;FE5C4578
++20250105;TRANSFERENCIA JUAN PEREZ (ALQUILER);-90000.00;20-66666666-6;BA3B84F2
++20250105;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-272885.99;30-55555555-5;0A90BCBE
++20250105;TRANSFERENCIA TELEFONICA ARGENTINA;-165810.02;30-77777777-7;27063C58
++20250106;RETENCION IIBB AFIP;-53841.09;30-44444444-4;8FDC9EF6RET
++20250106;TRANSFERENCIA AFIP;-1794702.95;30-44444444-4;8FDC9EF6
++20250106;TRANSFERENCIA BANCO NACION;-475126.84;33-33333333-3;103821EC
++20250106;TRANSFERENCIA ENERGIA SUR S.A.;-25000.00;30-22222222-2;0293A2B2
++20250106;TRANSFERENCIA JUAN PEREZ (ALQUILER);-289700.74;20-66666666-6;6CA80DE2
++20250107;TRANSFERENCIA ENERGIA SUR S.A.;-171369.13;30-22222222-2;585D24DE
++20250108;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-213695.65;30-11111111-1;159CD387
++20250109;TRANSFERENCIA BANCO NACION;-334331.85;33-33333333-3;B3481A18
++20250110;RETENCION IIBB LOGISTICA EXPRESS S.R.L.;-9199.85;30-55555555-5;685DD7B2RET
++20250110;TRANSFERENCIA ENERGIA SUR S.A.;-124000.00;30-22222222-2;D47ADA97
++20250110;TRANSFERENCIA ENERGIA SUR S.A.;-318233.52;30-22222222-2;CAF4E6C9
++20250110;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-144042.56;30-55555555-5;C5CBCC67
++20250110;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-306661.67;30-55555555-5;685DD7B2
++20250110;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-488935.31;30-55555555-5;8F710E85
++20250110;TRANSFERENCIA TELEFONICA ARGENTINA;-459862.23;30-77777777-7;69DC7911
++20250111;TRANSFERENCIA BANCO NACION;-383120.74;33-33333333-3;047FED31
++20250111;TRANSFERENCIA BANCO NACION;-465251.74;33-33333333-3;2AA24CA5
++20250111;TRANSFERENCIA ENERGIA SUR S.A.;-52000.00;30-22222222-2;C8D8F234
++20250111;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-194615.36;30-55555555-5;B281E32B
++20250112;RETENCION IIBB LOGISTICA EXPRESS S.R.L.;-7388.85;30-55555555-5;D450061BRET
++20250112;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-246294.92;30-55555555-5;D450061B
++20250112;TRANSFERENCIA TELEFONICA ARGENTINA;-19579.71;30-77777777-7;92C24517
++20250113;TRANSFERENCIA AFIP;-1134593.19;30-44444444-4;23B00CF4
++20250113;TRANSFERENCIA ENERGIA SUR S.A.;-311315.29;30-22222222-2;A44DDFC1
++20250113;TRANSFERENCIA TELEFONICA ARGENTINA;-66985.65;30-77777777-7;DED13728
++20250114;RETENCION IIBB AFIP;-35292.52;30-44444444-4;46A2F326RET
++20250114;TRANSFERENCIA AFIP;-1176417.31;30-44444444-4;46A2F326
++20250114;TRANSFERENCIA AFIP;-225089.38;30-44444444-4;61855B29
++20250114;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-316283.67;30-55555555-5;D96E4E59
++20250115;RETENCION IIBB TELEFONICA ARGENTINA;-10560.00;30-77777777-7;47135D04RET
++20250115;TRANSFERENCIA AFIP;-1681005.65;30-44444444-4;4C7825BB
++20250115;TRANSFERENCIA ENERGIA SUR S.A.;-5131.81;30-22222222-2;4D6A7A41
++20250115;TRANSFERENCIA TELEFONICA ARGENTINA;-352000.00;30-77777777-7;47135D04
++20250116;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-15266.06;30-11111111-1;617FBA6B
++20250116;TRANSFERENCIA TELEFONICA ARGENTINA;-339457.86;30-77777777-7;405EC0A2
++20250117;TRANSFERENCIA AFIP;-1776824.50;30-44444444-4;31DCBA65
++20250117;TRANSFERENCIA BANCO NACION;-319167.16;33-33333333-3;6D019582
++20250117;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-499090.29;30-11111111-1;302860D5
++20250117;TRANSFERENCIA TELEFONICA ARGENTINA;-233790.67;30-77777777-7;12DF2B72
++20250118;TRANSFERENCIA AFIP;-1518773.57;30-44444444-4;EFDCEF66
++20250118;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-397926.69;30-11111111-1;25A1F9EF
++20250118;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-16991.98;30-55555555-5;9847898D
++20250119;TRANSFERENCIA TELEFONICA ARGENTINA;-25445.28;30-77777777-7;41E514F0
++20250119;TRANSFERENCIA TELEFONICA ARGENTINA;-314463.78;30-77777777-7;63BAA81C
++20250120;TRANSFERENCIA BANCO NACION;-314918.75;33-33333333-3;32075557
++20250120;TRANSFERENCIA BANCO NACION;-65015.00;33-33333333-3;B0F5FDE2
++20250120;TRANSFERENCIA JUAN PEREZ (ALQUILER);-453411.35;20-66666666-6;DBC20D8C
++20250121;TRANSFERENCIA BANCO NACION;-248351.84;33-33333333-3;EF5ACE5D
++20250121;TRANSFERENCIA ENERGIA SUR S.A.;-105066.33;30-22222222-2;913A26D7
++20250121;TRANSFERENCIA JUAN PEREZ (ALQUILER);-419986.54;20-66666666-6;7BE5E24A
++20250122;RETENCION IIBB LOGISTICA EXPRESS S.R.L.;-3507.06;30-55555555-5;A127069ERET
++20250122;TRANSFERENCIA AFIP;-1112699.57;30-44444444-4;B330F42B
++20250122;TRANSFERENCIA AFIP;-613144.67;30-44444444-4;26CCFB50
++20250122;TRANSFERENCIA AFIP;-815369.89;30-44444444-4;A23B1F53
++20250122;TRANSFERENCIA BANCO NACION;-165306.30;33-33333333-3;B5241C2A
++20250122;TRANSFERENCIA ENERGIA SUR S.A.;-121330.86;30-22222222-2;4BD743C9
++20250122;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-116902.02;30-55555555-5;A127069E
++20250122;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-440997.71;30-55555555-5;0350FBF0
++20250123;TRANSFERENCIA ENERGIA SUR S.A.;-123743.47;30-22222222-2;9A2E8019
++20250123;TRANSFERENCIA JUAN PEREZ (ALQUILER);-67000.00;20-66666666-6;74C8E237
++20250123;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-397576.25;30-55555555-5;EB341CC0
++20250124;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-331032.87;30-11111111-1;6548780B
++20250124;TRANSFERENCIA TELEFONICA ARGENTINA;-346918.11;30-77777777-7;F9D007F4
++20250125;TRANSFERENCIA AFIP;-1110368.86;30-44444444-4;6F555636
++20250125;TRANSFERENCIA BANCO NACION;-145744.89;33-33333333-3;CBADE7FE
++20250125;TRANSFERENCIA ENERGIA SUR S.A.;-465187.34;30-22222222-2;D48E5D96
++20250125;TRANSFERENCIA TELEFONICA ARGENTINA;-203036.63;30-77777777-7;0754CB1C
++20250125;TRANSFERENCIA TELEFONICA ARGENTINA;-204762.16;30-77777777-7;EF335ECC
++20250125;TRANSFERENCIA TELEFONICA ARGENTINA;-329000.00;30-77777777-7;918F97E8
++20250126;RETENCION IIBB DISTRIBUIDORA NORTE S.A.;-5655.44;30-11111111-1;931FAD71RET
++20250126;TRANSFERENCIA BANCO NACION;-223972.37;33-33333333-3;13A67E12
++20250126;TRANSFERENCIA BANCO NACION;-376240.04;33-33333333-3;73FD35E7
++20250126;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-188514.62;30-11111111-1;931FAD71
++20250126;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-273778.95;30-11111111-1;45F3E19E
++20250126;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-4002.48;30-11111111-1;0FBE131D
++20250126;TRANSFERENCIA JUAN PEREZ (ALQUILER);-231000.00;20-66666666-6;E139A530
++20250127;TRANSFERENCIA BANCO NACION;-376240.04;33-33333333-3;73FD35E7DUP
++20250127;TRANSFERENCIA ENERGIA SUR S.A.;-126839.10;30-22222222-2;FAD22BAF
++20250127;TRANSFERENCIA ENERGIA SUR S.A.;-204000.00;30-22222222-2;333BA859
++20250127;TRANSFERENCIA JUAN PEREZ (ALQUILER);-121000.00;20-66666666-6;78875185
++20250127;TRANSFERENCIA TELEFONICA ARGENTINA;-311524.28;30-77777777-7;CFAE71BF
++20250127;TRANSFERENCIA TELEFONICA ARGENTINA;-480094.36;30-77777777-7;8F60C98D
++20250128;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-27862.25;30-55555555-5;9BA4E429
++20250128;TRANSFERENCIA TELEFONICA ARGENTINA;-207912.00;30-77777777-7;FD256D3B
++20250128;TRANSFERENCIA TELEFONICA ARGENTINA;-91759.57;30-77777777-7;C93F9CCB
++20250129;TRANSFERENCIA AFIP;-1041336.73;30-44444444-4;D0819712
++20250129;TRANSFERENCIA JUAN PEREZ (ALQUILER);-447248.08;20-66666666-6;DC75C74E
++20250130;TRANSFERENCIA AFIP;-333863.74;30-44444444-4;E9BEC32A
++20250130;TRANSFERENCIA AFIP;-83495.34;30-44444444-4;91032E54
++20250130;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-81726.52;30-55555555-5;CAA6F429
++20250131;TRANSFERENCIA AFIP;-1239432.99;30-44444444-4;25A6D547
++20250131;TRANSFERENCIA AFIP;-297357.81;30-44444444-4;40043598
++20250131;TRANSFERENCIA TELEFONICA ARGENTINA;-302189.25;30-77777777-7;58561BE5
++20250131;TRANSFERENCIA TELEFONICA ARGENTINA;-376002.12;30-77777777-7;F6099001
++20250201;RETENCION IIBB AFIP;-40021.33;30-44444444-4;904F3C0CRET
++20250201;TRANSFERENCIA AFIP;-1334044.26;30-44444444-4;904F3C0C
++20250201;TRANSFERENCIA BANCO NACION;-128475.62;33-33333333-3;A669912A
++20250201;TRANSFERENCIA BANCO NACION;-393728.16;33-33333333-3;EB0DC63A
++20250201;TRANSFERENCIA JUAN PEREZ (ALQUILER);-361000.00;20-66666666-6;C4F1D191
++20250201;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-453934.66;30-55555555-5;6315536D
++20250202;TRANSFERENCIA TELEFONICA ARGENTINA;-151491.12;30-77777777-7;1EB904A7
++20250202;TRANSFERENCIA TELEFONICA ARGENTINA;-277481.07;30-77777777-7;27E90519
++20250203;TRANSFERENCIA AFIP;-1326332.36;30-44444444-4;49139C71
++20250203;TRANSFERENCIA TELEFONICA ARGENTINA;-177443.59;30-77777777-7;58A65615
++20250204;TRANSFERENCIA ENERGIA SUR S.A.;-202639.10;30-22222222-2;425F2C8C
++20250204;TRANSFERENCIA ENERGIA SUR S.A.;-295775.11;30-22222222-2;636D167E
++20250205;RETENCION IIBB LOGISTICA EXPRESS S.R.L.;-14950.27;30-55555555-5;AF231095RET
++20250205;TRANSFERENCIA AFIP;-1102527.42;30-44444444-4;75BBC631
++20250205;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-339262.21;30-11111111-1;92BD51B2
++20250205;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-482640.06;30-11111111-1;043D40DB
++20250205;TRANSFERENCIA ENERGIA SUR S.A.;-82000.00;30-22222222-2;AE0C0615
++20250205;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-498342.36;30-55555555-5;AF231095
++20250205;TRANSFERENCIA TELEFONICA ARGENTINA;-119000.00;30-77777777-7;5AB004F0
++20250206;TRANSFERENCIA JUAN PEREZ (ALQUILER);-104475.75;20-66666666-6;416C462F
++20250206;TRANSFERENCIA TELEFONICA ARGENTINA;-162109.05;30-77777777-7;EA64F257
++20250206;TRANSFERENCIA TELEFONICA ARGENTINA;-54000.00;30-77777777-7;8D4AB617
++20250207;RETENCION IIBB AFIP;-57150.56;30-44444444-4;F5311096RET
++20250207;TRANSFERENCIA AFIP;-1359912.29;30-44444444-4;04ECC3EE
++20250207;TRANSFERENCIA AFIP;-1905018.79;30-44444444-4;F5311096
++20250207;TRANSFERENCIA AFIP;-662809.51;30-44444444-4;74577706
++20250208;TRANSFERENCIA JUAN PEREZ (ALQUILER);-119834.73;20-66666666-6;FE71EF45
++20250209;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-119177.30;30-55555555-5;B78E6F74
++20250209;TRANSFERENCIA TELEFONICA ARGENTINA;-436952.33;30-77777777-7;1948C380
++20250210;TRANSFERENCIA AFIP;-685810.16;30-44444444-4;C7144CDE
++20250210;TRANSFERENCIA BANCO NACION;-251883.15;33-33333333-3;8D0A2835
++20250210;TRANSFERENCIA ENERGIA SUR S.A.;-342805.51;30-22222222-2;9A81DEC1
++20250210;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-356086.86;30-55555555-5;3C820E62
++20250211;TRANSFERENCIA TELEFONICA ARGENTINA;-165804.43;30-77777777-7;96711A04
++20250212;TRANSFERENCIA AFIP;-251793.43;30-44444444-4;AAA4AB77
++20250212;TRANSFERENCIA AFIP;-842094.47;30-44444444-4;78920DEA
++20250212;TRANSFERENCIA ENERGIA SUR S.A.;-125000.00;30-22222222-2;E836EFFA
++20250213;TRANSFERENCIA AFIP;-228529.83;30-44444444-4;B00EB22F
++20250213;TRANSFERENCIA BANCO NACION;-447316.58;33-33333333-3;CFB6CBA1
++20250214;RETENCION IIBB BANCO NACION;-7846.41;33-33333333-3;1DBAD306RET
++20250214;TRANSFERENCIA AFIP;-1599482.82;30-44444444-4;8F7BFC8B
++20250214;TRANSFERENCIA BANCO NACION;-261546.86;33-33333333-3;1DBAD306
++20250214;TRANSFERENCIA JUAN PEREZ (ALQUILER);-419460.22;20-66666666-6;384EA0C0
++20250215;TRANSFERENCIA AFIP;-1093502.80;30-44444444-4;0A557F05
++20250215;TRANSFERENCIA BANCO NACION;-376373.49;33-33333333-3;E243A831
++20250215;TRANSFERENCIA JUAN PEREZ (ALQUILER);-213543.83;20-66666666-6;81CAC282
++20250216;TRANSFERENCIA AFIP;-1610055.41;30-44444444-4;C40FAEF8
++20250216;TRANSFERENCIA TELEFONICA ARGENTINA;-186000.00;30-77777777-7;AFC232FA
++20250217;RETENCION IIBB BANCO NACION;-1877.47;33-33333333-3;C32C3426RET
++20250217;TRANSFERENCIA BANCO NACION;-62582.37;33-33333333-3;C32C3426
++20250217;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-431169.50;30-11111111-1;75F6950D
++20250217;TRANSFERENCIA TELEFONICA ARGENTINA;-371000.00;30-77777777-7;1D6CB850
++20250218;TRANSFERENCIA BANCO NACION;-484207.74;33-33333333-3;1EDEC92F
++20250218;TRANSFERENCIA ENERGIA SUR S.A.;-204322.05;30-22222222-2;27AB7416
++20250219;RETENCION IIBB LOGISTICA EXPRESS S.R.L.;-3011.18;30-55555555-5;58315EE8RET
++20250219;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-433889.99;30-11111111-1;11FEFB86
++20250219;TRANSFERENCIA ENERGIA SUR S.A.;-388908.89;30-22222222-2;B6F08EA1
++20250219;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-100372.76;30-55555555-5;58315EE8
++20250220;RETENCION IIBB ENERGIA SUR S.A.;-11405.09;30-22222222-2;EB8364D0RET
++20250220;TRANSFERENCIA BANCO NACION;-10995.96;33-33333333-3;EC28ED0D
++20250220;TRANSFERENCIA ENERGIA SUR S.A.;-380169.74;30-22222222-2;EB8364D0
++20250220;TRANSFERENCIA TELEFONICA ARGENTINA;-186000.00;30-77777777-7;917C3F90
++20250220;TRANSFERENCIA TELEFONICA ARGENTINA;-202085.90;30-77777777-7;0438AB5F
++20250221;TRANSFERENCIA AFIP;-1319627.63;30-44444444-4;DB54E104
++20250221;TRANSFERENCIA AFIP;-1990851.00;30-44444444-4;8C7C4460
++20250221;TRANSFERENCIA AFIP;-1990851.00;30-44444444-4;8C7C4460DUP
++20250221;TRANSFERENCIA ENERGIA SUR S.A.;-493710.78;30-22222222-2;11B458AA
++20250222;RETENCION IIBB LOGISTICA EXPRESS S.R.L.;-11875.71;30-55555555-5;C7A74418RET
++20250222;TRANSFERENCIA AFIP;-1437934.43;30-44444444-4;5B4E8467
++20250222;TRANSFERENCIA BANCO NACION;-479631.38;33-33333333-3;70934A40
++20250222;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-395856.91;30-55555555-5;C7A74418
++20250222;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-50785.02;30-55555555-5;F7063183
++20250223;TRANSFERENCIA BANCO NACION;-175733.78;33-33333333-3;ACD5FFFE
++20250223;TRANSFERENCIA JUAN PEREZ (ALQUILER);-234721.99;20-66666666-6;DA6675D2
++20250223;TRANSFERENCIA JUAN PEREZ (ALQUILER);-288439.46;20-66666666-6;B479FFA1
++20250223;TRANSFERENCIA JUAN PEREZ (ALQUILER);-65000.00;20-66666666-6;5150784A
++20250224;RETENCION IIBB JUAN PEREZ (ALQUILER);-14560.23;20-66666666-6;ED1EF9F8RET
++20250224;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-401733.66;30-11111111-1;D71743B5
++20250224;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-460106.85;30-11111111-1;4354DE04
++20250224;TRANSFERENCIA JUAN PEREZ (ALQUILER);-222899.60;20-66666666-6;09DFCF39
++20250224;TRANSFERENCIA JUAN PEREZ (ALQUILER);-485340.89;20-66666666-6;ED1EF9F8
++20250225;TRANSFERENCIA BANCO NACION;-357210.14;33-33333333-3;5AA94187
++20250225;TRANSFERENCIA ENERGIA SUR S.A.;-299830.18;30-22222222-2;69A41BED
++20250225;TRANSFERENCIA ENERGIA SUR S.A.;-340378.54;30-22222222-2;63E02C6E
++20250225;TRANSFERENCIA ENERGIA SUR S.A.;-366000.00;30-22222222-2;3DB35F02
++20250225;TRANSFERENCIA ENERGIA SUR S.A.;-65000.00;30-22222222-2;ECBE0CD3
++20250225;TRANSFERENCIA JUAN PEREZ (ALQUILER);-499284.32;20-66666666-6;28F70BA8
++20250226;RETENCION IIBB DISTRIBUIDORA NORTE S.A.;-12635.15;30-11111111-1;E6DD1849RET
++20250226;TRANSFERENCIA AFIP;-1360556.88;30-44444444-4;732FD032
++20250226;TRANSFERENCIA AFIP;-1518374.07;30-44444444-4;786C7219
++20250226;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-421171.60;30-11111111-1;E6DD1849
++20250226;TRANSFERENCIA ENERGIA SUR S.A.;-198250.84;30-22222222-2;5988E6D5
++20250226;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-395819.09;30-55555555-5;71BD1B8D
++20250227;RETENCION IIBB DISTRIBUIDORA NORTE S.A.;-10382.76;30-11111111-1;B1BAB693RET
++20250227;RETENCION IIBB TELEFONICA ARGENTINA;-7156.60;30-77777777-7;6FF00CADRET
++20250227;TRANSFERENCIA AFIP;-692611.46;30-44444444-4;6F9CE7D5
++20250227;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-25470.37;30-11111111-1;2860C788
++20250227;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-346092.05;30-11111111-1;B1BAB693
++20250227;TRANSFERENCIA ENERGIA SUR S.A.;-391823.26;30-22222222-2;C185A276
++20250227;TRANSFERENCIA ENERGIA SUR S.A.;-83709.63;30-22222222-2;592B9D64
++20250227;TRANSFERENCIA TELEFONICA ARGENTINA;-238553.33;30-77777777-7;6FF00CAD
++20250228;RETENCION IIBB DISTRIBUIDORA NORTE S.A.;-3302.56;30-11111111-1;549F5B81RET
++20250228;TRANSFERENCIA AFIP;-1424741.92;30-44444444-4;D96E7F8F
++20250228;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-110085.36;30-11111111-1;549F5B81
++20250228;TRANSFERENCIA DISTRIBUIDORA NORTE S.A.;-444879.19;30-11111111-1;A214ACD7
++20250228;TRANSFERENCIA JUAN PEREZ (ALQUILER);-413959.92;20-66666666-6;AD962DDA
++20250228;TRANSFERENCIA LOGISTICA EXPRESS S.R.L.;-39112.83;30-55555555-5;1BC5DEF3
++20250228;TRANSFERENCIA TELEFONICA ARGENTINA;-314594.08;30-77777777-7;B65311CA
++20250228;TRANSFERENCIA TELEFONICA ARGENTINA;-416658.27;30-77777777-7;E6EBD911
++20250302;TRANSFERENCIA TELEFONICA ARGENTINA;-416658.27;30-77777777-7;E6EBD911DUP
+diff --git a/README.md b/README.md
+deleted file mode 100644
+index 402fab6..0000000
+--- a/README.md
++++ /dev/null
+@@ -1,41 +0,0 @@
+-# BiFlow Finance 🚀
+-
+-BiFlow is a modern financial demo designed for investors, focusing on providing a seamless experience for managing assets and transactions with a cloud-native approach.
+-
+-## 🌟 Features
+-
+-- **Modern Dashboard**: High-quality visual interface for financial overview.
+-- **Supabase Integration**: Robust authentication and real-time database.
+-- **Cloud-Ready**: Optimized for deployment on Vercel.
+-- **Smart Calculators**: Built-in financial tools for quick assessments.
+-
+-## 🛠️ Tech Stack
+-
+-- **Frontend**: HTML5, Vanilla CSS, JavaScript (ES6+).
+-- **Backend/DB**: Supabase (Auth, PostgreSQL, Storage).
+-- **Deployment**: Vercel ready.
+-
+-## 🚀 Getting Started
+-
+-1. **Clone the repository**:
+-   ```bash
+-   git clone https://github.com/msaa911/BiFlow.git
+-   ```
+-2. **Setup Environment**:
+-   Ensure you have your Supabase credentials configured in the integration files.
+-3. **Run locally**:
+-   Open `index.html` in your browser or use a local live server.
+-
+-## 📂 Project Structure
+-
+-- `/api`: Backend logic and integration scripts.
+-- `/app`: Main application screens (Login, Dashboard).
+-- `/database`: SQL schemas and database migrations.
+-- `/copy`: Marketing and strategy documentation.
+-
+-## 📄 License
+-
+-Internal demo for BiFlow Finance.
+-
+----
+-Developed with ❤️ by the BiFlow Team.
+diff --git a/calculadora.css b/calculadora.css
+deleted file mode 100644
+index 9b0284a..0000000
+--- a/calculadora.css
++++ /dev/null
+@@ -1,1143 +0,0 @@
+-/* ═══════════════════════════════════════════
+-   BiFlow Finance — Calculator Page Styles
+-   ═══════════════════════════════════════════ */
+-
+-/* ── CSS Variables (same design system) ── */
+-:root {
+-    --bg-primary: #060b18;
+-    --bg-secondary: #0c1222;
+-    --bg-card: rgba(15, 23, 42, 0.6);
+-    --bg-card-hover: rgba(20, 30, 55, 0.8);
+-
+-    --text-primary: #e8ecf4;
+-    --text-secondary: #94a3b8;
+-    --text-muted: #64748b;
+-
+-    --accent: #00d68f;
+-    --accent-light: #34edb3;
+-    --accent-dark: #00a86b;
+-    --accent-glow: rgba(0, 214, 143, 0.15);
+-    --accent-glow-strong: rgba(0, 214, 143, 0.3);
+-
+-    --border: rgba(148, 163, 184, 0.1);
+-    --border-accent: rgba(0, 214, 143, 0.25);
+-
+-    --gradient-hero: linear-gradient(135deg, rgba(0, 214, 143, 0.08) 0%, rgba(6, 11, 24, 0) 50%);
+-    --gradient-accent: linear-gradient(135deg, #00d68f, #00a86b);
+-    --gradient-card: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.4));
+-
+-    --danger: #ef4444;
+-    --warning: #f59e0b;
+-    --info: #3b82f6;
+-
+-    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+-    --section-pad: 100px;
+-    --container-max: 1200px;
+-    --radius-sm: 8px;
+-    --radius-md: 12px;
+-    --radius-lg: 20px;
+-    --radius-xl: 24px;
+-    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+-}
+-
+-/* ── Reset ── */
+-*,
+-*::before,
+-*::after {
+-    margin: 0;
+-    padding: 0;
+-    box-sizing: border-box;
+-}
+-
+-html {
+-    scroll-behavior: smooth;
+-    font-size: 16px;
+-}
+-
+-body {
+-    font-family: var(--font);
+-    background-color: var(--bg-primary);
+-    color: var(--text-primary);
+-    line-height: 1.7;
+-    overflow-x: hidden;
+-    -webkit-font-smoothing: antialiased;
+-}
+-
+-a {
+-    color: var(--accent);
+-    text-decoration: none;
+-    transition: color 0.3s var(--ease);
+-}
+-
+-a:hover {
+-    color: var(--accent-light);
+-}
+-
+-ul {
+-    list-style: none;
+-}
+-
+-.container {
+-    max-width: var(--container-max);
+-    margin: 0 auto;
+-    padding: 0 24px;
+-}
+-
+-.accent {
+-    color: var(--accent);
+-}
+-
+-/* ── Reveal Animations ── */
+-.reveal {
+-    opacity: 0;
+-    transform: translateY(30px);
+-    transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+-}
+-
+-.reveal.visible {
+-    opacity: 1;
+-    transform: translateY(0);
+-}
+-
+-/* ═══════════════════════════════════════════
+-   NAVBAR (same as main site)
+-   ═══════════════════════════════════════════ */
+-.navbar {
+-    position: fixed;
+-    top: 0;
+-    left: 0;
+-    right: 0;
+-    z-index: 1000;
+-    padding: 16px 0;
+-    background: rgba(6, 11, 24, 0.8);
+-    backdrop-filter: blur(20px);
+-    border-bottom: 1px solid transparent;
+-    transition: all 0.3s var(--ease);
+-}
+-
+-.navbar.scrolled {
+-    padding: 10px 0;
+-    border-bottom-color: var(--border);
+-    background: rgba(6, 11, 24, 0.95);
+-}
+-
+-.navbar__inner {
+-    display: flex;
+-    align-items: center;
+-    justify-content: space-between;
+-}
+-
+-.navbar__logo {
+-    display: flex;
+-    align-items: center;
+-    gap: 8px;
+-    font-size: 1.25rem;
+-    font-weight: 700;
+-    color: var(--text-primary);
+-}
+-
+-.logo-icon {
+-    color: var(--accent);
+-    font-size: 1.4rem;
+-}
+-
+-.logo-accent {
+-    color: var(--accent);
+-}
+-
+-.navbar__links {
+-    display: flex;
+-    align-items: center;
+-    gap: 32px;
+-}
+-
+-.navbar__links a {
+-    color: var(--text-secondary);
+-    font-size: 0.9rem;
+-    font-weight: 500;
+-    transition: color 0.3s;
+-}
+-
+-.navbar__links a:hover {
+-    color: var(--text-primary);
+-}
+-
+-.navbar__cta {
+-    background: var(--gradient-accent);
+-    color: var(--bg-primary) !important;
+-    padding: 8px 20px;
+-    border-radius: var(--radius-sm);
+-    font-weight: 600;
+-}
+-
+-.navbar__hamburger {
+-    display: none;
+-    background: none;
+-    border: none;
+-    cursor: pointer;
+-    padding: 4px;
+-}
+-
+-.navbar__hamburger span {
+-    display: block;
+-    width: 24px;
+-    height: 2px;
+-    background: var(--text-primary);
+-    margin: 5px 0;
+-    transition: all 0.3s;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   HERO
+-   ═══════════════════════════════════════════ */
+-.calc-hero {
+-    position: relative;
+-    padding: 160px 0 80px;
+-    overflow: hidden;
+-    text-align: center;
+-}
+-
+-.calc-hero__bg-glow {
+-    position: absolute;
+-    top: -200px;
+-    left: 50%;
+-    transform: translateX(-50%);
+-    width: 800px;
+-    height: 600px;
+-    border-radius: 50%;
+-    background: radial-gradient(ellipse, rgba(0, 214, 143, 0.08) 0%, transparent 70%);
+-    pointer-events: none;
+-}
+-
+-.calc-hero__content {
+-    position: relative;
+-    max-width: 800px;
+-    margin: 0 auto;
+-}
+-
+-.calc-hero__badge {
+-    display: inline-block;
+-    padding: 6px 16px;
+-    border-radius: 50px;
+-    background: var(--accent-glow);
+-    border: 1px solid var(--border-accent);
+-    color: var(--accent);
+-    font-size: 0.8rem;
+-    font-weight: 600;
+-    letter-spacing: 0.5px;
+-    text-transform: uppercase;
+-    margin-bottom: 24px;
+-}
+-
+-.calc-hero__headline {
+-    font-size: clamp(2rem, 5vw, 3.2rem);
+-    font-weight: 800;
+-    line-height: 1.15;
+-    margin-bottom: 24px;
+-    background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+-    -webkit-background-clip: text;
+-    -webkit-text-fill-color: transparent;
+-    background-clip: text;
+-}
+-
+-.calc-hero__headline .accent {
+-    -webkit-text-fill-color: var(--accent);
+-}
+-
+-.calc-hero__sub {
+-    font-size: 1.1rem;
+-    line-height: 1.7;
+-    color: var(--text-secondary);
+-    max-width: 680px;
+-    margin: 0 auto 36px;
+-}
+-
+-.calc-hero__actions {
+-    margin-bottom: 16px;
+-}
+-
+-.calc-hero__trust-line {
+-    font-size: 0.85rem;
+-    color: var(--text-muted);
+-    letter-spacing: 0.3px;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   BUTTONS (reusable)
+-   ═══════════════════════════════════════════ */
+-.btn {
+-    display: inline-flex;
+-    align-items: center;
+-    gap: 8px;
+-    padding: 12px 28px;
+-    border-radius: var(--radius-sm);
+-    font-family: var(--font);
+-    font-size: 0.95rem;
+-    font-weight: 600;
+-    cursor: pointer;
+-    border: none;
+-    transition: all 0.3s var(--ease);
+-    text-decoration: none;
+-}
+-
+-.btn--primary {
+-    background: var(--gradient-accent);
+-    color: var(--bg-primary);
+-    box-shadow: 0 4px 20px rgba(0, 214, 143, 0.25);
+-}
+-
+-.btn--primary:hover {
+-    transform: translateY(-2px);
+-    box-shadow: 0 8px 30px rgba(0, 214, 143, 0.35);
+-    color: var(--bg-primary);
+-}
+-
+-.btn--secondary {
+-    background: transparent;
+-    color: var(--accent);
+-    border: 1px solid var(--border-accent);
+-}
+-
+-.btn--secondary:hover {
+-    background: var(--accent-glow);
+-    border-color: var(--accent);
+-    color: var(--accent-light);
+-}
+-
+-.btn--ghost {
+-    background: transparent;
+-    color: var(--text-secondary);
+-    padding: 12px 20px;
+-}
+-
+-.btn--ghost:hover {
+-    color: var(--text-primary);
+-}
+-
+-.btn--ghost:disabled {
+-    opacity: 0.3;
+-    cursor: not-allowed;
+-}
+-
+-.btn--lg {
+-    padding: 16px 36px;
+-    font-size: 1.05rem;
+-}
+-
+-.btn__arrow {
+-    transition: transform 0.3s;
+-}
+-
+-.btn:hover .btn__arrow {
+-    transform: translateX(4px);
+-}
+-
+-/* ═══════════════════════════════════════════
+-   SOCIAL PROOF BAR
+-   ═══════════════════════════════════════════ */
+-.proof-bar {
+-    padding: 40px 0;
+-    background: var(--bg-secondary);
+-    border-top: 1px solid var(--border);
+-    border-bottom: 1px solid var(--border);
+-}
+-
+-.proof-bar__inner {
+-    text-align: center;
+-}
+-
+-.proof-bar__quote {
+-    font-size: 1rem;
+-    color: var(--text-secondary);
+-    font-style: italic;
+-    margin-bottom: 28px;
+-    max-width: 600px;
+-    margin-left: auto;
+-    margin-right: auto;
+-}
+-
+-.proof-bar__stats {
+-    display: flex;
+-    justify-content: center;
+-    gap: 48px;
+-    flex-wrap: wrap;
+-}
+-
+-.proof-bar__stat {
+-    text-align: center;
+-}
+-
+-.proof-bar__stat-number {
+-    display: block;
+-    font-size: 1.6rem;
+-    font-weight: 800;
+-    color: var(--accent);
+-}
+-
+-.proof-bar__stat-label {
+-    font-size: 0.8rem;
+-    color: var(--text-muted);
+-    text-transform: uppercase;
+-    letter-spacing: 0.5px;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   CALCULATOR CARD
+-   ═══════════════════════════════════════════ */
+-.calculator {
+-    padding: var(--section-pad) 0;
+-}
+-
+-.calc-card {
+-    max-width: 680px;
+-    margin: 0 auto;
+-    background: var(--gradient-card);
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius-xl);
+-    padding: 48px;
+-    backdrop-filter: blur(20px);
+-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+-}
+-
+-.calc-card__header {
+-    text-align: center;
+-    margin-bottom: 40px;
+-}
+-
+-.calc-card__title {
+-    font-size: 1.6rem;
+-    font-weight: 700;
+-    margin-bottom: 8px;
+-}
+-
+-.calc-card__sub {
+-    font-size: 0.95rem;
+-    color: var(--text-secondary);
+-}
+-
+-/* ── Progress ── */
+-.calc-progress {
+-    margin-bottom: 36px;
+-}
+-
+-.calc-progress__bar {
+-    width: 100%;
+-    height: 4px;
+-    background: rgba(148, 163, 184, 0.15);
+-    border-radius: 2px;
+-    overflow: hidden;
+-    margin-bottom: 8px;
+-}
+-
+-.calc-progress__fill {
+-    width: 14.28%;
+-    height: 100%;
+-    background: var(--gradient-accent);
+-    border-radius: 2px;
+-    transition: width 0.4s var(--ease);
+-}
+-
+-.calc-progress__text {
+-    font-size: 0.8rem;
+-    color: var(--text-muted);
+-}
+-
+-/* ── Steps ── */
+-.calc-step {
+-    display: none;
+-    animation: stepFadeIn 0.4s var(--ease);
+-}
+-
+-.calc-step.active {
+-    display: block;
+-}
+-
+-@keyframes stepFadeIn {
+-    from {
+-        opacity: 0;
+-        transform: translateX(20px);
+-    }
+-
+-    to {
+-        opacity: 1;
+-        transform: translateX(0);
+-    }
+-}
+-
+-/* ── Labels ── */
+-.calc-label {
+-    display: flex;
+-    align-items: flex-start;
+-    gap: 12px;
+-    margin-bottom: 20px;
+-    cursor: default;
+-}
+-
+-.calc-label__number {
+-    flex-shrink: 0;
+-    width: 36px;
+-    height: 36px;
+-    display: flex;
+-    align-items: center;
+-    justify-content: center;
+-    background: var(--accent-glow);
+-    border: 1px solid var(--border-accent);
+-    border-radius: 50%;
+-    color: var(--accent);
+-    font-size: 0.75rem;
+-    font-weight: 700;
+-}
+-
+-.calc-label__text {
+-    font-size: 1.05rem;
+-    font-weight: 500;
+-    line-height: 1.5;
+-    padding-top: 4px;
+-}
+-
+-.calc-label__unit {
+-    color: var(--text-muted);
+-    font-weight: 400;
+-}
+-
+-.calc-label__hint {
+-    color: var(--text-muted);
+-    font-size: 0.85rem;
+-    font-weight: 400;
+-}
+-
+-/* ── Inputs ── */
+-.calc-input-wrap {
+-    display: flex;
+-    align-items: center;
+-    background: rgba(15, 23, 42, 0.8);
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius-md);
+-    transition: border-color 0.3s;
+-    overflow: hidden;
+-}
+-
+-.calc-input-wrap:focus-within {
+-    border-color: var(--accent);
+-    box-shadow: 0 0 0 3px var(--accent-glow);
+-}
+-
+-.calc-input-prefix {
+-    padding: 16px 0 16px 16px;
+-    color: var(--text-muted);
+-    font-size: 1.1rem;
+-    font-weight: 600;
+-    user-select: none;
+-}
+-
+-.calc-input {
+-    width: 100%;
+-    padding: 16px;
+-    background: transparent;
+-    border: none;
+-    outline: none;
+-    color: var(--text-primary);
+-    font-family: var(--font);
+-    font-size: 1.1rem;
+-    font-weight: 500;
+-}
+-
+-.calc-input::placeholder {
+-    color: var(--text-muted);
+-    font-weight: 400;
+-}
+-
+-/* solo input (email, etc.) without wrap */
+-form .calc-input:not(.calc-input--number) {
+-    background: rgba(15, 23, 42, 0.8);
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius-md);
+-}
+-
+-form .calc-input:not(.calc-input--number):focus {
+-    border-color: var(--accent);
+-    box-shadow: 0 0 0 3px var(--accent-glow);
+-    outline: none;
+-}
+-
+-.calc-hint {
+-    font-size: 0.8rem;
+-    color: var(--text-muted);
+-    margin-top: 8px;
+-}
+-
+-/* ── Option buttons ── */
+-.calc-options {
+-    display: grid;
+-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+-    gap: 12px;
+-}
+-
+-.calc-option {
+-    padding: 14px 16px;
+-    background: rgba(15, 23, 42, 0.8);
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius-md);
+-    color: var(--text-secondary);
+-    font-family: var(--font);
+-    font-size: 0.95rem;
+-    font-weight: 500;
+-    cursor: pointer;
+-    transition: all 0.25s var(--ease);
+-    text-align: center;
+-}
+-
+-.calc-option:hover {
+-    border-color: rgba(148, 163, 184, 0.3);
+-    background: rgba(20, 30, 55, 0.8);
+-    color: var(--text-primary);
+-}
+-
+-.calc-option.selected {
+-    border-color: var(--accent);
+-    background: var(--accent-glow);
+-    color: var(--accent);
+-    box-shadow: 0 0 0 3px rgba(0, 214, 143, 0.1);
+-}
+-
+-/* ── Calc Nav ── */
+-.calc-nav {
+-    display: flex;
+-    justify-content: space-between;
+-    align-items: center;
+-    margin-top: 36px;
+-    gap: 12px;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   RESULTS
+-   ═══════════════════════════════════════════ */
+-.calc-results {
+-    animation: resultsFadeIn 0.6s var(--ease);
+-}
+-
+-@keyframes resultsFadeIn {
+-    from {
+-        opacity: 0;
+-        transform: translateY(20px);
+-    }
+-
+-    to {
+-        opacity: 1;
+-        transform: translateY(0);
+-    }
+-}
+-
+-.calc-results__header {
+-    text-align: center;
+-    margin-bottom: 36px;
+-}
+-
+-.calc-results__label {
+-    font-size: 1rem;
+-    color: var(--text-secondary);
+-    margin-bottom: 8px;
+-}
+-
+-.calc-results__amount {
+-    font-size: clamp(2rem, 6vw, 3.2rem);
+-    font-weight: 900;
+-    color: var(--danger);
+-    margin-bottom: 4px;
+-}
+-
+-.calc-results__sub {
+-    font-size: 1.05rem;
+-    color: var(--text-secondary);
+-}
+-
+-/* ── Breakdown ── */
+-.calc-results__breakdown {
+-    display: flex;
+-    flex-direction: column;
+-    gap: 16px;
+-    margin-bottom: 32px;
+-}
+-
+-.calc-results__item {
+-    display: grid;
+-    grid-template-columns: 40px 1fr 120px;
+-    align-items: center;
+-    gap: 12px;
+-    padding: 16px;
+-    background: rgba(15, 23, 42, 0.6);
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius-md);
+-    position: relative;
+-    overflow: hidden;
+-}
+-
+-.calc-results__item-icon {
+-    font-size: 1.4rem;
+-    text-align: center;
+-}
+-
+-.calc-results__item-info {
+-    display: flex;
+-    flex-direction: column;
+-}
+-
+-.calc-results__item-label {
+-    font-size: 0.85rem;
+-    color: var(--text-secondary);
+-}
+-
+-.calc-results__item-amount {
+-    font-size: 1rem;
+-    font-weight: 700;
+-    color: var(--text-primary);
+-}
+-
+-.calc-results__item-bar {
+-    position: absolute;
+-    bottom: 0;
+-    left: 0;
+-    right: 0;
+-    height: 3px;
+-    background: rgba(148, 163, 184, 0.08);
+-}
+-
+-.calc-results__item-fill {
+-    height: 100%;
+-    background: var(--gradient-accent);
+-    border-radius: 0 2px 0 0;
+-    transition: width 1.2s var(--ease);
+-    width: 0%;
+-}
+-
+-/* ── Annual ── */
+-.calc-results__annual {
+-    display: flex;
+-    justify-content: center;
+-    align-items: center;
+-    gap: 8px;
+-    padding: 16px;
+-    margin-bottom: 32px;
+-    background: rgba(239, 68, 68, 0.08);
+-    border: 1px solid rgba(239, 68, 68, 0.2);
+-    border-radius: var(--radius-md);
+-    font-size: 1.05rem;
+-}
+-
+-.calc-results__annual span {
+-    color: var(--text-secondary);
+-}
+-
+-.calc-results__annual strong {
+-    color: var(--danger);
+-    font-size: 1.2rem;
+-}
+-
+-/* ── Actions ── */
+-.calc-results__actions {
+-    text-align: center;
+-    margin-bottom: 36px;
+-}
+-
+-.calc-results__trust {
+-    font-size: 0.8rem;
+-    color: var(--text-muted);
+-    margin-top: 12px;
+-}
+-
+-/* ── Email Capture ── */
+-.calc-results__email-capture {
+-    padding: 24px;
+-    background: rgba(15, 23, 42, 0.8);
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius-md);
+-    margin-bottom: 24px;
+-}
+-
+-.calc-results__email-header {
+-    display: flex;
+-    align-items: center;
+-    gap: 8px;
+-    font-size: 0.95rem;
+-    font-weight: 600;
+-    margin-bottom: 12px;
+-}
+-
+-.calc-results__email-icon {
+-    font-size: 1.2rem;
+-}
+-
+-.calc-results__email-form {
+-    display: flex;
+-    gap: 8px;
+-}
+-
+-.calc-results__email-form .calc-input {
+-    flex: 1;
+-    padding: 12px 16px;
+-    font-size: 0.95rem;
+-}
+-
+-.calc-results__email-form .btn {
+-    white-space: nowrap;
+-}
+-
+-/* ── Recalc ── */
+-.calc-results__recalc {
+-    display: block;
+-    width: 100%;
+-    text-align: center;
+-    background: none;
+-    border: none;
+-    cursor: pointer;
+-    color: var(--text-muted);
+-    font-family: var(--font);
+-    font-size: 0.85rem;
+-    padding: 12px;
+-    transition: color 0.3s;
+-    margin-bottom: 16px;
+-}
+-
+-.calc-results__recalc:hover {
+-    color: var(--accent);
+-}
+-
+-/* ── Disclaimer ── */
+-.calc-results__disclaimer {
+-    font-size: 0.75rem;
+-    color: var(--text-muted);
+-    line-height: 1.6;
+-    text-align: center;
+-    max-width: 520px;
+-    margin: 0 auto;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   CAUSES
+-   ═══════════════════════════════════════════ */
+-.causes {
+-    padding: var(--section-pad) 0;
+-}
+-
+-.causes__title {
+-    font-size: clamp(1.6rem, 4vw, 2.2rem);
+-    font-weight: 700;
+-    text-align: center;
+-    margin-bottom: 56px;
+-}
+-
+-.causes__grid {
+-    display: grid;
+-    grid-template-columns: repeat(2, 1fr);
+-    gap: 24px;
+-}
+-
+-.cause-card {
+-    padding: 32px;
+-    background: var(--gradient-card);
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius-lg);
+-    backdrop-filter: blur(10px);
+-    transition: all 0.3s var(--ease);
+-}
+-
+-.cause-card:hover {
+-    border-color: var(--border-accent);
+-    transform: translateY(-4px);
+-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+-}
+-
+-.cause-card__icon {
+-    font-size: 2rem;
+-    margin-bottom: 16px;
+-}
+-
+-.cause-card__title {
+-    font-size: 1.1rem;
+-    font-weight: 700;
+-    margin-bottom: 12px;
+-}
+-
+-.cause-card__body {
+-    font-size: 0.9rem;
+-    color: var(--text-secondary);
+-    line-height: 1.7;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   BRIDGE TO PRODUCT
+-   ═══════════════════════════════════════════ */
+-.bridge {
+-    padding: 80px 0;
+-    background: var(--bg-secondary);
+-    border-top: 1px solid var(--border);
+-    border-bottom: 1px solid var(--border);
+-}
+-
+-.bridge__inner {
+-    text-align: center;
+-    max-width: 700px;
+-    margin: 0 auto;
+-}
+-
+-.bridge__title {
+-    font-size: clamp(1.4rem, 3.5vw, 1.8rem);
+-    font-weight: 700;
+-    margin-bottom: 20px;
+-    line-height: 1.4;
+-}
+-
+-.bridge__body {
+-    font-size: 1rem;
+-    color: var(--text-secondary);
+-    margin-bottom: 28px;
+-    line-height: 1.7;
+-}
+-
+-.bridge__trust {
+-    font-size: 0.8rem;
+-    color: var(--text-muted);
+-    margin-top: 12px;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   FAQ
+-   ═══════════════════════════════════════════ */
+-.faq {
+-    padding: var(--section-pad) 0;
+-}
+-
+-.faq__title {
+-    font-size: clamp(1.6rem, 4vw, 2.2rem);
+-    font-weight: 700;
+-    text-align: center;
+-    margin-bottom: 48px;
+-}
+-
+-.faq__list {
+-    max-width: 700px;
+-    margin: 0 auto;
+-    display: flex;
+-    flex-direction: column;
+-    gap: 12px;
+-}
+-
+-.faq__item {
+-    background: var(--gradient-card);
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius-md);
+-    overflow: hidden;
+-    transition: border-color 0.3s;
+-}
+-
+-.faq__item[open] {
+-    border-color: var(--border-accent);
+-}
+-
+-.faq__question {
+-    padding: 20px 24px;
+-    cursor: pointer;
+-    font-size: 1rem;
+-    font-weight: 600;
+-    color: var(--text-primary);
+-    list-style: none;
+-    display: flex;
+-    align-items: center;
+-    justify-content: space-between;
+-}
+-
+-.faq__question::-webkit-details-marker {
+-    display: none;
+-}
+-
+-.faq__question::after {
+-    content: '+';
+-    font-size: 1.4rem;
+-    font-weight: 300;
+-    color: var(--accent);
+-    transition: transform 0.3s;
+-    flex-shrink: 0;
+-    margin-left: 16px;
+-}
+-
+-.faq__item[open] .faq__question::after {
+-    content: '−';
+-}
+-
+-.faq__answer {
+-    padding: 0 24px 20px;
+-    font-size: 0.95rem;
+-    color: var(--text-secondary);
+-    line-height: 1.7;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   CTA FINAL
+-   ═══════════════════════════════════════════ */
+-.calc-cta-final {
+-    padding: 80px 0;
+-    background: var(--gradient-hero);
+-}
+-
+-.calc-cta-final__inner {
+-    text-align: center;
+-    max-width: 700px;
+-    margin: 0 auto;
+-}
+-
+-.calc-cta-final__title {
+-    font-size: clamp(1.4rem, 3.5vw, 2rem);
+-    font-weight: 700;
+-    margin-bottom: 28px;
+-    line-height: 1.4;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   FOOTER
+-   ═══════════════════════════════════════════ */
+-.footer {
+-    padding: 40px 0;
+-    border-top: 1px solid var(--border);
+-}
+-
+-.footer__inner {
+-    display: flex;
+-    align-items: center;
+-    justify-content: space-between;
+-}
+-
+-.footer__brand {
+-    font-size: 1.1rem;
+-    font-weight: 700;
+-    color: var(--text-primary);
+-    display: flex;
+-    align-items: center;
+-    gap: 6px;
+-}
+-
+-.footer__copy {
+-    font-size: 0.8rem;
+-    color: var(--text-muted);
+-}
+-
+-/* ═══════════════════════════════════════════
+-   RESPONSIVE
+-   ═══════════════════════════════════════════ */
+-
+-@media (max-width: 768px) {
+-    :root {
+-        --section-pad: 60px;
+-    }
+-
+-    .navbar__links {
+-        display: none;
+-    }
+-
+-    .navbar__hamburger {
+-        display: block;
+-    }
+-
+-    .navbar__links.active {
+-        display: flex;
+-        flex-direction: column;
+-        gap: 0;
+-        position: absolute;
+-        top: 100%;
+-        left: 0;
+-        right: 0;
+-        background: rgba(6, 11, 24, 0.98);
+-        backdrop-filter: blur(20px);
+-        border-bottom: 1px solid var(--border);
+-        padding: 16px 24px;
+-    }
+-
+-    .navbar__links.active li {
+-        padding: 12px 0;
+-        border-bottom: 1px solid var(--border);
+-    }
+-
+-    .navbar__links.active li:last-child {
+-        border-bottom: none;
+-    }
+-
+-    .calc-hero {
+-        padding: 120px 0 60px;
+-    }
+-
+-    .calc-card {
+-        padding: 28px 20px;
+-        border-radius: var(--radius-lg);
+-    }
+-
+-    .calc-options {
+-        grid-template-columns: 1fr 1fr;
+-    }
+-
+-    .calc-results__item {
+-        grid-template-columns: 36px 1fr;
+-        gap: 8px;
+-    }
+-
+-    .calc-results__item-amount {
+-        font-size: 0.9rem;
+-    }
+-
+-    .calc-results__email-form {
+-        flex-direction: column;
+-    }
+-
+-    .causes__grid {
+-        grid-template-columns: 1fr;
+-        gap: 16px;
+-    }
+-
+-    .proof-bar__stats {
+-        gap: 24px;
+-    }
+-
+-    .footer__inner {
+-        flex-direction: column;
+-        gap: 8px;
+-        text-align: center;
+-    }
+-}
+-
+-@media (max-width: 480px) {
+-    .calc-hero__headline {
+-        font-size: 1.6rem;
+-    }
+-
+-    .calc-hero__sub {
+-        font-size: 0.95rem;
+-    }
+-
+-    .calc-card {
+-        padding: 24px 16px;
+-    }
+-
+-    .calc-card__title {
+-        font-size: 1.3rem;
+-    }
+-
+-    .calc-label {
+-        flex-direction: column;
+-        gap: 8px;
+-    }
+-
+-    .calc-label__text {
+-        font-size: 0.95rem;
+-    }
+-
+-    .calc-options {
+-        grid-template-columns: 1fr;
+-    }
+-
+-    .calc-results__amount {
+-        font-size: 1.8rem;
+-    }
+-
+-    .btn--lg {
+-        padding: 14px 24px;
+-        font-size: 0.95rem;
+-    }
+-}
+\ No newline at end of file
+diff --git a/calculadora.html b/calculadora.html
+deleted file mode 100644
+index 8491249..0000000
+--- a/calculadora.html
++++ /dev/null
+@@ -1,480 +0,0 @@
+-<!DOCTYPE html>
+-<html lang="es">
+-
+-<head>
+-    <meta charset="UTF-8">
+-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-    <title>¿Cuánto dinero pierde tu PyME por mes? — Calculadora gratuita | BiFlow Finance</title>
+-    <meta name="description"
+-        content="Calculá en 2 minutos cuánto pierde tu empresa en comisiones indebidas, pagos duplicados, retenciones sin reclamar y saldos ociosos. Gratuito, sin registro.">
+-    <link rel="preconnect" href="https://fonts.googleapis.com">
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+-        rel="stylesheet">
+-    <link rel="stylesheet" href="calculadora.css">
+-
+-    <!-- Schema Markup -->
+-    <script type="application/ld+json">
+-  {
+-    "@context": "https://schema.org",
+-    "@type": "WebApplication",
+-    "name": "Calculadora de Fugas Financieras para PyMEs",
+-    "description": "Estimá cuánto pierde tu empresa por mes en comisiones indebidas, pagos duplicados, retenciones sin reclamar y saldos ociosos.",
+-    "url": "https://biflow.finance/calculadora-fugas",
+-    "applicationCategory": "FinanceApplication",
+-    "operatingSystem": "Web",
+-    "offers": {
+-      "@type": "Offer",
+-      "price": "0",
+-      "priceCurrency": "USD"
+-    },
+-    "author": {
+-      "@type": "Organization",
+-      "name": "BiFlow Finance"
+-    }
+-  }
+-  </script>
+-    <script type="application/ld+json">
+-  {
+-    "@context": "https://schema.org",
+-    "@type": "FAQPage",
+-    "mainEntity": [
+-      {
+-        "@type": "Question",
+-        "name": "¿Los datos que ingreso son confidenciales?",
+-        "acceptedAnswer": {
+-          "@type": "Answer",
+-          "text": "La calculadora se ejecuta 100% en tu navegador. Ningún dato se envía a nuestros servidores hasta que vos decidís compartir tu email para recibir el informe."
+-        }
+-      },
+-      {
+-        "@type": "Question",
+-        "name": "¿Qué tan precisa es la estimación?",
+-        "acceptedAnswer": {
+-          "@type": "Answer",
+-          "text": "Es una aproximación basada en promedios de la industria y datos macroeconómicos públicos. Tu número real puede ser mayor o menor. Para el número exacto: la auditoría gratuita procesa tus extractos reales."
+-        }
+-      },
+-      {
+-        "@type": "Question",
+-        "name": "¿Qué diferencia hay entre esta calculadora y la auditoría gratuita?",
+-        "acceptedAnswer": {
+-          "@type": "Answer",
+-          "text": "La calculadora usa los datos que tenés en la cabeza. La auditoría procesa los archivos que tu banco te entrega y detecta fugas reales con montos, fechas y bancos específicos."
+-        }
+-      },
+-      {
+-        "@type": "Question",
+-        "name": "¿Cuánto cuesta BiFlow después de la auditoría?",
+-        "acceptedAnswer": {
+-          "@type": "Answer",
+-          "text": "Desde USD 50/mes (Plan Starter). Pero primero mirá el resultado de tu auditoría: si las fugas detectadas no superan ese monto, no tiene sentido contratarnos."
+-        }
+-      }
+-    ]
+-  }
+-  </script>
+-</head>
+-
+-<body>
+-
+-    <!-- ───────────── NAVBAR ───────────── -->
+-    <nav class="navbar" id="navbar">
+-        <div class="container navbar__inner">
+-            <a href="index.html" class="navbar__logo">
+-                <span class="logo-icon">◈</span> BiFlow<span class="logo-accent">Finance</span>
+-            </a>
+-            <ul class="navbar__links" id="navLinks">
+-                <li><a href="#calculadora">Calculadora</a></li>
+-                <li><a href="#por-que">¿Por qué pierdes?</a></li>
+-                <li><a href="#faq">FAQ</a></li>
+-                <li><a href="index.html">← Volver al sitio</a></li>
+-                <li><a href="#calculadora" class="navbar__cta">Calcular mis fugas</a></li>
+-            </ul>
+-            <button class="navbar__hamburger" id="hamburger" aria-label="Menú">
+-                <span></span><span></span><span></span>
+-            </button>
+-        </div>
+-    </nav>
+-
+-    <!-- ───────────── HERO ───────────── -->
+-    <header class="calc-hero">
+-        <div class="calc-hero__bg-glow"></div>
+-        <div class="container calc-hero__content">
+-            <div class="calc-hero__badge">Herramienta gratuita · 2 minutos</div>
+-            <h1 class="calc-hero__headline">
+-                ¿Cuánto dinero pierde tu empresa cada mes <span class="accent">sin que nadie lo vea?</span>
+-            </h1>
+-            <p class="calc-hero__sub">
+-                Comisiones bancarias que cambiaron sin aviso. Retenciones impositivas que nadie reclamó. Pagos
+-                duplicados que pasaron desapercibidos. Saldos en cuenta corriente que la inflación devora. Completá 7
+-                datos que ya sabés de memoria — en 2&nbsp;minutos tenés la estimación.
+-            </p>
+-            <div class="calc-hero__actions">
+-                <a href="#calculadora" class="btn btn--primary btn--lg">
+-                    Calcular mis fugas
+-                    <span class="btn__arrow">→</span>
+-                </a>
+-            </div>
+-            <p class="calc-hero__trust-line">Sin registro · Sin tarjeta · Resultado inmediato</p>
+-        </div>
+-    </header>
+-
+-    <!-- ───────────── SOCIAL PROOF BAR ───────────── -->
+-    <section class="proof-bar">
+-        <div class="container proof-bar__inner">
+-            <p class="proof-bar__quote">"El 78% de las PyMEs que auditamos con BiFlow tenían al menos 3 tipos de fuga
+-                activa."</p>
+-            <div class="proof-bar__stats">
+-                <div class="proof-bar__stat">
+-                    <span class="proof-bar__stat-number">+15.000</span>
+-                    <span class="proof-bar__stat-label">Archivos procesados</span>
+-                </div>
+-                <div class="proof-bar__stat">
+-                    <span class="proof-bar__stat-number">+120</span>
+-                    <span class="proof-bar__stat-label">PyMEs auditadas</span>
+-                </div>
+-                <div class="proof-bar__stat">
+-                    <span class="proof-bar__stat-number">2,8%</span>
+-                    <span class="proof-bar__stat-label">Fugas promedio detectadas</span>
+-                </div>
+-            </div>
+-        </div>
+-    </section>
+-
+-    <!-- ───────────── CALCULADORA ───────────── -->
+-    <section class="calculator" id="calculadora">
+-        <div class="container">
+-            <div class="calc-card">
+-                <div class="calc-card__header">
+-                    <h2 class="calc-card__title">Completá los datos de tu empresa</h2>
+-                    <p class="calc-card__sub">Son 7 preguntas. Tarda 2 minutos. No pedimos archivos ni datos sensibles.
+-                    </p>
+-                </div>
+-
+-                <form id="calcForm" class="calc-form" novalidate>
+-                    <!-- Step indicators -->
+-                    <div class="calc-progress">
+-                        <div class="calc-progress__bar">
+-                            <div class="calc-progress__fill" id="progressFill"></div>
+-                        </div>
+-                        <span class="calc-progress__text" id="progressText">Pregunta 1 de 7</span>
+-                    </div>
+-
+-                    <!-- Question 1 -->
+-                    <div class="calc-step active" data-step="1">
+-                        <label class="calc-label">
+-                            <span class="calc-label__number">01</span>
+-                            <span class="calc-label__text">¿Cuál es la facturación mensual promedio de tu empresa? <span
+-                                    class="calc-label__unit">(ARS)</span></span>
+-                        </label>
+-                        <div class="calc-input-wrap">
+-                            <span class="calc-input-prefix">$</span>
+-                            <input type="text" id="facturacion" class="calc-input calc-input--number"
+-                                placeholder="Ej: 50.000.000" inputmode="numeric" required>
+-                        </div>
+-                        <p class="calc-hint">Estimación aproximada, no necesita ser exacta.</p>
+-                    </div>
+-
+-                    <!-- Question 2 -->
+-                    <div class="calc-step" data-step="2">
+-                        <label class="calc-label">
+-                            <span class="calc-label__number">02</span>
+-                            <span class="calc-label__text">¿Con cuántos bancos opera tu empresa?</span>
+-                        </label>
+-                        <div class="calc-options" id="bancos">
+-                            <button type="button" class="calc-option" data-value="1">1</button>
+-                            <button type="button" class="calc-option" data-value="2-3">2–3</button>
+-                            <button type="button" class="calc-option" data-value="4-5">4–5</button>
+-                            <button type="button" class="calc-option" data-value="6+">6+</button>
+-                        </div>
+-                    </div>
+-
+-                    <!-- Question 3 -->
+-                    <div class="calc-step" data-step="3">
+-                        <label class="calc-label">
+-                            <span class="calc-label__number">03</span>
+-                            <span class="calc-label__text">¿Cuántos pagos o transferencias hacen por mes?</span>
+-                        </label>
+-                        <div class="calc-options" id="pagos">
+-                            <button type="button" class="calc-option" data-value="<50">Menos de 50</button>
+-                            <button type="button" class="calc-option" data-value="50-150">50 – 150</button>
+-                            <button type="button" class="calc-option" data-value="150-500">150 – 500</button>
+-                            <button type="button" class="calc-option" data-value="500+">Más de 500</button>
+-                        </div>
+-                    </div>
+-
+-                    <!-- Question 4 -->
+-                    <div class="calc-step" data-step="4">
+-                        <label class="calc-label">
+-                            <span class="calc-label__number">04</span>
+-                            <span class="calc-label__text">¿Usan Interbanking para pagos masivos?</span>
+-                        </label>
+-                        <div class="calc-options" id="interbanking">
+-                            <button type="button" class="calc-option" data-value="si">Sí</button>
+-                            <button type="button" class="calc-option" data-value="no">No</button>
+-                        </div>
+-                    </div>
+-
+-                    <!-- Question 5 -->
+-                    <div class="calc-step" data-step="5">
+-                        <label class="calc-label">
+-                            <span class="calc-label__number">05</span>
+-                            <span class="calc-label__text">¿Cuál es el saldo promedio en cuenta corriente sin remunerar?
+-                                <span class="calc-label__unit">(ARS)</span></span>
+-                        </label>
+-                        <div class="calc-input-wrap">
+-                            <span class="calc-input-prefix">$</span>
+-                            <input type="text" id="saldo" class="calc-input calc-input--number"
+-                                placeholder="Ej: 5.000.000" inputmode="numeric" value="0">
+-                        </div>
+-                        <p class="calc-hint">Si no estás seguro, pensá en el saldo que "queda" en la cuenta la mayor
+-                            parte del mes.</p>
+-                    </div>
+-
+-                    <!-- Question 6 -->
+-                    <div class="calc-step" data-step="6">
+-                        <label class="calc-label">
+-                            <span class="calc-label__number">06</span>
+-                            <span class="calc-label__text">¿Cuántas retenciones impositivas reciben por mes? <span
+-                                    class="calc-label__hint">(IIBB, SIRCREB, Ganancias)</span></span>
+-                        </label>
+-                        <div class="calc-options" id="retenciones">
+-                            <button type="button" class="calc-option" data-value="ninguna">Ninguna</button>
+-                            <button type="button" class="calc-option" data-value="1-10">1 – 10</button>
+-                            <button type="button" class="calc-option" data-value="10-50">10 – 50</button>
+-                            <button type="button" class="calc-option" data-value="50+">Más de 50</button>
+-                        </div>
+-                    </div>
+-
+-                    <!-- Question 7 -->
+-                    <div class="calc-step" data-step="7">
+-                        <label class="calc-label">
+-                            <span class="calc-label__number">07</span>
+-                            <span class="calc-label__text">¿Auditan sus extractos bancarios regularmente?</span>
+-                        </label>
+-                        <div class="calc-options" id="auditoria">
+-                            <button type="button" class="calc-option" data-value="si">Sí, cada mes</button>
+-                            <button type="button" class="calc-option" data-value="a-veces">A veces</button>
+-                            <button type="button" class="calc-option" data-value="nunca">Nunca</button>
+-                        </div>
+-                    </div>
+-
+-                    <!-- Navigation -->
+-                    <div class="calc-nav">
+-                        <button type="button" class="btn btn--ghost calc-nav__prev" id="prevBtn" disabled>
+-                            ← Anterior
+-                        </button>
+-                        <button type="button" class="btn btn--primary calc-nav__next" id="nextBtn">
+-                            Siguiente →
+-                        </button>
+-                        <button type="button" class="btn btn--primary btn--lg calc-nav__submit" id="submitBtn"
+-                            style="display:none;">
+-                            Ver cuánto pierde mi empresa →
+-                        </button>
+-                    </div>
+-                </form>
+-
+-                <!-- ── RESULTS ── -->
+-                <div class="calc-results" id="calcResults" style="display:none;">
+-                    <div class="calc-results__header">
+-                        <p class="calc-results__label">Tu empresa podría estar perdiendo</p>
+-                        <div class="calc-results__amount" id="resultTotal">ARS $0</div>
+-                        <p class="calc-results__sub">por mes — <span class="accent" id="resultPercent">0%</span> de tu
+-                            facturación</p>
+-                    </div>
+-
+-                    <div class="calc-results__breakdown">
+-                        <div class="calc-results__item" id="resComisiones">
+-                            <div class="calc-results__item-icon">🛡️</div>
+-                            <div class="calc-results__item-info">
+-                                <span class="calc-results__item-label">Comisiones indebidas</span>
+-                                <span class="calc-results__item-amount">ARS $0</span>
+-                            </div>
+-                            <div class="calc-results__item-bar">
+-                                <div class="calc-results__item-fill"></div>
+-                            </div>
+-                        </div>
+-                        <div class="calc-results__item" id="resDuplicados">
+-                            <div class="calc-results__item-icon">📋</div>
+-                            <div class="calc-results__item-info">
+-                                <span class="calc-results__item-label">Pagos duplicados</span>
+-                                <span class="calc-results__item-amount">ARS $0</span>
+-                            </div>
+-                            <div class="calc-results__item-bar">
+-                                <div class="calc-results__item-fill"></div>
+-                            </div>
+-                        </div>
+-                        <div class="calc-results__item" id="resRetenciones">
+-                            <div class="calc-results__item-icon">📄</div>
+-                            <div class="calc-results__item-info">
+-                                <span class="calc-results__item-label">Retenciones sin reclamar</span>
+-                                <span class="calc-results__item-amount">ARS $0</span>
+-                            </div>
+-                            <div class="calc-results__item-bar">
+-                                <div class="calc-results__item-fill"></div>
+-                            </div>
+-                        </div>
+-                        <div class="calc-results__item" id="resSaldos">
+-                            <div class="calc-results__item-icon">📉</div>
+-                            <div class="calc-results__item-info">
+-                                <span class="calc-results__item-label">Saldos ociosos</span>
+-                                <span class="calc-results__item-amount">ARS $0</span>
+-                            </div>
+-                            <div class="calc-results__item-bar">
+-                                <div class="calc-results__item-fill"></div>
+-                            </div>
+-                        </div>
+-                    </div>
+-
+-                    <div class="calc-results__annual">
+-                        <span>En 12 meses:</span>
+-                        <strong id="resultAnual">ARS $0</strong>
+-                    </div>
+-
+-                    <div class="calc-results__actions">
+-                        <a href="index.html#cta-final" class="btn btn--primary btn--lg">
+-                            ¿Querés el número exacto? Auditoría gratuita →
+-                        </a>
+-                        <p class="calc-results__trust">Sin tarjeta · Sin claves bancarias · Datos encriptados AES-256
+-                        </p>
+-                    </div>
+-
+-                    <div class="calc-results__email-capture">
+-                        <div class="calc-results__email-header">
+-                            <span class="calc-results__email-icon">📧</span>
+-                            <span>Recibí el informe detallado por email</span>
+-                        </div>
+-                        <form class="calc-results__email-form" id="emailForm">
+-                            <input type="email" class="calc-input" id="emailInput" placeholder="tu@empresa.com"
+-                                required>
+-                            <button type="submit" class="btn btn--secondary">Enviar informe →</button>
+-                        </form>
+-                    </div>
+-
+-                    <button class="calc-results__recalc" id="recalcBtn">← Recalcular con otros datos</button>
+-
+-                    <p class="calc-results__disclaimer">
+-                        * Esta estimación se basa en promedios de la industria y datos macroeconómicos públicos
+-                        (inflación INDEC, tasas Money Market). Tu número real puede ser mayor o menor. La auditoría
+-                        gratuita de BiFlow lo calcula con tus extractos bancarios reales.
+-                    </p>
+-                </div>
+-            </div>
+-        </div>
+-    </section>
+-
+-    <!-- ───────────── POR QUÉ PIERDES ───────────── -->
+-    <section class="causes" id="por-que">
+-        <div class="container">
+-            <h2 class="causes__title reveal">¿Por qué tu empresa pierde dinero sin saberlo?</h2>
+-            <div class="causes__grid">
+-                <div class="cause-card reveal">
+-                    <div class="cause-card__icon">🛡️</div>
+-                    <h3 class="cause-card__title">Comisiones bancarias que nadie cruza</h3>
+-                    <p class="cause-card__body">Tu banco modifica tasas, agrega servicios y cobra mantenimientos que no
+-                        usás. Si nadie compara el cargo real contra el acuerdo comercial firmado, el exceso se acumula
+-                        mes a mes.</p>
+-                </div>
+-                <div class="cause-card reveal">
+-                    <div class="cause-card__icon">📋</div>
+-                    <h3 class="cause-card__title">Pagos duplicados por error de carga</h3>
+-                    <p class="cause-card__body">Un proveedor que factura en cuotas. Un lote de Interbanking que se
+-                        reprocesó. Un débito automático que se solapó con una transferencia manual. A más volumen, más
+-                        errores invisibles.</p>
+-                </div>
+-                <div class="cause-card reveal">
+-                    <div class="cause-card__icon">📄</div>
+-                    <h3 class="cause-card__title">Retenciones impositivas sin reclamar</h3>
+-                    <p class="cause-card__body">IIBB, SIRCREB y Ganancias generan créditos fiscales a tu favor. Si tu
+-                        contador no los compensa antes de la prescripción, ese dinero desaparece.</p>
+-                </div>
+-                <div class="cause-card reveal">
+-                    <div class="cause-card__icon">📉</div>
+-                    <h3 class="cause-card__title">Saldos ociosos que pierde la inflación</h3>
+-                    <p class="cause-card__body">Cada peso que queda en cuenta corriente sin remunerar pierde ~2,5% de
+-                        valor por mes. Un colchón de $5M que no necesitás por 30 días te cuesta más de $125.000 en poder
+-                        adquisitivo.</p>
+-                </div>
+-            </div>
+-        </div>
+-    </section>
+-
+-    <!-- ───────────── PUENTE AL PRODUCTO ───────────── -->
+-    <section class="bridge">
+-        <div class="container bridge__inner reveal">
+-            <h2 class="bridge__title">Esta es una estimación basada en promedios. <span class="accent">¿Querés el número
+-                    exacto?</span></h2>
+-            <p class="bridge__body">
+-                La calculadora usa coeficientes generales. Tu empresa tiene sus propios patrones de comisiones,
+-                frecuencia de errores y saldos. La auditoría gratuita de BiFlow procesa <strong>tus extractos bancarios
+-                    reales</strong> — y detecta cada fuga con monto, fecha y banco. En 5&nbsp;minutos.
+-            </p>
+-            <a href="index.html#cta-final" class="btn btn--primary btn--lg">
+-                Quiero el número exacto → Auditoría gratuita
+-            </a>
+-            <p class="bridge__trust">Sin tarjeta · Sin claves bancarias · Tus datos encriptados AES-256</p>
+-        </div>
+-    </section>
+-
+-    <!-- ───────────── FAQ ───────────── -->
+-    <section class="faq" id="faq">
+-        <div class="container">
+-            <h2 class="faq__title reveal">Preguntas frecuentes</h2>
+-            <div class="faq__list">
+-                <details class="faq__item reveal">
+-                    <summary class="faq__question">¿Los datos que ingreso son confidenciales?</summary>
+-                    <p class="faq__answer">La calculadora se ejecuta 100% en tu navegador. Ningún dato se envía a
+-                        nuestros servidores hasta que vos decidís compartir tu email para recibir el informe.</p>
+-                </details>
+-                <details class="faq__item reveal">
+-                    <summary class="faq__question">¿Qué tan precisa es la estimación?</summary>
+-                    <p class="faq__answer">Es una aproximación basada en promedios de la industria y datos
+-                        macroeconómicos públicos (inflación INDEC, tasas de Money Market). Tu número real puede ser
+-                        mayor o menor. Para el número exacto: la auditoría gratuita procesa tus extractos reales.</p>
+-                </details>
+-                <details class="faq__item reveal">
+-                    <summary class="faq__question">¿Qué diferencia hay entre esta calculadora y la auditoría gratuita?
+-                    </summary>
+-                    <p class="faq__answer">La calculadora usa los datos que tenés en la cabeza (facturación, bancos,
+-                        volumen). La auditoría procesa los archivos que tu banco te entrega (PDFs, .dat, .txt) y detecta
+-                        fugas reales con montos, fechas y bancos específicos.</p>
+-                </details>
+-                <details class="faq__item reveal">
+-                    <summary class="faq__question">¿Cuánto cuesta BiFlow después de la auditoría?</summary>
+-                    <p class="faq__answer">Desde USD 50/mes (Plan Starter). Pero primero mirá el resultado de tu
+-                        auditoría: si las fugas detectadas no superan ese monto, no tiene sentido contratarnos — y te lo
+-                        decimos.</p>
+-                </details>
+-            </div>
+-        </div>
+-    </section>
+-
+-    <!-- ───────────── CTA FINAL ───────────── -->
+-    <section class="calc-cta-final">
+-        <div class="container calc-cta-final__inner reveal">
+-            <h2 class="calc-cta-final__title">
+-                Cada día sin auditoría es un día más de fugas acumulándose.<br>
+-                <span class="accent">Empezá por la calculadora — son 2 minutos.</span>
+-            </h2>
+-            <a href="#calculadora" class="btn btn--primary btn--lg">
+-                Calcular mis fugas ahora
+-                <span class="btn__arrow">→</span>
+-            </a>
+-        </div>
+-    </section>
+-
+-    <!-- ───────────── FOOTER ───────────── -->
+-    <footer class="footer">
+-        <div class="container footer__inner">
+-            <div class="footer__brand">
+-                <span class="logo-icon">◈</span> BiFlow<span class="logo-accent">Finance</span>
+-            </div>
+-            <p class="footer__copy">© 2026 BiFlow Finance. Centro de Comando Financiero para PyMEs.</p>
+-        </div>
+-    </footer>
+-
+-    <script src="calculadora.js"></script>
+-</body>
+-
+-</html>
+\ No newline at end of file
+diff --git a/calculadora.js b/calculadora.js
+deleted file mode 100644
+index 2d28a9e..0000000
+--- a/calculadora.js
++++ /dev/null
+@@ -1,400 +0,0 @@
+-/* ═══════════════════════════════════════════
+-   BiFlow Finance — Calculator Logic
+-   
+-   All coefficients are configurable via the
+-   CONFIG object below. Update with real data
+-   as audits provide better estimates.
+-   ═══════════════════════════════════════════ */
+-
+-// ── Configurable coefficients ──
+-const CONFIG = {
+-    // Category 1: Comisiones indebidas
+-    comisionBaseRate: 0.003,         // 0.3% of revenue goes to bank fees
+-    comisionAnomaliaRate: 0.15,      // 15% of fees have anomalies
+-    factorBancos: {
+-        "1": 1.0,
+-        "2-3": 1.3,
+-        "4-5": 1.6,
+-        "6+": 2.0
+-    },
+-
+-    // Category 2: Pagos duplicados
+-    tasaDuplicados: {
+-        "<50": 0.001,
+-        "50-150": 0.003,
+-        "150-500": 0.005,
+-        "500+": 0.008
+-    },
+-    pagosMidpoint: {
+-        "<50": 25,
+-        "50-150": 100,
+-        "150-500": 325,
+-        "500+": 600
+-    },
+-
+-    // Category 3: Retenciones
+-    retencionRate: 0.02,  // ~2% of revenue is withheld (IIBB+SIRCREB+Ganancias)
+-    factorReclamo: {
+-        "si": 0.1,
+-        "a-veces": 0.4,
+-        "nunca": 0.7
+-    },
+-
+-    // Category 4: Saldos ociosos
+-    inflacionMensual: 0.025,    // ~2.5% monthly (INDEC IPC)
+-    tasaMoneyMarket: 0.022,     // ~2.2% monthly (FCI Money Market)
+-    excedenteFactor: 0.7,       // 70% of balance is investable surplus
+-
+-    // Audit factor (shared)
+-    factorAuditoria: {
+-        "si": 0.3,
+-        "a-veces": 0.6,
+-        "nunca": 1.0
+-    },
+-    factorAuditoriaDup: {
+-        "si": 0.2,
+-        "a-veces": 0.5,
+-        "nunca": 1.0
+-    }
+-};
+-
+-// ── State ──
+-let currentStep = 1;
+-const totalSteps = 7;
+-const selections = {};
+-
+-// ── DOM refs ──
+-const form = document.getElementById('calcForm');
+-const progressFill = document.getElementById('progressFill');
+-const progressText = document.getElementById('progressText');
+-const prevBtn = document.getElementById('prevBtn');
+-const nextBtn = document.getElementById('nextBtn');
+-const submitBtn = document.getElementById('submitBtn');
+-const resultsPanel = document.getElementById('calcResults');
+-const recalcBtn = document.getElementById('recalcBtn');
+-
+-// ═══════════════════════════════════════════
+-// Step Navigation
+-// ═══════════════════════════════════════════
+-
+-function showStep(n) {
+-    document.querySelectorAll('.calc-step').forEach(s => s.classList.remove('active'));
+-    const step = document.querySelector(`.calc-step[data-step="${n}"]`);
+-    if (step) step.classList.add('active');
+-
+-    progressFill.style.width = `${(n / totalSteps) * 100}%`;
+-    progressText.textContent = `Pregunta ${n} de ${totalSteps}`;
+-
+-    prevBtn.disabled = n === 1;
+-
+-    if (n === totalSteps) {
+-        nextBtn.style.display = 'none';
+-        submitBtn.style.display = 'inline-flex';
+-    } else {
+-        nextBtn.style.display = 'inline-flex';
+-        submitBtn.style.display = 'none';
+-    }
+-}
+-
+-function validateCurrentStep() {
+-    if (currentStep === 1) {
+-        const val = parseNumber(document.getElementById('facturacion').value);
+-        if (!val || val <= 0) {
+-            shakeInput(document.getElementById('facturacion').closest('.calc-input-wrap'));
+-            return false;
+-        }
+-        return true;
+-    }
+-    if (currentStep === 5) {
+-        // Saldo can be 0
+-        return true;
+-    }
+-    // Option-based steps (2,3,4,6,7)
+-    const stepEl = document.querySelector(`.calc-step[data-step="${currentStep}"]`);
+-    const selected = stepEl.querySelector('.calc-option.selected');
+-    if (!selected) {
+-        const options = stepEl.querySelector('.calc-options');
+-        options.classList.add('shake');
+-        setTimeout(() => options.classList.remove('shake'), 500);
+-        return false;
+-    }
+-    return true;
+-}
+-
+-function shakeInput(el) {
+-    el.classList.add('shake');
+-    setTimeout(() => el.classList.remove('shake'), 500);
+-}
+-
+-nextBtn.addEventListener('click', () => {
+-    if (!validateCurrentStep()) return;
+-    if (currentStep < totalSteps) {
+-        currentStep++;
+-        showStep(currentStep);
+-    }
+-});
+-
+-prevBtn.addEventListener('click', () => {
+-    if (currentStep > 1) {
+-        currentStep--;
+-        showStep(currentStep);
+-    }
+-});
+-
+-submitBtn.addEventListener('click', () => {
+-    if (!validateCurrentStep()) return;
+-    calculateResults();
+-});
+-
+-// ═══════════════════════════════════════════
+-// Option selection
+-// ═══════════════════════════════════════════
+-
+-document.querySelectorAll('.calc-options').forEach(group => {
+-    group.querySelectorAll('.calc-option').forEach(btn => {
+-        btn.addEventListener('click', () => {
+-            // Deselect siblings
+-            group.querySelectorAll('.calc-option').forEach(b => b.classList.remove('selected'));
+-            btn.classList.add('selected');
+-            // Store selection
+-            selections[group.id] = btn.dataset.value;
+-        });
+-    });
+-});
+-
+-// ═══════════════════════════════════════════
+-// Number formatting
+-// ═══════════════════════════════════════════
+-
+-function parseNumber(str) {
+-    if (!str) return 0;
+-    return Number(str.replace(/[^0-9]/g, ''));
+-}
+-
+-function formatARS(num) {
+-    return 'ARS $' + Math.round(num).toLocaleString('es-AR');
+-}
+-
+-// Format inputs on blur
+-document.querySelectorAll('.calc-input--number').forEach(input => {
+-    input.addEventListener('blur', () => {
+-        const val = parseNumber(input.value);
+-        if (val > 0) {
+-            input.value = val.toLocaleString('es-AR');
+-        }
+-    });
+-    input.addEventListener('focus', () => {
+-        const val = parseNumber(input.value);
+-        if (val > 0) {
+-            input.value = val.toString();
+-        } else {
+-            input.value = '';
+-        }
+-    });
+-});
+-
+-// ═══════════════════════════════════════════
+-// Calculation Engine
+-// ═══════════════════════════════════════════
+-
+-function calculateResults() {
+-    const facturacion = parseNumber(document.getElementById('facturacion').value);
+-    const bancos = selections['bancos'] || '1';
+-    const pagos = selections['pagos'] || '<50';
+-    const saldo = parseNumber(document.getElementById('saldo').value);
+-    const retenciones = selections['retenciones'] || 'ninguna';
+-    const auditoria = selections['auditoria'] || 'nunca';
+-
+-    // ── Category 1: Comisiones indebidas ──
+-    const comisionBase = facturacion * CONFIG.comisionBaseRate;
+-    const fBancos = CONFIG.factorBancos[bancos] || 1.0;
+-    const fAudit = CONFIG.factorAuditoria[auditoria] || 1.0;
+-    const fugaComisiones = comisionBase * fBancos * fAudit * CONFIG.comisionAnomaliaRate;
+-
+-    // ── Category 2: Pagos duplicados ──
+-    const tDup = CONFIG.tasaDuplicados[pagos] || 0.001;
+-    const midpoint = CONFIG.pagosMidpoint[pagos] || 25;
+-    const montoProm = facturacion / midpoint;
+-    const dupEstimados = midpoint * tDup;
+-    const fAuditDup = CONFIG.factorAuditoriaDup[auditoria] || 1.0;
+-    const fugaDuplicados = dupEstimados * montoProm * fAuditDup;
+-
+-    // ── Category 3: Retenciones sin reclamar ──
+-    let fugaRetenciones = 0;
+-    if (retenciones !== 'ninguna') {
+-        const fReclamo = CONFIG.factorReclamo[auditoria] || 0.7;
+-        fugaRetenciones = facturacion * CONFIG.retencionRate * fReclamo;
+-    }
+-
+-    // ── Category 4: Saldos ociosos ──
+-    let fugaSaldos = 0;
+-    if (saldo > 0) {
+-        const costoOportunidad = saldo * CONFIG.inflacionMensual;
+-        const ahorroPosible = saldo * CONFIG.tasaMoneyMarket * CONFIG.excedenteFactor;
+-        fugaSaldos = costoOportunidad + ahorroPosible;
+-    }
+-
+-    // ── Totals ──
+-    const totalMensual = fugaComisiones + fugaDuplicados + fugaRetenciones + fugaSaldos;
+-    const totalAnual = totalMensual * 12;
+-    const porcentaje = facturacion > 0 ? ((totalMensual / facturacion) * 100).toFixed(1) : '0';
+-
+-    // Display
+-    displayResults({
+-        total: totalMensual,
+-        anual: totalAnual,
+-        porcentaje,
+-        comisiones: fugaComisiones,
+-        duplicados: fugaDuplicados,
+-        retenciones: fugaRetenciones,
+-        saldos: fugaSaldos
+-    });
+-}
+-
+-function displayResults(data) {
+-    // Hide form, show results
+-    form.style.display = 'none';
+-    resultsPanel.style.display = 'block';
+-
+-    // Scroll to results
+-    resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+-
+-    // Animate total with counter
+-    animateCounter(document.getElementById('resultTotal'), data.total, 'ARS $');
+-    document.getElementById('resultPercent').textContent = data.porcentaje + '%';
+-
+-    // Breakdown items
+-    const items = [
+-        { id: 'resComisiones', value: data.comisiones },
+-        { id: 'resDuplicados', value: data.duplicados },
+-        { id: 'resRetenciones', value: data.retenciones },
+-        { id: 'resSaldos', value: data.saldos }
+-    ];
+-
+-    const max = Math.max(...items.map(i => i.value), 1);
+-
+-    items.forEach((item, i) => {
+-        setTimeout(() => {
+-            const el = document.getElementById(item.id);
+-            el.querySelector('.calc-results__item-amount').textContent = formatARS(item.value);
+-            const pct = Math.round((item.value / max) * 100);
+-            el.querySelector('.calc-results__item-fill').style.width = pct + '%';
+-        }, 200 * i);
+-    });
+-
+-    // Annual
+-    setTimeout(() => {
+-        document.getElementById('resultAnual').textContent = formatARS(data.anual);
+-    }, 800);
+-}
+-
+-function animateCounter(el, target, prefix) {
+-    const duration = 1500;
+-    const start = Date.now();
+-    const tick = () => {
+-        const elapsed = Date.now() - start;
+-        const progress = Math.min(elapsed / duration, 1);
+-        // Ease out
+-        const eased = 1 - Math.pow(1 - progress, 3);
+-        const current = Math.round(target * eased);
+-        el.textContent = prefix + current.toLocaleString('es-AR');
+-        if (progress < 1) requestAnimationFrame(tick);
+-    };
+-    requestAnimationFrame(tick);
+-}
+-
+-// ═══════════════════════════════════════════
+-// Recalculate
+-// ═══════════════════════════════════════════
+-
+-recalcBtn.addEventListener('click', () => {
+-    resultsPanel.style.display = 'none';
+-    form.style.display = 'block';
+-    currentStep = 1;
+-    showStep(1);
+-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+-});
+-
+-// ═══════════════════════════════════════════
+-// Email form (placeholder — integrates with backend later)
+-// ═══════════════════════════════════════════
+-
+-document.getElementById('emailForm').addEventListener('submit', (e) => {
+-    e.preventDefault();
+-    const email = document.getElementById('emailInput').value;
+-    if (!email) return;
+-
+-    // Replace form with success message
+-    const container = document.querySelector('.calc-results__email-capture');
+-    container.innerHTML = `
+-    <div style="text-align:center; padding: 12px;">
+-      <p style="color: var(--accent); font-weight: 600; margin-bottom: 4px;">✓ ¡Listo!</p>
+-      <p style="color: var(--text-secondary); font-size: 0.9rem;">
+-        Recibirás el informe detallado en <strong>${email}</strong> dentro de los próximos minutos.
+-      </p>
+-    </div>
+-  `;
+-
+-    // TODO: Send to email service (SendGrid, Mailchimp, etc.)
+-    console.log('Email captured:', email);
+-});
+-
+-// ═══════════════════════════════════════════
+-// Navbar scroll effect
+-// ═══════════════════════════════════════════
+-
+-let lastScroll = 0;
+-window.addEventListener('scroll', () => {
+-    const navbar = document.getElementById('navbar');
+-    if (window.scrollY > 50) {
+-        navbar.classList.add('scrolled');
+-    } else {
+-        navbar.classList.remove('scrolled');
+-    }
+-});
+-
+-// ═══════════════════════════════════════════
+-// Mobile menu
+-// ═══════════════════════════════════════════
+-
+-document.getElementById('hamburger').addEventListener('click', () => {
+-    document.getElementById('navLinks').classList.toggle('active');
+-});
+-
+-// ═══════════════════════════════════════════
+-// Scroll reveal
+-// ═══════════════════════════════════════════
+-
+-const revealObserver = new IntersectionObserver((entries) => {
+-    entries.forEach(entry => {
+-        if (entry.isIntersecting) {
+-            entry.target.classList.add('visible');
+-            revealObserver.unobserve(entry.target);
+-        }
+-    });
+-}, { threshold: 0.15 });
+-
+-document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+-
+-// ═══════════════════════════════════════════
+-// Shake animation (injected)
+-// ═══════════════════════════════════════════
+-
+-const shakeStyle = document.createElement('style');
+-shakeStyle.textContent = `
+-  @keyframes shake {
+-    0%, 100% { transform: translateX(0); }
+-    20% { transform: translateX(-6px); }
+-    40% { transform: translateX(6px); }
+-    60% { transform: translateX(-4px); }
+-    80% { transform: translateX(4px); }
+-  }
+-  .shake { animation: shake 0.4s ease-in-out; }
+-`;
+-document.head.appendChild(shakeStyle);
+-
+-// ═══════════════════════════════════════════
+-// Init
+-// ═══════════════════════════════════════════
+-
+-showStep(1);
+diff --git a/index.html b/index.html
+deleted file mode 100644
+index 164007c..0000000
+--- a/index.html
++++ /dev/null
+@@ -1,813 +0,0 @@
+-<!DOCTYPE html>
+-<html lang="es">
+-
+-<head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>BiFlow Finance — Centro de Comando Financiero para PyMEs</title>
+-  <meta name="description"
+-    content="Las PyMEs pierden entre 2% y 5% de su facturación en fugas de caja. BiFlow audita tus extractos, detecta cada peso que se escapa y simula tus pagos antes de ejecutarlos. Primer informe en 5 minutos.">
+-  <link rel="preconnect" href="https://fonts.googleapis.com">
+-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+-    rel="stylesheet">
+-  <link rel="stylesheet" href="styles.css">
+-</head>
+-
+-<body>
+-
+-  <!-- ───────────── NAVBAR ───────────── -->
+-  <nav class="navbar" id="navbar">
+-    <div class="container navbar__inner">
+-      <a href="#" class="navbar__logo">
+-        <span class="logo-icon">◈</span> BiFlow<span class="logo-accent">Finance</span>
+-      </a>
+-      <ul class="navbar__links" id="navLinks">
+-        <li><a href="#beneficios">Beneficios</a></li>
+-        <li><a href="#como-funciona">Cómo funciona</a></li>
+-        <li><a href="#pricing">Planes</a></li>
+-        <li><a href="#faq">FAQ</a></li>
+-        <li><a href="app/login.html" class="navbar__login">Ingresar</a></li>
+-        <li><a href="#cta-final" class="navbar__cta">Auditoría gratuita</a></li>
+-      </ul>
+-      <button class="navbar__hamburger" id="hamburger" aria-label="Menú">
+-        <span></span><span></span><span></span>
+-      </button>
+-    </div>
+-  </nav>
+-
+-  <!-- ───────────── HERO ───────────── -->
+-  <header class="hero" id="hero">
+-    <div class="hero__bg-glow"></div>
+-    <div class="hero__particles" id="heroParticles"></div>
+-    <div class="container hero__content">
+-      <div class="hero__badge">Inteligencia Artificial Financiera · Tu Director Financiero con IA</div>
+-      <h1 class="hero__headline">
+-        Las PyMEs argentinas pierden entre <span class="highlight">2% y 5%</span> de su facturación en fugas de caja
+-        que nadie audita.<br>
+-        <span class="hero__headline-accent">¿Cuánto se escapa de la tuya?</span>
+-      </h1>
+-      <p class="hero__sub">
+-        Comisiones que tu banco cambió sin avisarte. Retenciones de IIBB y SIRCREB que llevan meses sin reclamar. Lotes
+-        de pagos que subiste a Interbanking sin cruzar contra cheques entrantes. Saldos parados en cuenta corriente que
+-        la inflación devora día a día. BiFlow usa inteligencia artificial para procesar tus extractos bancarios y
+-        archivos Interbanking — detecta cada
+-        peso que se escapa y simula tus pagos antes de ejecutarlos. Es como tener un director financiero con IA
+-        trabajando 24/7 sobre tu caja. Sin claves bancarias. Sin integración técnica. Subís
+-        tus archivos y en 5&nbsp;minutos tienes el diagnóstico.
+-      </p>
+-      <div class="hero__actions">
+-        <a href="#cta-final" class="btn btn--primary btn--lg" id="heroCta">
+-          <!-- TRACKING: hero_cta_click -->
+-          Quiero ver cuánto pierde mi caja
+-          <span class="btn__arrow">→</span>
+-        </a>
+-
+-      </div>
+-      <p class="hero__trust-line">Sin tarjeta de crédito · Sin claves bancarias · Primer informe en 5 minutos</p>
+-    </div>
+-  </header>
+-
+-  <!-- ───────────── SOCIAL PROOF BAR ───────────── -->
+-  <!-- TRACKING: social_proof_bar_view -->
+-  <section class="social-proof-bar" id="social-proof">
+-    <div class="container">
+-      <div class="social-proof-bar__quote">
+-        "Ya auditamos la caja de +120 PyMEs argentinas y detectamos fugas en el 78% de ellas."
+-      </div>
+-      <div class="social-proof-bar__metrics">
+-        <div class="metric">
+-          <span class="metric__number counter" data-target="15000" data-prefix="+">0</span>
+-          <span class="metric__label">Archivos procesados</span>
+-        </div>
+-        <div class="metric__divider"></div>
+-        <div class="metric">
+-          <span class="metric__number counter" data-target="120" data-prefix="+">0</span>
+-          <span class="metric__label">PyMEs auditadas</span>
+-        </div>
+-        <div class="metric__divider"></div>
+-        <div class="metric">
+-          <span class="metric__number">2,8%</span>
+-          <span class="metric__label">Fugas promedio detectadas</span>
+-        </div>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── BENEFICIO 1: AUDITORÍA ───────────── -->
+-  <section class="benefit" id="beneficios">
+-    <div class="container benefit__inner reveal">
+-      <div class="benefit__icon-wrap">
+-        <div class="benefit__icon">🛡️</div>
+-        <span class="benefit__label">Auditoría y Control de Fugas</span>
+-      </div>
+-      <div class="benefit__content">
+-        <h2 class="benefit__title">
+-          El <span class="highlight">78% de las PyMEs</span> que auditamos tenían al menos 3 tipos de fuga activa.
+-          Comisiones mal cobradas, pagos duplicados y retenciones sin reclamar — todo en el mismo mes.
+-        </h2>
+-        <p class="benefit__body">
+-          Tu contador revisa los números una vez cada 30 días. En esos 30 días, las retenciones de IIBB y SIRCREB se
+-          acumulan sin reclamo — son créditos fiscales a tu favor que prescribirán si nadie los gestiona. Las comisiones
+-          bancarias aumentan sin aviso y nadie las cruza contra el acuerdo comercial firmado. Los pagos duplicados por
+-          error de carga se procesan sin control. Tu responsable de finanzas lo sabe, pero auditar cada línea de cada
+-          extracto de cada
+-          banco, cada día, es físicamente imposible.
+-        </p>
+-        <p class="benefit__body benefit__body--solution">
+-          Nuestra IA procesa el 100% de tus extractos bancarios en PDF y compara cada movimiento contra tus acuerdos
+-          comerciales y registros anteriores. Detecta anomalías en segundos — pagos duplicados, comisiones que no
+-          coinciden con lo pactado, retenciones impositivas que puedes reclamar — y te entrega un informe con acciones
+-          concretas: qué reclamar, a qué banco, por cuánto.
+-        </p>
+-        <ul class="benefit__bullets">
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Detección de duplicados</strong> — Identifica pagos con montos idénticos al mismo destino en
+-              ventanas de 7, 15 y 30 días.</div>
+-          </li>
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Auditoría de comisiones</strong> — Cruza cada cargo bancario contra tus convenios vigentes. Si
+-              el banco te cobró de más, lo señala con monto y fecha.</div>
+-          </li>
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Radar de créditos fiscales</strong> — Extrae y consolida retenciones de IIBB, SIRCREB y
+-              Ganancias para que tu contador las compense antes de que prescriban.</div>
+-          </li>
+-        </ul>
+-        <p class="benefit__urgency">
+-          ⚠️ Tus retenciones de IIBB acumuladas tienen fecha de vencimiento. Cada mes sin reclamarlas es un mes más
+-          cerca de perderlas.
+-        </p>
+-        <a href="#cta-final" class="btn btn--secondary">
+-          <!-- TRACKING: benefit1_cta_click -->
+-          Descubrí qué fugas tiene tu caja hoy <span class="btn__arrow">→</span>
+-        </a>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── TESTIMONIO / CASO DE USO ───────────── -->
+-  <!-- TRACKING: testimonial_section_view -->
+-  <section class="testimonials" id="testimonios">
+-    <div class="container">
+-      <div class="testimonials__grid reveal">
+-        <!-- Testimonio Dueño -->
+-        <div class="testimonial-card">
+-          <div class="testimonial-card__quote">
+-            "Pensábamos que nuestro contador controlaba todo. BiFlow encontró $340.000 en retenciones de IIBB sin
+-            reclamar en nuestros primeros 3 extractos. Recuperamos eso en el primer mes — mucho más de lo que cuesta el
+-            plan."
+-          </div>
+-          <div class="testimonial-card__author">
+-            <div class="testimonial-card__avatar">MR</div>
+-            <div>
+-              <div class="testimonial-card__name">Martín R.</div>
+-              <div class="testimonial-card__role">Dueño · Distribuidora industrial · 32 empleados</div>
+-            </div>
+-          </div>
+-        </div>
+-        <!-- Testimonio CFO -->
+-        <div class="testimonial-card">
+-          <div class="testimonial-card__quote">
+-            "Antes dedicaba 6 horas por semana a conciliar extractos de 4 bancos en Excel. Ahora subo los archivos,
+-            BiFlow me da el dashboard y yo me enfoco en decisiones, no en data entry."
+-          </div>
+-          <div class="testimonial-card__author">
+-            <div class="testimonial-card__avatar">LC</div>
+-            <div>
+-              <div class="testimonial-card__name">Laura C.</div>
+-              <div class="testimonial-card__role">Gerente Financiera · Empresa de servicios · 58 empleados</div>
+-            </div>
+-          </div>
+-        </div>
+-        <!-- Caso numérico -->
+-        <div class="testimonial-card testimonial-card--case">
+-          <div class="testimonial-card__tag">CASO REAL</div>
+-          <div class="testimonial-card__case-title">PyME industrial · 45 empleados · 6 bancos</div>
+-          <div class="testimonial-card__case-stats">
+-            <div class="case-stat">
+-              <span class="case-stat__value">$890.000</span>
+-              <span class="case-stat__label">Fugas detectadas / mes</span>
+-            </div>
+-            <div class="case-stat">
+-              <span class="case-stat__value">$2.670.000</span>
+-              <span class="case-stat__label">Recuperados en 90 días</span>
+-            </div>
+-            <div class="case-stat">
+-              <span class="case-stat__value">7,4x</span>
+-              <span class="case-stat__label">ROI sobre Plan Pro</span>
+-            </div>
+-          </div>
+-          <div class="testimonial-card__quote testimonial-card__quote--small">
+-            "Sabíamos que algo se escapaba, pero no teníamos tiempo de auditar cada extracto. BiFlow lo encontró en la
+-            primera carga de archivos."
+-          </div>
+-        </div>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── BENEFICIO 2: SIMULADOR + LIQUIDEZ ───────────── -->
+-  <section class="benefit benefit--alt">
+-    <div class="container benefit__inner reveal">
+-      <div class="benefit__icon-wrap">
+-        <div class="benefit__icon">🚦</div>
+-        <span class="benefit__label">Simulador de Cash Flow + Liquidez</span>
+-      </div>
+-      <div class="benefit__content">
+-        <h2 class="benefit__title">
+-          Cada lote de pagos que subís a Interbanking sin simular es una apuesta contra tu saldo. <span
+-            class="highlight">Y cada peso parado en cuenta corriente pierde 0,5% de valor por semana.</span>
+-        </h2>
+-        <p class="benefit__body">
+-          Hoy armas el lote de pagos con el saldo que ves en pantalla — el de ayer. No cruzas contra el cheque de $2M
+-          que se acredita mañana ni contra la cobranza que entra en 48&nbsp;horas. Esa decisión con datos viejos te
+-          obliga a mantener colchones de liquidez innecesarios. Los $5M que dejás "por las dudas" en cuenta corriente
+-          sin remunerar pierden poder adquisitivo cada día. En un mes, esos $5M ya compran lo que compraban $4,75M.
+-        </p>
+-        <p class="benefit__body benefit__body--solution">
+-          La inteligencia artificial de BiFlow intercepta tu archivo de pagos antes de la ejecución. Cruza cada egreso
+-          contra fondos por ingresar,
+-          cheques en cartera y vencimientos próximos. Te devuelve un borrador optimizado: qué pagar hoy, qué postergar
+-          48hs, qué agrupar para reducir comisiones. Y sobre el excedente real — el dinero que no necesitas en las
+-          próximas 72&nbsp;horas — te sugiere colocación inmediata en Money Market para que tu capital trabaje en lugar
+-          de devaluarse.
+-        </p>
+-        <ul class="benefit__bullets">
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Stress Test pre-upload</strong> — Simula el impacto del lote completo sobre tu saldo proyectado
+-              a 72 horas, cruzando ingresos confirmados y probables.</div>
+-          </li>
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Reordenamiento de prioridades</strong> — Sugiere qué pagos adelantar (proveedores con
+-              descuento) y cuáles postergar sin penalidad, maximizando la caja disponible.</div>
+-          </li>
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Alerta de saldos ociosos</strong> — Te avisa cuando el saldo excede el colchón operativo
+-              necesario y calcula cuánto perderías por no colocarlo.</div>
+-          </li>
+-        </ul>
+-        <a href="#cta-final" class="btn btn--secondary">
+-          <!-- TRACKING: benefit2_cta_click -->
+-          Simula tu próximo lote antes de subirlo <span class="btn__arrow">→</span>
+-        </a>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── BENEFICIO 3: VISIBILIDAD + RIESGO ───────────── -->
+-  <section class="benefit">
+-    <div class="container benefit__inner reveal">
+-      <div class="benefit__icon-wrap">
+-        <div class="benefit__icon">👁️</div>
+-        <span class="benefit__label">Visibilidad Total + Monitoreo de Riesgo</span>
+-      </div>
+-      <div class="benefit__content">
+-        <h2 class="benefit__title">
+-          Tu responsable de finanzas dedica <span class="highlight">6 horas semanales</span> a descargar extractos y
+-          armar reportes.
+-          Mientras tanto, aceptas echeqs de clientes que ya figuran en categoría 3 del BCRA.
+-        </h2>
+-        <p class="benefit__body">
+-          "¿Cómo estamos de caja?" El dueño hace esa pregunta y recibe un Excel armado a mano, con datos del jueves
+-          pasado, sin visibilidad sobre retenciones pendientes ni cheques por vencer. El reporte llega 3 días tarde.
+-          Peor: mientras tu equipo concilia datos manualmente, la empresa acepta cheques y echeqs de clientes cuya
+-          situación crediticia cambió la semana pasada — y nadie lo sabe hasta que el cheque rebota.
+-        </p>
+-        <p class="benefit__body benefit__body--solution">
+-          La IA de BiFlow centraliza todos tus bancos en un dashboard único. Genera un "Reporte de 1 Minuto" diario con
+-          3&nbsp;cifras: salud de caja (pesos disponibles vs. compromisos próximos), riesgos detectados (fugas,
+-          vencimientos, contrapartes deterioradas) y oportunidades de mejora (saldos ociosos, retenciones recuperables).
+-          El dueño abre, lee, decide — en 60&nbsp;segundos. Y con el monitoreo de riesgo, BiFlow vigila cada CUIT de
+-          tus clientes en la Central de Deudores del BCRA y te alerta el mismo día que una contraparte baja de
+-          categoría.
+-        </p>
+-        <ul class="benefit__bullets">
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Dashboard multibanco en tiempo real</strong> — Saldos, movimientos y posición consolidada de
+-              cada banco, actualizados con cada extracto que subís. Sin tokens ni claves.</div>
+-          </li>
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Reporte de 1 Minuto</strong> — 3 indicadores ejecutivos enviados al dueño cada mañana: salud,
+-              riesgo y oportunidades. No espera al cierre mensual.</div>
+-          </li>
+-          <li>
+-            <span class="bullet-icon">◆</span>
+-            <div><strong>Alerta de deterioro de contraparte</strong> — Si un cliente que te debe $1M pasa de categoría 1
+-              a 3 en el BCRA, lo sabes antes de aceptar su próximo cheque.</div>
+-          </li>
+-        </ul>
+-        <a href="#cta-final" class="btn btn--secondary">
+-          <!-- TRACKING: benefit3_cta_click -->
+-          Genera tu primer reporte ejecutivo <span class="btn__arrow">→</span>
+-        </a>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── COMPARACIÓN VS STATUS QUO ───────────── -->
+-  <!-- TRACKING: comparison_section_view -->
+-  <section class="comparison" id="comparacion">
+-    <div class="container">
+-      <div class="comparison__header reveal">
+-        <h2 class="comparison__title">Tu operación actual vs. BiFlow</h2>
+-        <p class="comparison__sub">¿Cómo gestionas tu caja hoy? Compará con lo que podrías tener.</p>
+-      </div>
+-      <div class="comparison__table-wrap reveal">
+-        <table class="comparison__table">
+-          <thead>
+-            <tr>
+-              <th>Capacidad</th>
+-              <th class="comparison__col--old">Excel / ERP actual</th>
+-              <th class="comparison__col--new">BiFlow Finance</th>
+-            </tr>
+-          </thead>
+-          <tbody>
+-            <tr>
+-              <td>Auditoría de comisiones bancarias</td>
+-              <td class="comparison__col--old">Manual, 1 vez por mes</td>
+-              <td class="comparison__col--new">Automática, 24/7</td>
+-            </tr>
+-            <tr>
+-              <td>Detección de pagos duplicados</td>
+-              <td class="comparison__col--old">Si alguien lo nota</td>
+-              <td class="comparison__col--new">Algorítmica, en cada carga</td>
+-            </tr>
+-            <tr>
+-              <td>Reclamo de retenciones (IIBB/SIRCREB)</td>
+-              <td class="comparison__col--old">Depende del contador</td>
+-              <td class="comparison__col--new">Radar automático + alertas</td>
+-            </tr>
+-            <tr>
+-              <td>Simulación de flujo de pagos</td>
+-              <td class="comparison__col--old">No existe</td>
+-              <td class="comparison__col--new">Stress test pre-upload</td>
+-            </tr>
+-            <tr>
+-              <td>Optimización de saldos ociosos</td>
+-              <td class="comparison__col--old">No existe</td>
+-              <td class="comparison__col--new">Alerta + sugerencia de colocación</td>
+-            </tr>
+-            <tr>
+-              <td>Monitoreo de riesgo de contraparte</td>
+-              <td class="comparison__col--old">Consulta manual BCRA</td>
+-              <td class="comparison__col--new">Vigilancia automática de CUITs</td>
+-            </tr>
+-            <tr>
+-              <td>Dashboard consolidado multi-banco</td>
+-              <td class="comparison__col--old">Excel manual, datos viejos</td>
+-              <td class="comparison__col--new">Tiempo real, sin claves</td>
+-            </tr>
+-            <tr>
+-              <td>Reporte ejecutivo para el dueño</td>
+-              <td class="comparison__col--old">Pedirlo y esperar</td>
+-              <td class="comparison__col--new">Reporte de 1 Minuto, cada mañana</td>
+-            </tr>
+-            <tr>
+-              <td>Tiempo de setup</td>
+-              <td class="comparison__col--old">Semanas de implementación</td>
+-              <td class="comparison__col--new">5 minutos, sin equipo técnico</td>
+-            </tr>
+-          </tbody>
+-        </table>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── CÓMO FUNCIONA ───────────── -->
+-  <section class="how-it-works" id="como-funciona">
+-    <div class="container">
+-      <div class="how-it-works__header reveal">
+-        <h2 class="how-it-works__title">De cero a diagnóstico en 3 pasos y 5 minutos. <span class="highlight">Sin equipo
+-            técnico.
+-            Sin permisos bancarios.</span></h2>
+-        <p class="how-it-works__sub">BiFlow no pide claves bancarias, no instala nada en tus servidores y no ejecuta
+-          transacciones. Solo lee los archivos que tu banco ya te entrega — y te muestra lo que encuentra.</p>
+-      </div>
+-      <div class="steps reveal">
+-        <div class="step">
+-          <div class="step__number">1</div>
+-          <h3 class="step__title">Registrate <span class="step__time">(30 seg)</span></h3>
+-          <p class="step__desc">Nombre, email y teléfono. Verificamos tu correo y activamos tu cuenta de prueba al
+-            instante.</p>
+-        </div>
+-        <div class="step__connector"></div>
+-        <div class="step">
+-          <div class="step__number">2</div>
+-          <h3 class="step__title">Subí tus archivos <span class="step__time">(2 min)</span></h3>
+-          <p class="step__desc">Arrastra tus extractos bancarios (PDF), archivos de Interbanking (.dat/.txt) y tu
+-            listado de CUITs a tu centro de comando privado.</p>
+-        </div>
+-        <div class="step__connector"></div>
+-        <div class="step">
+-          <div class="step__number">3</div>
+-          <h3 class="step__title">Recibí el diagnóstico <span class="step__time">(3 min)</span></h3>
+-          <p class="step__desc">Nuestra IA analiza tus archivos y te entrega: fugas detectadas con montos, simulación de
+-            tu
+-            próximo lote de pagos y estado de riesgo de cada contraparte.</p>
+-        </div>
+-      </div>
+-      <div class="how-it-works__cta reveal">
+-        <a href="#cta-final" class="btn btn--secondary">
+-          <!-- TRACKING: how_it_works_cta_click -->
+-          Empezá tu auditoría gratuita ahora <span class="btn__arrow">→</span>
+-        </a>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── PRICING ───────────── -->
+-  <section class="pricing" id="pricing">
+-    <div class="container">
+-      <div class="pricing__header reveal">
+-        <h2 class="pricing__title">
+-          Desde USD 50/mes. Si tu auditoría gratuita no encuentra fugas por encima de esa cifra, no pagas.
+-        </h2>
+-        <p class="pricing__sub">
+-          Cada plan arranca con una auditoría forense gratuita sobre tus archivos reales. Sin datos de prueba. Sin demos
+-          genéricas. Ves las fugas de tu empresa — con montos, fechas y bancos — antes de pagar un peso. Sin
+-          permanencia. Sin letra chica.
+-        </p>
+-      </div>
+-
+-      <div class="pricing__grid reveal">
+-        <!-- Starter -->
+-        <div class="pricing-card">
+-          <div class="pricing-card__header">
+-            <h3 class="pricing-card__name">Starter</h3>
+-            <div class="pricing-card__price">
+-              <span class="pricing-card__currency">USD</span>
+-              <span class="pricing-card__amount">50</span>
+-              <span class="pricing-card__period">/mes</span>
+-            </div>
+-            <p class="pricing-card__desc">Para PyMEs con hasta 5 cuentas bancarias que hoy no auditan su caja.</p>
+-          </div>
+-          <ul class="pricing-card__features">
+-            <li>Procesamiento de archivos Interbanking (.dat/.txt) y extractos PDF</li>
+-            <li>Detección de comisiones indebidas y pagos duplicados</li>
+-            <li>Monitoreo de retenciones impositivas (IIBB, SIRCREB)</li>
+-            <li>Dashboard de flujo de caja consolidado</li>
+-            <li>Reporte de 1 Minuto diario para el dueño</li>
+-            <li>Soporte por email en menos de 24h</li>
+-          </ul>
+-          <a href="#cta-final" class="btn btn--outline btn--full">
+-            <!-- TRACKING: pricing_starter_cta_click -->
+-            Ver qué fugas detecta Starter →
+-          </a>
+-        </div>
+-
+-        <!-- Pro -->
+-        <div class="pricing-card pricing-card--featured">
+-          <div class="pricing-card__badge">⭐ Más elegido</div>
+-          <div class="pricing-card__header">
+-            <h3 class="pricing-card__name">Pro</h3>
+-            <div class="pricing-card__price">
+-              <span class="pricing-card__currency">USD</span>
+-              <span class="pricing-card__amount">120</span>
+-              <span class="pricing-card__period">/mes</span>
+-            </div>
+-            <p class="pricing-card__desc">Para empresas con 6+ bancos que necesitan simular pagos, optimizar liquidez y
+-              monitorear contrapartes.</p>
+-          </div>
+-          <ul class="pricing-card__features">
+-            <li>Todo lo de Starter, más:</li>
+-            <li>Cuentas bancarias ilimitadas</li>
+-            <li>Simulador de Cash Flow: stress test de lotes contra ingresos pendientes</li>
+-            <li>Alerta de saldos ociosos + sugerencia de colocación en Money Market</li>
+-            <li>Monitoreo de CUITs en Central de Deudores (BCRA) con alertas de deterioro</li>
+-            <li>Alertas con montos, bancos y acciones específicas</li>
+-            <li>Reportes semanales: fugas detectadas, evitadas y ahorro acumulado</li>
+-            <li>Soporte prioritario en menos de 4h</li>
+-          </ul>
+-          <a href="#cta-final" class="btn btn--primary btn--full">
+-            <!-- TRACKING: pricing_pro_cta_click -->
+-            Ver qué fugas detecta Pro →
+-          </a>
+-        </div>
+-
+-        <!-- Enterprise -->
+-        <div class="pricing-card">
+-          <div class="pricing-card__header">
+-            <h3 class="pricing-card__name">Enterprise</h3>
+-            <div class="pricing-card__price">
+-              <span class="pricing-card__amount pricing-card__amount--custom">A medida</span>
+-            </div>
+-            <p class="pricing-card__desc">Para grupos con 3+ razones sociales que necesitan un centro de comando
+-              financiero unificado.</p>
+-          </div>
+-          <ul class="pricing-card__features">
+-            <li>Todo lo de Pro, más:</li>
+-            <li>Consolidación multi-empresa con auditoría cruzada entre razones sociales</li>
+-            <li>Validación de escenarios financieros por empresa y consolidados</li>
+-            <li>API de integración con tu ERP existente</li>
+-            <li>Onboarding 1:1 con un especialista en tesorería</li>
+-            <li>SLA de soporte dedicado con canal directo</li>
+-            <li>Reportes ejecutivos a medida para directorio</li>
+-          </ul>
+-          <a href="#cta-final" class="btn btn--outline btn--full">
+-            <!-- TRACKING: pricing_enterprise_cta_click -->
+-            Hablar con un especialista →
+-          </a>
+-        </div>
+-      </div>
+-
+-      <p class="pricing__note reveal">
+-        ¿No sabes cuánto pierdes por mes? Tu auditoría gratuita escanea archivos reales de tu empresa y te da el número
+-        exacto — con detalle de cada fuga, monto y banco.
+-        <a href="#cta-final" class="pricing__note-link">Descubrí tu número → Auditoría gratuita</a>
+-      </p>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── FAQ / OBJECIONES ───────────── -->
+-  <!-- TRACKING: faq_section_view -->
+-  <section class="faq" id="faq">
+-    <div class="container">
+-      <div class="faq__header reveal">
+-        <h2 class="faq__title">Preguntas frecuentes</h2>
+-      </div>
+-      <div class="faq__list reveal">
+-        <div class="faq__item" data-faq>
+-          <button class="faq__question" aria-expanded="false">
+-            <span>¿Ya tengo un ERP — para qué necesito BiFlow?</span>
+-            <span class="faq__toggle">+</span>
+-          </button>
+-          <div class="faq__answer">
+-            <p>Tu ERP registra lo que pasó. BiFlow audita lo que pasa ahora y simula lo que va a pasar. Son
+-              complementarios. Tu ERP no cruza comisiones bancarias contra acuerdos comerciales, no detecta duplicados
+-              algorítmicamente y no simula flujos de pagos antes de ejecutarlos.</p>
+-          </div>
+-        </div>
+-        <div class="faq__item" data-faq>
+-          <button class="faq__question" aria-expanded="false">
+-            <span>No confío en subir archivos financieros a una plataforma</span>
+-            <span class="faq__toggle">+</span>
+-          </button>
+-          <div class="faq__answer">
+-            <p>Procesamos archivos de solo lectura. No accedemos a cuentas ni ejecutamos transacciones. Tus datos viajan
+-              encriptados con AES-256 en tránsito y en reposo, y se eliminan cuando vos lo decidís. No pedimos claves
+-              bancarias ni credenciales de ningún tipo.</p>
+-          </div>
+-        </div>
+-        <div class="faq__item" data-faq>
+-          <button class="faq__question" aria-expanded="false">
+-            <span>Mi contador ya se encarga de todo esto</span>
+-            <span class="faq__toggle">+</span>
+-          </button>
+-          <div class="faq__answer">
+-            <p>Tu contador revisa 1 vez por mes. BiFlow audita 24/7. Las fugas no esperan al cierre contable. Los pagos
+-              duplicados se acumulan, las comisiones indebidas se repiten y las retenciones prescriben — todo entre un
+-              cierre y el siguiente. BiFlow no reemplaza a tu contador: le da datos que hoy no tiene.</p>
+-          </div>
+-        </div>
+-        <div class="faq__item" data-faq>
+-          <button class="faq__question" aria-expanded="false">
+-            <span>USD 50/mes es mucho para una PyME</span>
+-            <span class="faq__toggle">+</span>
+-          </button>
+-          <div class="faq__answer">
+-            <p>La auditoría gratuita te muestra cuánto pierdes por mes. Si las fugas detectadas no superan USD 50, no
+-              tiene sentido contratarnos — y te lo decimos. En el 78% de los casos, las fugas superan ampliamente el
+-              costo del plan. El ROI promedio es de 7x en los primeros 90 días.</p>
+-          </div>
+-        </div>
+-        <div class="faq__item" data-faq>
+-          <button class="faq__question" aria-expanded="false">
+-            <span>¿Qué tan precisa es la detección de fugas?</span>
+-            <span class="faq__toggle">+</span>
+-          </button>
+-          <div class="faq__answer">
+-            <p>BiFlow procesa tus extractos bancarios reales — no estimaciones. Cada fuga que detecta incluye monto
+-              exacto, fecha, banco y tipo de anomalía. La auditoría gratuita te muestra resultados concretos con tus
+-              propios archivos antes de que pagues un peso.</p>
+-          </div>
+-        </div>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── CONFIANZA ───────────── -->
+-  <section class="trust" id="confianza">
+-    <div class="container trust__inner reveal">
+-      <div class="trust__icon">🔒</div>
+-      <h2 class="trust__title">Procesamos archivos de solo lectura. No accedemos a tus cuentas. No movemos un peso.
+-        Nunca.</h2>
+-      <p class="trust__body">
+-        BiFlow trabaja exclusivamente con los .dat, .txt y PDF que tu banco ya te entrega. No pedimos credenciales
+-        bancarias. No ejecutamos transacciones. No tenemos acceso operativo a tu dinero. Tus datos viajan encriptados
+-        con AES-256 en tránsito y en reposo, y se eliminan cuando vos lo decidís. No instalamos nada en tus servidores.
+-        Solo leemos los archivos — y te mostramos lo que encontramos.
+-      </p>
+-      <div class="trust__badges">
+-        <div class="trust__badge-item">
+-          <span class="trust__badge-icon">🔐</span>
+-          <span>AES-256 (tránsito y reposo)</span>
+-        </div>
+-        <div class="trust__badge-item">
+-          <span class="trust__badge-icon">📄</span>
+-          <span>Solo lectura — cero escritura</span>
+-        </div>
+-        <div class="trust__badge-item">
+-          <span class="trust__badge-icon">🚫</span>
+-          <span>Sin credenciales bancarias</span>
+-        </div>
+-        <div class="trust__badge-item">
+-          <span class="trust__badge-icon">🗑️</span>
+-          <span>Eliminación bajo tu control</span>
+-        </div>
+-      </div>
+-      <div class="trust__cta">
+-        <a href="#cta-final" class="btn btn--secondary">
+-          <!-- TRACKING: trust_cta_click -->
+-          Probá la auditoría gratuita con total seguridad <span class="btn__arrow">→</span>
+-        </a>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── CTA FINAL CON FORMULARIO ───────────── -->
+-  <section class="cta-final" id="cta-final">
+-    <div class="container cta-final__inner reveal">
+-      <h2 class="cta-final__title">
+-        Ahora mismo hay fugas activas en tu caja. Retenciones sin reclamar. Comisiones mal cobradas. Saldos que se
+-        devalúan.<br>
+-        <span class="cta-final__accent">En 5 minutos puedes ver cuáles son y cuánto te cuestan.</span>
+-      </h2>
+-      <p class="cta-final__body">
+-        Cada día sin auditoría es un día más de retenciones que prescriben, comisiones que se acumulan y saldos que
+-        pierden valor. No necesitas instalar nada, ni dar claves, ni esperar a tu contador. Subí tus archivos, mirá el
+-        informe forense con montos reales y empezá a decidir con datos de hoy — no del mes pasado.
+-      </p>
+-      <!-- Formulario de captura -->
+-      <form class="cta-form" id="ctaForm" novalidate>
+-        <!-- TRACKING: cta_form_view -->
+-        <div class="cta-form__fields">
+-          <div class="cta-form__group">
+-            <label for="ctaName" class="cta-form__label">Nombre</label>
+-            <input type="text" id="ctaName" name="name" class="cta-form__input" placeholder="Tu nombre" required>
+-          </div>
+-          <div class="cta-form__group">
+-            <label for="ctaEmail" class="cta-form__label">Email corporativo</label>
+-            <input type="email" id="ctaEmail" name="email" class="cta-form__input" placeholder="tu@empresa.com"
+-              required>
+-          </div>
+-          <div class="cta-form__group">
+-            <label for="ctaPhone" class="cta-form__label">WhatsApp</label>
+-            <input type="tel" id="ctaPhone" name="phone" class="cta-form__input" placeholder="+54 11 ..." required>
+-          </div>
+-        </div>
+-        <button type="submit" class="btn btn--primary btn--lg btn--full" id="ctaSubmit">
+-          <!-- TRACKING: cta_form_submit -->
+-          Quiero auditar mi caja ahora
+-          <span class="btn__arrow">→</span>
+-        </button>
+-        <p class="cta-final__trust-line">Sin tarjeta de crédito · Sin claves bancarias · Primer informe en 5 minutos</p>
+-      </form>
+-      <div class="cta-form__success" id="ctaSuccess" style="display:none;">
+-        <div class="cta-form__success-icon">✓</div>
+-        <h3>¡Listo! Tu auditoría está en camino.</h3>
+-        <p>Te contactamos dentro de las próximas 24 horas para empezar con tus archivos.</p>
+-      </div>
+-    </div>
+-  </section>
+-
+-  <!-- ───────────── FOOTER ───────────── -->
+-  <footer class="footer">
+-    <div class="container footer__inner">
+-      <div class="footer__top">
+-        <div class="footer__brand">
+-          <span class="logo-icon">◈</span> BiFlow<span class="logo-accent">Finance</span>
+-          <p class="footer__tagline">Centro de Comando Financiero para PyMEs</p>
+-        </div>
+-        <div class="footer__links">
+-          <div class="footer__col">
+-            <h4>Producto</h4>
+-            <a href="#beneficios">Auditoría de fugas</a>
+-            <a href="#beneficios">Simulador de pagos</a>
+-            <a href="#beneficios">Monitoreo de riesgo</a>
+-            <a href="#pricing">Planes y precios</a>
+-          </div>
+-          <div class="footer__col">
+-            <h4>Recursos</h4>
+-            <a href="#como-funciona">Cómo funciona</a>
+-            <a href="#faq">Preguntas frecuentes</a>
+-            <a href="#confianza">Seguridad de datos</a>
+-          </div>
+-          <div class="footer__col">
+-            <h4>Empresa</h4>
+-            <a href="#">Contacto</a>
+-            <a href="#">Política de privacidad</a>
+-            <a href="#">Términos de servicio</a>
+-          </div>
+-        </div>
+-      </div>
+-      <div class="footer__bottom">
+-        <p class="footer__copy">© 2026 BiFlow Finance. Todos los derechos reservados.</p>
+-      </div>
+-    </div>
+-  </footer>
+-
+-  <!-- ═══════════════════════════════════════════ -->
+-  <!-- POPUPS (rendered at end of body)           -->
+-  <!-- ═══════════════════════════════════════════ -->
+-
+-  <!-- POPUP OVERLAY (shared) -->
+-  <div class="popup-overlay" id="popupOverlay"></div>
+-
+-  <!-- POPUP 1 — Exit-Intent -->
+-  <div class="popup popup--modal" id="popupExitIntent" role="dialog" aria-modal="true" aria-label="Popup de salida">
+-    <!-- TRACKING: popup_exit_intent_impression -->
+-    <button class="popup__close" aria-label="Cerrar">&times;</button>
+-    <div class="popup__icon">⚠️</div>
+-    <h3 class="popup__headline">Antes de irte: ¿sabés cuánto se fugó de tu caja este mes?</h3>
+-    <p class="popup__body">
+-      Comisiones indebidas. Retenciones de IIBB sin reclamar. Pagos duplicados que nadie detectó.
+-      Mientras operás sin auditoría, las fugas se acumulan día tras día.
+-    </p>
+-    <p class="popup__body">
+-      Subí un extracto bancario y en 5 minutos tenés el diagnóstico. Gratis. Sin tarjeta. Sin integración.
+-    </p>
+-    <p class="popup__cta-lead">Quiero mi diagnóstico de fugas</p>
+-    <a href="#cta-final" class="btn btn--primary btn--full popup__cta-primary">
+-      <!-- TRACKING: popup_exit_intent_cta_click -->
+-      Auditoría gratuita <span class="btn__arrow">→</span>
+-    </a>
+-    <button class="popup__cta-secondary" data-popup-dismiss>
+-      <!-- TRACKING: popup_exit_intent_dismiss_click -->
+-      No, prefiero seguir sin auditar mi caja
+-    </button>
+-    <p class="popup__trust">✓ 5 min · ✓ Sin tarjeta · ✓ AES-256</p>
+-  </div>
+-
+-  <!-- POPUP 2 — Scroll 50%: Caso de Estudio -->
+-  <div class="popup popup--slide" id="popupScroll" role="dialog" aria-modal="false" aria-label="Caso de estudio">
+-    <!-- TRACKING: popup_scroll_case_impression -->
+-    <button class="popup__close" aria-label="Cerrar">&times;</button>
+-    <div class="popup__tag">CASO REAL</div>
+-    <h3 class="popup__headline">Una PyME industrial de 45 empleados recuperó ARS $890.000 en retenciones no reclamadas
+-      en su primer mes con BiFlow.</h3>
+-    <div class="popup__findings">
+-      <div class="popup__finding">🔍 Retenciones de IIBB cobradas de más por 2 bancos</div>
+-      <div class="popup__finding">🔍 3 comisiones duplicadas (5 meses sin detectarse)</div>
+-      <div class="popup__finding">🔍 1 pago duplicado no identificado por el ERP</div>
+-    </div>
+-    <blockquote class="popup__quote">
+-      "BiFlow lo encontró en la primera carga de archivos."
+-      <cite>— Gerente Financiero, PyME industrial</cite>
+-    </blockquote>
+-    <p class="popup__cta-lead">Descubrí qué se escapa de tu caja</p>
+-    <a href="#cta-final" class="btn btn--primary btn--full popup__cta-primary">
+-      <!-- TRACKING: popup_scroll_case_cta_click -->
+-      Auditoría gratuita <span class="btn__arrow">→</span>
+-    </a>
+-    <a href="#testimonios" class="popup__cta-secondary-link">Ver más casos de estudio →</a>
+-  </div>
+-
+-  <!-- POPUP 3 — Time-Delayed 45s: Oferta -->
+-  <div class="popup popup--modal" id="popupTimedelay" role="dialog" aria-modal="true"
+-    aria-label="Oferta de lanzamiento">
+-    <!-- TRACKING: popup_time_delay_impression -->
+-    <button class="popup__close" aria-label="Cerrar">&times;</button>
+-    <div class="popup__offer-badge">🚀 OFERTA DE LANZAMIENTO</div>
+-    <h3 class="popup__headline">Primeras 50 empresas: 3 meses de Plan Pro al precio de Starter.</h3>
+-    <p class="popup__body">
+-      Estamos en fase de lanzamiento y buscamos 50 PyMEs que quieran probar la auditoría completa — con Borrador
+-      Inteligente, cruce contra Central de Deudores y alertas con montos — al precio del plan básico.
+-    </p>
+-    <ul class="popup__checklist">
+-      <li>✓ Auditoría forense inicial gratuita</li>
+-      <li>✓ 3 meses de Plan Pro (USD 120/mes) a precio de Starter (USD 50/mes)</li>
+-      <li>✓ Ahorro total: USD 210 durante el periodo</li>
+-      <li>✓ Sin permanencia — cancelás cuando quieras</li>
+-    </ul>
+-    <div class="popup__progress">
+-      <div class="popup__progress-bar">
+-        <div class="popup__progress-fill" style="width: 62%"></div>
+-      </div>
+-      <span class="popup__progress-text">Quedan 19 de 50 lugares</span>
+-    </div>
+-    <p class="popup__cta-lead">Quiero mi lugar</p>
+-    <a href="#cta-final" class="btn btn--primary btn--full popup__cta-primary">
+-      <!-- TRACKING: popup_time_delay_cta_click -->
+-      Auditoría gratuita <span class="btn__arrow">→</span>
+-    </a>
+-    <button class="popup__cta-secondary" data-popup-dismiss>
+-      <!-- TRACKING: popup_time_delay_dismiss_click -->
+-      No, prefiero el precio regular
+-    </button>
+-    <p class="popup__legal">Oferta válida hasta completar las 50 plazas. Al finalizar los 3 meses, el plan pasa a
+-      tarifa Pro estándar. Podés cancelar o cambiar de plan en cualquier momento.</p>
+-  </div>
+-
+-  <script src="script.js"></script>
+-</body>
+-
+-</html>
+\ No newline at end of file
+diff --git a/package.json b/package.json
+deleted file mode 100644
+index 8630e68..0000000
+--- a/package.json
++++ /dev/null
+@@ -1,14 +0,0 @@
+-{
+-  "name": "biflow-demo",
+-  "version": "1.0.0",
+-  "type": "module",
+-  "description": "BiFlow Finance Functional Demo",
+-  "main": "index.js",
+-  "dependencies": {
+-    "@supabase/supabase-js": "^2.39.0",
+-    "openai": "^4.20.1"
+-  },
+-  "engines": {
+-    "node": ">=18.0.0"
+-  }
+-}
+\ No newline at end of file
+diff --git a/script.js b/script.js
+deleted file mode 100644
+index d8b7d21..0000000
+--- a/script.js
++++ /dev/null
+@@ -1,413 +0,0 @@
+-/* ═══════════════════════════════════════════
+-   BiFlow Finance — JavaScript
+-   ═══════════════════════════════════════════ */
+-
+-document.addEventListener('DOMContentLoaded', () => {
+-
+-  // ═══════════════════════════════════════════
+-  // SCROLL REVEAL (IntersectionObserver)
+-  // ═══════════════════════════════════════════
+-  const revealElements = document.querySelectorAll('.reveal');
+-  const revealObserver = new IntersectionObserver((entries) => {
+-    entries.forEach(entry => {
+-      if (entry.isIntersecting) {
+-        entry.target.classList.add('visible');
+-        revealObserver.unobserve(entry.target);
+-      }
+-    });
+-  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+-
+-  revealElements.forEach(el => revealObserver.observe(el));
+-
+-  // ═══════════════════════════════════════════
+-  // NAVBAR
+-  // ═══════════════════════════════════════════
+-  const navbar = document.getElementById('navbar');
+-
+-  window.addEventListener('scroll', () => {
+-    if (window.scrollY > 60) {
+-      navbar.classList.add('scrolled');
+-    } else {
+-      navbar.classList.remove('scrolled');
+-    }
+-  }, { passive: true });
+-
+-  // Mobile menu
+-  const hamburger = document.getElementById('hamburger');
+-  const navLinks = document.getElementById('navLinks');
+-
+-  const navOverlay = document.createElement('div');
+-  navOverlay.classList.add('nav-overlay');
+-  document.body.appendChild(navOverlay);
+-
+-  function toggleMenu() {
+-    hamburger.classList.toggle('active');
+-    navLinks.classList.toggle('open');
+-    navOverlay.classList.toggle('active');
+-    document.body.style.overflow = navLinks.classList.contains('open') ? 'hidden' : '';
+-  }
+-
+-  hamburger.addEventListener('click', toggleMenu);
+-  navOverlay.addEventListener('click', toggleMenu);
+-
+-  navLinks.querySelectorAll('a').forEach(link => {
+-    link.addEventListener('click', () => {
+-      if (navLinks.classList.contains('open')) toggleMenu();
+-    });
+-  });
+-
+-  // ═══════════════════════════════════════════
+-  // SMOOTH SCROLL
+-  // ═══════════════════════════════════════════
+-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+-    anchor.addEventListener('click', function (e) {
+-      const targetId = this.getAttribute('href');
+-      if (targetId === '#') return;
+-      const targetEl = document.querySelector(targetId);
+-      if (targetEl) {
+-        e.preventDefault();
+-        closeAllPopups();
+-        const offset = navbar.offsetHeight + 20;
+-        const targetPosition = targetEl.getBoundingClientRect().top + window.scrollY - offset;
+-        window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+-      }
+-    });
+-  });
+-
+-  // ═══════════════════════════════════════════
+-  // COUNTER ANIMATIONS (Social Proof)
+-  // ═══════════════════════════════════════════
+-  const counters = document.querySelectorAll('.counter');
+-  const counterObserver = new IntersectionObserver((entries) => {
+-    entries.forEach(entry => {
+-      if (entry.isIntersecting) {
+-        const counter = entry.target;
+-        const target = parseInt(counter.dataset.target);
+-        const prefix = counter.dataset.prefix || '';
+-        animateCounter(counter, target, prefix);
+-        counterObserver.unobserve(counter);
+-      }
+-    });
+-  }, { threshold: 0.5 });
+-
+-  counters.forEach(c => counterObserver.observe(c));
+-
+-  function animateCounter(el, target, prefix) {
+-    const duration = 2000;
+-    const startTime = performance.now();
+-
+-    function formatNumber(n) {
+-      return n.toLocaleString('es-AR');
+-    }
+-
+-    function update(currentTime) {
+-      const elapsed = currentTime - startTime;
+-      const progress = Math.min(elapsed / duration, 1);
+-      const eased = 1 - Math.pow(1 - progress, 3);
+-      const current = Math.round(eased * target);
+-      el.textContent = prefix + formatNumber(current);
+-      if (progress < 1) {
+-        requestAnimationFrame(update);
+-      }
+-    }
+-
+-    requestAnimationFrame(update);
+-  }
+-
+-  // ═══════════════════════════════════════════
+-  // FAQ ACCORDION
+-  // ═══════════════════════════════════════════
+-  const faqItems = document.querySelectorAll('[data-faq]');
+-
+-  faqItems.forEach(item => {
+-    const question = item.querySelector('.faq__question');
+-    question.addEventListener('click', () => {
+-      const isActive = item.classList.contains('active');
+-
+-      // Close all others
+-      faqItems.forEach(other => {
+-        other.classList.remove('active');
+-        other.querySelector('.faq__question').setAttribute('aria-expanded', 'false');
+-      });
+-
+-      // Toggle current
+-      if (!isActive) {
+-        item.classList.add('active');
+-        question.setAttribute('aria-expanded', 'true');
+-        // TRACKING: faq_item_open
+-      }
+-    });
+-  });
+-
+-  // ═══════════════════════════════════════════
+-  // CTA FORM VALIDATION
+-  // ═══════════════════════════════════════════
+-  const ctaForm = document.getElementById('ctaForm');
+-  const ctaSuccess = document.getElementById('ctaSuccess');
+-
+-  if (ctaForm) {
+-    ctaForm.addEventListener('submit', (e) => {
+-      e.preventDefault();
+-
+-      const name = document.getElementById('ctaName');
+-      const email = document.getElementById('ctaEmail');
+-      const phone = document.getElementById('ctaPhone');
+-
+-      let valid = true;
+-
+-      // Reset errors
+-      [name, email, phone].forEach(f => f.classList.remove('error'));
+-
+-      // Validate name
+-      if (!name.value.trim()) {
+-        name.classList.add('error');
+-        valid = false;
+-      }
+-
+-      // Validate email
+-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+-      if (!emailRegex.test(email.value.trim())) {
+-        email.classList.add('error');
+-        valid = false;
+-      }
+-
+-      // Validate phone
+-      if (!phone.value.trim() || phone.value.trim().length < 8) {
+-        phone.classList.add('error');
+-        valid = false;
+-      }
+-
+-      if (valid) {
+-        // Redirigir directamente a la registración con los datos precargados
+-        const params = new URLSearchParams({
+-          email: email.value.trim(),
+-          name: name.value.trim(),
+-          action: 'register'
+-        });
+-
+-        // Simular una pequeña carga para feedback visual
+-        ctaSubmit.disabled = true;
+-        ctaSubmit.textContent = 'Preparando tu auditoría...';
+-
+-        setTimeout(() => {
+-          window.location.href = `app/login.html?${params.toString()}`;
+-        }, 800);
+-      }
+-    });
+-
+-    // Real-time validation: remove error on input
+-    ['ctaName', 'ctaEmail', 'ctaPhone'].forEach(id => {
+-      const el = document.getElementById(id);
+-      if (el) {
+-        el.addEventListener('input', () => el.classList.remove('error'));
+-      }
+-    });
+-  }
+-
+-  // ═══════════════════════════════════════════
+-  // POPUP SYSTEM
+-  // ═══════════════════════════════════════════
+-  // Implements the rules from popup-strategy.md:
+-  // - 3 popups, mutually exclusive per session
+-  // - Priority: Exit-intent > Time-delayed > Scroll
+-  // - Exclusion: converted users, logged-in users, already-shown
+-  // - localStorage for frequency control
+-
+-  const popupOverlay = document.getElementById('popupOverlay');
+-  const popupExitIntent = document.getElementById('popupExitIntent');
+-  const popupScroll = document.getElementById('popupScroll');
+-  const popupTimedelay = document.getElementById('popupTimedelay');
+-
+-  const popupState = {
+-    shownThisSession: false,
+-    converted: localStorage.getItem('biflow_converted') === 'true',
+-    ctaClicked: false,
+-    timeOnPage: 0,
+-    scrollPercent: 0,
+-    exitIntentReady: false,
+-  };
+-
+-  // Check if any popup was dismissed recently
+-  function wasRecentlyDismissed(popupId, daysThreshold) {
+-    const dismissedAt = localStorage.getItem(`biflow_popup_${popupId}_dismissed`);
+-    if (!dismissedAt) return false;
+-    const daysSince = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+-    return daysSince < daysThreshold;
+-  }
+-
+-  // Show a popup
+-  function showPopup(popupEl) {
+-    if (popupState.shownThisSession || popupState.converted || popupState.ctaClicked) return;
+-
+-    popupEl.classList.add('active');
+-    if (popupEl.classList.contains('popup--modal')) {
+-      popupOverlay.classList.add('active');
+-    }
+-    popupState.shownThisSession = true;
+-
+-    // Track impression
+-    const popupId = popupEl.id;
+-    // TRACKING: popup_impression (popupId)
+-  }
+-
+-  // Close a specific popup
+-  function closePopup(popupEl) {
+-    popupEl.classList.remove('active');
+-    popupOverlay.classList.remove('active');
+-
+-    // Record dismissal
+-    const popupId = popupEl.id;
+-    localStorage.setItem(`biflow_popup_${popupId}_dismissed`, Date.now().toString());
+-
+-    // TRACKING: popup_close (popupId)
+-  }
+-
+-  // Close all popups
+-  function closeAllPopups() {
+-    [popupExitIntent, popupScroll, popupTimedelay].forEach(p => {
+-      if (p && p.classList.contains('active')) {
+-        closePopup(p);
+-      }
+-    });
+-  }
+-
+-  // Bind close buttons
+-  document.querySelectorAll('.popup__close').forEach(btn => {
+-    btn.addEventListener('click', () => {
+-      const popup = btn.closest('.popup');
+-      closePopup(popup);
+-    });
+-  });
+-
+-  // Bind dismiss buttons (secondary CTAs)
+-  document.querySelectorAll('[data-popup-dismiss]').forEach(btn => {
+-    btn.addEventListener('click', () => {
+-      const popup = btn.closest('.popup');
+-      closePopup(popup);
+-      // TRACKING: popup_dismiss_click
+-    });
+-  });
+-
+-  // Bind primary CTA clicks — close popup and mark conversion interest
+-  document.querySelectorAll('.popup__cta-primary').forEach(btn => {
+-    btn.addEventListener('click', () => {
+-      const popup = btn.closest('.popup');
+-      closePopup(popup);
+-      popupState.ctaClicked = true;
+-      // TRACKING: popup_cta_click
+-    });
+-  });
+-
+-  // Overlay click closes modal popups
+-  if (popupOverlay) {
+-    popupOverlay.addEventListener('click', closeAllPopups);
+-  }
+-
+-  // Track CTA clicks on the main page — suppress all popups
+-  document.querySelectorAll('.btn').forEach(btn => {
+-    if (btn.closest('.popup')) return; // Skip popup buttons
+-    btn.addEventListener('click', () => {
+-      popupState.ctaClicked = true;
+-      // TRACKING: page_cta_click
+-    });
+-  });
+-
+-  // ── POPUP 1: EXIT-INTENT ──
+-  // Trigger: cursor leaves viewport (desktop) / inactive for popup rules
+-  // Delay: 15s minimum on page
+-  // Frequency: 1x per 7 days
+-  if (!popupState.converted && !wasRecentlyDismissed('popupExitIntent', 7)) {
+-    // Wait 15 seconds before arming exit-intent
+-    setTimeout(() => {
+-      popupState.exitIntentReady = true;
+-    }, 15000);
+-
+-    document.addEventListener('mouseleave', (e) => {
+-      if (e.clientY <= 0 && popupState.exitIntentReady && !popupState.shownThisSession && !popupState.ctaClicked) {
+-        showPopup(popupExitIntent);
+-      }
+-    });
+-  }
+-
+-  // ── POPUP 2: TIME-DELAYED 45s ──
+-  // Trigger: 45s on page without clicking any CTA
+-  // Frequency: 1x per user FOREVER
+-  // Priority: 2nd (only if exit-intent hasn't fired)
+-  if (!popupState.converted && !localStorage.getItem('biflow_popup_popupTimedelay_shown_ever')) {
+-    setTimeout(() => {
+-      if (!popupState.shownThisSession && !popupState.ctaClicked && !popupState.converted) {
+-        showPopup(popupTimedelay);
+-        localStorage.setItem('biflow_popup_popupTimedelay_shown_ever', 'true');
+-      }
+-    }, 45000);
+-  }
+-
+-  // ── POPUP 3: SCROLL 50% ──
+-  // Trigger: scroll to 50% of page
+-  // Delay: 2s after reaching 50%
+-  // Frequency: 1x per 14 days
+-  // Don't show if user already past 80%
+-  if (!popupState.converted && !wasRecentlyDismissed('popupScroll', 14)) {
+-    let scrollTriggered = false;
+-
+-    window.addEventListener('scroll', () => {
+-      if (scrollTriggered || popupState.shownThisSession || popupState.ctaClicked) return;
+-
+-      const scrollTop = window.scrollY;
+-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+-      const scrollPercent = (scrollTop / docHeight) * 100;
+-
+-      if (scrollPercent >= 50 && scrollPercent < 80) {
+-        scrollTriggered = true;
+-        // 2-second delay after reaching 50%
+-        setTimeout(() => {
+-          if (!popupState.shownThisSession && !popupState.ctaClicked) {
+-            showPopup(popupScroll);
+-          }
+-        }, 2000);
+-      }
+-    }, { passive: true });
+-  }
+-
+-  // ESC key closes popups
+-  document.addEventListener('keydown', (e) => {
+-    if (e.key === 'Escape') {
+-      closeAllPopups();
+-    }
+-  });
+-
+-  // ═══════════════════════════════════════════
+-  // HERO PARTICLES (decorative)
+-  // ═══════════════════════════════════════════
+-  const particlesContainer = document.getElementById('heroParticles');
+-  if (particlesContainer) {
+-    for (let i = 0; i < 20; i++) {
+-      const particle = document.createElement('div');
+-      particle.style.cssText = `
+-        position: absolute;
+-        width: ${Math.random() * 3 + 1}px;
+-        height: ${Math.random() * 3 + 1}px;
+-        background: rgba(0, 214, 143, ${Math.random() * 0.3 + 0.1});
+-        border-radius: 50%;
+-        top: ${Math.random() * 100}%;
+-        left: ${Math.random() * 100}%;
+-        animation: particleFloat ${Math.random() * 8 + 6}s ease-in-out infinite;
+-        animation-delay: ${Math.random() * 5}s;
+-      `;
+-      particlesContainer.appendChild(particle);
+-    }
+-
+-    // Add the keyframe animation
+-    const style = document.createElement('style');
+-    style.textContent = `
+-      @keyframes particleFloat {
+-        0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+-        25% { transform: translate(${Math.random() * 40 - 20}px, ${Math.random() * -60 - 20}px) scale(1.5); opacity: 0.7; }
+-        50% { transform: translate(${Math.random() * 60 - 30}px, ${Math.random() * -40 - 10}px) scale(1); opacity: 0.4; }
+-        75% { transform: translate(${Math.random() * 20 - 10}px, ${Math.random() * -80 - 20}px) scale(1.3); opacity: 0.6; }
+-      }
+-    `;
+-    document.head.appendChild(style);
+-  }
+-
+-});
+diff --git a/styles.css b/styles.css
+deleted file mode 100644
+index 564f331..0000000
+--- a/styles.css
++++ /dev/null
+@@ -1,1901 +0,0 @@
+-/* ═══════════════════════════════════════════
+-   BiFlow Finance — Design System & Styles
+-   ═══════════════════════════════════════════ */
+-
+-/* ── CSS Variables ── */
+-:root {
+-  /* Colors */
+-  --bg-primary: #060b18;
+-  --bg-secondary: #0c1222;
+-  --bg-tertiary: #111827;
+-  --bg-card: rgba(15, 23, 42, 0.6);
+-  --bg-card-hover: rgba(20, 30, 55, 0.8);
+-  --bg-card-featured: rgba(0, 214, 143, 0.06);
+-
+-  --text-primary: #e8ecf4;
+-  --text-secondary: #94a3b8;
+-  --text-muted: #64748b;
+-
+-  --accent: #00d68f;
+-  --accent-light: #34edb3;
+-  --accent-dark: #00a86b;
+-  --accent-glow: rgba(0, 214, 143, 0.15);
+-  --accent-glow-strong: rgba(0, 214, 143, 0.3);
+-
+-  --danger: #f87171;
+-  --warning: #fbbf24;
+-
+-  --border: rgba(148, 163, 184, 0.1);
+-  --border-accent: rgba(0, 214, 143, 0.25);
+-
+-  --gradient-hero: linear-gradient(135deg, rgba(0, 214, 143, 0.08) 0%, rgba(6, 11, 24, 0) 50%);
+-  --gradient-accent: linear-gradient(135deg, #00d68f, #00a86b);
+-  --gradient-card: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.4));
+-
+-  /* Typography */
+-  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+-
+-  /* Spacing */
+-  --section-pad: 100px;
+-  --container-max: 1200px;
+-
+-  /* Radius */
+-  --radius-sm: 8px;
+-  --radius-md: 12px;
+-  --radius-lg: 20px;
+-  --radius-xl: 24px;
+-
+-  /* Transitions */
+-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+-}
+-
+-/* ── Reset & Base ── */
+-*,
+-*::before,
+-*::after {
+-  margin: 0;
+-  padding: 0;
+-  box-sizing: border-box;
+-}
+-
+-html {
+-  scroll-behavior: smooth;
+-  font-size: 16px;
+-}
+-
+-body {
+-  font-family: var(--font);
+-  background-color: var(--bg-primary);
+-  color: var(--text-primary);
+-  line-height: 1.7;
+-  overflow-x: hidden;
+-  -webkit-font-smoothing: antialiased;
+-  -moz-osx-font-smoothing: grayscale;
+-}
+-
+-a {
+-  color: var(--accent);
+-  text-decoration: none;
+-  transition: color 0.3s var(--ease);
+-}
+-
+-a:hover {
+-  color: var(--accent-light);
+-}
+-
+-ul {
+-  list-style: none;
+-}
+-
+-img {
+-  max-width: 100%;
+-  display: block;
+-}
+-
+-.container {
+-  max-width: var(--container-max);
+-  margin: 0 auto;
+-  padding: 0 24px;
+-}
+-
+-/* ── Reveal Animations ── */
+-.reveal {
+-  opacity: 0;
+-  transform: translateY(40px);
+-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+-}
+-
+-.reveal.visible {
+-  opacity: 1;
+-  transform: translateY(0);
+-}
+-
+-/* ── Utility ── */
+-.highlight {
+-  color: var(--accent);
+-  font-weight: 700;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   NAVBAR
+-   ═══════════════════════════════════════════ */
+-.navbar {
+-  position: fixed;
+-  top: 0;
+-  left: 0;
+-  width: 100%;
+-  z-index: 1000;
+-  padding: 16px 0;
+-  transition: all 0.4s var(--ease);
+-  background: transparent;
+-}
+-
+-.navbar.scrolled {
+-  background: rgba(6, 11, 24, 0.92);
+-  backdrop-filter: blur(20px);
+-  -webkit-backdrop-filter: blur(20px);
+-  padding: 10px 0;
+-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+-  border-bottom: 1px solid var(--border);
+-}
+-
+-.navbar__inner {
+-  display: flex;
+-  align-items: center;
+-  justify-content: space-between;
+-}
+-
+-.navbar__logo {
+-  display: flex;
+-  align-items: center;
+-  gap: 6px;
+-  font-size: 1.35rem;
+-  font-weight: 800;
+-  color: var(--text-primary);
+-  letter-spacing: -0.5px;
+-}
+-
+-.logo-icon {
+-  color: var(--accent);
+-  font-size: 1.5rem;
+-}
+-
+-.logo-accent {
+-  color: var(--accent);
+-  font-weight: 600;
+-}
+-
+-.navbar__links {
+-  display: flex;
+-  align-items: center;
+-  gap: 32px;
+-}
+-
+-.navbar__links a {
+-  color: var(--text-secondary);
+-  font-size: 0.9rem;
+-  font-weight: 500;
+-  transition: color 0.3s var(--ease);
+-  position: relative;
+-}
+-
+-.navbar__links a::after {
+-  content: '';
+-  position: absolute;
+-  bottom: -4px;
+-  left: 0;
+-  width: 0;
+-  height: 2px;
+-  background: var(--accent);
+-  transition: width 0.3s var(--ease);
+-}
+-
+-.navbar__links a:hover {
+-  color: var(--text-primary);
+-}
+-
+-.navbar__links a:hover::after {
+-  width: 100%;
+-}
+-
+-.navbar__cta {
+-  background: var(--gradient-accent);
+-  color: var(--bg-primary) !important;
+-  padding: 10px 22px;
+-  border-radius: var(--radius-sm);
+-  font-weight: 600;
+-  font-size: 0.875rem;
+-  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease) !important;
+-}
+-
+-.navbar__cta::after {
+-  display: none !important;
+-}
+-
+-.navbar__cta:hover {
+-  transform: translateY(-2px);
+-  box-shadow: 0 8px 25px rgba(0, 214, 143, 0.3);
+-  color: var(--bg-primary) !important;
+-}
+-
+-/* Hamburger */
+-.navbar__hamburger {
+-  display: none;
+-  flex-direction: column;
+-  gap: 5px;
+-  background: none;
+-  border: none;
+-  cursor: pointer;
+-  padding: 4px;
+-  z-index: 1001;
+-}
+-
+-.navbar__hamburger span {
+-  display: block;
+-  width: 24px;
+-  height: 2px;
+-  background: var(--text-primary);
+-  transition: all 0.3s var(--ease);
+-  border-radius: 2px;
+-}
+-
+-.navbar__hamburger.active span:nth-child(1) {
+-  transform: rotate(45deg) translate(5px, 5px);
+-}
+-
+-.navbar__hamburger.active span:nth-child(2) {
+-  opacity: 0;
+-}
+-
+-.navbar__hamburger.active span:nth-child(3) {
+-  transform: rotate(-45deg) translate(5px, -5px);
+-}
+-
+-.nav-overlay {
+-  display: none;
+-  position: fixed;
+-  inset: 0;
+-  background: rgba(0, 0, 0, 0.6);
+-  z-index: 999;
+-}
+-
+-.nav-overlay.active {
+-  display: block;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   HERO
+-   ═══════════════════════════════════════════ */
+-.hero {
+-  position: relative;
+-  min-height: 100vh;
+-  display: flex;
+-  align-items: center;
+-  padding: 140px 0 80px;
+-  overflow: hidden;
+-}
+-
+-.hero__bg-glow {
+-  position: absolute;
+-  top: -200px;
+-  right: -200px;
+-  width: 800px;
+-  height: 800px;
+-  background: radial-gradient(circle, rgba(0, 214, 143, 0.08) 0%, transparent 70%);
+-  pointer-events: none;
+-  animation: glowPulse 8s ease-in-out infinite;
+-}
+-
+-@keyframes glowPulse {
+-
+-  0%,
+-  100% {
+-    opacity: 0.6;
+-    transform: scale(1);
+-  }
+-
+-  50% {
+-    opacity: 1;
+-    transform: scale(1.1);
+-  }
+-}
+-
+-.hero__particles {
+-  position: absolute;
+-  inset: 0;
+-  pointer-events: none;
+-  overflow: hidden;
+-}
+-
+-.hero__content {
+-  position: relative;
+-  z-index: 2;
+-  max-width: 900px;
+-}
+-
+-.hero__badge {
+-  display: inline-block;
+-  background: var(--accent-glow);
+-  border: 1px solid var(--border-accent);
+-  padding: 8px 20px;
+-  border-radius: 100px;
+-  font-size: 0.8rem;
+-  font-weight: 600;
+-  color: var(--accent);
+-  letter-spacing: 0.5px;
+-  margin-bottom: 32px;
+-  animation: fadeInUp 0.8s var(--ease) 0.2s both;
+-}
+-
+-.hero__headline {
+-  font-size: clamp(2rem, 4.5vw, 3.2rem);
+-  font-weight: 800;
+-  line-height: 1.2;
+-  letter-spacing: -1.5px;
+-  margin-bottom: 24px;
+-  animation: fadeInUp 0.8s var(--ease) 0.4s both;
+-}
+-
+-.hero__headline-accent {
+-  background: var(--gradient-accent);
+-  -webkit-background-clip: text;
+-  -webkit-text-fill-color: transparent;
+-  background-clip: text;
+-}
+-
+-.hero__sub {
+-  font-size: 1.05rem;
+-  color: var(--text-secondary);
+-  line-height: 1.8;
+-  max-width: 780px;
+-  margin-bottom: 40px;
+-  animation: fadeInUp 0.8s var(--ease) 0.6s both;
+-}
+-
+-.hero__actions {
+-  display: flex;
+-  gap: 16px;
+-  flex-wrap: wrap;
+-  margin-bottom: 20px;
+-  animation: fadeInUp 0.8s var(--ease) 0.8s both;
+-}
+-
+-.hero__trust-line {
+-  font-size: 0.85rem;
+-  color: var(--text-muted);
+-  animation: fadeInUp 0.8s var(--ease) 1s both;
+-}
+-
+-@keyframes fadeInUp {
+-  from {
+-    opacity: 0;
+-    transform: translateY(30px);
+-  }
+-
+-  to {
+-    opacity: 1;
+-    transform: translateY(0);
+-  }
+-}
+-
+-/* ═══════════════════════════════════════════
+-   BUTTONS
+-   ═══════════════════════════════════════════ */
+-.btn {
+-  display: inline-flex;
+-  align-items: center;
+-  gap: 8px;
+-  padding: 14px 28px;
+-  border-radius: var(--radius-sm);
+-  font-family: var(--font);
+-  font-weight: 600;
+-  font-size: 0.95rem;
+-  cursor: pointer;
+-  transition: all 0.3s var(--ease);
+-  border: none;
+-  text-align: center;
+-  justify-content: center;
+-  white-space: nowrap;
+-}
+-
+-.btn--primary {
+-  background: var(--gradient-accent);
+-  color: var(--bg-primary);
+-}
+-
+-.btn--primary:hover {
+-  transform: translateY(-2px);
+-  box-shadow: 0 12px 35px rgba(0, 214, 143, 0.35);
+-  color: var(--bg-primary);
+-}
+-
+-.btn--secondary {
+-  background: transparent;
+-  color: var(--accent);
+-  border: 1px solid var(--border-accent);
+-  padding: 12px 24px;
+-}
+-
+-.btn--secondary:hover {
+-  background: var(--accent-glow);
+-  border-color: var(--accent);
+-  color: var(--accent-light);
+-  transform: translateY(-1px);
+-}
+-
+-.btn--outline {
+-  background: transparent;
+-  color: var(--accent);
+-  border: 1px solid var(--border-accent);
+-}
+-
+-.btn--outline:hover {
+-  background: var(--accent-glow);
+-  border-color: var(--accent);
+-  color: var(--accent-light);
+-}
+-
+-.btn--lg {
+-  padding: 16px 36px;
+-  font-size: 1.05rem;
+-}
+-
+-.btn--full {
+-  width: 100%;
+-}
+-
+-.btn__arrow {
+-  transition: transform 0.3s var(--ease);
+-}
+-
+-.btn:hover .btn__arrow {
+-  transform: translateX(4px);
+-}
+-
+-/* ═══════════════════════════════════════════
+-   SOCIAL PROOF BAR
+-   ═══════════════════════════════════════════ */
+-.social-proof-bar {
+-  background: var(--bg-secondary);
+-  border-top: 1px solid var(--border);
+-  border-bottom: 1px solid var(--border);
+-  padding: 32px 0;
+-}
+-
+-.social-proof-bar .container {
+-  display: flex;
+-  flex-direction: column;
+-  align-items: center;
+-  gap: 24px;
+-}
+-
+-.social-proof-bar__quote {
+-  font-size: 0.95rem;
+-  color: var(--text-secondary);
+-  font-style: italic;
+-  text-align: center;
+-  max-width: 700px;
+-}
+-
+-.social-proof-bar__metrics {
+-  display: flex;
+-  align-items: center;
+-  gap: 40px;
+-}
+-
+-.metric {
+-  display: flex;
+-  flex-direction: column;
+-  align-items: center;
+-  gap: 4px;
+-}
+-
+-.metric__number {
+-  font-size: 1.75rem;
+-  font-weight: 800;
+-  color: var(--accent);
+-  letter-spacing: -1px;
+-}
+-
+-.metric__label {
+-  font-size: 0.8rem;
+-  color: var(--text-muted);
+-  font-weight: 500;
+-  text-transform: uppercase;
+-  letter-spacing: 0.5px;
+-}
+-
+-.metric__divider {
+-  width: 1px;
+-  height: 40px;
+-  background: var(--border);
+-}
+-
+-/* ═══════════════════════════════════════════
+-   BENEFIT SECTIONS
+-   ═══════════════════════════════════════════ */
+-.benefit {
+-  padding: var(--section-pad) 0;
+-  position: relative;
+-}
+-
+-.benefit--alt {
+-  background: var(--bg-secondary);
+-}
+-
+-.benefit__inner {
+-  display: flex;
+-  gap: 60px;
+-  align-items: flex-start;
+-}
+-
+-.benefit__icon-wrap {
+-  display: flex;
+-  flex-direction: column;
+-  align-items: center;
+-  gap: 12px;
+-  min-width: 140px;
+-  padding-top: 8px;
+-}
+-
+-.benefit__icon {
+-  width: 72px;
+-  height: 72px;
+-  display: flex;
+-  align-items: center;
+-  justify-content: center;
+-  font-size: 2rem;
+-  background: var(--bg-card);
+-  border: 1px solid var(--border);
+-  border-radius: var(--radius-lg);
+-  backdrop-filter: blur(12px);
+-}
+-
+-.benefit__label {
+-  font-size: 0.75rem;
+-  color: var(--accent);
+-  font-weight: 600;
+-  text-transform: uppercase;
+-  letter-spacing: 0.5px;
+-  text-align: center;
+-}
+-
+-.benefit__content {
+-  flex: 1;
+-}
+-
+-.benefit__title {
+-  font-size: clamp(1.3rem, 2.5vw, 1.65rem);
+-  font-weight: 700;
+-  line-height: 1.4;
+-  margin-bottom: 20px;
+-  letter-spacing: -0.5px;
+-}
+-
+-.benefit__body {
+-  color: var(--text-secondary);
+-  margin-bottom: 16px;
+-  line-height: 1.8;
+-}
+-
+-.benefit__body--solution {
+-  color: var(--text-primary);
+-  padding-left: 16px;
+-  border-left: 3px solid var(--accent);
+-}
+-
+-.benefit__bullets {
+-  margin: 24px 0;
+-  display: flex;
+-  flex-direction: column;
+-  gap: 16px;
+-}
+-
+-.benefit__bullets li {
+-  display: flex;
+-  gap: 12px;
+-  align-items: flex-start;
+-}
+-
+-.bullet-icon {
+-  color: var(--accent);
+-  font-size: 0.7rem;
+-  margin-top: 8px;
+-  flex-shrink: 0;
+-}
+-
+-.benefit__bullets li div {
+-  color: var(--text-secondary);
+-  line-height: 1.6;
+-}
+-
+-.benefit__bullets li strong {
+-  color: var(--text-primary);
+-}
+-
+-.benefit__urgency {
+-  background: rgba(251, 191, 36, 0.08);
+-  border: 1px solid rgba(251, 191, 36, 0.2);
+-  border-radius: var(--radius-sm);
+-  padding: 12px 16px;
+-  font-size: 0.9rem;
+-  color: var(--warning);
+-  margin: 20px 0;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   TESTIMONIALS
+-   ═══════════════════════════════════════════ */
+-.testimonials {
+-  padding: 80px 0;
+-  background: var(--bg-secondary);
+-}
+-
+-.testimonials__grid {
+-  display: grid;
+-  grid-template-columns: repeat(3, 1fr);
+-  gap: 24px;
+-}
+-
+-.testimonial-card {
+-  background: var(--bg-card);
+-  border: 1px solid var(--border);
+-  border-radius: var(--radius-lg);
+-  padding: 32px;
+-  backdrop-filter: blur(12px);
+-  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease);
+-}
+-
+-.testimonial-card:hover {
+-  transform: translateY(-4px);
+-  border-color: var(--border-accent);
+-}
+-
+-.testimonial-card__quote {
+-  font-size: 0.95rem;
+-  color: var(--text-secondary);
+-  line-height: 1.7;
+-  font-style: italic;
+-  margin-bottom: 24px;
+-  position: relative;
+-}
+-
+-.testimonial-card__quote::before {
+-  content: '"';
+-  position: absolute;
+-  top: -20px;
+-  left: -4px;
+-  font-size: 4rem;
+-  color: var(--accent-glow-strong);
+-  font-family: Georgia, serif;
+-  line-height: 1;
+-}
+-
+-.testimonial-card__quote--small {
+-  font-size: 0.85rem;
+-  margin-bottom: 0;
+-}
+-
+-.testimonial-card__author {
+-  display: flex;
+-  gap: 12px;
+-  align-items: center;
+-}
+-
+-.testimonial-card__avatar {
+-  width: 44px;
+-  height: 44px;
+-  border-radius: 50%;
+-  background: var(--gradient-accent);
+-  display: flex;
+-  align-items: center;
+-  justify-content: center;
+-  font-size: 0.85rem;
+-  font-weight: 700;
+-  color: var(--bg-primary);
+-  flex-shrink: 0;
+-}
+-
+-.testimonial-card__name {
+-  font-weight: 600;
+-  font-size: 0.9rem;
+-}
+-
+-.testimonial-card__role {
+-  font-size: 0.8rem;
+-  color: var(--text-muted);
+-}
+-
+-/* Case study card */
+-.testimonial-card--case {
+-  border-color: var(--border-accent);
+-  background: var(--bg-card-featured);
+-}
+-
+-.testimonial-card__tag {
+-  display: inline-block;
+-  background: var(--gradient-accent);
+-  color: var(--bg-primary);
+-  padding: 4px 12px;
+-  border-radius: 4px;
+-  font-size: 0.7rem;
+-  font-weight: 700;
+-  letter-spacing: 1px;
+-  margin-bottom: 16px;
+-}
+-
+-.testimonial-card__case-title {
+-  font-size: 0.85rem;
+-  color: var(--text-muted);
+-  margin-bottom: 20px;
+-  font-weight: 500;
+-}
+-
+-.testimonial-card__case-stats {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 12px;
+-  margin-bottom: 20px;
+-}
+-
+-.case-stat {
+-  display: flex;
+-  gap: 12px;
+-  align-items: baseline;
+-}
+-
+-.case-stat__value {
+-  font-size: 1.4rem;
+-  font-weight: 800;
+-  color: var(--accent);
+-  letter-spacing: -0.5px;
+-  min-width: 140px;
+-}
+-
+-.case-stat__label {
+-  font-size: 0.8rem;
+-  color: var(--text-muted);
+-}
+-
+-/* ═══════════════════════════════════════════
+-   COMPARISON TABLE
+-   ═══════════════════════════════════════════ */
+-.comparison {
+-  padding: var(--section-pad) 0;
+-}
+-
+-.comparison__header {
+-  text-align: center;
+-  margin-bottom: 48px;
+-}
+-
+-.comparison__title {
+-  font-size: clamp(1.5rem, 3vw, 2rem);
+-  font-weight: 800;
+-  letter-spacing: -1px;
+-  margin-bottom: 12px;
+-}
+-
+-.comparison__sub {
+-  color: var(--text-secondary);
+-  font-size: 1rem;
+-}
+-
+-.comparison__table-wrap {
+-  overflow-x: auto;
+-  border-radius: var(--radius-lg);
+-  border: 1px solid var(--border);
+-  background: var(--bg-card);
+-  backdrop-filter: blur(12px);
+-}
+-
+-.comparison__table {
+-  width: 100%;
+-  border-collapse: collapse;
+-  font-size: 0.9rem;
+-}
+-
+-.comparison__table thead {
+-  background: var(--bg-secondary);
+-}
+-
+-.comparison__table th {
+-  padding: 16px 20px;
+-  text-align: left;
+-  font-weight: 600;
+-  font-size: 0.85rem;
+-  text-transform: uppercase;
+-  letter-spacing: 0.5px;
+-  color: var(--text-muted);
+-  border-bottom: 1px solid var(--border);
+-}
+-
+-.comparison__table td {
+-  padding: 14px 20px;
+-  border-bottom: 1px solid var(--border);
+-  color: var(--text-secondary);
+-}
+-
+-.comparison__table tbody tr:last-child td {
+-  border-bottom: none;
+-}
+-
+-.comparison__table tbody tr:hover {
+-  background: rgba(0, 214, 143, 0.03);
+-}
+-
+-.comparison__col--old {
+-  color: var(--text-muted) !important;
+-}
+-
+-.comparison__col--new {
+-  color: var(--accent) !important;
+-  font-weight: 600;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   HOW IT WORKS
+-   ═══════════════════════════════════════════ */
+-.how-it-works {
+-  padding: var(--section-pad) 0;
+-  background: var(--bg-secondary);
+-}
+-
+-.how-it-works__header {
+-  text-align: center;
+-  max-width: 750px;
+-  margin: 0 auto 56px;
+-}
+-
+-.how-it-works__title {
+-  font-size: clamp(1.5rem, 3vw, 2rem);
+-  font-weight: 800;
+-  letter-spacing: -1px;
+-  margin-bottom: 16px;
+-}
+-
+-.how-it-works__sub {
+-  color: var(--text-secondary);
+-  font-size: 1rem;
+-}
+-
+-.steps {
+-  display: flex;
+-  align-items: flex-start;
+-  justify-content: center;
+-  gap: 0;
+-}
+-
+-.step {
+-  text-align: center;
+-  max-width: 280px;
+-  padding: 0 16px;
+-}
+-
+-.step__number {
+-  width: 56px;
+-  height: 56px;
+-  border-radius: 50%;
+-  background: var(--gradient-accent);
+-  color: var(--bg-primary);
+-  display: flex;
+-  align-items: center;
+-  justify-content: center;
+-  font-size: 1.3rem;
+-  font-weight: 800;
+-  margin: 0 auto 16px;
+-  box-shadow: 0 8px 25px rgba(0, 214, 143, 0.3);
+-}
+-
+-.step__title {
+-  font-size: 1.1rem;
+-  font-weight: 700;
+-  margin-bottom: 8px;
+-}
+-
+-.step__time {
+-  color: var(--accent);
+-  font-weight: 500;
+-  font-size: 0.9rem;
+-}
+-
+-.step__desc {
+-  color: var(--text-secondary);
+-  font-size: 0.9rem;
+-  line-height: 1.6;
+-}
+-
+-.step__connector {
+-  width: 80px;
+-  height: 2px;
+-  background: linear-gradient(90deg, var(--accent), transparent);
+-  margin-top: 28px;
+-  flex-shrink: 0;
+-}
+-
+-.how-it-works__cta {
+-  text-align: center;
+-  margin-top: 48px;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   PRICING
+-   ═══════════════════════════════════════════ */
+-.pricing {
+-  padding: var(--section-pad) 0;
+-}
+-
+-.pricing__header {
+-  text-align: center;
+-  max-width: 800px;
+-  margin: 0 auto 56px;
+-}
+-
+-.pricing__title {
+-  font-size: clamp(1.4rem, 2.8vw, 1.9rem);
+-  font-weight: 800;
+-  letter-spacing: -1px;
+-  margin-bottom: 16px;
+-}
+-
+-.pricing__sub {
+-  color: var(--text-secondary);
+-  font-size: 1rem;
+-  line-height: 1.7;
+-}
+-
+-.pricing__grid {
+-  display: grid;
+-  grid-template-columns: repeat(3, 1fr);
+-  gap: 24px;
+-  align-items: stretch;
+-}
+-
+-.pricing-card {
+-  background: var(--bg-card);
+-  border: 1px solid var(--border);
+-  border-radius: var(--radius-xl);
+-  padding: 36px 28px;
+-  display: flex;
+-  flex-direction: column;
+-  backdrop-filter: blur(12px);
+-  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease);
+-  position: relative;
+-}
+-
+-.pricing-card:hover {
+-  transform: translateY(-4px);
+-  border-color: rgba(148, 163, 184, 0.2);
+-}
+-
+-.pricing-card--featured {
+-  border-color: var(--border-accent);
+-  background: var(--bg-card-featured);
+-  transform: scale(1.03);
+-  box-shadow: 0 20px 60px rgba(0, 214, 143, 0.12);
+-}
+-
+-.pricing-card--featured:hover {
+-  transform: scale(1.03) translateY(-4px);
+-  border-color: var(--accent);
+-}
+-
+-.pricing-card__badge {
+-  position: absolute;
+-  top: -12px;
+-  left: 50%;
+-  transform: translateX(-50%);
+-  background: var(--gradient-accent);
+-  color: var(--bg-primary);
+-  padding: 6px 20px;
+-  border-radius: 100px;
+-  font-size: 0.75rem;
+-  font-weight: 700;
+-  white-space: nowrap;
+-}
+-
+-.pricing-card__header {
+-  margin-bottom: 24px;
+-}
+-
+-.pricing-card__name {
+-  font-size: 1.2rem;
+-  font-weight: 700;
+-  margin-bottom: 12px;
+-}
+-
+-.pricing-card__price {
+-  display: flex;
+-  align-items: baseline;
+-  gap: 4px;
+-  margin-bottom: 12px;
+-}
+-
+-.pricing-card__currency {
+-  font-size: 1rem;
+-  color: var(--text-muted);
+-  font-weight: 500;
+-}
+-
+-.pricing-card__amount {
+-  font-size: 3rem;
+-  font-weight: 900;
+-  letter-spacing: -2px;
+-  line-height: 1;
+-  color: var(--text-primary);
+-}
+-
+-.pricing-card__amount--custom {
+-  font-size: 1.8rem;
+-  letter-spacing: -1px;
+-}
+-
+-.pricing-card__period {
+-  font-size: 1rem;
+-  color: var(--text-muted);
+-}
+-
+-.pricing-card__desc {
+-  font-size: 0.85rem;
+-  color: var(--text-secondary);
+-  line-height: 1.5;
+-}
+-
+-.pricing-card__features {
+-  flex: 1;
+-  margin-bottom: 24px;
+-  display: flex;
+-  flex-direction: column;
+-  gap: 10px;
+-}
+-
+-.pricing-card__features li {
+-  font-size: 0.85rem;
+-  color: var(--text-secondary);
+-  padding-left: 20px;
+-  position: relative;
+-  line-height: 1.5;
+-}
+-
+-.pricing-card__features li::before {
+-  content: '✓';
+-  position: absolute;
+-  left: 0;
+-  color: var(--accent);
+-  font-weight: 700;
+-}
+-
+-.pricing-card__features li:first-child::before {
+-  content: '';
+-}
+-
+-.pricing-card__features li:first-child {
+-  padding-left: 0;
+-  font-weight: 600;
+-  color: var(--text-primary);
+-  border-bottom: 1px solid var(--border);
+-  padding-bottom: 10px;
+-  margin-bottom: 4px;
+-}
+-
+-.pricing__note {
+-  text-align: center;
+-  color: var(--text-muted);
+-  font-size: 0.9rem;
+-  margin-top: 40px;
+-  max-width: 700px;
+-  margin-left: auto;
+-  margin-right: auto;
+-}
+-
+-.pricing__note-link {
+-  display: block;
+-  margin-top: 8px;
+-  font-weight: 600;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   FAQ
+-   ═══════════════════════════════════════════ */
+-.faq {
+-  padding: var(--section-pad) 0;
+-  background: var(--bg-secondary);
+-}
+-
+-.faq__header {
+-  text-align: center;
+-  margin-bottom: 48px;
+-}
+-
+-.faq__title {
+-  font-size: clamp(1.5rem, 3vw, 2rem);
+-  font-weight: 800;
+-  letter-spacing: -1px;
+-}
+-
+-.faq__list {
+-  max-width: 800px;
+-  margin: 0 auto;
+-  display: flex;
+-  flex-direction: column;
+-  gap: 12px;
+-}
+-
+-.faq__item {
+-  background: var(--bg-card);
+-  border: 1px solid var(--border);
+-  border-radius: var(--radius-md);
+-  overflow: hidden;
+-  transition: border-color 0.3s var(--ease);
+-}
+-
+-.faq__item:hover {
+-  border-color: rgba(148, 163, 184, 0.2);
+-}
+-
+-.faq__item.active {
+-  border-color: var(--border-accent);
+-}
+-
+-.faq__question {
+-  width: 100%;
+-  display: flex;
+-  justify-content: space-between;
+-  align-items: center;
+-  padding: 20px 24px;
+-  background: none;
+-  border: none;
+-  color: var(--text-primary);
+-  font-family: var(--font);
+-  font-size: 0.95rem;
+-  font-weight: 600;
+-  cursor: pointer;
+-  text-align: left;
+-  gap: 16px;
+-}
+-
+-.faq__toggle {
+-  font-size: 1.3rem;
+-  color: var(--accent);
+-  transition: transform 0.3s var(--ease);
+-  flex-shrink: 0;
+-  width: 24px;
+-  text-align: center;
+-}
+-
+-.faq__item.active .faq__toggle {
+-  transform: rotate(45deg);
+-}
+-
+-.faq__answer {
+-  max-height: 0;
+-  overflow: hidden;
+-  transition: max-height 0.4s var(--ease), padding 0.4s var(--ease);
+-}
+-
+-.faq__item.active .faq__answer {
+-  max-height: 300px;
+-}
+-
+-.faq__answer p {
+-  padding: 0 24px 20px;
+-  color: var(--text-secondary);
+-  line-height: 1.7;
+-  font-size: 0.9rem;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   TRUST
+-   ═══════════════════════════════════════════ */
+-.trust {
+-  padding: var(--section-pad) 0;
+-}
+-
+-.trust__inner {
+-  text-align: center;
+-  max-width: 800px;
+-  margin: 0 auto;
+-}
+-
+-.trust__icon {
+-  font-size: 3rem;
+-  margin-bottom: 20px;
+-}
+-
+-.trust__title {
+-  font-size: clamp(1.3rem, 2.5vw, 1.65rem);
+-  font-weight: 700;
+-  letter-spacing: -0.5px;
+-  margin-bottom: 20px;
+-}
+-
+-.trust__body {
+-  color: var(--text-secondary);
+-  line-height: 1.8;
+-  margin-bottom: 32px;
+-}
+-
+-.trust__badges {
+-  display: flex;
+-  gap: 24px;
+-  justify-content: center;
+-  flex-wrap: wrap;
+-  margin-bottom: 32px;
+-}
+-
+-.trust__badge-item {
+-  display: flex;
+-  align-items: center;
+-  gap: 8px;
+-  background: var(--bg-card);
+-  border: 1px solid var(--border);
+-  padding: 12px 20px;
+-  border-radius: var(--radius-sm);
+-  font-size: 0.85rem;
+-  color: var(--text-secondary);
+-  backdrop-filter: blur(8px);
+-}
+-
+-.trust__badge-icon {
+-  font-size: 1.2rem;
+-}
+-
+-.trust__cta {
+-  margin-top: 8px;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   CTA FINAL
+-   ═══════════════════════════════════════════ */
+-.cta-final {
+-  padding: var(--section-pad) 0;
+-  background: var(--bg-secondary);
+-  position: relative;
+-  overflow: hidden;
+-}
+-
+-.cta-final::before {
+-  content: '';
+-  position: absolute;
+-  top: -200px;
+-  left: 50%;
+-  transform: translateX(-50%);
+-  width: 600px;
+-  height: 600px;
+-  background: radial-gradient(circle, rgba(0, 214, 143, 0.06) 0%, transparent 70%);
+-  pointer-events: none;
+-}
+-
+-.cta-final__inner {
+-  position: relative;
+-  text-align: center;
+-  max-width: 700px;
+-  margin: 0 auto;
+-}
+-
+-.cta-final__title {
+-  font-size: clamp(1.4rem, 3vw, 1.9rem);
+-  font-weight: 800;
+-  letter-spacing: -1px;
+-  margin-bottom: 20px;
+-  line-height: 1.35;
+-}
+-
+-.cta-final__accent {
+-  background: var(--gradient-accent);
+-  -webkit-background-clip: text;
+-  -webkit-text-fill-color: transparent;
+-  background-clip: text;
+-}
+-
+-.cta-final__body {
+-  color: var(--text-secondary);
+-  line-height: 1.8;
+-  margin-bottom: 36px;
+-}
+-
+-/* CTA Form */
+-.cta-form {
+-  background: var(--bg-card);
+-  border: 1px solid var(--border);
+-  border-radius: var(--radius-xl);
+-  padding: 36px;
+-  backdrop-filter: blur(12px);
+-  text-align: left;
+-}
+-
+-.cta-form__fields {
+-  display: grid;
+-  grid-template-columns: 1fr;
+-  gap: 16px;
+-  margin-bottom: 20px;
+-}
+-
+-.cta-form__group {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 6px;
+-}
+-
+-.cta-form__label {
+-  font-size: 0.8rem;
+-  font-weight: 600;
+-  color: var(--text-muted);
+-  text-transform: uppercase;
+-  letter-spacing: 0.5px;
+-}
+-
+-.cta-form__input {
+-  padding: 14px 16px;
+-  background: var(--bg-primary);
+-  border: 1px solid var(--border);
+-  border-radius: var(--radius-sm);
+-  color: var(--text-primary);
+-  font-family: var(--font);
+-  font-size: 0.95rem;
+-  transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+-  outline: none;
+-}
+-
+-.cta-form__input:focus {
+-  border-color: var(--accent);
+-  box-shadow: 0 0 0 3px var(--accent-glow);
+-}
+-
+-.cta-form__input.error {
+-  border-color: var(--danger);
+-  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+-}
+-
+-.cta-form__input::placeholder {
+-  color: var(--text-muted);
+-}
+-
+-.cta-final__trust-line {
+-  font-size: 0.8rem;
+-  color: var(--text-muted);
+-  margin-top: 12px;
+-  text-align: center;
+-}
+-
+-/* Success state */
+-.cta-form__success {
+-  text-align: center;
+-  padding: 40px 20px;
+-}
+-
+-.cta-form__success-icon {
+-  width: 64px;
+-  height: 64px;
+-  border-radius: 50%;
+-  background: var(--gradient-accent);
+-  display: flex;
+-  align-items: center;
+-  justify-content: center;
+-  font-size: 1.8rem;
+-  color: var(--bg-primary);
+-  margin: 0 auto 20px;
+-  font-weight: 900;
+-}
+-
+-.cta-form__success h3 {
+-  font-size: 1.3rem;
+-  margin-bottom: 8px;
+-}
+-
+-.cta-form__success p {
+-  color: var(--text-secondary);
+-}
+-
+-/* ═══════════════════════════════════════════
+-   FOOTER
+-   ═══════════════════════════════════════════ */
+-.footer {
+-  padding: 60px 0 32px;
+-  border-top: 1px solid var(--border);
+-}
+-
+-.footer__top {
+-  display: flex;
+-  justify-content: space-between;
+-  gap: 60px;
+-  margin-bottom: 40px;
+-}
+-
+-.footer__brand {
+-  font-size: 1.35rem;
+-  font-weight: 800;
+-  color: var(--text-primary);
+-}
+-
+-.footer__tagline {
+-  font-size: 0.85rem;
+-  color: var(--text-muted);
+-  margin-top: 8px;
+-  font-weight: 400;
+-}
+-
+-.footer__links {
+-  display: flex;
+-  gap: 60px;
+-}
+-
+-.footer__col {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 10px;
+-}
+-
+-.footer__col h4 {
+-  font-size: 0.8rem;
+-  font-weight: 600;
+-  text-transform: uppercase;
+-  letter-spacing: 0.5px;
+-  color: var(--text-muted);
+-  margin-bottom: 4px;
+-}
+-
+-.footer__col a {
+-  font-size: 0.85rem;
+-  color: var(--text-secondary);
+-}
+-
+-.footer__col a:hover {
+-  color: var(--accent);
+-}
+-
+-.footer__bottom {
+-  border-top: 1px solid var(--border);
+-  padding-top: 24px;
+-}
+-
+-.footer__copy {
+-  font-size: 0.8rem;
+-  color: var(--text-muted);
+-  text-align: center;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   POPUPS
+-   ═══════════════════════════════════════════ */
+-
+-/* Shared overlay */
+-.popup-overlay {
+-  position: fixed;
+-  inset: 0;
+-  background: rgba(0, 0, 0, 0);
+-  z-index: 9998;
+-  pointer-events: none;
+-  transition: background 0.3s var(--ease);
+-}
+-
+-.popup-overlay.active {
+-  background: rgba(0, 0, 0, 0.7);
+-  pointer-events: auto;
+-}
+-
+-/* Base popup */
+-.popup {
+-  position: fixed;
+-  z-index: 9999;
+-  background: var(--bg-tertiary);
+-  border: 1px solid var(--border);
+-  border-radius: var(--radius-xl);
+-  padding: 40px 36px;
+-  opacity: 0;
+-  pointer-events: none;
+-  transition: all 0.3s var(--ease);
+-}
+-
+-.popup.active {
+-  opacity: 1;
+-  pointer-events: auto;
+-}
+-
+-/* Modal popup (centered) */
+-.popup--modal {
+-  top: 50%;
+-  left: 50%;
+-  transform: translate(-50%, -50%) scale(0.95);
+-  width: 90%;
+-  max-width: 480px;
+-  max-height: 90vh;
+-  overflow-y: auto;
+-}
+-
+-.popup--modal.active {
+-  transform: translate(-50%, -50%) scale(1);
+-}
+-
+-/* Slide-in popup (right side) */
+-.popup--slide {
+-  top: 50%;
+-  right: -420px;
+-  transform: translateY(-50%);
+-  width: 400px;
+-  max-height: 90vh;
+-  overflow-y: auto;
+-  border-left: 3px solid var(--accent);
+-}
+-
+-.popup--slide.active {
+-  right: 24px;
+-}
+-
+-/* Popup elements */
+-.popup__close {
+-  position: absolute;
+-  top: 16px;
+-  right: 16px;
+-  background: none;
+-  border: none;
+-  color: var(--text-muted);
+-  font-size: 1.8rem;
+-  cursor: pointer;
+-  padding: 4px;
+-  line-height: 1;
+-  transition: color 0.3s var(--ease);
+-}
+-
+-.popup__close:hover {
+-  color: var(--text-primary);
+-}
+-
+-.popup__icon {
+-  font-size: 2.5rem;
+-  margin-bottom: 16px;
+-}
+-
+-.popup__tag {
+-  display: inline-block;
+-  background: var(--gradient-accent);
+-  color: var(--bg-primary);
+-  padding: 4px 14px;
+-  border-radius: 4px;
+-  font-size: 0.7rem;
+-  font-weight: 700;
+-  letter-spacing: 1px;
+-  margin-bottom: 16px;
+-}
+-
+-.popup__headline {
+-  font-size: 1.2rem;
+-  font-weight: 700;
+-  line-height: 1.4;
+-  margin-bottom: 16px;
+-  letter-spacing: -0.3px;
+-}
+-
+-.popup__body {
+-  color: var(--text-secondary);
+-  font-size: 0.9rem;
+-  line-height: 1.6;
+-  margin-bottom: 12px;
+-}
+-
+-.popup__findings {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 8px;
+-  background: var(--bg-card);
+-  border-radius: var(--radius-sm);
+-  padding: 16px;
+-  margin-bottom: 16px;
+-}
+-
+-.popup__finding {
+-  font-size: 0.85rem;
+-  color: var(--text-secondary);
+-}
+-
+-.popup__quote {
+-  font-style: italic;
+-  font-size: 0.85rem;
+-  color: var(--text-secondary);
+-  margin-bottom: 20px;
+-  padding-left: 16px;
+-  border-left: 2px solid var(--accent);
+-}
+-
+-.popup__quote cite {
+-  display: block;
+-  margin-top: 8px;
+-  font-style: normal;
+-  font-size: 0.8rem;
+-  color: var(--text-muted);
+-}
+-
+-.popup__cta-lead {
+-  font-size: 0.95rem;
+-  font-weight: 700;
+-  color: var(--accent);
+-  text-align: center;
+-  margin-bottom: 10px;
+-}
+-
+-.popup__cta-primary {
+-  margin-bottom: 12px;
+-}
+-
+-.popup__cta-secondary {
+-  display: block;
+-  width: 100%;
+-  text-align: center;
+-  background: none;
+-  border: none;
+-  color: var(--text-muted);
+-  font-family: var(--font);
+-  font-size: 0.8rem;
+-  cursor: pointer;
+-  padding: 8px;
+-  text-decoration: underline;
+-  transition: color 0.3s var(--ease);
+-}
+-
+-.popup__cta-secondary:hover {
+-  color: var(--text-secondary);
+-}
+-
+-.popup__cta-secondary-link {
+-  display: block;
+-  text-align: center;
+-  font-size: 0.85rem;
+-  margin-top: 8px;
+-}
+-
+-.popup__trust {
+-  text-align: center;
+-  font-size: 0.75rem;
+-  color: var(--text-muted);
+-  margin-top: 12px;
+-}
+-
+-/* Offer popup specific */
+-.popup__offer-badge {
+-  display: inline-block;
+-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+-  color: var(--bg-primary);
+-  padding: 8px 16px;
+-  border-radius: var(--radius-sm);
+-  font-size: 0.8rem;
+-  font-weight: 700;
+-  letter-spacing: 0.5px;
+-  margin-bottom: 16px;
+-}
+-
+-.popup__checklist {
+-  margin-bottom: 20px;
+-}
+-
+-.popup__checklist li {
+-  font-size: 0.85rem;
+-  color: var(--text-secondary);
+-  padding: 6px 0;
+-}
+-
+-.popup__progress {
+-  margin-bottom: 20px;
+-}
+-
+-.popup__progress-bar {
+-  height: 8px;
+-  background: var(--bg-card);
+-  border-radius: 4px;
+-  overflow: hidden;
+-  margin-bottom: 8px;
+-}
+-
+-.popup__progress-fill {
+-  height: 100%;
+-  background: var(--gradient-accent);
+-  border-radius: 4px;
+-  transition: width 1s var(--ease);
+-}
+-
+-.popup__progress-text {
+-  font-size: 0.8rem;
+-  color: var(--text-muted);
+-  font-weight: 500;
+-}
+-
+-.popup__legal {
+-  font-size: 0.7rem;
+-  color: var(--text-muted);
+-  margin-top: 12px;
+-  line-height: 1.5;
+-}
+-
+-/* ═══════════════════════════════════════════
+-   RESPONSIVE
+-   ═══════════════════════════════════════════ */
+-
+-@media (max-width: 1024px) {
+-  :root {
+-    --section-pad: 80px;
+-  }
+-
+-  .pricing__grid {
+-    grid-template-columns: 1fr;
+-    max-width: 500px;
+-    margin: 0 auto;
+-  }
+-
+-  .pricing-card--featured {
+-    transform: none;
+-    order: -1;
+-  }
+-
+-  .pricing-card--featured:hover {
+-    transform: translateY(-4px);
+-  }
+-
+-  .testimonials__grid {
+-    grid-template-columns: 1fr;
+-    max-width: 600px;
+-    margin: 0 auto;
+-  }
+-
+-  .footer__top {
+-    flex-direction: column;
+-    gap: 40px;
+-  }
+-}
+-
+-@media (max-width: 768px) {
+-  :root {
+-    --section-pad: 64px;
+-  }
+-
+-  /* Navbar mobile */
+-  .navbar__hamburger {
+-    display: flex;
+-  }
+-
+-  .navbar__links {
+-    position: fixed;
+-    top: 0;
+-    right: -100%;
+-    width: 280px;
+-    height: 100vh;
+-    background: var(--bg-secondary);
+-    flex-direction: column;
+-    padding: 80px 32px 32px;
+-    gap: 24px;
+-    transition: right 0.4s var(--ease);
+-    border-left: 1px solid var(--border);
+-    z-index: 1000;
+-  }
+-
+-  .navbar__links.open {
+-    right: 0;
+-  }
+-
+-  .navbar__cta {
+-    text-align: center;
+-    width: 100%;
+-  }
+-
+-  /* Hero */
+-  .hero {
+-    padding: 120px 0 60px;
+-    min-height: auto;
+-  }
+-
+-  .hero__actions {
+-    flex-direction: column;
+-    gap: 12px;
+-  }
+-
+-  .hero__actions .btn {
+-    width: 100%;
+-    justify-content: center;
+-  }
+-
+-  /* Benefits */
+-  .benefit__inner {
+-    flex-direction: column;
+-    gap: 24px;
+-  }
+-
+-  .benefit__icon-wrap {
+-    flex-direction: row;
+-    min-width: auto;
+-  }
+-
+-  /* Social proof */
+-  .social-proof-bar__metrics {
+-    flex-direction: column;
+-    gap: 20px;
+-  }
+-
+-  .metric__divider {
+-    width: 40px;
+-    height: 1px;
+-  }
+-
+-  /* Steps */
+-  .steps {
+-    flex-direction: column;
+-    align-items: center;
+-    gap: 0;
+-  }
+-
+-  .step__connector {
+-    width: 2px;
+-    height: 40px;
+-    margin: 0;
+-    background: linear-gradient(180deg, var(--accent), transparent);
+-  }
+-
+-  /* Comparison */
+-  .comparison__table {
+-    font-size: 0.8rem;
+-  }
+-
+-  .comparison__table th,
+-  .comparison__table td {
+-    padding: 10px 12px;
+-  }
+-
+-  /* CTA Form */
+-  .cta-form__fields {
+-    grid-template-columns: 1fr;
+-  }
+-
+-  .cta-form {
+-    padding: 24px 20px;
+-  }
+-
+-  /* Popups */
+-  .popup--slide {
+-    top: auto;
+-    bottom: -100%;
+-    right: 0;
+-    left: 0;
+-    transform: none;
+-    width: 100%;
+-    max-width: 100%;
+-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+-    border-left: none;
+-    border-top: 3px solid var(--accent);
+-    max-height: 80vh;
+-  }
+-
+-  .popup--slide.active {
+-    bottom: 0;
+-    right: 0;
+-  }
+-
+-  .popup--modal {
+-    max-width: 92%;
+-  }
+-
+-  .popup {
+-    padding: 32px 24px;
+-  }
+-
+-  /* Footer */
+-  .footer__links {
+-    flex-direction: column;
+-    gap: 32px;
+-  }
+-}
+-
+-@media (max-width: 480px) {
+-  .hero__headline {
+-    font-size: 1.7rem;
+-  }
+-
+-  .pricing-card__amount {
+-    font-size: 2.5rem;
+-  }
+-
+-  .case-stat {
+-    flex-direction: column;
+-    gap: 2px;
+-  }
+-
+-  .case-stat__value {
+-    min-width: auto;
+-  }
+-}
+\ No newline at end of file
+diff --git a/vercel.json b/vercel.json
+new file mode 100644
+index 0000000..3f9a800
+--- /dev/null
++++ b/vercel.json
+@@ -0,0 +1,11 @@
++{
++    "buildCommand": "cd web && npm install && npm run build",
++    "outputDirectory": "web/.next",
++    "framework": "nextjs",
++    "rewrites": [
++        {
++            "source": "/(.*)",
++            "destination": "/web/$1"
++        }
++    ]
++}
+\ No newline at end of file

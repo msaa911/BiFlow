@@ -1,0 +1,5 @@
+feat: initial commit of BiFlow
+
+# Conflicts:
+#	api/process_statement.js
+#	app/dashboard.html
