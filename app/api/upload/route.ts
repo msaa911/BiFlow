@@ -1,33 +1,46 @@
 import { createClient } from '@/lib/supabase/server'
-// Rebuild force - timestamp 1548
+// Rebuild force - timestamp 1612 - breadcrumbs added
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
-    const pdf = require('pdf-parse')
+    console.log('--- POST START ---')
     let fileName = 'unknown_file'
+    let currentSupabase: any = null
+
     try {
+        console.log('1. Parsing Form Data')
         const formData = await request.formData()
         const file = formData.get('file') as File
 
         if (!file) {
+            console.log('Err: No file')
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
         }
 
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        fileName = file.name.toLowerCase()
+        console.log(`2. File detected: ${fileName} (${file.size} bytes)`)
+
+        console.log('3. Initializing Supabase')
+        currentSupabase = await createClient()
+        const { data: { user } } = await currentSupabase.auth.getUser()
 
         if (!user) {
+            console.log('Err: No user')
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        console.log('4. Converting to Buffer')
         const buffer = Buffer.from(await file.arrayBuffer())
-        fileName = file.name.toLowerCase()
-        const orgId = await getOrgId(supabase, user.id)
 
-        // --- 1. Upload Raw File to Storage (Safety Net) ---
+        console.log('5. Getting Org ID')
+        const orgId = await getOrgId(currentSupabase, user.id)
+        console.log(`Org ID obtained: ${orgId}`)
+
+        // --- 1. Upload Raw File to Storage ---
+        console.log('6. Uploading to Storage')
         const timestamp = Date.now()
         const dateObj = new Date()
         const year = dateObj.getFullYear()
@@ -35,7 +48,7 @@ export async function POST(request: Request) {
         const safeFileName = fileName.replace(/[^a-z0-9.-]/gi, '_')
         const storagePath = `${orgId}/${year}/${month}/${timestamp}_${safeFileName}`
 
-        const { error: storageError } = await supabase.storage
+        const { error: storageError } = await currentSupabase.storage
             .from('raw-imports')
             .upload(storagePath, buffer, {
                 contentType: file.type,
@@ -44,12 +57,13 @@ export async function POST(request: Request) {
 
         if (storageError) {
             console.error('Storage Upload Error:', storageError)
-            await logError(supabase, 'Storage Upload', storageError.message, fileName)
-            return NextResponse.json({ error: 'Error al asegurar el archivo original (Bucket).' }, { status: 500 })
+            await logError(currentSupabase, 'Storage Upload', storageError.message, fileName)
+            return NextResponse.json({ error: `Error Storage: ${storageError.message}` }, { status: 500 })
         }
 
-        // --- 2. Create Audit Log (archivos_importados) ---
-        const { data: importLog, error: dbError } = await supabase
+        // --- 2. Create Audit Log ---
+        console.log('7. Creating Audit Log Entry')
+        const { data: importLog, error: dbError } = await currentSupabase
             .from('archivos_importados')
             .insert({
                 organization_id: orgId,
@@ -63,26 +77,18 @@ export async function POST(request: Request) {
 
         if (dbError || !importLog) {
             console.error('DB Log Error:', dbError)
-            await logError(supabase, 'DB Audit Log Insert', dbError?.message || 'No returned log', fileName)
+            await logError(currentSupabase, 'DB Audit Log Insert', dbError?.message || 'No returned log', fileName)
             return NextResponse.json({ error: 'Error al iniciar registro de auditoría (DB).' }, { status: 500 })
         }
 
         const importId = importLog.id
+        console.log(`Audit ID: ${importId}`)
 
         // --- 3. Parse Content ---
-        type ReviewItem = {
-            organization_id: string
-            datos_crudos: any
-            motivo: string
-            estado: string
-            fecha?: string
-            descripcion?: string
-            monto?: number
-        }
-
+        console.log('8. Parsing Content')
         let transactions: any[] = []
         let warnings: string[] = []
-        let reviewItems: ReviewItem[] = []
+        let reviewItems: any[] = []
 
         if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileName.endsWith('.dat')) {
             const text = buffer.toString('utf-8')
@@ -96,6 +102,8 @@ export async function POST(request: Request) {
             warnings = res.warnings
             reviewItems = res.reviewItems
         } else if (fileName.endsWith('.pdf')) {
+            console.log('Loading pdf-parse dynamically')
+            const pdf = require('pdf-parse')
             const pdfData = await pdf(buffer)
             const res = parsePDF(pdfData.text, orgId)
             transactions = res.transactions
@@ -105,21 +113,15 @@ export async function POST(request: Request) {
             throw new Error('Formato no soportado')
         }
 
-        // --- 3.5. Insert Review Items (Quarantine) ---
+        console.log(`Parsing metadata: ${transactions.length} trans, ${reviewItems.length} review`)
+
+        // --- 3.5. Insert Review Items ---
         if (reviewItems && reviewItems.length > 0) {
             const reviewsWithLink = reviewItems.map(r => ({
                 ...r,
                 archivo_importacion_id: importId
             }))
-
-            const { error: reviewError } = await supabase
-                .from('transacciones_revision')
-                .insert(reviewsWithLink)
-
-            if (reviewError) {
-                console.error('Error inserting review items:', reviewError)
-                warnings.push(`Error al guardar items en cuarentena: ${reviewError.message}`)
-            }
+            await currentSupabase.from('transacciones_revision').insert(reviewsWithLink)
         }
 
         // --- 4. Store Data & Finish Link ---
@@ -136,7 +138,7 @@ export async function POST(request: Request) {
                 if (t.fecha > maxDate) maxDate = t.fecha
             })
 
-            const { data: existing } = await supabase
+            const { data: existing } = await currentSupabase
                 .from('transacciones')
                 .select('fecha, descripcion, monto')
                 .eq('organization_id', orgId)
@@ -147,57 +149,42 @@ export async function POST(request: Request) {
             const uniqueTransactions = transactionsWithLink.filter(t => !existingSet.has(`${t.fecha}-${t.descripcion}-${t.monto}`))
 
             if (uniqueTransactions.length > 0) {
-                const { error: insError } = await supabase.from('transacciones').insert(uniqueTransactions)
+                const { error: insError } = await currentSupabase.from('transacciones').insert(uniqueTransactions)
                 if (insError) {
-                    await supabase.from('archivos_importados').update({ estado: 'error', metadata: { error: insError.message, stage: 'insertion' } }).eq('id', importId)
-                    return NextResponse.json({ error: 'Error al guardar datos.' }, { status: 500 })
+                    await currentSupabase.from('archivos_importados').update({ estado: 'error', metadata: { error: insError.message } }).eq('id', importId)
+                    throw new Error(`Error insertion: ${insError.message}`)
                 }
-
-                await supabase.from('archivos_importados').update({
-                    estado: 'completado',
-                    metadata: { processed: transactions.length, inserted: uniqueTransactions.length, warnings: warnings.slice(0, 20) }
-                }).eq('id', importId)
-
-                return NextResponse.json({
-                    success: true,
-                    count: uniqueTransactions.length,
-                    skipped: transactions.length - uniqueTransactions.length,
-                    reviewCount: reviewItems?.length || 0,
-                    warnings: warnings.slice(0, 50),
-                    message: `Procesado: ${uniqueTransactions.length} OK. ${reviewItems?.length ? reviewItems.length + ' en revisión.' : ''}`
-                })
-            } else {
-                await supabase.from('archivos_importados').update({
-                    estado: 'completado',
-                    metadata: { processed: transactions.length, inserted: 0, warnings: warnings.slice(0, 20), note: 'All duplicates' }
-                }).eq('id', importId)
-
-                return NextResponse.json({ success: true, count: 0, skipped: transactions.length, warnings: warnings.slice(0, 50), message: 'Los datos ya existían en el sistema' })
             }
+
+            await currentSupabase.from('archivos_importados').update({
+                estado: 'completado',
+                metadata: { processed: transactions.length, inserted: uniqueTransactions.length, warnings: warnings.slice(0, 20) }
+            }).eq('id', importId)
+
+            return NextResponse.json({
+                success: true,
+                count: uniqueTransactions.length,
+                reviewCount: reviewItems?.length || 0,
+                message: `OK: ${uniqueTransactions.length} procesados.`
+            })
         }
 
-        // Fallback
-        await supabase.from('archivos_importados').update({
-            estado: 'completado',
-            metadata: { processed: 0, inserted: 0, warnings: warnings.slice(0, 20), note: 'No transactions found' }
-        }).eq('id', importId)
-
-        return NextResponse.json({ success: true, count: 0, warnings: warnings.slice(0, 50), message: 'Archivo recibido y archivado, pero no se detectaron transacciones válidas.' })
+        await currentSupabase.from('archivos_importados').update({ estado: 'completado', metadata: { note: 'No data' } }).eq('id', importId)
+        return NextResponse.json({ success: true, count: 0, message: 'Archivo procesado sin transacciones.' })
 
     } catch (error: any) {
-        console.error('Upload processing error:', error)
+        console.error('FATAL ERROR:', error)
         try {
-            const supabase = await createClient()
-            await logError(supabase, 'Unhandled Exception', error.message, fileName)
+            if (currentSupabase) {
+                await logError(currentSupabase, 'Unhandled Exception', error.message, fileName)
+            }
         } catch (e) {
-            console.error('Secondary logging error:', e)
+            console.error('Logging failed in catch:', e)
         }
 
-        // Return detailed error for debugging purposes (Temporary)
         return NextResponse.json({
             error: 'Internal server error',
-            details: error.message,
-            stack: error.stack,
+            details: error.message || 'Unknown error',
             fileName: fileName
         }, { status: 500 })
     }
@@ -211,278 +198,117 @@ async function logError(supabase: any, origin: string, message: string, fileName
             mensaje: message,
             metadata: { file: fileName }
         })
-    } catch (e) {
-        console.error('Logging failed:', e)
-    }
+    } catch (e) { }
 }
 
-// --- Parsers ---
-
-function parseText(text: string, orgId: string, delimiter?: string): { transactions: any[], warnings: string[], reviewItems: any[] } {
+function parseText(text: string, orgId: string, delimiter?: string) {
     const lines = text.split('\n')
     const transactions = []
     let warnings: string[] = []
     let reviewItems: any[] = []
+    const actualDelimiter = delimiter || (text.includes(';') ? ';' : ',')
 
-    const detectDelimiter = (line: string) => {
-        if (line.includes(',')) return ','
-        if (line.includes(';')) return ';'
-        if (line.includes('\t')) return '\t'
-        return ','
-    }
+    for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed) continue
+        const parts = trimmed.split(actualDelimiter)
+        if (parts.length < 2) continue
 
-    const actualDelimiter = delimiter || (lines.length > 1 ? detectDelimiter(lines[1]) : ',')
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim()
-        if (!line) continue
-
-        const parts = line.split(actualDelimiter)
-        const findCuit = (p: string[]) => p.find(s => s.match(/^\d{2}-?\d{8}-?\d{1}$/))
-
-        let fecha: string | null = null
+        let fecha = normalizeDate(parts[0])
         let monto = 0
-        let descripcion = 'Importado sin descripción'
-        let cuit = findCuit(parts) || null
+        let descripcion = parts[1] || 'Sin descripción'
 
-        for (const p of parts) {
-            const f = normalizeDate(p.trim())
-            if (f) { fecha = f; break; }
+        const mPart = parts.find(p => p.match(/^-?\d+([.,]\d+)?$/))
+        if (mPart) {
+            monto = parseFloat(mPart.replace(',', '.'))
         }
 
-        for (const p of parts) {
-            const stripped = p.replace(/[^0-9.,-]/g, '')
-            if (stripped.match(/^-?\d+([.,]\d+)?$/) && !p.includes('/') && !p.includes('-') && !p.includes(':')) {
-                let val: number
-                if (stripped.includes(',') && stripped.includes('.')) {
-                    val = parseFloat(stripped.replace(/\./g, '').replace(',', '.'))
-                } else if (stripped.includes(',')) {
-                    val = parseFloat(stripped.replace(',', '.'))
-                } else {
-                    val = parseFloat(stripped)
-                }
-
-                if (!isNaN(val) && Math.abs(val) > 0.01) {
-                    monto = val
-                    break;
-                }
-            }
-        }
-
-        if (parts.length >= 3) {
-            const f = normalizeDate(parts[0].trim())
-            if (f) {
-                fecha = f
-                descripcion = parts[1].trim()
-                const mStr = parts[2].trim()
-                let m = 0
-                if (mStr.includes(',') && mStr.includes('.')) {
-                    m = parseFloat(mStr.replace(/\./g, '').replace(',', '.'))
-                } else if (mStr.includes(',')) {
-                    m = parseFloat(mStr.replace(',', '.'))
-                } else {
-                    m = parseFloat(mStr.replace(/[^0-9.-]/g, ''))
-                }
-                if (!isNaN(m)) monto = m
-                if (parts.length > 3) cuit = parts[3].trim()
-            }
-        }
-
-        if (!fecha && (monto !== 0 || cuit)) {
-            fecha = new Date().toISOString().split('T')[0]
-            descripcion = `Importación dato parcial (${cuit || 'Sin CUIT'})`
-        }
-
-        if (fecha && (monto !== 0 || cuit)) {
+        if (fecha && monto !== 0) {
             transactions.push({
                 organization_id: orgId,
                 fecha,
                 descripcion,
                 monto,
-                cuit_destino: cuit || null,
-                origen_dato: 'csv_txt',
+                origen_dato: 'text',
                 moneda: 'ARS',
                 estado: 'pendiente'
             })
-            if (line.match(/\d/) && line.length > 5) {
-                reviewItems.push({
-                    organization_id: orgId,
-                    datos_crudos: { line: line, source: 'text_parser', lineNumber: i + 1 },
-                    motivo: 'Formato no reconocido (posible fecha/monto inválido)',
-                    estado: 'pendiente',
-                    descripcion: line.substring(0, 100)
-                })
-            }
-        }
-    }
-    return { transactions, warnings, reviewItems }
-}
-
-function parseExcel(buffer: Buffer, orgId: string): { transactions: any[], warnings: string[], reviewItems: any[] } {
-    const workbook = XLSX.read(buffer, { type: 'buffer' })
-    const firstSheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[firstSheetName]
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
-
-    const transactions = []
-    const warnings: string[] = []
-    const reviewItems: any[] = []
-
-    let headerRowIndex = -1
-    let colMap: any = { date: -1, desc: -1, amount: -1, cuit: -1 }
-
-    for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
-        const row = jsonData[i].map((c: any) => String(c).toLowerCase())
-        if (row.some((c: string) => c.includes('fecha') || c.includes('date'))) {
-            headerRowIndex = i
-            row.forEach((cell: string, idx: number) => {
-                if (cell.includes('fecha') || cell.includes('date')) colMap.date = idx
-                else if (cell.includes('descrip') || cell.includes('detalle') || cell.includes('concept')) colMap.desc = idx
-                else if (cell.includes('monto') || cell.includes('importe') || cell.includes('valor') || cell.includes('amount')) colMap.amount = idx
-                else if (cell.includes('cuit')) colMap.cuit = idx
-            })
-            break
-        }
-    }
-
-    if (headerRowIndex === -1 && jsonData.length > 0) {
-        headerRowIndex = -1
-        colMap = { date: 0, desc: 1, amount: 2, cuit: 3 }
-    }
-
-    for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-        const row = jsonData[i]
-        if (!row || row.length === 0) continue
-
-        if (colMap.date > -1 && colMap.amount > -1) {
-            let rawDate = row[colMap.date]
-            let fecha = ''
-            if (typeof rawDate === 'number') {
-                const dateObj = XLSX.SSF.parse_date_code(rawDate)
-                fecha = `${dateObj.y}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`
-            } else {
-                fecha = normalizeDate(String(rawDate))
-            }
-            const descripcion = colMap.desc > -1 ? String(row[colMap.desc] || 'Sin descripción').trim() : 'Sin descripción'
-            const rawAmount = row[colMap.amount]
-            const monto = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount).replace(/[^0-9.-]/g, ''))
-            const cuit = colMap.cuit > -1 ? String(row[colMap.cuit] || '').trim() : null
-
-            if (fecha && !isNaN(monto)) {
-                transactions.push({
-                    organization_id: orgId,
-                    fecha,
-                    descripcion,
-                    monto,
-                    cuit_destino: cuit,
-                    origen_dato: 'excel',
-                    moneda: 'ARS',
-                    estado: 'pendiente'
-                })
-            } else if (row.some(c => c)) {
-                reviewItems.push({
-                    organization_id: orgId,
-                    datos_crudos: { row: row, sheet: firstSheetName, rowIndex: i },
-                    motivo: 'Fila con datos pero fecha/monto no identificados',
-                    estado: 'pendiente'
-                })
-            }
-        }
-    }
-    return { transactions, warnings, reviewItems }
-}
-
-function parsePDF(text: string, orgId: string): { transactions: any[], warnings: string[], reviewItems: any[] } {
-    const lines = text.split('\n')
-    const transactions = []
-    const warnings: string[] = []
-    const reviewItems: any[] = []
-    const dateRegexStart = /^(\d{2}[/-]\d{2}[/-]\d{2,4})/
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]
-        const trimmed = line.trim()
-        const match = trimmed.match(dateRegexStart)
-
-        let parsed = false
-        if (match) {
-            const dateStr = match[1]
-            const rest = trimmed.substring(match[0].length).trim()
-            const amountMatch = rest.match(/(-?[\d\.,]+)$/)
-
-            if (amountMatch) {
-                const amountStr = amountMatch[1]
-                const descripcion = rest.substring(0, rest.length - amountStr.length).trim()
-                let monto = 0
-                if (amountStr.includes(',') && amountStr.includes('.')) {
-                    monto = parseFloat(amountStr.replace(/\./g, '').replace(',', '.'))
-                } else if (amountStr.includes(',')) {
-                    monto = parseFloat(amountStr.replace(',', '.'))
-                } else {
-                    monto = parseFloat(amountStr)
-                }
-                const fecha = normalizeDate(dateStr)
-                if (fecha && !isNaN(monto)) {
-                    transactions.push({
-                        organization_id: orgId,
-                        fecha,
-                        descripcion: descripcion || 'Movimiento detectado',
-                        monto,
-                        cuit_destino: null,
-                        origen_dato: 'pdf',
-                        moneda: 'ARS',
-                        estado: 'pendiente'
-                    })
-                    parsed = true
-                }
-            }
-        }
-        if (!parsed && trimmed.length > 20 && trimmed.match(/\d/)) {
+        } else {
             reviewItems.push({
                 organization_id: orgId,
-                datos_crudos: { line: trimmed, source: 'pdf_parser' },
-                motivo: 'Línea PDF con números no procesada',
-                estado: 'pendiente',
-                descripcion: trimmed.substring(0, 100)
+                datos_crudos: { line: trimmed },
+                motivo: 'No se pudo parsear fecha o monto',
+                estado: 'pendiente'
             })
         }
     }
     return { transactions, warnings, reviewItems }
 }
 
-function normalizeDate(dateStr: string): string {
-    try {
-        if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) return dateStr
-        const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-')
-        if (parts.length === 3) {
-            const d = parts[0].padStart(2, '0')
-            const m = parts[1].padStart(2, '0')
-            const y = parts[2].length === 2 ? `20${parts[2]}` : parts[2]
-            return `${y}-${m}-${d}`
+function parseExcel(buffer: Buffer, orgId: string) {
+    const workbook = XLSX.read(buffer, { type: 'buffer' })
+    const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 }) as any[][]
+    const transactions: any[] = []
+    const reviewItems: any[] = []
+
+    for (const row of data) {
+        if (!row || row.length < 2) continue
+        let fecha = ''
+        if (typeof row[0] === 'number') {
+            const d = XLSX.SSF.parse_date_code(row[0])
+            fecha = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`
+        } else {
+            fecha = normalizeDate(String(row[0]))
         }
-    } catch (e) { return '' }
-    return ''
+
+        let monto = typeof row[2] === 'number' ? row[2] : parseFloat(String(row[2] || '0').replace(/[^0-9.-]/g, ''))
+        let desc = String(row[1] || 'Excel Row')
+
+        if (fecha && !isNaN(monto) && monto !== 0) {
+            transactions.push({ organization_id: orgId, fecha, descripcion: desc, monto, origen_dato: 'excel', moneda: 'ARS', estado: 'pendiente' })
+        } else if (row.some(c => c)) {
+            reviewItems.push({ organization_id: orgId, datos_crudos: { row }, motivo: 'Mapping failed', estado: 'pendiente' })
+        }
+    }
+    return { transactions, warnings: [], reviewItems }
+}
+
+function parsePDF(text: string, orgId: string) {
+    const transactions: any[] = []
+    const reviewItems: any[] = []
+    const lines = text.split('\n')
+    for (const line of lines) {
+        const trimmed = line.trim()
+        if (trimmed.length < 10) continue
+        const match = trimmed.match(/^(\d{2}[/-]\d{2}[/-]\d{2,4})/)
+        if (match) {
+            const fecha = normalizeDate(match[1])
+            const amountMatch = trimmed.match(/(-?[\d\.,]+)$/)
+            if (fecha && amountMatch) {
+                const monto = parseFloat(amountMatch[1].replace(/\./g, '').replace(',', '.'))
+                transactions.push({ organization_id: orgId, fecha, descripcion: trimmed.substring(0, 50), monto, origen_dato: 'pdf', moneda: 'ARS', estado: 'pendiente' })
+                continue
+            }
+        }
+        reviewItems.push({ organization_id: orgId, datos_crudos: { line: trimmed }, motivo: 'PDF logic fail', estado: 'pendiente' })
+    }
+    return { transactions, warnings: [], reviewItems }
+}
+
+function normalizeDate(str: string) {
+    const p = str.split(/[/-]/)
+    if (p.length !== 3) return null
+    let y = p[2].length === 2 ? `20${p[2]}` : p[2]
+    return `${y}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`
 }
 
 async function getOrgId(supabase: any, userId: string) {
-    let { data: member } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', userId)
-        .single()
-
+    const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', userId).single()
     if (member) return member.organization_id
 
-    const { data: org } = await supabase
-        .from('organizations')
-        .insert({ name: 'Mi Empresa', tier: 'free' })
-        .select()
-        .single()
+    const { data: org, error } = await supabase.from('organizations').insert({ name: 'Mi Empresa', tier: 'free' }).select().single()
+    if (error || !org) throw new Error(`Could not create org: ${error?.message}`)
 
-    await supabase.from('organization_members').insert({
-        organization_id: org.id,
-        user_id: userId,
-        role: 'owner'
-    })
+    await supabase.from('organization_members').insert({ organization_id: org.id, user_id: userId, role: 'owner' })
     return org.id
 }
