@@ -107,9 +107,11 @@ export default function QuarantinePage() {
 
 function ReviewCard({ item, onAction, processing }: { item: ReviewItem, onAction: any, processing: boolean }) {
     // Local state for editing
+    // Local state for editing
+    // Prefer explicit suggestions from backend if available
     const [fecha, setFecha] = useState(item.fecha || extractPossibleDate(item.datos_crudos) || '')
     const [descripcion, setDescripcion] = useState(item.descripcion || extractPossibleDesc(item.datos_crudos) || '')
-    const [monto, setMonto] = useState<string>(item.monto?.toString() || '')
+    const [monto, setMonto] = useState<string>(item.monto ? item.monto.toString() : '')
 
     const handleApprove = () => {
         if (!fecha || !monto || !descripcion) {

@@ -212,7 +212,7 @@ function parseText(text: string, orgId: string, delimiter?: string) {
         const trimmed = line.trim()
         if (!trimmed) continue
 
-        let fecha = null
+        let fecha: string | null = null
         let monto = 0
         let descripcion = ''
 
@@ -233,26 +233,20 @@ function parseText(text: string, orgId: string, delimiter?: string) {
             const standardDate = trimmed.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/)
             if (standardDate) {
                 fecha = normalizeDate(standardDate[1])
-            }
-
-            // Pattern 2: Fixed Width YYYYMMDD (Common in banks like Interbanking)
-            // Looks for 202[0-9] followed by MM DD. e.g. "0120251101..."
-            // We look for a block of 8 digits starting with 202
-            else {
-                const compactDate = trimmed.match(/(202\d)(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/)
+            } else {
+                // Pattern 2: Fixed Width (Interbanking / DAT)
+                // Often starts with 01 + YYYYMMDD. Regex: Optional 01, then YYYYMMDD.
+                const compactDate = trimmed.match(/(?:01)?(202\d)(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/)
                 if (compactDate) {
-                    // compactDate[1] = Year, [2] = Month, [3] = Day
                     fecha = `${compactDate[1]}-${compactDate[2]}-${compactDate[3]}`
                 }
             }
 
-            // Amount Search
+            // Amount Search 1: Try standard end-of-line match
             const amountMatch = trimmed.match(/(-?[\d\.,]+)$/)
             if (fecha && amountMatch) {
                 const rawAmount = amountMatch[1]
-                // If it looks like a huge integer (e.g. 00000005658630 without separators), we treat it as review item because we don't know decimals
-                if (!rawAmount.includes('.') && !rawAmount.includes(',') && rawAmount.length > 10) {
-                    // Ambiguous huge number -> Quarantine
+                if (!rawAmount.includes('.') && !rawAmount.includes(',') && rawAmount.length > 15) {
                     monto = 0
                 } else {
                     monto = parseFloat(rawAmount.replace(/\./g, '').replace(',', '.'))
@@ -260,8 +254,29 @@ function parseText(text: string, orgId: string, delimiter?: string) {
                 }
             }
 
+            // Amount Search 2: Deep Search in Numeric Blocks
             if (fecha && monto === 0) {
-                descripcion = trimmed
+                const numberBlocks = trimmed.split(/[^0-9,-]+/).filter(s => s.length > 0)
+                const dateCleaned = fecha?.replace(/-/g, '') || ''
+
+                const candidates = numberBlocks.filter(b => !b.includes(dateCleaned))
+
+                let amountCandidate = candidates.find(c => c.length >= 6 && c.length <= 18)
+
+                if (!amountCandidate) {
+                    const longBlock = candidates.find(c => c.length > 18)
+                    if (longBlock) {
+                        amountCandidate = longBlock.substring(0, 10)
+                    }
+                }
+
+                if (amountCandidate) {
+                    monto = parseFloat(amountCandidate) / 100
+                    descripcion = trimmed.replace(fecha.replace(/-/g, ''), '').replace(amountCandidate, '').trim()
+                    descripcion = descripcion.replace(/\d{10,}/g, '')
+                    descripcion = descripcion.replace(/^\d+/, '')
+                    descripcion = descripcion.trim() || 'Desconocido'
+                }
             }
         }
 
@@ -269,7 +284,7 @@ function parseText(text: string, orgId: string, delimiter?: string) {
             transactions.push({
                 organization_id: orgId,
                 fecha,
-                descripcion: descripcion.substring(0, 100),
+                descripcion: descripcion.substring(0, 100), // trunc
                 monto,
                 origen_dato: 'text',
                 moneda: 'ARS',
@@ -280,7 +295,10 @@ function parseText(text: string, orgId: string, delimiter?: string) {
                 reviewItems.push({
                     organization_id: orgId,
                     datos_crudos: { line: trimmed },
-                    motivo: fecha ? 'Monto no detectado (Posible formato fijo)' : 'No se pudo parsear fecha',
+                    fecha: fecha || undefined,
+                    monto: monto !== 0 ? monto : undefined,
+                    descripcion: descripcion || undefined,
+                    motivo: fecha ? 'Monto no confirmado (Revisar)' : 'No se pudo parsear fecha',
                     estado: 'pendiente'
                 })
             }
