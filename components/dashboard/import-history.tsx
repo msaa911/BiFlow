@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { FileText, Clock, RotateCcw, Check, AlertCircle, RefreshCw } from 'lucide-react'
+import { FileText, Clock, RotateCcw, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 type ImportRecord = {
@@ -10,7 +10,7 @@ type ImportRecord = {
     nombre_archivo: string
     fecha_carga: string
     estado: 'procesando' | 'completado' | 'error' | 'revertido'
-    metadata: any
+    metadata: Record<string, any>
 }
 
 export function ImportHistory() {
