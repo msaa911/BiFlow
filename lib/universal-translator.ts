@@ -198,8 +198,10 @@ export class UniversalTranslator {
         let hasExplicitTipo = false;
 
         const findCol = (row: string[], aliases: string[]) => {
-            const idx = headers.findIndex(h => aliases.some(a => h.includes(a)))
-            if (idx !== -1 && row[idx]) return row[idx].trim().replace(/^"/, '').replace(/"$/, '')
+            for (const alias of aliases) {
+                const idx = headers.findIndex(h => h.includes(alias))
+                if (idx !== -1 && row[idx]) return row[idx].trim().replace(/^"/, '').replace(/"$/, '')
+            }
             return ''
         }
 
