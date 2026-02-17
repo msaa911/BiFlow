@@ -52,6 +52,10 @@ export async function DELETE(request: Request) {
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // 0. Delete related Error Logs (Check metadata->file or import_id if stored)
+    // Note: Error logs might not have a direct foreign key, but good to clean up if possible.
+    // For now, we focus on confirmed foreign keys.
+
     // 1. Delete associated transactions (Rollback)
     const { error: transError } = await supabase
         .from('transacciones')
@@ -68,22 +72,31 @@ export async function DELETE(request: Request) {
 
     if (quarantineError) console.error('Error deleting quarantine:', quarantineError)
 
-    // 3. Mark as reverted (or delete log? User asked to "eliminar"). 
-    // And also delete the file from storage!
-    const { data: fileRecord } = await supabase
+    // 3. Clear Cache for this organization (Optional but good practice)
+    // await supabase.from('daily_cashflow_cache').delete().eq('organization_id', organization_id)
+
+    // 4. Delete the file record
+    const { data: fileRecord, error: fetchError } = await supabase
         .from('archivos_importados')
         .select('storage_path')
         .eq('id', id)
         .single()
+
+    if (fetchError) {
+        return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    }
 
     const { error: logError } = await supabase
         .from('archivos_importados')
         .delete()
         .eq('id', id)
 
-    if (logError) return NextResponse.json({ error: logError.message }, { status: 500 })
+    if (logError) {
+        // If this fails, it's likely a Foreign Key constraint we missed. Return detailed error.
+        return NextResponse.json({ error: `DB Error: ${logError.message}` }, { status: 500 })
+    }
 
-    // 4. Delete from Storage (Best effort)
+    // 5. Delete from Storage (Best effort)
     if (fileRecord?.storage_path) {
         await supabase.storage
             .from('raw-imports')

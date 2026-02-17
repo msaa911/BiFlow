@@ -208,8 +208,8 @@ export class UniversalTranslator {
 
             let monto = 0
             if (montoStr) {
-                const clean = montoStr.replace(/[^0-9.,-]/g, '')
-                monto = parseFloat(clean.replace(',', '.'))
+                // Use the robust currency parser that handles both 1.000,00 and 1,000.00
+                monto = UniversalTranslator.parseCurrency(montoStr)
             }
 
             if (!fecha || isNaN(monto)) return null
