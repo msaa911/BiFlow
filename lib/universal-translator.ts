@@ -216,19 +216,29 @@ export class UniversalTranslator {
 
             let tipoStr = findCol(row, ['tipo', 'type', 'movimiento', 't', 'category', 'class']) || ''
 
-            // Logic to determine sign based on Type or Amount string
+            // Logic to determine sign based on Type or Amount string OR Description (Contextual)
             if (monto !== 0) {
                 const cleanTipo = tipoStr.toUpperCase()
-                // If explicit type says DEBIT/EXPENSE, force negative
-                if (['DEBITO', 'DEBIT', 'EGRESO', 'OUT', 'GASTO', 'PAGO'].some(t => cleanTipo.includes(t))) {
+                const cleanDesc = concepto.toUpperCase()
+
+                // 1. Explicit Type Check
+                if (['DEBITO', 'DEBIT', 'EGRESO', 'OUT', 'GASTO', 'PAGO', 'D'].some(t => cleanTipo === t || cleanTipo.includes(t))) {
                     monto = -Math.abs(monto)
                 }
-                // If explicit type says CREDIT/INCOME, force positive
-                else if (['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO'].some(t => cleanTipo.includes(t))) {
+                else if (['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO', 'C'].some(t => cleanTipo === t || cleanTipo.includes(t))) {
                     monto = Math.abs(monto)
                 }
-                // If no type or ambiguous, trust the sign from the amount string (already parsed)
-                // Note: We removed the hardcoded Math.abs() from the original return
+                // 2. Contextual Description Check (Fallback if Type is empty/ambiguous)
+                else {
+                    const negativeKeywords = ['PAGO', 'COMPRA', 'GASTO', 'COMISION', 'IMPUESTO', 'RETENCION', 'PERCEPCION', 'DEBITO', 'RETIRO', 'TRANSFERENCIA ENVIADA', 'A FAVOR DE']
+                    const positiveKeywords = ['COBRO', 'INGRESO', 'DEPOSITO', 'TRANSFERENCIA RECIBIDA', 'ACREDITAMIENTO']
+
+                    if (negativeKeywords.some(k => cleanDesc.includes(k))) {
+                        monto = -Math.abs(monto)
+                    } else if (positiveKeywords.some(k => cleanDesc.includes(k))) {
+                        monto = Math.abs(monto)
+                    }
+                }
             }
 
             // Tax Tagging
