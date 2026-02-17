@@ -210,7 +210,7 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                             </div>
                             <div className="space-y-2">
                                 {/* Mandatory Fields Hints */}
-                                {['fecha', 'monto', 'descripcion', 'cuit'].map(field => {
+                                {['fecha', 'monto', 'descripcion', 'cuit', 'tipo'].map(field => {
                                     const rule = rules[field]
                                     // Use line 1 (data) for preview if available, otherwise line 0
                                     const previewLine = lines.length > 1 ? lines[1] : lines[0]
@@ -224,6 +224,7 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                                                 <div className="flex items-center gap-2">
                                                     <div className={`w-2 h-2 rounded-full ${rule ? 'bg-emerald-500' : 'bg-gray-600'}`} />
                                                     <span className="text-sm font-medium text-white capitalize">{field}</span>
+                                                    {field === 'tipo' && <span className="text-[10px] text-gray-500 bg-gray-800 border border-gray-700 px-1 rounded">Opcional</span>}
                                                 </div>
 
                                                 {/* Actions */}
