@@ -222,10 +222,14 @@ export class UniversalTranslator {
                 const cleanDesc = concepto.toUpperCase()
 
                 // 1. Explicit Type Check
-                if (['DEBITO', 'DEBIT', 'EGRESO', 'OUT', 'GASTO', 'PAGO', 'D'].some(t => cleanTipo === t || cleanTipo.includes(t))) {
+                // FIX: Strict check for short aliases
+                const isExplicitNegative = ['DEBITO', 'DEBIT', 'EGRESO', 'OUT', 'GASTO', 'PAGO'].some(t => cleanTipo.includes(t)) || cleanTipo === 'D'
+                const isExplicitPositive = ['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO'].some(t => cleanTipo.includes(t)) || cleanTipo === 'C'
+
+                if (isExplicitNegative) {
                     monto = -Math.abs(monto)
                 }
-                else if (['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO', 'C'].some(t => cleanTipo === t || cleanTipo.includes(t))) {
+                else if (isExplicitPositive) {
                     monto = Math.abs(monto)
                 }
                 // 2. Contextual Check (Fallback if Type is empty/ambiguous)
