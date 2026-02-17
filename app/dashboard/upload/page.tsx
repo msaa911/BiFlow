@@ -330,16 +330,40 @@ export default function UploadPage() {
                 {formats.length > 0 && !success && (
                     <div className="mb-6">
                         <label className="block text-xs font-medium text-gray-400 mb-2 uppercase">Formato de Archivo (Opcional)</label>
-                        <select
-                            value={selectedFormat}
-                            onChange={(e) => setSelectedFormat(e.target.value)}
-                            className="w-full bg-gray-800 border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                            <option value="">Detección Automática (Recomendado)</option>
-                            {formats.map(f => (
-                                <option key={f.id} value={f.id}>{f.nombre}</option>
-                            ))}
-                        </select>
+                        <div className="flex gap-2">
+                            <select
+                                value={selectedFormat}
+                                onChange={(e) => setSelectedFormat(e.target.value)}
+                                className="flex-1 bg-gray-800 border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="">Detección Automática (Recomendado)</option>
+                                {formats.map(f => (
+                                    <option key={f.id} value={f.id}>{f.nombre}</option>
+                                ))}
+                            </select>
+                            {selectedFormat && (
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('¿Estás seguro de eliminar este formato guardado?')) return
+                                        try {
+                                            const res = await fetch(`/api/formats?id=${selectedFormat}`, { method: 'DELETE' })
+                                            if (res.ok) {
+                                                setSelectedFormat('')
+                                                fetchFormats()
+                                            } else {
+                                                alert('Error al eliminar')
+                                            }
+                                        } catch (e) {
+                                            alert('Error de conexión')
+                                        }
+                                    }}
+                                    className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition-colors"
+                                    title="Eliminar formato seleccionado"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
 
