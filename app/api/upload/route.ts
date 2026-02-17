@@ -90,27 +90,69 @@ export async function POST(request: Request) {
         let warnings: string[] = []
         let reviewItems: any[] = []
 
-        if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileName.endsWith('.dat')) {
-            const text = buffer.toString('utf-8')
-            const res = parseText(text, orgId, fileName.endsWith('.csv') ? ',' : undefined)
-            transactions = res.transactions
-            warnings = res.warnings
-            reviewItems = res.reviewItems
-        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-            const res = parseExcel(buffer, orgId)
-            transactions = res.transactions
-            warnings = res.warnings
-            reviewItems = res.reviewItems
-        } else if (fileName.endsWith('.pdf')) {
-            console.log('Loading pdf-parse dynamically')
-            const pdf = require('pdf-parse')
-            const pdfData = await pdf(buffer)
-            const res = parsePDF(pdfData.text, orgId)
-            transactions = res.transactions
-            warnings = res.warnings
-            reviewItems = res.reviewItems
-        } else {
-            throw new Error('Formato no soportado')
+        const formatId = formData.get('formatId') as string
+
+        if (formatId) {
+            console.log(`9. Using Custom Format: ${formatId}`)
+            const { data: format } = await currentSupabase
+                .from('formato_archivos')
+                .select('reglas')
+                .eq('id', formatId)
+                .single()
+
+            if (format) {
+                const { parseFixed } = require('@/lib/parsers/fixed-width')
+                const text = buffer.toString('utf-8')
+                const res = parseFixed(text, format.reglas)
+                transactions = res.transactions
+                warnings = res.warnings || []
+                reviewItems = res.reviewItems
+            } else {
+                console.log('Format not found, falling back to auto-detect')
+            }
+        }
+
+        if (transactions.length === 0 && reviewItems.length === 0) {
+            // Only run auto-detect if custom format didn't yield results (or wasn't provided)
+            if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileName.endsWith('.dat')) {
+                const text = buffer.toString('utf-8')
+                // Use Universal Translator
+                const { UniversalTranslator } = require('@/lib/universal-translator')
+                const uniTransactions = UniversalTranslator.translate(text)
+
+                if (uniTransactions.length > 0) {
+                    transactions = uniTransactions.map((t: any) => ({
+                        ...t,
+                        organization_id: orgId,
+                        moneda: 'ARS', // Default for now
+                        origen_dato: 'universal_translator',
+                        estado: 'pendiente'
+                    }))
+                } else {
+                    // Fallback to legacy parseText if Universal fails to find anything
+                    console.log('Universal Translator yielded 0 results, falling back to legacy parser')
+                    const res = parseText(text, orgId, fileName.endsWith('.csv') ? ',' : undefined)
+                    transactions = res.transactions
+                    warnings = res.warnings
+                    reviewItems = res.reviewItems
+                }
+
+            } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                const res = parseExcel(buffer, orgId)
+                transactions = res.transactions
+                warnings = res.warnings
+                reviewItems = res.reviewItems
+            } else if (fileName.endsWith('.pdf')) {
+                console.log('Loading pdf-parse dynamically')
+                const pdf = require('pdf-parse')
+                const pdfData = await pdf(buffer)
+                const res = parsePDF(pdfData.text, orgId)
+                transactions = res.transactions
+                warnings = res.warnings
+                reviewItems = res.reviewItems
+            } else {
+                throw new Error('Formato no soportado')
+            }
         }
 
         console.log(`Parsing metadata: ${transactions.length} trans, ${reviewItems.length} review`)
