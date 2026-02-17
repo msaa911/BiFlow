@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle } from 'lucide-react'
+import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { ImportHistory } from '@/components/dashboard/import-history'
 import { ColumnMapper } from '@/components/dashboard/column-mapper'
