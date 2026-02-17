@@ -185,11 +185,15 @@ export async function POST(request: Request) {
                     })
 
                     if (history && history.length > 0) {
-                        const historyMap = new Map(history.map((h: any) => [h.descripcion, Number(h.avg_monto)]))
+                        // Explicitly type the Map to avoid 'any' issues
+                        const historyMap = new Map<string, number>(
+                            history.map((h: any) => [h.descripcion, Number(h.avg_monto)])
+                        )
 
                         transactions = transactions.map(t => {
                             const avg = historyMap.get(t.descripcion)
-                            if (avg != null && avg !== 0) {
+                            // Strict check: avg must be a number (not undefined) and not zero
+                            if (typeof avg === 'number' && avg !== 0) {
                                 const diff = (t.monto - avg) / avg
                                 if (diff > 0.15) { // 15% deviation
                                     return {
