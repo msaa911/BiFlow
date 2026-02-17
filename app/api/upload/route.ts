@@ -185,7 +185,7 @@ export async function POST(request: Request) {
 
                         transactions = transactions.map(t => {
                             const avg = historyMap.get(t.descripcion)
-                            if (avg) {
+                            if (avg !== undefined) {
                                 const diff = (t.monto - avg) / avg
                                 if (diff > 0.15) { // 15% deviation
                                     return {
@@ -212,6 +212,48 @@ export async function POST(request: Request) {
             } catch (err: any) {
                 console.error('Anomaly Detection Error:', err)
                 // Non-critical, continue
+            }
+        }
+
+        // --- 3.7. Deduplication (Intelligent) ---
+        // Validate against existing DB records using normalized fuzzy logic
+        if (transactions.length > 0) {
+            try {
+                // Ensure we send only necessary fields to RPC
+                const candidates = transactions.map(t => ({
+                    fecha: t.fecha,
+                    monto: t.monto,
+                    descripcion: t.descripcion
+                }))
+
+                const { data: duplicates } = await currentSupabase.rpc('check_potential_duplicates', {
+                    p_candidates: candidates
+                })
+
+                if (duplicates && duplicates.length > 0) {
+                    const duplicateIndices = new Set(duplicates.map((d: any) => d.candidate_idx))
+
+                    transactions = transactions.map((t, idx) => {
+                        if (duplicateIndices.has(idx)) {
+                            // Find match info
+                            const match = duplicates.find((d: any) => d.candidate_idx === idx)
+                            return {
+                                ...t,
+                                metadata: {
+                                    ...t.metadata,
+                                    duplicate_warning: true,
+                                    match_id: match.match_id
+                                },
+                                tags: [...(t.tags || []), 'posible_duplicado']
+                            }
+                        }
+                        return t
+                    })
+
+                    warnings.push(`Deduplicación: Se detectaron ${duplicateIndices.size} posibles duplicados. Se han etiquetado para revisión.`)
+                }
+            } catch (err: any) {
+                console.error('Deduplication Check Error:', err)
             }
         }
 
