@@ -317,10 +317,11 @@ export default function UploadPage() {
                 </div>
                 <button
                     onClick={() => setShowFormatBuilder(true)}
-                    className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm border border-gray-700 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs border border-gray-700 transition-colors"
+                    title="Usar solo si el cargador automático falla (ej. archivos bancarios antiguos)"
                 >
-                    <Settings className="w-4 h-4" />
-                    Nuevo Formato
+                    <Settings className="w-3 h-3" />
+                    Configurar Formato Manual
                 </button>
             </div>
 

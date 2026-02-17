@@ -166,7 +166,7 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <MousePointerClick className="w-5 h-5 text-emerald-500" />
-                            Smart Format Builder (v4)
+                            Constructor de Formatos Manuales
                         </h2>
                         <p className="text-sm text-gray-400">Enseña a BiFlow cómo leer tus archivos posicionales.</p>
                     </div>
