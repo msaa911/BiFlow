@@ -578,13 +578,25 @@ export default function UploadPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <button
-                                onClick={() => handleSignConfirmation(false)} // Es un gasto -> Mantenemos signos (Negativo = Gasto)
+                                onClick={() => {
+                                    // User says it IS a Gasto (Should be Negative)
+                                    // If current is Positive (> 0), we must INVERT to make it Negative.
+                                    // If current is Negative (< 0), we keep it (FALSE).
+                                    const isPositive = confirmationData.exampleRow.monto > 0
+                                    handleSignConfirmation(isPositive)
+                                }}
                                 className="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/10"
                             >
                                 SÍ, es un Gasto
                             </button>
                             <button
-                                onClick={() => handleSignConfirmation(true)} // NO es un gasto -> Invertimos (Negativo = Ingreso)
+                                onClick={() => {
+                                    // User says it IS an Ingreso (Should be Positive)
+                                    // If current is Negative (< 0), we must INVERT to make it Positive.
+                                    // If current is Positive (> 0), we keep it (FALSE).
+                                    const isNegative = confirmationData.exampleRow.monto < 0
+                                    handleSignConfirmation(isNegative)
+                                }}
                                 className="py-3 px-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold border border-gray-700 transition-all active:scale-95"
                             >
                                 NO, es un Ingreso

@@ -192,104 +192,65 @@ export async function POST(request: Request) {
             await currentSupabase.from('transacciones_revision').insert(reviewsWithLink)
         }
 
-        // --- 3.6. Anomaly Detection (Expense Guard) ---
+        // --- 3.6. Anomaly Detection (Expense Guard & Duplicates) ---
         if (transactions.length > 0) {
             try {
-                // Get unique descriptions to check
+                // 1. Prepare Data for Engine
+                // Need History (for Price Spikes) and Existing Transactions (for Duplicates)
+
+                // A. Fetch History
                 const descriptions = [...new Set(transactions.map(t => t.descripcion))]
+                let historyMap = new Map<string, number>()
+
                 if (descriptions.length > 0) {
                     const { data: history } = await currentSupabase.rpc('get_historical_averages', {
                         p_org_id: orgId,
                         p_descriptions: descriptions,
                         p_months_back: 3
                     })
-
-                    if (history && history.length > 0) {
-                        // Explicitly type the Map to avoid 'any' issues
-                        const historyMap = new Map<string, number>(
+                    if (history) {
+                        historyMap = new Map<string, number>(
                             history.map((h: any) => [h.descripcion, Number(h.avg_monto)])
                         )
-
-                        transactions = transactions.map(t => {
-                            const avgRaw = historyMap.get(t.descripcion)
-
-                            // Strict check: avg must be a number
-                            if (typeof avgRaw === 'number' && avgRaw !== 0) {
-                                // Compare Magnitudes (Absolute values) to handle both Incomes (+) and Expenses (-)
-                                const currentAbs = Math.abs(t.monto)
-                                const avgAbs = Math.abs(avgRaw)
-
-                                const diff = (currentAbs - avgAbs) / avgAbs
-
-                                if (diff > 0.15) { // 15% deviation in magnitude
-                                    return {
-                                        ...t,
-                                        metadata: {
-                                            ...t.metadata,
-                                            anomaly: 'price_spike',
-                                            anomaly_score: diff,
-                                            historical_avg: avgRaw // Keep original signed average for reference
-                                        },
-                                        tags: [...(t.tags || []), 'alerta_precio']
-                                    }
-                                }
-                            }
-                            return t
-                        })
-
-                        const anomalies = transactions.filter(t => t.metadata?.anomaly === 'price_spike').length
-                        if (anomalies > 0) {
-                            warnings.push(`Guardián de Gastos: Se detectaron ${anomalies} transacciones con aumentos inusuales (>15%).`)
-                        }
                     }
                 }
+
+                // B. Fetch Existing Transactions (Window: Min Date - Max Date of batch)
+                // We expand the window slightly to catch boundary duplicates
+                const batchDates = transactions.map(t => new Date(t.fecha).getTime())
+                const minDateEpoch = Math.min(...batchDates)
+                const maxDateEpoch = Math.max(...batchDates)
+                const minDateStr = new Date(minDateEpoch).toISOString().split('T')[0]
+                const maxDateStr = new Date(maxDateEpoch).toISOString().split('T')[0]
+
+                const { data: existing } = await currentSupabase
+                    .from('transacciones')
+                    .select('fecha, descripcion, monto, cuit')
+                    .eq('organization_id', orgId)
+                    .gte('fecha', minDateStr)
+                    .lte('fecha', maxDateStr)
+
+                // 2. Run Engine
+                const { AnomalyEngine } = require('@/lib/anomaly-engine')
+                const analysis = AnomalyEngine.analyze(transactions, historyMap, existing || [])
+
+                transactions = analysis.processed // Update transactions with metadata/tags
+
+                // 3. Collect Warnings
+                const duplicateCount = transactions.filter(t => t.metadata?.anomaly === 'duplicate').length
+                const spikeCount = transactions.filter(t => t.metadata?.anomaly === 'price_spike').length
+                const recoveryCount = transactions.filter(t => t.metadata?.recovery_potential).length
+
+                if (duplicateCount > 0) warnings.push(`Deduplicación: Se detectaron ${duplicateCount} posibles duplicados.`)
+                if (spikeCount > 0) warnings.push(`Guardián de Gastos: Se detectaron ${spikeCount} desvíos de precio (>15%).`)
+                if (recoveryCount > 0) warnings.push(`Recupero Fiscal: Se identificaron ${recoveryCount} movimientos recuperables (AFIP/ARBA).`)
+
             } catch (err: any) {
                 console.error('Anomaly Detection Error:', err)
                 // Non-critical, continue
             }
         }
 
-        // --- 3.7. Deduplication (Intelligent) ---
-        // Validate against existing DB records using normalized fuzzy logic
-        if (transactions.length > 0) {
-            try {
-                // Ensure we send only necessary fields to RPC
-                const candidates = transactions.map(t => ({
-                    fecha: t.fecha,
-                    monto: t.monto,
-                    descripcion: t.descripcion
-                }))
-
-                const { data: duplicates } = await currentSupabase.rpc('check_potential_duplicates', {
-                    p_candidates: candidates
-                })
-
-                if (duplicates && duplicates.length > 0) {
-                    const duplicateIndices = new Set(duplicates.map((d: any) => d.candidate_idx))
-
-                    transactions = transactions.map((t, idx) => {
-                        if (duplicateIndices.has(idx)) {
-                            // Find match info
-                            const match = duplicates.find((d: any) => d.candidate_idx === idx)
-                            return {
-                                ...t,
-                                metadata: {
-                                    ...t.metadata,
-                                    duplicate_warning: true,
-                                    match_id: match.match_id
-                                },
-                                tags: [...(t.tags || []), 'posible_duplicado']
-                            }
-                        }
-                        return t
-                    })
-
-                    warnings.push(`Deduplicación: Se detectaron ${duplicateIndices.size} posibles duplicados. Se han etiquetado para revisión.`)
-                }
-            } catch (err: any) {
-                console.error('Deduplication Check Error:', err)
-            }
-        }
 
         // --- 4. Store Data & Finish Link ---
         if (transactions.length > 0) {
