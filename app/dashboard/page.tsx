@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { ArrowUpRight, AlertTriangle, Activity, DollarSign } from 'lucide-react'
 import { KPICard } from '@/components/ui/kpi-card'
 import { DashboardActions } from '@/components/dashboard/actions'
+import { TaxRecoveryWidget } from '@/components/dashboard/tax-recovery-widget'
+import { ExpenseGuardWidget } from '@/components/dashboard/expense-guard-widget'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,14 +35,23 @@ export default async function DashboardPage() {
 
     const totalBalance = allTransactions?.reduce((acc, curr) => acc + curr.monto, 0) || 0
 
-    // Fetch Leaks & Potential Recovery
-    const { data: findings, count: leaksFound } = await supabase
-        .from('hallazgos')
-        .select('monto_estimado_recupero', { count: 'exact' })
-        .eq('estado', 'detectado')
+    // Fetch Tax Recovery Items
+    const { data: taxItems } = await supabase
+        .from('transacciones')
+        .select('*')
+        .contains('tags', ['impuesto_recuperable'])
+        .order('fecha', { ascending: false })
 
-    const leaksCount = leaksFound ?? 0
-    const potentialRecovery = findings?.reduce((acc, curr) => acc + (Number(curr.monto_estimado_recupero) || 0), 0) || 0
+    const totalRecoverable = taxItems?.reduce((acc, curr) => acc + curr.monto, 0) || 0
+
+    // Fetch Expense Guard Anomalies
+    const { data: anomalies } = await supabase
+        .from('transacciones')
+        .select('*')
+        .contains('tags', ['alerta_precio'])
+        .order('fecha', { ascending: false })
+
+    const anomalyCount = anomalies?.length || 0
 
     // Fetch Quarantine Count
     const { count: quarantineCount } = await supabase
@@ -78,8 +89,8 @@ export default async function DashboardPage() {
                 </div>
             ) : null}
 
-            {/* Metrics Grid */}
-            <div className="grid gap-6 md:grid-cols-3">
+            {/* Algorithmic CFO Widgets */}
+            <div className="grid gap-6 md:grid-cols-4">
                 <KPICard
                     title="Saldo Operativo"
                     value={formatCurrency(totalBalance)}
@@ -87,30 +98,17 @@ export default async function DashboardPage() {
                     icon={<Activity className="h-5 w-5 text-blue-400" />}
                     trend="neutral"
                 />
-                <KPICard
-                    title="Anomalías Detectadas"
-                    value={leaksCount.toString()}
-                    description="Requieren atención inmediata"
-                    icon={<AlertTriangle className="h-5 w-5 text-amber-400" />}
-                    trend="up"
-                    trendColor="red"
-                    trendValue={`+${leaksCount} nuevas`}
-                />
-                <KPICard
-                    title="Recupero Potencial"
-                    value={formatCurrency(potentialRecovery)}
-                    description="Dinero en riesgo de pérdida"
-                    icon={<DollarSign className="h-5 w-5 text-emerald-400" />}
-                    trend="up"
-                    trendColor="emerald"
-                    trendValue="+0%"
-                />
+                {/* Replaced generic cards with specific Widgets */}
+                <div className="md:col-span-3 grid gap-6 md:grid-cols-2">
+                    <TaxRecoveryWidget totalRecoverable={totalRecoverable} taxItems={taxItems || []} />
+                    <ExpenseGuardWidget anomalies={anomalies || []} />
+                </div>
             </div>
 
-            {/* Recent Transactions & Anomalies Split */}
-            <div className="grid gap-6 md:grid-cols-2">
-                {/* Transacciones */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+            {/* Recent Transactions & Actions */}
+            <div className="grid gap-6 md:grid-cols-3">
+                {/* Transacciones (Wider) */}
+                <div className="md:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
                     <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                         <h3 className="font-semibold text-white">Transacciones Recientes</h3>
                         <button className="text-xs text-emerald-500 hover:text-emerald-400 font-medium transition-colors">Ver todas</button>
@@ -121,6 +119,7 @@ export default async function DashboardPage() {
                                 <tr>
                                     <th className="px-6 py-3">Fecha</th>
                                     <th className="px-6 py-3">Descripción</th>
+                                    <th className="px-6 py-3">Tags</th>
                                     <th className="px-6 py-3 text-right">Monto</th>
                                 </tr>
                             </thead>
@@ -133,6 +132,15 @@ export default async function DashboardPage() {
                                         <td className="px-6 py-4 text-white truncate max-w-[200px]">
                                             {t.descripcion}
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex gap-1">
+                                                {t.tags && t.tags.map((tag: string) => (
+                                                    <span key={tag} className="px-1.5 py-0.5 rounded text-[10px] bg-gray-800 text-gray-400 border border-gray-700">
+                                                        {tag.replace('_', ' ')}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </td>
                                         <td className={`px-6 py-4 text-right font-medium ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {formatCurrency(t.monto)}
                                         </td>
@@ -140,7 +148,7 @@ export default async function DashboardPage() {
                                 ))}
                                 {(!transactions || transactions.length === 0) && (
                                     <tr>
-                                        <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                                             No hay movimientos recientes.
                                         </td>
                                     </tr>
