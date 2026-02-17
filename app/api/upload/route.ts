@@ -122,8 +122,12 @@ export async function POST(request: Request) {
 
                 if (uniTransactions.transactions.length > 0) {
                     transactions = uniTransactions.transactions.map((t: any) => ({
-                        ...t,
                         organization_id: orgId,
+                        fecha: t.fecha,
+                        descripcion: t.concepto || 'Sin concepto', // Map concepto -> descripcion
+                        monto: t.monto,
+                        cuit: t.cuit,
+                        tags: t.tags,
                         moneda: 'ARS',
                         origen_dato: 'universal_translator',
                         estado: 'pendiente'
@@ -181,11 +185,11 @@ export async function POST(request: Request) {
                     })
 
                     if (history && history.length > 0) {
-                        const historyMap = new Map(history.map((h: any) => [h.descripcion, h.avg_monto]))
+                        const historyMap = new Map(history.map((h: any) => [h.descripcion, Number(h.avg_monto)]))
 
                         transactions = transactions.map(t => {
                             const avg = historyMap.get(t.descripcion)
-                            if (avg !== undefined) {
+                            if (avg != null && avg !== 0) {
                                 const diff = (t.monto - avg) / avg
                                 if (diff > 0.15) { // 15% deviation
                                     return {
@@ -282,9 +286,27 @@ export async function POST(request: Request) {
             const uniqueTransactions = transactionsWithLink.filter((t: any) => !existingSet.has(`${t.fecha}-${t.descripcion}-${t.monto}`))
 
             if (uniqueTransactions.length > 0) {
-                const { error: insError } = await currentSupabase.from('transacciones').insert(uniqueTransactions)
+                // SANITIZATION: Strict Allow-List of columns to prevent 'concepto' or other extra fields from leaking
+                const sanitizedTransactions = uniqueTransactions.map((t: any) => ({
+                    organization_id: t.organization_id,
+                    fecha: t.fecha,
+                    descripcion: t.descripcion || 'Sin Descripción',
+                    monto: t.monto,
+                    cuit: t.cuit || null,
+                    moneda: t.moneda || 'ARS',
+                    origen_dato: t.origen_dato,
+                    estado: t.estado,
+                    archivo_importacion_id: t.archivo_importacion_id,
+                    tags: t.tags || [], // Ensure tags are passed
+                    metadata: t.metadata || {}
+                }))
+
+                console.log('DEBUG: First transaction keys:', Object.keys(sanitizedTransactions[0]))
+
+                const { error: insError } = await currentSupabase.from('transacciones').insert(sanitizedTransactions)
                 if (insError) {
                     await currentSupabase.from('archivos_importados').update({ estado: 'error', metadata: { error: insError.message } }).eq('id', importId)
+                    console.error('Insert Error Full:', insError)
                     throw new Error(`Error insertion: ${insError.message}`)
                 }
             }
