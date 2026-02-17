@@ -40,60 +40,40 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
         if (!sel || sel.rangeCount === 0) return
 
         const range = sel.getRangeAt(0)
-        const container = textRef.current
 
-        // Ensure selection is within our text container
-        if (!container?.contains(range.commonAncestorContainer)) return
-
-        // We need to find which line was selected, or if it spans multiple (not allowed)
-        // Ideally, we treat the text block as a single ruler or per-line.
-        // For fixed width, all lines SHOULD be same length, but row logic is usually "column X to Y".
-        // So selecting on ONE line is enough to define the column rule.
-
-        // Let's find the parent row element
-        let node: Node | null = range.startContainer
-        while (node && node.nodeName !== 'DIV') {
-            node = node.parentNode
+        // Find if we are inside a line-content div
+        let current: Node | null = range.commonAncestorContainer
+        while (current && (current.nodeType !== 1 || !(current as Element).classList.contains('line-content'))) {
+            current = current.parentNode
         }
 
-        // Actually, getting exact char offset in a monospace block is easier if we just render one line as the "Ruler Line"
-        // But users want to see context. 
-        // Let's assume user selects on ANY line, and we calculate offset relative to THAT line.
-
-        const textContent = range.toString()
-        if (textContent.length === 0) return
-
-        // Calculate offset
-        // This is tricky with DOM nodes. 
-        // Hack: Use the fact that we render monospaced.
-        // Better: Find the updated selection range relative to the line.
-
-        // Let's assume the selection starts inside a specific line div
-        const startNode = range.startContainer
-        const startOffset = range.startOffset
-
-        // Traverse up to find the line container and calculate true offset
-        // For simplicity, let's force the user to select on a "Master Line" or handle simple constrained selection.
-        // OR: Just let them select and we parse the anchorNode.
-
-        // Let's assume structure: <div class="line" data-index="0">CONTENT</div>
-        let current: any = range.startContainer
-        if (current.nodeType === 3) current = current.parentNode // Text node -> Span/Div
-
-        const lineDiv = current.closest('.line-content')
+        const lineDiv = current as HTMLElement
         if (!lineDiv) return
 
-        // Calculate start index regarding the line text
-        // This implementation varies by browser/font, but for a simple text node it matches.
-        // If we strictly render plain text inside, startOffset on text node is correct.
+        // Robust offset calculation using Range.toString()
+        // We create a range from the start of the line to the start of selection
+        const preCaretRange = range.cloneRange()
+        preCaretRange.selectNodeContents(lineDiv)
+        preCaretRange.setEnd(range.startContainer, range.startOffset)
+        const start = preCaretRange.toString().length
 
-        // Correction for end:
-        const endOffset = range.endOffset
+        // And another to the end of selection
+        const endRange = range.cloneRange()
+        endRange.selectNodeContents(lineDiv)
+        endRange.setEnd(range.endContainer, range.endOffset)
+        const end = endRange.toString().length
 
-        // Check if allow "backwards" selection? Range usually normalizes start/end.
+        const text = lineDiv.textContent || ''
 
-        // Global Offset relative to line
-        setSelection({ start: startOffset, end: endOffset })
+        // Validation
+        if (Math.abs(end - start) === 0) return
+
+        // Ensure we always store Start < End
+        const finalStart = Math.min(start, end)
+        const finalEnd = Math.max(start, end)
+
+        console.log(`Selection: ${finalStart} - ${finalEnd} ("${text.substring(finalStart, finalEnd)}")`)
+        setSelection({ start: finalStart, end: finalEnd })
     }
 
     const assignRule = (field: string) => {
@@ -106,6 +86,15 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
         setActiveField(null)
         // Clear DOM selection
         window.getSelection()?.removeAllRanges()
+    }
+
+    const clearAllRules = () => {
+        if (confirm('¿Estás seguro de querer borrar todas las reglas?')) {
+            setRules({})
+            setSelection(null)
+            setActiveField(null)
+            window.getSelection()?.removeAllRanges()
+        }
     }
 
     const saveFormat = async () => {
@@ -216,7 +205,19 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
 
                         {/* 2. Rules List */}
                         <div className="flex-1">
-                            <label className="text-xs font-medium text-gray-500 uppercase mb-2 block">Campos Detectados</label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-xs font-medium text-gray-500 uppercase block">Campos Detectados</label>
+                                {Object.keys(rules).length > 0 && (
+                                    <button
+                                        onClick={clearAllRules}
+                                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                                        title="Borrar todas las reglas"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                        Limpiar Todo
+                                    </button>
+                                )}
+                            </div>
                             <div className="space-y-2">
                                 {/* Mandatory Fields Hints */}
                                 {['fecha', 'monto', 'descripcion', 'cuit'].map(field => (
