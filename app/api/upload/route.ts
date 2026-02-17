@@ -120,16 +120,19 @@ export async function POST(request: Request) {
                 const { UniversalTranslator } = require('@/lib/universal-translator')
                 const uniTransactions = UniversalTranslator.translate(text)
 
-                if (uniTransactions.length > 0) {
-                    transactions = uniTransactions.map((t: any) => ({
+                if (uniTransactions.transactions.length > 0) {
+                    transactions = uniTransactions.transactions.map((t: any) => ({
                         ...t,
                         organization_id: orgId,
-                        moneda: 'ARS', // Default for now
+                        moneda: 'ARS',
                         origen_dato: 'universal_translator',
                         estado: 'pendiente'
                     }))
+                    // Add balance check warnings if any
+                    if (uniTransactions.metadata?.isBalanced === false) {
+                        warnings.push(`Advertencia de Saldo: El total de movimientos no coincide con los saldos detectados (Dif: $${uniTransactions.metadata.diferencia?.toFixed(2)})`)
+                    }
                 } else {
-                    // Fallback to legacy parseText if Universal fails to find anything
                     console.log('Universal Translator yielded 0 results, falling back to legacy parser')
                     const res = parseText(text, orgId, fileName.endsWith('.csv') ? ',' : undefined)
                     transactions = res.transactions
