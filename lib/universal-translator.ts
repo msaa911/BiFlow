@@ -16,6 +16,8 @@ export interface Transaction {
 
 export interface TranslationResult {
     transactions: Transaction[];
+    hasExplicitTipo: boolean;
+    exampleRow?: Transaction;
     metadata: {
         saldoInicial?: number;
         saldoFinal?: number;
@@ -36,26 +38,37 @@ export class UniversalTranslator {
     /**
      * Identifica el formato y procesa el archivo
      */
-    static translate(rawText: string): TranslationResult {
+    static translate(rawText: string, options?: { invertSigns?: boolean }): TranslationResult {
         const lines = rawText.split('\n').filter(l => l.trim().length > 0);
-        if (lines.length === 0) return { transactions: [], metadata: {} };
+        if (lines.length === 0) return { transactions: [], hasExplicitTipo: false, metadata: {} };
 
         const firstLine = lines[0];
         let transactions: Transaction[] = [];
+        let hasExplicitTipo = false;
 
         // 1. Detección de Formato Posicional (Fixed-width)
         if (!firstLine.includes(',') && !firstLine.includes(';') && !firstLine.includes('|')) {
             transactions = this.parseFixedWith(lines);
+            hasExplicitTipo = false; // Fixed width usually doesn't have headers
         } else {
             // 2. Detección de Delimitadores (CSV/ERP/Pipe)
             const delimiter = this.detectDelimiter(firstLine);
-            transactions = this.parseDelimited(lines, delimiter);
+            const result = this.parseDelimited(lines, delimiter);
+            transactions = result.transactions;
+            hasExplicitTipo = result.hasExplicitTipo;
         }
+
+        // Apply manual sign inversion if requested (Priority 2 Logic)
+        if (options?.invertSigns) {
+            transactions = transactions.map(t => ({ ...t, monto: -t.monto, tipo: t.monto > 0 ? 'DEBITO' : 'CREDITO' }));
+        }
+
+        const exampleRow = transactions.find(t => t.monto !== 0);
 
         // 3. Metadata Extraction (Header Analysis for Balance)
         const metadata = this.extractMetadata(lines, transactions);
 
-        return { transactions, metadata };
+        return { transactions, hasExplicitTipo, exampleRow, metadata };
     }
 
     private static extractMetadata(lines: string[], transactions: Transaction[]) {
@@ -178,10 +191,11 @@ export class UniversalTranslator {
         return taxKeywords.some(k => upperConcept.includes(k)) && !upperConcept.includes('IVA') // Exclude IVA usually
     }
 
-    private static parseDelimited(lines: string[], delimiter: string): Transaction[] {
-        if (lines.length < 2) return []
+    private static parseDelimited(lines: string[], delimiter: string): { transactions: Transaction[], hasExplicitTipo: boolean } {
+        if (lines.length < 2) return { transactions: [], hasExplicitTipo: false }
 
         const headers = lines[0].toLowerCase().split(delimiter).map(h => h.trim().replace(/^"/, '').replace(/"$/, ''))
+        let hasExplicitTipo = false;
 
         const findCol = (row: string[], aliases: string[]) => {
             const idx = headers.findIndex(h => aliases.some(a => h.includes(a)))
@@ -189,7 +203,10 @@ export class UniversalTranslator {
             return ''
         }
 
-        return lines.slice(1).map(line => {
+        // Peek to see if 'tipo' column exists in headers
+        hasExplicitTipo = headers.some(h => ['tipo', 'type', 'movimiento', 'category'].some(a => h.includes(a)));
+
+        const transactions = lines.slice(1).map(line => {
             const row = line.split(delimiter)
             if (row.length < 2) return null
 
@@ -255,5 +272,7 @@ export class UniversalTranslator {
                 tags
             }
         }).filter((t) => t !== null) as Transaction[]
+
+        return { transactions, hasExplicitTipo };
     }
 }

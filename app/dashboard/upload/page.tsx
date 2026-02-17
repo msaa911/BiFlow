@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings } from 'lucide-react'
+import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { ImportHistory } from '@/components/dashboard/import-history'
 import { ColumnMapper } from '@/components/dashboard/column-mapper'
@@ -29,6 +29,14 @@ export default function UploadPage() {
     } | null>(null)
     const [showDetails, setShowDetails] = useState(false)
     const [refreshHistory, setRefreshHistory] = useState(0)
+
+    // Sign Confirmation State
+    const [confirmationData, setConfirmationData] = useState<{
+        file: File;
+        exampleRow: any;
+        onProgress: (p: number) => void;
+    } | null>(null)
+    const [showSignModal, setShowSignModal] = useState(false)
 
     const router = useRouter()
 
@@ -156,7 +164,39 @@ export default function UploadPage() {
         }
     }
 
-    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any): Promise<any> => {
+    const handleSignConfirmation = async (invert: boolean) => {
+        if (!confirmationData) return
+
+        setShowSignModal(false)
+        setUploading(true)
+        setError(null)
+
+        try {
+            const result = await uploadSingleFile(
+                confirmationData.file,
+                confirmationData.onProgress,
+                undefined,
+                invert
+            )
+
+            setSuccess(true)
+            setProgress(100)
+            setUploadResult({
+                count: result.count,
+                skipped: result.skipped,
+                warnings: result.warnings,
+                reviewCount: result.reviewCount || 0
+            })
+            setRefreshHistory(prev => prev + 1)
+        } catch (err: any) {
+            setError(err.message)
+        } finally {
+            setUploading(false)
+            setConfirmationData(null)
+        }
+    }
+
+    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any, invertSigns?: boolean): Promise<any> => {
         return new Promise((resolve, reject) => {
             const formData = new FormData()
             formData.append('file', file)
@@ -165,6 +205,9 @@ export default function UploadPage() {
             }
             if (selectedFormat) {
                 formData.append('formatId', selectedFormat)
+            }
+            if (invertSigns !== undefined) {
+                formData.append('invertSigns', String(invertSigns))
             }
 
             const xhr = new XMLHttpRequest()
@@ -183,6 +226,25 @@ export default function UploadPage() {
                         resolve(response)
                     } catch (e) {
                         resolve({ count: 0, skipped: 0, warnings: [] })
+                    }
+                } else if (xhr.status === 409) {
+                    // Requires Confirmation
+                    try {
+                        const res = JSON.parse(xhr.responseText)
+                        if (res.status === 'requires_confirmation') {
+                            setConfirmationData({
+                                file,
+                                exampleRow: res.exampleRow,
+                                onProgress
+                            })
+                            setShowSignModal(true)
+                            setUploading(false)
+                            // We don't resolve/reject here yet, UI handles the next step
+                        } else {
+                            reject(new Error(res.error || 'Conflicto en servidor'))
+                        }
+                    } catch (e) {
+                        reject(new Error('Error al procesar confirmación'))
                     }
                 } else {
                     try {
@@ -478,6 +540,63 @@ export default function UploadPage() {
                     </div>
                 )}
             </div>
+
+            {/* Sign Confirmation Modal */}
+            {showSignModal && confirmationData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in duration-200">
+                        <div className="flex items-center gap-3 text-emerald-500 mb-4">
+                            <div className="p-2 bg-emerald-500/10 rounded-lg">
+                                <HelpCircle className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white">Confirma tus Datos</h3>
+                        </div>
+
+                        <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+                            No detectamos columnas de Débito/Crédito. Tomamos este ejemplo del archivo para clasificar los signos correctamente:
+                        </p>
+
+                        <div className="bg-gray-850 border border-gray-700 rounded-xl p-4 mb-8">
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="text-xs font-medium text-gray-500 uppercase">Concepto</span>
+                                <span className="text-xs font-medium text-gray-500 uppercase">Monto</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-bold text-white truncate max-w-[200px]">
+                                    {confirmationData.exampleRow.concepto}
+                                </span>
+                                <span className={`text-sm font-mono font-bold ${confirmationData.exampleRow.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    ${Math.abs(confirmationData.exampleRow.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                    <span className="ml-1 text-[10px] opacity-70">({confirmationData.exampleRow.monto < 0 ? '-' : '+'})</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <h4 className="text-white text-base font-bold text-center mb-4">
+                            ¿Este movimiento es un <span className="text-red-400 underline underline-offset-4">GASTO</span>?
+                        </h4>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={() => handleSignConfirmation(false)} // Es un gasto -> Mantenemos signos (Negativo = Gasto)
+                                className="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/10"
+                            >
+                                SÍ, es un Gasto
+                            </button>
+                            <button
+                                onClick={() => handleSignConfirmation(true)} // NO es un gasto -> Invertimos (Negativo = Ingreso)
+                                className="py-3 px-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold border border-gray-700 transition-all active:scale-95"
+                            >
+                                NO, es un Ingreso
+                            </button>
+                        </div>
+
+                        <p className="mt-6 text-center text-[10px] text-gray-500 italic">
+                            Esta elección se aplicará a todas las filas del archivo.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
                 <h4 className="text-blue-400 font-medium mb-2 text-sm">Guía de Formatos</h4>

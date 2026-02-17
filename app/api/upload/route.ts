@@ -39,58 +39,17 @@ export async function POST(request: Request) {
         const orgId = await getOrgId(currentSupabase, user.id)
         console.log(`Org ID obtained: ${orgId}`)
 
-        // --- 1. Upload Raw File to Storage ---
-        console.log('6. Uploading to Storage')
-        const timestamp = Date.now()
-        const dateObj = new Date()
-        const year = dateObj.getFullYear()
-        const month = String(dateObj.getMonth() + 1).padStart(2, '0')
-        const safeFileName = fileName.replace(/[^a-z0-9.-]/gi, '_')
-        const storagePath = `${orgId}/${year}/${month}/${timestamp}_${safeFileName}`
-
-        const { error: storageError } = await currentSupabase.storage
-            .from('raw-imports')
-            .upload(storagePath, buffer, {
-                contentType: file.type,
-                upsert: false
-            })
-
-        if (storageError) {
-            console.error('Storage Upload Error:', storageError)
-            await logError(currentSupabase, 'Storage Upload', storageError.message, fileName)
-            return NextResponse.json({ error: `Error Storage: ${storageError.message}` }, { status: 500 })
-        }
-
-        // --- 2. Create Audit Log ---
-        console.log('7. Creating Audit Log Entry')
-        const { data: importLog, error: dbError } = await currentSupabase
-            .from('archivos_importados')
-            .insert({
-                organization_id: orgId,
-                nombre_archivo: fileName,
-                storage_path: storagePath,
-                estado: 'procesando',
-                metadata: { size: buffer.length, type: file.type }
-            })
-            .select()
-            .single()
-
-        if (dbError || !importLog) {
-            console.error('DB Log Error:', dbError)
-            await logError(currentSupabase, 'DB Audit Log Insert', dbError?.message || 'No returned log', fileName)
-            return NextResponse.json({ error: 'Error al iniciar registro de auditoría (DB).' }, { status: 500 })
-        }
-
-        const importId = importLog.id
-        console.log(`Audit ID: ${importId}`)
-
-        // --- 3. Parse Content ---
+        // --- 3. Parse Content (Peeking before committing to Storage/DB) ---
         console.log('8. Parsing Content')
         let transactions: any[] = []
         let warnings: string[] = []
         let reviewItems: any[] = []
+        let hasExplicitTipo = true // Default to true to bypass check for non-CSV
+        let exampleRow: any = null
 
         const formatId = formData.get('formatId') as string
+        const invertSigns = formData.get('invertSigns') === 'true'
+        const hasConfirmedSign = formData.has('invertSigns')
 
         if (formatId) {
             console.log(`9. Using Custom Format: ${formatId}`)
@@ -118,7 +77,20 @@ export async function POST(request: Request) {
                 const text = buffer.toString('utf-8')
                 // Use Universal Translator
                 const { UniversalTranslator } = require('@/lib/universal-translator')
-                const uniTransactions = UniversalTranslator.translate(text)
+                const uniTransactions = UniversalTranslator.translate(text, { invertSigns })
+
+                hasExplicitTipo = uniTransactions.hasExplicitTipo
+                exampleRow = uniTransactions.exampleRow
+
+                // --- PRIORITY 2 LOGIC: INTERRUPT IF NO EXPLICIT TIPO AND NO CONFIRMATION ---
+                if (!hasExplicitTipo && !hasConfirmedSign && uniTransactions.transactions.length > 0) {
+                    console.log('NOTICE: Missing Tipo column, requiring user confirmation.')
+                    return NextResponse.json({
+                        status: 'requires_confirmation',
+                        exampleRow: uniTransactions.exampleRow,
+                        message: 'No detectamos columna de Crédito/Débito. Por favor confirma el sentido de los signos.'
+                    }, { status: 409 }) // Conflict - requires user decision
+                }
 
                 if (uniTransactions.transactions.length > 0) {
                     transactions = uniTransactions.transactions.map((t: any) => ({
@@ -161,6 +133,54 @@ export async function POST(request: Request) {
                 throw new Error('Formato no soportado')
             }
         }
+
+        // --- 4. Now that we have data and confirmation, commit to Storage and DB ---
+        console.log('10. Uploading to Storage')
+        const timestamp = Date.now()
+        const dateObj = new Date()
+        const year = dateObj.getFullYear()
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+        const safeFileName = fileName.replace(/[^a-z0-9.-]/gi, '_')
+        const storagePath = `${orgId}/${year}/${month}/${timestamp}_${safeFileName}`
+
+        const { error: storageError } = await currentSupabase.storage
+            .from('raw-imports')
+            .upload(storagePath, buffer, {
+                contentType: file.type,
+                upsert: false
+            })
+
+        if (storageError) {
+            console.error('Storage Upload Error:', storageError)
+            await logError(currentSupabase, 'Storage Upload', storageError.message, fileName)
+            return NextResponse.json({ error: `Error Storage: ${storageError.message}` }, { status: 500 })
+        }
+
+        console.log('11. Creating Audit Log Entry')
+        const { data: importLog, error: dbLogErr } = await currentSupabase
+            .from('archivos_importados')
+            .insert({
+                organization_id: orgId,
+                nombre_archivo: fileName,
+                storage_path: storagePath,
+                estado: 'procesando',
+                metadata: {
+                    size: buffer.length,
+                    type: file.type,
+                    hasExplicitTipo,
+                    signsInverted: invertSigns
+                }
+            })
+            .select()
+            .single()
+
+        if (dbLogErr || !importLog) {
+            console.error('DB Log Error:', dbLogErr)
+            return NextResponse.json({ error: 'Error al registrar auditoría.' }, { status: 500 })
+        }
+
+        const importId = importLog.id
+        console.log(`Audit ID: ${importId}`)
 
         console.log(`Parsing metadata: ${transactions.length} trans, ${reviewItems.length} review`)
 
