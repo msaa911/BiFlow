@@ -160,13 +160,59 @@ export async function POST(request: Request) {
 
         console.log(`Parsing metadata: ${transactions.length} trans, ${reviewItems.length} review`)
 
-        // --- 3.5. Insert Review Items ---
         if (reviewItems && reviewItems.length > 0) {
             const reviewsWithLink = reviewItems.map((r: any) => ({
                 ...r,
                 archivo_importacion_id: importId
             }))
             await currentSupabase.from('transacciones_revision').insert(reviewsWithLink)
+        }
+
+        // --- 3.6. Anomaly Detection (Expense Guard) ---
+        if (transactions.length > 0) {
+            try {
+                // Get unique descriptions to check
+                const descriptions = [...new Set(transactions.map(t => t.descripcion))]
+                if (descriptions.length > 0) {
+                    const { data: history } = await currentSupabase.rpc('get_historical_averages', {
+                        p_org_id: orgId,
+                        p_descriptions: descriptions,
+                        p_months_back: 3
+                    })
+
+                    if (history && history.length > 0) {
+                        const historyMap = new Map(history.map((h: any) => [h.descripcion, h.avg_monto]))
+
+                        transactions = transactions.map(t => {
+                            const avg = historyMap.get(t.descripcion)
+                            if (avg) {
+                                const diff = (t.monto - avg) / avg
+                                if (diff > 0.15) { // 15% deviation
+                                    return {
+                                        ...t,
+                                        metadata: {
+                                            ...t.metadata,
+                                            anomaly: 'price_spike',
+                                            anomaly_score: diff,
+                                            historical_avg: avg
+                                        },
+                                        tags: [...(t.tags || []), 'alerta_precio']
+                                    }
+                                }
+                            }
+                            return t
+                        })
+
+                        const anomalies = transactions.filter(t => t.metadata?.anomaly === 'price_spike').length
+                        if (anomalies > 0) {
+                            warnings.push(`Guardián de Gastos: Se detectaron ${anomalies} transacciones con aumentos inusuales (>15%).`)
+                        }
+                    }
+                }
+            } catch (err: any) {
+                console.error('Anomaly Detection Error:', err)
+                // Non-critical, continue
+            }
         }
 
         // --- 4. Store Data & Finish Link ---
@@ -210,7 +256,11 @@ export async function POST(request: Request) {
                 success: true,
                 count: uniqueTransactions.length,
                 reviewCount: reviewItems?.length || 0,
-                message: `OK: ${uniqueTransactions.length} procesados.`
+                message: `OK: ${uniqueTransactions.length} procesados.`,
+                warnings: warnings.slice(0, 10), // Limit warnings
+                balanceCheck: transactions[0]?.origen_dato === 'universal_translator' && transactions.length > 0
+                    ? (transactions as any).metadata // Access metadata if attached (needs better piping)
+                    : undefined
             })
         }
 

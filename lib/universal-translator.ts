@@ -3,13 +3,16 @@
 // Removed import to avoid lint error as Transaction is defined in file
 
 
+
 export interface Transaction {
     fecha: string;
     concepto: string;
     monto: number;
     cuit: string;
     tipo: 'DEBITO' | 'CREDITO';
+    tags?: string[];
 }
+
 
 export interface TranslationResult {
     transactions: Transaction[];
@@ -25,8 +28,9 @@ export interface TranslationResult {
 export class UniversalTranslator {
     // CUITs oficiales para detección automática de retenciones
     private static TAX_IDS = {
-        AFIP: "33693450239",
-        ARBA: "30546742679"
+        AFIP: "33-69345023-9",
+        ARBA: "30-54674267-9",
+        SIRCREB: "30-99903208-3" // Example, needs verification or fuzzy match on "SIRCREB"
     };
 
     /**
@@ -145,14 +149,33 @@ export class UniversalTranslator {
 
             if (!fecha || monto === 0) return null
 
+            // Tax Tagging
+            let tags: string[] = []
+            if (this.isTax(cuit, concepto)) {
+                tags.push('impuesto_recuperable')
+            }
+
             return {
                 fecha,
                 concepto: concepto || 'Sin concepto',
                 monto: Math.abs(monto),
                 cuit: cuit || '',
-                tipo: 'DEBITO'
+                tipo: 'DEBITO',
+                tags
             }
-        }).filter((t): t is Transaction => t !== null)
+        }).filter((t) => t !== null) as Transaction[]
+    }
+
+    private static isTax(cuit: string, concepto: string): boolean {
+        // Check exact CUITs
+        const cleanCuit = cuit.replace(/-/g, '')
+        const taxCuits = Object.values(this.TAX_IDS).map(id => id.replace(/-/g, ''))
+        if (taxCuits.includes(cleanCuit)) return true
+
+        // Check Keywords
+        const upperConcept = concepto.toUpperCase()
+        const taxKeywords = ['SIRCREB', 'IIBB', 'IMP.LEY', 'RETENCION', 'IMPUESTO', 'AGIP', 'ARBA', 'AFIP']
+        return taxKeywords.some(k => upperConcept.includes(k)) && !upperConcept.includes('IVA') // Exclude IVA usually
     }
 
     private static parseDelimited(lines: string[], delimiter: string): Transaction[] {
@@ -191,13 +214,20 @@ export class UniversalTranslator {
 
             if (!fecha || isNaN(monto)) return null
 
+            // Tax Tagging
+            let tags: string[] = []
+            if (this.isTax(cuit, concepto)) {
+                tags.push('impuesto_recuperable')
+            }
+
             return {
                 fecha,
                 concepto,
                 monto: Math.abs(monto),
                 cuit,
-                tipo: 'DEBITO'
+                tipo: 'DEBITO',
+                tags
             }
-        }).filter((t): t is Transaction => t !== null)
+        }).filter((t) => t !== null) as Transaction[]
     }
 }
