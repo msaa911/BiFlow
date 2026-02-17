@@ -193,47 +193,68 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                         </div>
 
                         {/* 2. Rules List */}
+                        {/* 2. Rules List */}
                         <div className="flex-1">
                             <div className="flex items-center justify-between mb-2">
                                 <label className="text-xs font-medium text-gray-500 uppercase block">Campos Detectados</label>
-                                <button
-                                    onClick={clearAllRules}
-                                    className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
-                                    title="Borrar todas las reglas"
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                    Limpiar
-                                </button>
+                                {Object.keys(rules).length > 0 && (
+                                    <button
+                                        onClick={clearAllRules}
+                                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                                        title="Borrar todas las reglas"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                        Limpiar
+                                    </button>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 {/* Mandatory Fields Hints */}
-                                {['fecha', 'monto', 'descripcion', 'cuit'].map(field => (
-                                    <div key={field} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-700">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-2 rounded-full ${rules[field] ? 'bg-emerald-500' : 'bg-gray-600'}`} />
-                                            <span className="text-sm font-medium text-white capitalize">{field}</span>
+                                {['fecha', 'monto', 'descripcion', 'cuit'].map(field => {
+                                    const rule = rules[field]
+                                    const previewValue = rule && lines.length > 0
+                                        ? lines[0].substring(rule.start, rule.end)
+                                        : null
+
+                                    return (
+                                        <div key={field} className="flex flex-col p-3 bg-gray-800 rounded-lg border border-gray-700 gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-2 h-2 rounded-full ${rule ? 'bg-emerald-500' : 'bg-gray-600'}`} />
+                                                    <span className="text-sm font-medium text-white capitalize">{field}</span>
+                                                </div>
+
+                                                {/* Actions */}
+                                                {rule ? (
+                                                    <button onClick={() => {
+                                                        const newRules = { ...rules }
+                                                        delete newRules[field]
+                                                        setRules(newRules)
+                                                    }} className="text-gray-500 hover:text-red-400 p-1">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => assignRule(field)}
+                                                        disabled={!selection}
+                                                        className={`text-xs px-3 py-1.5 rounded transition-all font-medium ${selection
+                                                            ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20'
+                                                            : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
+                                                    >
+                                                        Asignar
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Preview Value */}
+                                            {previewValue && (
+                                                <div className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 truncate">
+                                                    {previewValue}
+                                                </div>
+                                            )}
                                         </div>
-                                        {rules[field] ? (
-                                            <button onClick={() => {
-                                                const newRules = { ...rules }
-                                                delete newRules[field]
-                                                setRules(newRules)
-                                            }} className="text-gray-500 hover:text-red-400">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => setActiveField(field)}
-                                                disabled={!selection}
-                                                className={`text-xs px-2 py-1 rounded border transition-colors ${selection
-                                                    ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
-                                                    : 'border-gray-700 text-gray-600 cursor-not-allowed'}`}
-                                            >
-                                                Asignar
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </div>
 
@@ -241,30 +262,9 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                         <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                             <p className="text-xs text-blue-300 font-mono">
                                 {selection
-                                    ? `Selección: Posición ${selection.start} - ${selection.end} (Largo: ${selection.end - selection.start})`
-                                    : 'Selecciona texto en el visor para definir campos.'}
+                                    ? `Selección: ${lines[0]?.substring(selection.start, selection.end) || '...'} (${selection.end - selection.start} chars)`
+                                    : '1. Selecciona texto en el visor.\n2. Haz clic en "Asignar" en el campo deseado.'}
                             </p>
-                            {selection && activeField && (
-                                <button
-                                    onClick={() => assignRule(activeField)}
-                                    className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs py-1.5 rounded"
-                                >
-                                    Confirmar para {activeField}
-                                </button>
-                            )}
-                            {selection && !activeField && rules['fecha'] && rules['monto'] && (
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                    {['fecha', 'monto', 'descripcion', 'cuit'].filter(f => !rules[f]).map(f => (
-                                        <button
-                                            key={f}
-                                            onClick={() => assignRule(f)}
-                                            className="bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs px-2 py-1 rounded capitalize"
-                                        >
-                                            {f}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     </div>
 
