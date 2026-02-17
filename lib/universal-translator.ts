@@ -229,15 +229,20 @@ export class UniversalTranslator {
                     monto = Math.abs(monto)
                 }
                 // 2. Contextual Check (Fallback if Type is empty/ambiguous)
-                // USER REQUIREMENT: "In this model, everything is DEBIT (Expense) unless noted as CREDIT."
+                // USER REQUIREMENT: "Credits/Ingresos are Positive. Debits/Notas de Debito are Negative."
                 else {
-                    const positiveKeywords = ['NOTA DE CREDITO', 'NC ', 'DEVOLUCION', 'RECUPERO', 'INGRESO', 'COBRO', 'DEPOSITO', 'TRANSFERENCIA RECIBIDA', 'ACREDITAMIENTO', 'VENTA']
+                    const negativeOverride = ['NOTA DE DEBITO', 'ND ', 'IMPUESTO LEY', 'IMP.LEY', 'IIBB', 'COMISION', 'GASTO', 'SELLOS', 'IVA']
+                    const positiveKeywords = ['NOTA DE CREDITO', 'NC ', 'DEVOLUCION', 'RECUPERO', 'INGRESO', 'COBRO', 'DEPOSITO', 'TRANSFERENCIA RECIBIDA', 'ACREDITAMIENTO', 'VENTA', 'CREDITO']
 
-                    // Check strictly for Positive Keywords first
-                    if (positiveKeywords.some(k => cleanDesc.includes(k))) {
+                    // 1. Check Negative Overrides FIRST (e.g. "Impuesto a los Creditos" should be Negative despite saying "Credito")
+                    if (negativeOverride.some(k => cleanDesc.includes(k))) {
+                        monto = -Math.abs(monto)
+                    }
+                    // 2. Check Positive Keywords
+                    else if (positiveKeywords.some(k => cleanDesc.includes(k))) {
                         monto = Math.abs(monto)
                     }
-                    // Otherwise, DEFAULT TO EXPENSE (Negative) as requested
+                    // 3. Default to Expense (Negative)
                     else {
                         monto = -Math.abs(monto)
                     }
