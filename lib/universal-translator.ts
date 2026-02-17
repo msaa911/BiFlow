@@ -216,41 +216,27 @@ export class UniversalTranslator {
 
             let tipoStr = findCol(row, ['tipo', 'type', 'movimiento', 'category']) || ''
 
-            // Logic to determine sign based on Type or Amount string OR Description (Contextual)
+            // Logic to determine sign based on Type or Amount string
             if (monto !== 0) {
                 const cleanTipo = tipoStr.toUpperCase()
-                const cleanDesc = concepto.toUpperCase()
 
-                // 1. Explicit Type Check
-                // FIX: Strict check for short aliases
-                const isExplicitNegative = ['DEBITO', 'DEBIT', 'EGRESO', 'OUT', 'GASTO', 'PAGO'].some(t => cleanTipo.includes(t)) || cleanTipo === 'D'
-                const isExplicitPositive = ['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO'].some(t => cleanTipo.includes(t)) || cleanTipo === 'C'
+                // 1. Explicit Type Column (Priority: Source of Truth)
+                // If a type column exists, we force the sign based on it.
+                if (cleanTipo) {
+                    // FIX: Strict check for short aliases
+                    const isExplicitNegative = ['DEBITO', 'DEBIT', 'EGRESO', 'OUT', 'GASTO', 'PAGO'].some(t => cleanTipo.includes(t)) || cleanTipo === 'D'
+                    const isExplicitPositive = ['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO'].some(t => cleanTipo.includes(t)) || cleanTipo === 'C'
 
-                if (isExplicitNegative) {
-                    monto = -Math.abs(monto)
-                }
-                else if (isExplicitPositive) {
-                    monto = Math.abs(monto)
-                }
-                // 2. Contextual Check (Fallback if Type is empty/ambiguous)
-                // USER REQUIREMENT: "Credits/Ingresos are Positive. Debits/Notas de Debito/Retenciones are Negative."
-                else {
-                    const negativeOverride = ['NOTA DE DEBITO', 'ND ', 'IMPUESTO LEY', 'IMP.LEY', 'IIBB', 'COMISION', 'GASTO', 'SELLOS', 'IVA', 'RETENCION', 'PERCEPCION', 'SUSS']
-                    const positiveKeywords = ['NOTA DE CREDITO', 'NC ', 'DEVOLUCION', 'RECUPERO', 'INGRESO', 'COBRO', 'DEPOSITO', 'TRANSFERENCIA RECIBIDA', 'ACREDITAMIENTO', 'VENTA', 'CREDITO']
-
-                    // 1. Check Negative Overrides FIRST
-                    if (negativeOverride.some(k => cleanDesc.includes(k))) {
+                    if (isExplicitNegative) {
                         monto = -Math.abs(monto)
                     }
-                    // 2. Check Positive Keywords
-                    else if (positiveKeywords.some(k => cleanDesc.includes(k))) {
+                    else if (isExplicitPositive) {
                         monto = Math.abs(monto)
                     }
-                    // 3. Default to Expense (Negative)
-                    else {
-                        monto = -Math.abs(monto)
-                    }
                 }
+                // 2. No Type Column -> Trust the Amount Sign
+                // If the parser read a negative number, it's a Debit. If positive, it's a Credit.
+                // We do NOT guess based on description keywords.
             }
 
             // Tax Tagging
