@@ -224,8 +224,9 @@ export class UniversalTranslator {
                 // If a type column exists, we force the sign based on it.
                 if (cleanTipo) {
                     // FIX: Strict check for short aliases
-                    const isExplicitNegative = ['DEBITO', 'DEBIT', 'EGRESO', 'OUT', 'GASTO', 'PAGO'].some(t => cleanTipo.includes(t)) || cleanTipo === 'D'
-                    const isExplicitPositive = ['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO'].some(t => cleanTipo.includes(t)) || cleanTipo === 'C'
+                    // User requested ONLY: C, CREDITO, D, DEBITO
+                    const isExplicitNegative = cleanTipo.includes('DEBITO') || cleanTipo === 'D'
+                    const isExplicitPositive = cleanTipo.includes('CREDITO') || cleanTipo === 'C'
 
                     if (isExplicitNegative) {
                         monto = -Math.abs(monto)
