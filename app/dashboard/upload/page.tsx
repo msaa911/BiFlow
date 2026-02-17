@@ -1,11 +1,12 @@
 
 'use client'
 
-import { useState, useCallback } from 'react'
-import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { ImportHistory } from '@/components/dashboard/import-history'
 import { ColumnMapper } from '@/components/dashboard/column-mapper'
+import { SmartFormatBuilder } from '@/components/dashboard/smart-format-builder'
 
 export default function UploadPage() {
     const [dragActive, setDragActive] = useState(false)
@@ -15,6 +16,9 @@ export default function UploadPage() {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
     const [mappingFile, setMappingFile] = useState<File | null>(null)
+    const [showFormatBuilder, setShowFormatBuilder] = useState(false)
+    const [formats, setFormats] = useState<any[]>([])
+    const [selectedFormat, setSelectedFormat] = useState<string>('')
 
     // New state for detailed feedback
     const [uploadResult, setUploadResult] = useState<{
@@ -27,6 +31,22 @@ export default function UploadPage() {
     const [refreshHistory, setRefreshHistory] = useState(0)
 
     const router = useRouter()
+
+    useEffect(() => {
+        fetchFormats()
+    }, [])
+
+    const fetchFormats = async () => {
+        try {
+            const res = await fetch('/api/formats')
+            if (res.ok) {
+                const data = await res.json()
+                setFormats(data)
+            }
+        } catch (e) {
+            console.error('Failed to fetch formats')
+        }
+    }
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault()
@@ -143,6 +163,9 @@ export default function UploadPage() {
             if (mapping) {
                 formData.append('mapping', JSON.stringify(mapping))
             }
+            if (selectedFormat) {
+                formData.append('formatId', selectedFormat)
+            }
 
             const xhr = new XMLHttpRequest()
 
@@ -176,6 +199,18 @@ export default function UploadPage() {
             xhr.open('POST', '/api/upload')
             xhr.send(formData)
         })
+    }
+
+    if (showFormatBuilder) {
+        return (
+            <SmartFormatBuilder
+                onClose={() => setShowFormatBuilder(false)}
+                onFormatSaved={() => {
+                    fetchFormats()
+                    setShowFormatBuilder(false)
+                }}
+            />
+        )
     }
 
     if (mappingFile) {
@@ -213,12 +248,38 @@ export default function UploadPage() {
 
     return (
         <div className="max-w-2xl mx-auto space-y-8">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight text-white">Carga de Documentos</h2>
-                <p className="text-gray-400">Sube extractos, listas de clientes, facturas o cualquier documento financiero para análisis.</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-white">Carga de Documentos</h2>
+                    <p className="text-gray-400">Sube extractos, listas de clientes, facturas o cualquier documento financiero para análisis.</p>
+                </div>
+                <button
+                    onClick={() => setShowFormatBuilder(true)}
+                    className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm border border-gray-700 transition-colors"
+                >
+                    <Settings className="w-4 h-4" />
+                    Nuevo Formato
+                </button>
             </div>
 
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
+                {/* Format Selector */}
+                {formats.length > 0 && !success && (
+                    <div className="mb-6">
+                        <label className="block text-xs font-medium text-gray-400 mb-2 uppercase">Formato de Archivo (Opcional)</label>
+                        <select
+                            value={selectedFormat}
+                            onChange={(e) => setSelectedFormat(e.target.value)}
+                            className="w-full bg-gray-800 border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+                        >
+                            <option value="">Detección Automática (Recomendado)</option>
+                            {formats.map(f => (
+                                <option key={f.id} value={f.id}>{f.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
                 {!success ? (
                     <>
                         <div
