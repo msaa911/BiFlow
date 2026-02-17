@@ -191,18 +191,24 @@ export async function POST(request: Request) {
                         )
 
                         transactions = transactions.map(t => {
-                            const avg = historyMap.get(t.descripcion)
-                            // Strict check: avg must be a number (not undefined) and not zero
-                            if (typeof avg === 'number' && avg !== 0) {
-                                const diff = (t.monto - avg) / avg
-                                if (diff > 0.15) { // 15% deviation
+                            const avgRaw = historyMap.get(t.descripcion)
+
+                            // Strict check: avg must be a number
+                            if (typeof avgRaw === 'number' && avgRaw !== 0) {
+                                // Compare Magnitudes (Absolute values) to handle both Incomes (+) and Expenses (-)
+                                const currentAbs = Math.abs(t.monto)
+                                const avgAbs = Math.abs(avgRaw)
+
+                                const diff = (currentAbs - avgAbs) / avgAbs
+
+                                if (diff > 0.15) { // 15% deviation in magnitude
                                     return {
                                         ...t,
                                         metadata: {
                                             ...t.metadata,
                                             anomaly: 'price_spike',
                                             anomaly_score: diff,
-                                            historical_avg: avg
+                                            historical_avg: avgRaw // Keep original signed average for reference
                                         },
                                         tags: [...(t.tags || []), 'alerta_precio']
                                     }

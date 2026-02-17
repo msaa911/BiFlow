@@ -214,6 +214,23 @@ export class UniversalTranslator {
 
             if (!fecha || isNaN(monto)) return null
 
+            let tipoStr = findCol(row, ['tipo', 'type', 'movimiento', 't', 'category', 'class']) || ''
+
+            // Logic to determine sign based on Type or Amount string
+            if (monto !== 0) {
+                const cleanTipo = tipoStr.toUpperCase()
+                // If explicit type says DEBIT/EXPENSE, force negative
+                if (['DEBITO', 'DEBIT', 'EGRESO', 'OUT', 'GASTO', 'PAGO'].some(t => cleanTipo.includes(t))) {
+                    monto = -Math.abs(monto)
+                }
+                // If explicit type says CREDIT/INCOME, force positive
+                else if (['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO'].some(t => cleanTipo.includes(t))) {
+                    monto = Math.abs(monto)
+                }
+                // If no type or ambiguous, trust the sign from the amount string (already parsed)
+                // Note: We removed the hardcoded Math.abs() from the original return
+            }
+
             // Tax Tagging
             let tags: string[] = []
             if (this.isTax(cuit, concepto)) {
@@ -223,9 +240,9 @@ export class UniversalTranslator {
             return {
                 fecha,
                 concepto,
-                monto: Math.abs(monto),
+                monto: monto, // Signed amount
                 cuit,
-                tipo: 'DEBITO',
+                tipo: monto < 0 ? 'DEBITO' : 'CREDITO',
                 tags
             }
         }).filter((t) => t !== null) as Transaction[]
