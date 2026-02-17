@@ -166,7 +166,7 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <MousePointerClick className="w-5 h-5 text-emerald-500" />
-                            Smart Format Builder (v3)
+                            Smart Format Builder (v4)
                         </h2>
                         <p className="text-sm text-gray-400">Enseña a BiFlow cómo leer tus archivos posicionales.</p>
                     </div>
@@ -212,8 +212,10 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                                 {/* Mandatory Fields Hints */}
                                 {['fecha', 'monto', 'descripcion', 'cuit'].map(field => {
                                     const rule = rules[field]
-                                    const previewValue = rule && lines.length > 0
-                                        ? lines[0].substring(rule.start, rule.end)
+                                    // Use line 1 (data) for preview if available, otherwise line 0
+                                    const previewLine = lines.length > 1 ? lines[1] : lines[0]
+                                    const previewValue = rule && previewLine
+                                        ? previewLine.substring(rule.start, rule.end)
                                         : null
 
                                     return (
