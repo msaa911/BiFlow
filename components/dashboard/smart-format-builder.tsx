@@ -35,29 +35,27 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
         setLines(previewLines)
     }
 
-    const handleTextSelect = () => {
+    const handleTextSelect = (lineIndex: number) => {
         const sel = window.getSelection()
         if (!sel || sel.rangeCount === 0) return
 
         const range = sel.getRangeAt(0)
 
-        // Find if we are inside a line-content div
-        let current: Node | null = range.commonAncestorContainer
-        while (current && (current.nodeType !== 1 || !(current as Element).classList.contains('line-content'))) {
-            current = current.parentNode
+        let container: Node | null = range.commonAncestorContainer
+        // Find line-content div
+        while (container && (container.nodeType !== 1 || !(container as Element).classList.contains('line-content'))) {
+            container = container.parentNode
         }
 
-        const lineDiv = current as HTMLElement
+        const lineDiv = container as HTMLElement
         if (!lineDiv) return
 
-        // Robust offset calculation using Range.toString()
-        // We create a range from the start of the line to the start of selection
+        // Calculate offsets using robust Range string length
         const preCaretRange = range.cloneRange()
         preCaretRange.selectNodeContents(lineDiv)
         preCaretRange.setEnd(range.startContainer, range.startOffset)
         const start = preCaretRange.toString().length
 
-        // And another to the end of selection
         const endRange = range.cloneRange()
         endRange.selectNodeContents(lineDiv)
         endRange.setEnd(range.endContainer, range.endOffset)
@@ -65,14 +63,12 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
 
         const text = lineDiv.textContent || ''
 
-        // Validation
         if (Math.abs(end - start) === 0) return
 
-        // Ensure we always store Start < End
         const finalStart = Math.min(start, end)
         const finalEnd = Math.max(start, end)
 
-        console.log(`Selection: ${finalStart} - ${finalEnd} ("${text.substring(finalStart, finalEnd)}")`)
+        console.log(`Line ${lineIndex} Selection: ${finalStart} - ${finalEnd}`)
         setSelection({ start: finalStart, end: finalEnd })
     }
 
@@ -84,12 +80,11 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
         }))
         setSelection(null)
         setActiveField(null)
-        // Clear DOM selection
         window.getSelection()?.removeAllRanges()
     }
 
     const clearAllRules = () => {
-        if (confirm('¿Estás seguro de querer borrar todas las reglas?')) {
+        if (confirm('¿Borrar todas las reglas?')) {
             setRules({})
             setSelection(null)
             setActiveField(null)
@@ -131,9 +126,6 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
 
     // Render highlights on a line
     const renderLine = (text: string, idx: number) => {
-        // We want to highlight segments based on rules
-        // This is complex if rules overlap. Assuming they don't for now.
-        // Sort rules by start
         const sortedRules = Object.entries(rules)
             .sort(([, a], [, b]) => a.start - b.start)
 
@@ -141,11 +133,9 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
         const segments = []
 
         sortedRules.forEach(([field, rule]) => {
-            // Text before rule
             if (rule.start > lastIdx) {
                 segments.push(<span key={`${idx}-${lastIdx}-pre`}>{text.substring(lastIdx, rule.start)}</span>)
             }
-            // Rule text
             segments.push(
                 <span key={`${idx}-${field}`} className="bg-blue-500/30 text-blue-200 border-b-2 border-blue-400" title={field}>
                     {text.substring(rule.start, rule.end)}
@@ -154,7 +144,6 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
             lastIdx = rule.end
         })
 
-        // Remaining text
         if (lastIdx < text.length) {
             segments.push(<span key={`${idx}-end`}>{text.substring(lastIdx)}</span>)
         }
@@ -162,7 +151,7 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
         return (
             <div
                 className="font-mono whitespace-pre text-sm text-gray-300 hover:bg-gray-800 cursor-text line-content selection:bg-emerald-500/40"
-                onMouseUp={handleTextSelect}
+                onMouseUp={() => handleTextSelect(idx)}
             >
                 {segments}
             </div>
@@ -177,7 +166,7 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <MousePointerClick className="w-5 h-5 text-emerald-500" />
-                            Smart Format Builder (v2)
+                            Smart Format Builder (v3)
                         </h2>
                         <p className="text-sm text-gray-400">Enseña a BiFlow cómo leer tus archivos posicionales.</p>
                     </div>
@@ -207,16 +196,14 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                         <div className="flex-1">
                             <div className="flex items-center justify-between mb-2">
                                 <label className="text-xs font-medium text-gray-500 uppercase block">Campos Detectados</label>
-                                {Object.keys(rules).length > 0 && (
-                                    <button
-                                        onClick={clearAllRules}
-                                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
-                                        title="Borrar todas las reglas"
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                        Limpiar Todo
-                                    </button>
-                                )}
+                                <button
+                                    onClick={clearAllRules}
+                                    className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                                    title="Borrar todas las reglas"
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                    Limpiar
+                                </button>
                             </div>
                             <div className="space-y-2">
                                 {/* Mandatory Fields Hints */}
@@ -242,7 +229,7 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                                                     ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
                                                     : 'border-gray-700 text-gray-600 cursor-not-allowed'}`}
                                             >
-                                                Asignar Selección
+                                                Asignar
                                             </button>
                                         )}
                                     </div>
