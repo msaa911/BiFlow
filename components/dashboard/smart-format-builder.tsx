@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 
 interface SmartFormatBuilderProps {
     onClose: () => void
-    onFormatSaved: () => void
+    onFormatSaved: (formatId?: string, file?: File) => void
 }
 
 interface FormatRule {
@@ -119,7 +119,17 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
         if (error) {
             alert('Error: ' + error.message)
         } else {
-            onFormatSaved()
+            // Fetch the just created format or just pass rules if we had the ID
+            // For now, reload formats in parent is enough, but passing ID helps
+            const { data: newFormat } = await supabase
+                .from('formato_archivos')
+                .select('id')
+                .eq('nombre', formatName)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single()
+
+            onFormatSaved(newFormat?.id, file || undefined)
             onClose()
         }
     }

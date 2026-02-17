@@ -5,6 +5,7 @@ import { KPICard } from '@/components/ui/kpi-card'
 import { DashboardActions } from '@/components/dashboard/actions'
 import { TaxRecoveryWidget } from '@/components/dashboard/tax-recovery-widget'
 import { ExpenseGuardWidget } from '@/components/dashboard/expense-guard-widget'
+import { CashHealthScore } from '@/components/dashboard/cash-health-score'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,6 +60,25 @@ export default async function DashboardPage() {
         .select('*', { count: 'exact', head: true })
         .eq('estado', 'pendiente')
 
+    // 2. Fetch Audit Findings for Score
+    const { data: findings } = await supabase
+        .from('hallazgos')
+        .select('tipo, severidad')
+        .eq('estado', 'detectado')
+
+    // Calculate Score (Base 100)
+    let healthScore = 100
+    if (findings) {
+        findings.forEach(f => {
+            if (f.severidad === 'critical') healthScore -= 20
+            else if (f.severidad === 'high') healthScore -= 10
+            else healthScore -= 3
+        })
+    }
+    healthScore = Math.max(15, healthScore) // Floor at 15
+
+    const recoveryPotential = totalBalance > 0 ? Math.round((totalRecoverable / Math.abs(totalBalance)) * 100) : 0
+
     return (
         <div className="space-y-8">
             <div>
@@ -91,18 +111,37 @@ export default async function DashboardPage() {
 
             {/* Algorithmic CFO Widgets */}
             <div className="grid gap-6 md:grid-cols-4">
-                <KPICard
-                    title="Saldo Operativo"
-                    value={formatCurrency(totalBalance)}
-                    description="Balance actual estimado"
-                    icon={<Activity className="h-5 w-5 text-blue-400" />}
-                    trend="neutral"
-                />
-                {/* Replaced generic cards with specific Widgets */}
-                <div className="md:col-span-3 grid gap-6 md:grid-cols-2">
-                    <TaxRecoveryWidget totalRecoverable={totalRecoverable} taxItems={taxItems || []} />
-                    <ExpenseGuardWidget anomalies={anomalies || []} />
+                <div className="md:col-span-2">
+                    <CashHealthScore
+                        score={healthScore}
+                        anomalyCount={findings?.length || 0}
+                        recoveryPotential={recoveryPotential}
+                    />
                 </div>
+                <div className="md:col-span-1">
+                    <KPICard
+                        title="Saldo Operativo"
+                        value={formatCurrency(totalBalance)}
+                        description="Balance actual estimado"
+                        icon={<Activity className="h-5 w-5 text-blue-400" />}
+                        trend="neutral"
+                    />
+                </div>
+                <div className="md:col-span-1">
+                    <KPICard
+                        title="Recupero Pendiente"
+                        value={formatCurrency(totalRecoverable)}
+                        description="Impuestos AFIP/ARBA"
+                        icon={<DollarSign className="h-5 w-5 text-emerald-400" />}
+                        trend="up"
+                        trendValue="+5.2%"
+                    />
+                </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+                <TaxRecoveryWidget totalRecoverable={totalRecoverable} taxItems={taxItems || []} />
+                <ExpenseGuardWidget anomalies={anomalies || []} />
             </div>
 
             {/* Recent Transactions & Actions */}

@@ -82,14 +82,14 @@ export default function UploadPage() {
     }
 
     const validateAndAddFiles = (newFiles: File[]) => {
-        const validExtensions = ['.csv', '.pdf', '.xls', '.xlsx', '.txt', '.dat']
+        const validExtensions = ['.csv', '.xls', '.xlsx', '.txt', '.dat']
         const validFiles = newFiles.filter(file => {
             const extension = '.' + file.name.split('.').pop()?.toLowerCase();
             return validExtensions.includes(extension);
         })
 
         if (validFiles.length !== newFiles.length) {
-            setError('Algunos archivos no eran compatibles. Formatos aceptados: PDF, Excel, CSV, TXT, DAT.')
+            setError('Algunos archivos no eran compatibles. Formatos aceptados: Excel, CSV, TXT, DAT.')
         } else {
             setError(null)
         }
@@ -267,9 +267,16 @@ export default function UploadPage() {
         return (
             <SmartFormatBuilder
                 onClose={() => setShowFormatBuilder(false)}
-                onFormatSaved={() => {
-                    fetchFormats()
+                onFormatSaved={async (newFormatId?: string, fileToProcess?: File) => {
+                    await fetchFormats()
                     setShowFormatBuilder(false)
+                    if (newFormatId) {
+                        setSelectedFormat(newFormatId)
+                        if (fileToProcess) {
+                            // Automatically add to files list and trigger upload flow
+                            setFiles([fileToProcess])
+                        }
+                    }
                 }}
             />
         )
@@ -338,7 +345,7 @@ export default function UploadPage() {
                             >
                                 <option value="">Detección Automática (Recomendado)</option>
                                 {formats.map(f => (
-                                    <option key={f.id} value={f.id}>{f.nombre}</option>
+                                    <option key={f.id} value={f.id}>{f.nombre} ({f.tipo === 'fixed_width' ? 'Manual' : 'Auto'})</option>
                                 ))}
                             </select>
                             {selectedFormat && (
@@ -382,11 +389,11 @@ export default function UploadPage() {
                                 <p className="mb-1 text-base font-medium text-gray-300">
                                     Arrastra tus archivos aquí
                                 </p>
-                                <p className="text-xs text-gray-500">Haz clic para seleccionar (PDF, Excel, Txt, Dat, CSV)</p>
+                                <p className="text-xs text-gray-500">Haz clic para seleccionar (Excel, Txt, Dat, CSV)</p>
                             </div>
                             <input
                                 type="file"
-                                accept=".csv,.pdf,.xls,.xlsx,.txt,.dat"
+                                accept=".csv,.xls,.xlsx,.txt,.dat"
                                 multiple
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 onChange={handleChange}
@@ -641,7 +648,7 @@ export default function UploadPage() {
                     Nuestro sistema inteligente analizará tus archivos automáticamente. Soportamos:
                 </p>
                 <ul className="text-xs text-blue-300 space-y-1 list-disc list-inside">
-                    <li>Extractos bancarios (PDF, Excel, CSV)</li>
+                    <li>Planillas de movimientos (Excel, CSV)</li>
                     <li>Lista de clientes o proveedores (con CUIT)</li>
                     <li>Archivos de Interbanking (.txt, .dat)</li>
                     <li>Planillas de cobros y pagos</li>

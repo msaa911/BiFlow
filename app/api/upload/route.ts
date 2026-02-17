@@ -61,11 +61,34 @@ export async function POST(request: Request) {
 
             if (format) {
                 const { parseFixed } = require('@/lib/parsers/fixed-width')
+                const { UniversalTranslator } = require('@/lib/universal-translator')
                 const text = buffer.toString('utf-8')
+                console.log(`DEBUG: Custom Parser Input Length: ${text.length}`)
                 const res = parseFixed(text, format.reglas)
-                transactions = res.transactions
+                console.log(`DEBUG: Custom Parser Result - Trans: ${res.transactions?.length}, Review: ${res.reviewItems?.length}`)
+
+                // --- FIX: Map and Enrich Custom Format Results ---
+                transactions = res.transactions.map((t: any) => {
+                    // Tax identification for custom formats
+                    const isTax = UniversalTranslator.isTax(t.cuit || '', t.concepto || 'Sin concepto')
+                    const tags = [...(t.tags || [])]
+                    if (isTax) tags.push('impuesto_recuperable')
+
+                    return {
+                        ...t,
+                        organization_id: orgId,
+                        descripcion: t.concepto || 'Sin concepto',
+                        tags,
+                        estado: 'pendiente'
+                    }
+                })
+
+                reviewItems = res.reviewItems.map((r: any) => ({
+                    ...r,
+                    organization_id: orgId
+                }))
+
                 warnings = res.warnings || []
-                reviewItems = res.reviewItems
             } else {
                 console.log('Format not found, falling back to auto-detect')
             }
@@ -292,12 +315,12 @@ export async function POST(request: Request) {
                     metadata: t.metadata || {}
                 }))
 
-                console.log('DEBUG: First transaction keys:', Object.keys(sanitizedTransactions[0]))
-
+                console.log(`DEBUG: Inserting ${sanitizedTransactions.length} trans for org ${orgId}`)
                 const { error: insError } = await currentSupabase.from('transacciones').insert(sanitizedTransactions)
                 if (insError) {
                     await currentSupabase.from('archivos_importados').update({ estado: 'error', metadata: { error: insError.message } }).eq('id', importId)
                     console.error('Insert Error Full:', insError)
+                    await logError(currentSupabase, 'Insert Transactions', `RLS/DB Error: ${insError.message}. Org: ${orgId}. First Row Org: ${sanitizedTransactions[0].organization_id}`, fileName, orgId)
                     throw new Error(`Error insertion: ${insError.message}`)
                 }
             }
@@ -316,6 +339,23 @@ export async function POST(request: Request) {
                 balanceCheck: transactions[0]?.origen_dato === 'universal_translator' && transactions.length > 0
                     ? (transactions as any).metadata // Access metadata if attached (needs better piping)
                     : undefined
+            })
+        }
+
+        if (transactions.length === 0 && reviewItems.length > 0) {
+            await currentSupabase.from('archivos_importados').update({
+                estado: 'completado',
+                metadata: {
+                    note: 'Pendiente de Revisión',
+                    reviewCount: reviewItems.length
+                }
+            }).eq('id', importId)
+
+            return NextResponse.json({
+                success: true,
+                count: 0,
+                reviewCount: reviewItems.length,
+                message: `Atención: No se insertaron transacciones directas, pero hay ${reviewItems.length} filas pendientes de revisión en la Cuarentena.`
             })
         }
 
@@ -340,9 +380,10 @@ export async function POST(request: Request) {
     }
 }
 
-async function logError(supabase: any, origin: string, message: string, fileName?: string) {
+async function logError(supabase: any, origin: string, message: string, fileName?: string, orgId?: string) {
     try {
         await supabase.from('error_logs').insert({
+            organization_id: orgId || null,
             nivel: 'error',
             origen: `api/upload/${origin}`,
             mensaje: message,

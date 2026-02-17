@@ -24,7 +24,6 @@ export async function runAnalysis(organizationId: string) {
     const supabase = await createClient()
 
     // 1. Fetch all transactions for the org
-    // In production, we should paginate or filter by date
     const { data: transactions, error } = await supabase
         .from('transacciones')
         .select('*')
@@ -38,60 +37,85 @@ export async function runAnalysis(organizationId: string) {
 
     const findings: Finding[] = []
 
-    // 2. Detect Duplicates
-    // Group by (monto, cuit_destino) for negative amounts (payments)
-    const payments = transactions.filter(t => t.monto < 0)
-    const groups: Record<string, Transaction[]> = {}
-
-    payments.forEach(t => {
-        const key = `${t.monto}-${t.cuit_destino || 'unknown'}`
-        if (!groups[key]) groups[key] = []
-        groups[key].push(t)
+    // 2. Fetch Historical Averages (for Price Spike Detection)
+    const descriptions = [...new Set(transactions.map(t => t.descripcion))]
+    const { data: history } = await supabase.rpc('get_historical_averages', {
+        p_org_id: organizationId,
+        p_descriptions: descriptions,
+        p_months_back: 3
     })
+    const historyMap = new Map<string, number>(
+        (history || []).map((h: any) => [h.descripcion, Number(h.avg_monto)])
+    )
 
-    Object.values(groups).forEach(group => {
-        if (group.length > 1) {
-            // Sort by date inside group (already sorted by query but good to ensure)
-            group.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+    // Helper for fuzzy match (consistency with AnomalyEngine)
+    const isFuzzyDuplicate = (a: any, b: any) => {
+        if (a.fecha !== b.fecha) return false
+        if (Math.abs(a.monto) !== Math.abs(b.monto)) return false
 
-            for (let i = 1; i < group.length; i++) {
-                const current = group[i]
-                const prev = group[i - 1]
+        const clean = (s: string) => (s || '').toUpperCase().split(/[*#-]/)[0].trim()
+        const d1 = clean(a.descripcion)
+        const d2 = clean(b.descripcion)
 
-                const date1 = new Date(prev.fecha)
-                const date2 = new Date(current.fecha)
-                const diffTime = Math.abs(date2.getTime() - date1.getTime())
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        if (d1 === d2 && d1.length > 3) {
+            const gateways = ['MERCADOPAGO', 'MP', 'TIENDANUBE', 'POS', 'VTA', 'COMPRA', 'LINK', 'BANELCO', 'ESTABLECIMIENTO']
+            if (gateways.some(g => d1.includes(g))) return true
+        }
+        return a.descripcion === b.descripcion || (a.cuit && a.cuit === b.cuit)
+    }
 
-                if (diffDays <= 7) {
+    // Process each transaction
+    for (let i = 0; i < transactions.length; i++) {
+        const t = transactions[i]
+
+        // --- A. Duplicate Detection ---
+        const duplicate = transactions.find((prev, idx) => idx < i && isFuzzyDuplicate(t, prev))
+        if (duplicate) {
+            findings.push({
+                organization_id: organizationId,
+                transaccion_id: t.id,
+                tipo: 'duplicado',
+                severidad: 'high',
+                estado: 'detectado',
+                monto_estimado_recupero: Math.abs(t.monto),
+                detalle: {
+                    razon: 'Posible duplicado (Fuzzy POS detection)',
+                    transaccion_original_id: duplicate.id,
+                    fecha_original: duplicate.fecha
+                }
+            })
+        }
+
+        // --- B. Price Spike Detection ---
+        if (t.monto < 0) {
+            const avg = historyMap.get(t.descripcion)
+            if (avg) {
+                const currentAbs = Math.abs(t.monto)
+                const avgAbs = Math.abs(avg)
+                const deviation = (currentAbs - avgAbs) / avgAbs
+
+                if (deviation > 0.15) {
                     findings.push({
                         organization_id: organizationId,
-                        transaccion_id: current.id,
-                        tipo: 'duplicado',
-                        severidad: 'high',
+                        transaccion_id: t.id,
+                        tipo: 'anomalia',
+                        severidad: deviation > 0.5 ? 'critical' : 'high',
                         estado: 'detectado',
-                        monto_estimado_recupero: Math.abs(current.monto),
+                        monto_estimado_recupero: currentAbs - avgAbs,
                         detalle: {
-                            razon: 'Pago idéntico detectado en lapso corto',
-                            dias_diferencia: diffDays,
-                            transaccion_original_id: prev.id,
-                            fecha_original: prev.fecha
+                            razon: 'Desvío de precio detectado (>15%)',
+                            promedio_historico: avg,
+                            desvio: deviation
                         }
                     })
                 }
             }
         }
-    })
 
-    // 3. Detect Fiscal Leaks (Retenciones)
-    const keywords = ['RETENCION', 'PERCEPCION', 'SIRCREB', 'IIBB', 'IMPUESTO', 'DB.ALICUOTA']
-
-    transactions.forEach(t => {
+        // --- C. Fiscal Leaks (Retenciones) ---
         const desc = t.descripcion.toUpperCase()
+        const keywords = ['RETENCION', 'PERCEPCION', 'SIRCREB', 'IIBB', 'IMPUESTO', 'DB.ALICUOTA']
         if (keywords.some(k => desc.includes(k))) {
-            // Avoid adding if already flagged as duplicate (though unlikely for leak)
-            // Simple check logic
-
             findings.push({
                 organization_id: organizationId,
                 transaccion_id: t.id,
@@ -105,18 +129,16 @@ export async function runAnalysis(organizationId: string) {
                 }
             })
         }
-    })
+    }
 
     // 4. Save Findings
     if (findings.length > 0) {
-        // Fetch existing findings to verify they don't exist already
         const { data: existingFindings } = await supabase
             .from('hallazgos')
             .select('transaccion_id, tipo')
             .eq('organization_id', organizationId)
 
         const existingSet = new Set(existingFindings?.map(f => `${f.transaccion_id}-${f.tipo}`))
-
         const newFindings = findings.filter(f => !existingSet.has(`${f.transaccion_id}-${f.tipo}`))
 
         if (newFindings.length > 0) {

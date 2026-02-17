@@ -319,8 +319,7 @@ export default function LandingPage() {
           <p className="hero__sub">
             Comisiones que tu banco cambió sin avisarte. Retenciones de IIBB y SIRCREB que llevan meses sin reclamar. Lotes
             de pagos que subiste a Interbanking sin cruzar contra cheques entrantes. Saldos parados en cuenta corriente que
-            la inflación devora día a día. BiFlow usa inteligencia artificial para procesar tus extractos bancarios y
-            archivos Interbanking — detecta cada
+            la inflación devora día a día. BiFlow usa inteligencia artificial para procesar tus archivos Interbanking y planillas financieras — detecta cada
             peso que se escapa y simula tus pagos antes de ejecutarlos. Es como tener un director financiero con IA
             trabajando 24/7 sobre tu caja. Sin claves bancarias. Sin integración técnica. Subís
             tus archivos y en 5&nbsp;minutos tienes el diagnóstico.
@@ -381,7 +380,7 @@ export default function LandingPage() {
               banco, cada día, es físicamente imposible.
             </p>
             <p className="benefit__body benefit__body--solution">
-              Nuestra IA procesa el 100% de tus extractos bancarios en PDF y compara cada movimiento contra tus acuerdos
+              Nuestra IA procesa tus archivos Interbanking y planillas de movimientos, comparando cada operación contra tus acuerdos
               comerciales y registros anteriores. Detecta anomalías en segundos — pagos duplicados, comisiones que no
               coinciden con lo pactado, retenciones impositivas que puedes reclamar — y te entrega un informe con acciones
               concretas: qué reclamar, a qué banco, por cuánto.
@@ -659,7 +658,7 @@ export default function LandingPage() {
             <div className="step">
               <div className="step__number">2</div>
               <h3 className="step__title">Subí tus archivos <span className="step__time">(2 min)</span></h3>
-              <p className="step__desc">Arrastra tus extractos bancarios (PDF), archivos de Interbanking (.dat/.txt) y tu listado de CUITs a tu centro de comando privado.</p>
+              <p className="step__desc">Arrastra tus archivos de Interbanking (.dat/.txt) y tu listado de CUITs a tu centro de comando privado.</p>
             </div>
             <div className="step__connector"></div>
             <div className="step">
@@ -701,7 +700,7 @@ export default function LandingPage() {
                 <p className="pricing-card__desc">Para PyMEs con hasta 5 cuentas bancarias que hoy no auditan su caja.</p>
               </div>
               <ul className="pricing-card__features">
-                <li>Procesamiento de archivos Interbanking (.dat/.txt) y extractos PDF</li>
+                <li>Procesamiento de archivos Interbanking (.dat/.txt) y planillas Excel</li>
                 <li>Detección de comisiones indebidas y pagos duplicados</li>
                 <li>Monitoreo de retenciones impositivas (IIBB, SIRCREB)</li>
                 <li>Dashboard de flujo de caja consolidado</li>
@@ -824,7 +823,7 @@ export default function LandingPage() {
           <div className="trust__icon">🔒</div>
           <h2 className="trust__title">Procesamos archivos de solo lectura. No accedemos a tus cuentas. No movemos un peso. Nunca.</h2>
           <p className="trust__body">
-            BiFlow trabaja exclusivamente con los .dat, .txt y PDF que tu banco ya te entrega. No pedimos credenciales
+            BiFlow trabaja exclusivamente con los .dat, .txt y planillas Excel que tu banco ya te entrega. No pedimos credenciales
             bancarias. No ejecutamos transacciones. No tenemos acceso operativo a tu dinero. Tus datos viajan encriptados
             con AES-256 en tránsito y en reposo, y se eliminan cuando vos lo decidís. No instalamos nada en tus servidores.
             Solo leemos los archivos — y te mostramos lo que encontramos.
