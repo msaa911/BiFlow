@@ -228,15 +228,18 @@ export class UniversalTranslator {
                 else if (['CREDITO', 'CREDIT', 'INGRESO', 'IN', 'COBRO', 'DEPOSITO', 'C'].some(t => cleanTipo === t || cleanTipo.includes(t))) {
                     monto = Math.abs(monto)
                 }
-                // 2. Contextual Description Check (Fallback if Type is empty/ambiguous)
+                // 2. Contextual Check (Fallback if Type is empty/ambiguous)
+                // USER REQUIREMENT: "In this model, everything is DEBIT (Expense) unless noted as CREDIT."
                 else {
-                    const negativeKeywords = ['PAGO', 'COMPRA', 'GASTO', 'COMISION', 'IMPUESTO', 'RETENCION', 'PERCEPCION', 'DEBITO', 'RETIRO', 'TRANSFERENCIA ENVIADA', 'A FAVOR DE']
-                    const positiveKeywords = ['COBRO', 'INGRESO', 'DEPOSITO', 'TRANSFERENCIA RECIBIDA', 'ACREDITAMIENTO']
+                    const positiveKeywords = ['NOTA DE CREDITO', 'NC ', 'DEVOLUCION', 'RECUPERO', 'INGRESO', 'COBRO', 'DEPOSITO', 'TRANSFERENCIA RECIBIDA', 'ACREDITAMIENTO', 'VENTA']
 
-                    if (negativeKeywords.some(k => cleanDesc.includes(k))) {
-                        monto = -Math.abs(monto)
-                    } else if (positiveKeywords.some(k => cleanDesc.includes(k))) {
+                    // Check strictly for Positive Keywords first
+                    if (positiveKeywords.some(k => cleanDesc.includes(k))) {
                         monto = Math.abs(monto)
+                    }
+                    // Otherwise, DEFAULT TO EXPENSE (Negative) as requested
+                    else {
+                        monto = -Math.abs(monto)
                     }
                 }
             }
