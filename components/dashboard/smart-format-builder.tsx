@@ -179,7 +179,7 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
                 <div className="flex-1 flex overflow-hidden">
 
                     {/* Sidebar Configuration */}
-                    <div className="w-80 border-r border-gray-800 p-6 flex flex-col gap-6 bg-gray-900/50">
+                    <div className="w-80 border-r border-gray-800 p-6 flex flex-col gap-6 bg-gray-900/50 overflow-y-auto">
                         {/* 1. Format Name */}
                         <div>
                             <label className="text-xs font-medium text-gray-500 uppercase mb-2 block">Nombre del Formato</label>

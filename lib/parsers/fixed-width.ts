@@ -61,20 +61,35 @@ export function parseFixed(text: string, rules: FormatDefinition['reglas']) {
                 monto = parseFloat(clean) / 100 // Assume 2 decimals for now, or use rule metadata
             }
 
+            // Tipo (Sign Detection)
+            if (rules.tipo) {
+                const tipoRaw = safeSubstring(trimmed, rules.tipo.start, rules.tipo.end).trim().toUpperCase()
+                // Heuristic for Debit (Negative)
+                const isDebit = ['D', 'DEB', '-', 'EGRESO', '01', '10', 'DEBITO'].some(k => tipoRaw.includes(k))
+                const isCredit = ['C', 'CRE', '+', 'INGRESO', '02', '20', 'CREDITO'].some(k => tipoRaw.includes(k))
+
+                if (isDebit) {
+                    monto = -Math.abs(monto)
+                } else if (isCredit) {
+                    monto = Math.abs(monto)
+                }
+            }
+
             // Valid check
             if (fecha && !isNaN(monto) && descripcion) {
                 transactions.push({
                     fecha,
                     descripcion,
-                    monto,
+                    monto, // Signed based on Tipo
+                    cuit,
                     moneda: 'ARS',
                     estado: 'pendiente',
                     origen_dato: 'fixed_width'
                 })
             } else {
                 reviewItems.push({
-                    datos_crudos: { line: trimmed, parsed: { fecha, descripcion, monto } },
-                    motivo: 'Regla de formato falló',
+                    datos_crudos: { line: trimmed, parsed: { fecha, descripcion, monto, cuit } },
+                    motivo: 'Regla de formato falló o datos incompletos',
                     estado: 'pendiente'
                 })
             }
