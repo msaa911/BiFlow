@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { ArrowUpRight, Activity, Loader2, CheckCircle, FileDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
