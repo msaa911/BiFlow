@@ -214,7 +214,7 @@ export class UniversalTranslator {
 
             if (!fecha || isNaN(monto)) return null
 
-            let tipoStr = findCol(row, ['tipo', 'type', 'movimiento', 't', 'category', 'class']) || ''
+            let tipoStr = findCol(row, ['tipo', 'type', 'movimiento', 'category']) || ''
 
             // Logic to determine sign based on Type or Amount string OR Description (Contextual)
             if (monto !== 0) {
@@ -229,12 +229,12 @@ export class UniversalTranslator {
                     monto = Math.abs(monto)
                 }
                 // 2. Contextual Check (Fallback if Type is empty/ambiguous)
-                // USER REQUIREMENT: "Credits/Ingresos are Positive. Debits/Notas de Debito are Negative."
+                // USER REQUIREMENT: "Credits/Ingresos are Positive. Debits/Notas de Debito/Retenciones are Negative."
                 else {
-                    const negativeOverride = ['NOTA DE DEBITO', 'ND ', 'IMPUESTO LEY', 'IMP.LEY', 'IIBB', 'COMISION', 'GASTO', 'SELLOS', 'IVA']
+                    const negativeOverride = ['NOTA DE DEBITO', 'ND ', 'IMPUESTO LEY', 'IMP.LEY', 'IIBB', 'COMISION', 'GASTO', 'SELLOS', 'IVA', 'RETENCION', 'PERCEPCION', 'SUSS']
                     const positiveKeywords = ['NOTA DE CREDITO', 'NC ', 'DEVOLUCION', 'RECUPERO', 'INGRESO', 'COBRO', 'DEPOSITO', 'TRANSFERENCIA RECIBIDA', 'ACREDITAMIENTO', 'VENTA', 'CREDITO']
 
-                    // 1. Check Negative Overrides FIRST (e.g. "Impuesto a los Creditos" should be Negative despite saying "Credito")
+                    // 1. Check Negative Overrides FIRST
                     if (negativeOverride.some(k => cleanDesc.includes(k))) {
                         monto = -Math.abs(monto)
                     }
