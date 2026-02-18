@@ -139,12 +139,13 @@ export async function POST(request: Request) {
                     if (uniTransactions.metadata?.isBalanced === false) {
                         warnings.push(`Advertencia de Saldo: El total de movimientos no coincide con los saldos detectados (Dif: $${uniTransactions.metadata.diferencia?.toFixed(2)})`)
                     }
-                } else if (uniTransactions.transactions.length === 0 && !uniTransactions.hasExplicitTipo) {
-                    console.log('Universal Translator yielded 0 results, falling back to legacy parser')
-                    const res = parseText(text, orgId, fileName.endsWith('.csv') ? ',' : undefined)
-                    transactions = res.transactions
-                    warnings = res.warnings
-                    reviewItems = res.reviewItems
+                } else if (uniTransactions.transactions.length === 0 && !hasConfirmedSign) {
+                    console.log('Universal Translator yielded 0 results, requiring manual training')
+                    return NextResponse.json({
+                        status: 'requires_confirmation',
+                        message: 'No logramos detectar el formato automáticamente. Por favor entrena el modelo.',
+                        requiresTraining: true
+                    }, { status: 409 })
                 }
 
             } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
@@ -443,117 +444,6 @@ async function logError(supabase: any, origin: string, message: string, fileName
     } catch (e) { }
 }
 
-function parseText(text: string, orgId: string, delimiter?: string) {
-    const lines = text.split('\n')
-    const transactions = []
-    let warnings: string[] = []
-    let reviewItems: any[] = []
-    const actualDelimiter = delimiter || (text.includes(';') ? ';' : ',')
-
-    for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed) continue
-
-        let fecha: string | null = null
-        let monto = 0
-        let descripcion = ''
-
-        // Strategy A: Delimited
-        const parts = trimmed.split(actualDelimiter)
-        if (parts.length >= 2 && actualDelimiter !== ',') { // Safety check: comma text might just be text
-            fecha = normalizeDate(parts[0])
-            const mPart = parts.find((p, i) => i > 0 && p.match(/^-?\d+([.,]\d+)?$/))
-            if (mPart) {
-                monto = parseFloat(mPart.replace(',', '.'))
-                descripcion = parts[1] === mPart ? (parts[2] || 'Sin descripción') : parts[1]
-            }
-        }
-
-        // Strategy B: Regex for Fixed Width / Weird Formats
-        if (!fecha || monto === 0) {
-            // Pattern 1: DD/MM/YYYY or YYYY-MM-DD
-            const standardDate = trimmed.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/)
-            if (standardDate) {
-                fecha = normalizeDate(standardDate[1])
-            } else {
-                // Pattern 2: Fixed Width (Interbanking / DAT)
-                // Often starts with 01 + YYYYMMDD. Regex: Optional 01, then YYYYMMDD.
-                const compactDate = trimmed.match(/(?:01)?(202\d)(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/)
-                if (compactDate) {
-                    fecha = `${compactDate[1]}-${compactDate[2]}-${compactDate[3]}`
-                }
-            }
-
-            // Amount Search 1: Try standard end-of-line match
-            const amountMatch = trimmed.match(/(-?[\d\.,]+)$/)
-            if (fecha && amountMatch) {
-                const rawAmount = amountMatch[1]
-                if (!rawAmount.includes('.') && !rawAmount.includes(',') && rawAmount.length > 15) {
-                    monto = 0
-                } else {
-                    monto = parseFloat(rawAmount.replace(/\./g, '').replace(',', '.'))
-                    descripcion = trimmed.replace(fecha, '').replace(rawAmount, '').trim() || 'Desconocido'
-                }
-            }
-
-            // Amount Search 2: Deep Search in Numeric Blocks
-            if (fecha && monto === 0) {
-                const numberBlocks = trimmed.split(/[^0-9,-]+/).filter(s => s.length > 0)
-                const dateCleaned = fecha?.replace(/-/g, '') || ''
-                const candidates = numberBlocks.filter(b => !b.includes(dateCleaned))
-
-                const { UniversalTranslator } = require('@/lib/universal-translator');
-                // CUIT Protection: Si el bloque tiene 11 dígitos y es un CUIT válido, saltar
-                let amountCandidate = candidates.find(c => {
-                    const clean = c.replace(/[^0-9]/g, '');
-                    const isCuit = UniversalTranslator.isValidCUIT(clean);
-                    return !isCuit && clean.length >= 2 && clean.length <= 10;
-                });
-
-                if (amountCandidate) {
-                    monto = parseFloat(amountCandidate.replace(',', '.'))
-                    // Eliminamos el umbral de 100M. Confiamos en el validado matemático de CUIT previo.
-                    // Si llegó aquí es porque NO validó como CUIT y por ende es plata.
-
-                    descripcion = trimmed.replace(fecha.replace(/-/g, ''), '').replace(amountCandidate, '').trim()
-                    descripcion = descripcion.replace(/\d{10,}/g, '')
-                    // Solo removemos números al inicio si NO es parte de lo que queda de la fecha
-                    if (descripcion.match(/^\d{1,2}[/-]/)) {
-                        // keep it
-                    } else {
-                        descripcion = descripcion.replace(/^\d+/, '')
-                    }
-                    descripcion = descripcion.trim() || 'Desconocido'
-                }
-            }
-        }
-
-        if (fecha && !isNaN(monto) && monto !== 0) {
-            transactions.push({
-                organization_id: orgId,
-                fecha,
-                descripcion: descripcion.substring(0, 100), // trunc
-                monto,
-                origen_dato: 'text',
-                moneda: 'ARS',
-                estado: 'pendiente'
-            })
-        } else {
-            if (reviewItems.length < 50) {
-                reviewItems.push({
-                    organization_id: orgId,
-                    datos_crudos: { line: trimmed },
-                    fecha: fecha || undefined,
-                    monto: monto !== 0 ? monto : undefined,
-                    descripcion: descripcion || undefined,
-                    motivo: fecha ? 'Monto no confirmado (Revisar)' : 'No se pudo parsear fecha',
-                    estado: 'pendiente'
-                })
-            }
-        }
-    }
-    return { transactions, warnings, reviewItems }
-}
 
 function parseExcel(buffer: Buffer, orgId: string) {
     const workbook = XLSX.read(buffer, { type: 'buffer' })
