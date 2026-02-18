@@ -30,7 +30,7 @@ Este documento es la fuente de verdad del proyecto. Integra la visión macro de 
 
 #### Módulo 2: MOTOR DE LIQUIDEZ (Money Maker) 🔵 EN CURSO
 - [x] **2.1 Stress Test:** Simulador de saldo post-lote y alertas de descubierto (Implementado).
-- [/] **2.2 Costo de Oportunidad:** Dinero ocioso vs tasas de mercado (Configuración TNA lista).
+- [x] **2.2 Costo de Oportunidad:** Dinero ocioso vs tasas de mercado (Implementado - Modo Manual & Benchmark 2026).
 - [ ] **2.3 Auditoría de Acuerdos:** Validación de tarifas bancarias pactadas vs cobradas.
 
 #### Módulo 3: SEGURIDAD Y ANTI-FRAUDE (Trust Ledger)
