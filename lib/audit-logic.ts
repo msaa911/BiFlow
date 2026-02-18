@@ -37,12 +37,7 @@ export class AuditEngine {
 
         // 2. Auditoría de Comisión de Cheque
         if (tags.includes('comision_cheque')) {
-            // Intentar encontrar la transacción del cheque asociada (mismo día o cercano, monto grande)
-            // Por ahora, usamos una lógica simplificada basada en el porcentaje pactado
-            // En una versión Pro, buscaríamos el cheque que generó esta comisión.
             const porcentajePactado = agreement.comision_cheque_porcentaje || 0;
-
-            // Si no hay parámetros para comparar, asumimos cargo no pactado o ignoramos
             if (porcentajePactado === 0 && agreement.costo_por_cheque_fijo === 0) {
                 return {
                     organization_id: transaction.organization_id,
@@ -51,7 +46,22 @@ export class AuditEngine {
                     monto_esperado: 0,
                     monto_real: montoAbs,
                     diferencia: montoAbs,
-                    notas_ia: 'Se detectó una comisión por cheque pero no hay un porcentaje pactado en el convenio.'
+                    notas_ia: 'Se detectó una comisión por cheque pero no hay un esquema de cobro pactado en el convenio.'
+                };
+            }
+        }
+
+        // 3. Auditoría de Comisiones Bancarias Genéricas
+        if (tags.includes('comision_bancaria')) {
+            if (agreement.comisiones_otras_pactadas === false) {
+                return {
+                    organization_id: transaction.organization_id,
+                    transaccion_id: transaction.id,
+                    tipo_error: 'CARGO_NO_PACTADO',
+                    monto_esperado: 0,
+                    monto_real: montoAbs,
+                    diferencia: montoAbs,
+                    notas_ia: `Se detectó la comisión '${transaction.descripcion}' que no figura como rubro permitido en los acuerdos.`
                 };
             }
         }

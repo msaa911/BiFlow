@@ -156,7 +156,7 @@ export default function UploadPage() {
         setRefreshHistory(prev => prev + 1)
 
         // Don't auto-redirect if there are warnings or skipped items, so user can see them
-        if (allWarnings.length === 0 && totalSkipped === 0 && totalReview === 0) {
+        if (allWarnings.length === 0 && totalSkipped === 0 && totalReview === 0 && totalCount > 0) {
             setTimeout(() => {
                 router.refresh()
                 router.push('/dashboard')
@@ -560,6 +560,34 @@ export default function UploadPage() {
                                 >
                                     Continuar al Dashboard
                                 </button>
+                            </div>
+                        ) : uploadResult && uploadResult.count === 0 ? (
+                            <div className="flex flex-col items-center">
+                                <div className="p-3 bg-blue-500/10 rounded-full mb-3">
+                                    <Settings className="w-10 h-10 text-blue-400" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Formato no reconocido</h3>
+                                <p className="text-gray-400 text-center text-sm mb-6">
+                                    No logramos extraer movimientos automáticamente de este archivo. <br />
+                                    ¿Quieres enseñarle a BiFlow cómo leer este formato?
+                                </p>
+                                <div className="flex gap-3 w-full">
+                                    <button
+                                        onClick={() => setSuccess(false)}
+                                        className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-medium transition-colors"
+                                    >
+                                        Reintentar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setSuccess(false)
+                                            setShowFormatBuilder(true)
+                                        }}
+                                        className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-colors shadow-lg shadow-blue-500/20"
+                                    >
+                                        Enseñar Formato
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <div className="flex flex-col items-center">

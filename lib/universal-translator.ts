@@ -152,11 +152,12 @@ export class UniversalTranslator {
                 }
             }
 
-            // CUIT TRAP: Si el monto tiene 11 dígitos y parece un CUIT, no es el monto
+            // CUIT TRAP: Si el monto tiene 11 dígitos y es un CUIT válido matemáticamente, no es el monto
             const montoRawClean = (idx.monto !== -1 ? (row[idx.monto] || '') : '').replace(/[^0-9]/g, '');
-            if (montoRawClean.length === 11 && Math.abs(monto) > 10000000) {
-                monto = 0; // Invalidar si es claramente un CUIT
+            if (montoRawClean.length === 11 && this.isValidCUIT(montoRawClean)) {
+                monto = 0; // Es un CUIT, no plata.
             }
+            // Eliminamos la regla de > 100M para permitir pagos grandes legítimos.
 
             const concepto = this.normalizeConcept(row[idx.desc], thesaurus);
             const cuit = (idx.cuit !== -1 ? row[idx.cuit] : '').replace(/[^0-9]/g, '');
@@ -176,7 +177,12 @@ export class UniversalTranslator {
             }
 
             if (monto !== 0) {
-                transactions.push({ fecha, concepto, monto, cuit, tipo, tags: this.isTax(cuit, concepto) ? ['impuesto_recuperable'] : [] });
+                const tags = this.isTax(cuit, concepto) ? ['impuesto_recuperable'] : [];
+                if (['COMISION', 'MANTENIMIENTO', 'CUOTA', 'CARGO'].some(k => concepto.includes(k))) {
+                    if (concepto.includes('MANT')) tags.push('mantenimiento');
+                    else tags.push('comision_bancaria');
+                }
+                transactions.push({ fecha, concepto, monto, cuit, tipo, tags });
             }
         }
 
@@ -204,18 +210,19 @@ export class UniversalTranslator {
             // 3. Encontrar Monto (evitando la columna de la fecha y tipo)
             const amountCandidates = row.map((v, i) => {
                 const cleaned = v.replace(/[^0-9]/g, '');
+                const isCuit = this.isValidCUIT(cleaned);
                 return {
                     v: this.parseCurrency(v),
                     raw: cleaned,
-                    isLikelyCuit: cleaned.length === 11 || (cleaned.length === 10 && (cleaned.startsWith('20') || cleaned.startsWith('30') || cleaned.startsWith('27'))),
+                    isLikelyCuit: isCuit, // Solo descartamos si es un CUIT matemático exacto
                     idx: i
                 };
             }).filter(c =>
                 c.idx !== dateIdx &&
                 c.v !== 0 &&
-                !c.isLikelyCuit && // BLOQUEO TOTAL DE CUITS
-                Math.abs(c.v) < 100000000 && // Bloqueo de montos imposibles (> 100M)
-                !row[dateIdx].includes(c.raw) // Evita que la fecha sea interpretada como monto
+                !c.isLikelyCuit && // BLOQUEO MATEMÁTICO DE CUITS
+                // Eliminamos cualquier umbral arbitrario. Confiamos en el CUIT trap.
+                !row[dateIdx].includes(c.raw)
             );
 
             // Prioridad para el monto: El que esté más a la derecha (estándar bancario)
@@ -245,13 +252,19 @@ export class UniversalTranslator {
                     }
                 }
 
+                const tags = this.isTax(cuit, desc) ? ['impuesto_recuperable'] : [];
+                if (['COMISION', 'MANTENIMIENTO', 'CUOTA', 'CARGO'].some(k => desc.toUpperCase().includes(k))) {
+                    if (desc.toUpperCase().includes('MANT')) tags.push('mantenimiento');
+                    else tags.push('comision_bancaria');
+                }
+
                 transactions.push({
                     fecha,
                     concepto: this.normalizeConcept(desc, thesaurus),
                     monto,
                     cuit,
                     tipo,
-                    tags: this.isTax(cuit, desc) ? ['impuesto_recuperable'] : []
+                    tags
                 });
             }
         }
@@ -350,6 +363,24 @@ export class UniversalTranslator {
         if (taxCuits.includes(cleanCuit)) return true;
         const upper = concepto.toUpperCase();
         return ['SIRCREB', 'IIBB', 'RETENCION', 'IMPUESTO', 'AFIP', 'ARBA', 'PERCEPCION'].some(k => upper.includes(k)) && !upper.includes('IVA');
+    }
+
+    public static isValidCUIT(cuit: string): boolean {
+        const clean = cuit.replace(/[^0-9]/g, '');
+        if (clean.length !== 11) return false;
+
+        const factors = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+        let sum = 0;
+        for (let i = 0; i < 10; i++) {
+            sum += parseInt(clean[i]) * factors[i];
+        }
+
+        const checkDigit = parseInt(clean[10]);
+        let computed = 11 - (sum % 11);
+        if (computed === 11) computed = 0;
+        if (computed === 10) computed = 9;
+
+        return checkDigit === computed;
     }
 
     private static extractMetadata(lines: string[], transactions: Transaction[]) {

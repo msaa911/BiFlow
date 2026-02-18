@@ -66,6 +66,7 @@ export default async function TransactionsPage() {
                                 <th className="px-6 py-4">Descripción</th>
                                 <th className="px-6 py-4">CUIT Destino</th>
                                 <th className="px-6 py-4">Origen</th>
+                                <th className="px-6 py-4">Hallazgos</th>
                                 <th className="px-6 py-4 text-right">Monto</th>
                             </tr>
                         </thead>
@@ -85,6 +86,22 @@ export default async function TransactionsPage() {
                                         <span className="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-[10px] uppercase font-bold">
                                             {t.origen_dato}
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-wrap gap-1">
+                                            {t.tags && t.tags.filter((tag: string) => ['posible_duplicado', 'alerta_precio', 'impuesto_recuperable'].includes(tag)).map((tag: string) => (
+                                                <span
+                                                    key={tag}
+                                                    className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter shadow-sm border ${tag === 'impuesto_recuperable'
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                            : 'bg-red-500/10 text-red-500 border-red-500/20 animate-pulse'
+                                                        }`}
+                                                >
+                                                    {tag === 'posible_duplicado' ? 'Duplicado' : tag === 'alerta_precio' ? 'Sobreprecio' : 'Crédito Fiscal'}
+                                                </span>
+                                            ))}
+                                            {(!t.tags || t.tags.length === 0) && <span className="text-gray-600 text-[10px]">---</span>}
+                                        </div>
                                     </td>
                                     <td className={`px-6 py-4 text-right font-bold tabular-nums ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                         {formatCurrency(t.monto)}

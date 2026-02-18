@@ -502,18 +502,18 @@ function parseText(text: string, orgId: string, delimiter?: string) {
                 const dateCleaned = fecha?.replace(/-/g, '') || ''
                 const candidates = numberBlocks.filter(b => !b.includes(dateCleaned))
 
-                // CUIT Protection: Si el bloque tiene 11 dígitos y empieza como CUIT, saltar
+                const { UniversalTranslator } = require('@/lib/universal-translator');
+                // CUIT Protection: Si el bloque tiene 11 dígitos y es un CUIT válido, saltar
                 let amountCandidate = candidates.find(c => {
                     const clean = c.replace(/[^0-9]/g, '');
-                    const isCuit = clean.length === 11 || (clean.length === 10 && (clean.startsWith('20') || clean.startsWith('30') || clean.startsWith('27')));
+                    const isCuit = UniversalTranslator.isValidCUIT(clean);
                     return !isCuit && clean.length >= 2 && clean.length <= 10;
                 });
 
                 if (amountCandidate) {
                     monto = parseFloat(amountCandidate.replace(',', '.'))
-                    // Si el monto es muy grande sin decimales, podría ser un CUIT fragmentado. 
-                    // En parser legacy, si no es explícito, somos conservadores.
-                    if (monto > 10000000) monto = 0;
+                    // Eliminamos el umbral de 100M. Confiamos en el validado matemático de CUIT previo.
+                    // Si llegó aquí es porque NO validó como CUIT y por ende es plata.
 
                     descripcion = trimmed.replace(fecha.replace(/-/g, ''), '').replace(amountCandidate, '').trim()
                     descripcion = descripcion.replace(/\d{10,}/g, '')

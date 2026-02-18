@@ -108,6 +108,24 @@ export default function AuditCenterPage() {
         XLSX.writeFile(wb, `Informe_Auditoria_BiFlow_${new Date().toISOString().split('T')[0]}.xlsx`)
     }
 
+    const downloadTaxReport = async () => {
+        try {
+            const response = await fetch('/api/reports/tax-recovery')
+            if (!response.ok) throw new Error('No hay datos de impuestos recuperables')
+
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `Papel_Trabajo_Contador_${new Date().toISOString().split('T')[0]}.xlsx`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+        } catch (error: any) {
+            alert(error.message)
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
@@ -135,10 +153,16 @@ export default function AuditCenterPage() {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3 relative z-10">
+                <div className="flex flex-wrap items-center gap-3 relative z-10">
+                    <button
+                        onClick={downloadTaxReport}
+                        className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white font-black uppercase text-xs rounded-xl hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95"
+                    >
+                        <ShieldAlert className="w-4 h-4" /> Papel de Trabajo (Contador)
+                    </button>
                     <button
                         onClick={exportToExcel}
-                        className="flex items-center gap-2 px-6 py-3 bg-white text-black font-black uppercase text-xs rounded-xl hover:bg-emerald-400 transition-all shadow-xl active:scale-95"
+                        className="flex items-center gap-2 px-6 py-3 bg-white text-black font-black uppercase text-xs rounded-xl hover:bg-gray-200 transition-all shadow-xl active:scale-95"
                     >
                         <FileSpreadsheet className="w-4 h-4" /> Exportar a Excel
                     </button>
@@ -187,7 +211,7 @@ export default function AuditCenterPage() {
                                 <div className="flex flex-col md:flex-row items-stretch">
                                     {/* Sidebar severity indicator */}
                                     <div className={`w-2 md:w-3 ${finding.severidad === 'critical' ? 'bg-red-500' :
-                                            finding.severidad === 'high' ? 'bg-amber-500' : 'bg-emerald-500'
+                                        finding.severidad === 'high' ? 'bg-amber-500' : 'bg-emerald-500'
                                         } opacity-50 group-hover:opacity-100 transition-opacity`}></div>
 
                                     <div className="flex-1 p-6">
@@ -195,7 +219,7 @@ export default function AuditCenterPage() {
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${finding.tipo === 'duplicado' ? 'bg-red-500/10 text-red-500' :
-                                                            finding.tipo === 'anomalia' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'
+                                                        finding.tipo === 'anomalia' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'
                                                         }`}>
                                                         {finding.tipo}
                                                     </span>
