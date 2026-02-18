@@ -12,7 +12,7 @@ export interface StressTestResponse {
 }
 
 export class LiquidityEngine {
-    private static DEFAULT_ANNUAL_INTEREST_RATE = 0.70; // 70% TNA (Argentina average)
+    private static DEFAULT_ANNUAL_INTEREST_RATE = 0.35; // 35% TNA (Argentina 2026 average)
 
     /**
      * Proyecta el saldo futuro basándose en pagos pendientes y el saldo actual.
