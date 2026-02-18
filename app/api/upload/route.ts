@@ -139,7 +139,7 @@ export async function POST(request: Request) {
                     if (uniTransactions.metadata?.isBalanced === false) {
                         warnings.push(`Advertencia de Saldo: El total de movimientos no coincide con los saldos detectados (Dif: $${uniTransactions.metadata.diferencia?.toFixed(2)})`)
                     }
-                } else {
+                } else if (uniTransactions.transactions.length === 0 && !uniTransactions.hasExplicitTipo) {
                     console.log('Universal Translator yielded 0 results, falling back to legacy parser')
                     const res = parseText(text, orgId, fileName.endsWith('.csv') ? ',' : undefined)
                     transactions = res.transactions
@@ -500,23 +500,29 @@ function parseText(text: string, orgId: string, delimiter?: string) {
             if (fecha && monto === 0) {
                 const numberBlocks = trimmed.split(/[^0-9,-]+/).filter(s => s.length > 0)
                 const dateCleaned = fecha?.replace(/-/g, '') || ''
-
                 const candidates = numberBlocks.filter(b => !b.includes(dateCleaned))
 
-                let amountCandidate = candidates.find(c => c.length >= 6 && c.length <= 18)
-
-                if (!amountCandidate) {
-                    const longBlock = candidates.find(c => c.length > 18)
-                    if (longBlock) {
-                        amountCandidate = longBlock.substring(0, 10)
-                    }
-                }
+                // CUIT Protection: Si el bloque tiene 11 dígitos y empieza como CUIT, saltar
+                let amountCandidate = candidates.find(c => {
+                    const clean = c.replace(/[^0-9]/g, '');
+                    const isCuit = clean.length === 11 || (clean.length === 10 && (clean.startsWith('20') || clean.startsWith('30') || clean.startsWith('27')));
+                    return !isCuit && clean.length >= 2 && clean.length <= 10;
+                });
 
                 if (amountCandidate) {
-                    monto = parseFloat(amountCandidate) / 100
+                    monto = parseFloat(amountCandidate.replace(',', '.'))
+                    // Si el monto es muy grande sin decimales, podría ser un CUIT fragmentado. 
+                    // En parser legacy, si no es explícito, somos conservadores.
+                    if (monto > 10000000) monto = 0;
+
                     descripcion = trimmed.replace(fecha.replace(/-/g, ''), '').replace(amountCandidate, '').trim()
                     descripcion = descripcion.replace(/\d{10,}/g, '')
-                    descripcion = descripcion.replace(/^\d+/, '')
+                    // Solo removemos números al inicio si NO es parte de lo que queda de la fecha
+                    if (descripcion.match(/^\d{1,2}[/-]/)) {
+                        // keep it
+                    } else {
+                        descripcion = descripcion.replace(/^\d+/, '')
+                    }
                     descripcion = descripcion.trim() || 'Desconocido'
                 }
             }
