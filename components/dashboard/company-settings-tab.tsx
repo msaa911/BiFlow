@@ -14,8 +14,14 @@ interface CompanyConfig {
     modo_tasa: 'AUTOMATICO' | 'MANUAL'
 }
 
+interface BankAgreement {
+    mantenimiento_mensual_pactado: number
+    comision_cheque_porcentaje: number
+}
+
 export function CompanySettingsTab({ organizationId }: { organizationId: string }) {
     const [config, setConfig] = useState<CompanyConfig>({ tna: 0.70, limite_descubierto: 0, modo_tasa: 'AUTOMATICO' })
+    const [agreement, setAgreement] = useState<BankAgreement>({ mantenimiento_mensual_pactado: 0, comision_cheque_porcentaje: 0 })
     const [marketRate, setMarketRate] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -36,6 +42,21 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     tna: data.tna,
                     limite_descubierto: data.limite_descubierto,
                     modo_tasa: data.modo_tasa || 'AUTOMATICO'
+                })
+            }
+
+            // Load Latest Bank Agreement
+            const { data: agreementData } = await supabase
+                .from('convenios_bancarios')
+                .select('*')
+                .eq('organization_id', organizationId)
+                .eq('is_active', true)
+                .maybeSingle()
+
+            if (agreementData) {
+                setAgreement({
+                    mantenimiento_mensual_pactado: Number(agreementData.mantenimiento_mensual_pactado) || 0,
+                    comision_cheque_porcentaje: Number(agreementData.comision_cheque_porcentaje) || 0
                 })
             }
 
@@ -73,6 +94,18 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 modo_tasa: config.modo_tasa,
                 updated_at: new Date().toISOString()
             })
+
+        // Save Bank Agreement
+        await supabase
+            .from('convenios_bancarios')
+            .upsert({
+                organization_id: organizationId,
+                mantenimiento_mensual_pactado: agreement.mantenimiento_mensual_pactado,
+                comision_cheque_porcentaje: agreement.comision_cheque_porcentaje,
+                banco_nombre: 'Banco Principal', // Default name
+                is_active: true,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'organization_id' }) // Assuming one active agreement per org for now
 
         if (error) {
             console.error('Error saving config:', error)

@@ -5,6 +5,7 @@ import { KPICard } from '@/components/ui/kpi-card'
 import { DashboardActions } from '@/components/dashboard/actions'
 import { TaxRecoveryWidget } from '@/components/dashboard/tax-recovery-widget'
 import { ExpenseGuardWidget } from '@/components/dashboard/expense-guard-widget'
+import { FeeAuditWidget } from '@/components/dashboard/fee-audit-widget'
 import { DashboardCFO } from '@/components/dashboard/dashboard-cfo'
 import { LiquidityEngine } from '@/lib/liquidity-engine'
 import { getOrgId } from '@/lib/supabase/utils'
@@ -160,9 +161,10 @@ export default async function DashboardPage() {
                 overdraftLimit={overdraftLimit}
             />
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <TaxRecoveryWidget totalRecoverable={totalRecoverable} taxItems={taxItems || []} />
                 <ExpenseGuardWidget anomalies={anomalies || []} />
+                <FeeAuditWidget />
             </div>
 
             {/* Recent Transactions & Actions */}
