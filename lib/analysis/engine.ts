@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { AnomalyEngine } from '@/lib/anomaly-engine'
 // 
 
 interface Transaction {
@@ -48,74 +49,32 @@ export async function runAnalysis(organizationId: string) {
         (history || []).map((h: any) => [h.descripcion, Number(h.avg_monto)])
     )
 
-    // Helper for fuzzy match (consistency with AnomalyEngine)
-    const isFuzzyDuplicate = (a: any, b: any) => {
-        if (a.fecha !== b.fecha) return false
-        if (Math.abs(a.monto) !== Math.abs(b.monto)) return false
+    // 3. Run Centralized Analysis using AnomalyEngine
+    const { processed } = AnomalyEngine.analyze(
+        transactions,
+        historyMap,
+        transactions, // Using the same batch for intra-batch duplicate check
+        { windowDays: 30 } // 30-day window as requested in Task 1.1
+    )
 
-        const clean = (s: string) => (s || '').toUpperCase().split(/[*#-]/)[0].trim()
-        const d1 = clean(a.descripcion)
-        const d2 = clean(b.descripcion)
-
-        if (d1 === d2 && d1.length > 3) {
-            const gateways = ['MERCADOPAGO', 'MP', 'TIENDANUBE', 'POS', 'VTA', 'COMPRA', 'LINK', 'BANELCO', 'ESTABLECIMIENTO']
-            if (gateways.some(g => d1.includes(g))) return true
-        }
-        return a.descripcion === b.descripcion || (a.cuit && a.cuit === b.cuit)
-    }
-
-    // Process each transaction
-    for (let i = 0; i < transactions.length; i++) {
-        const t = transactions[i]
-
-        // --- A. Duplicate Detection ---
-        const duplicate = transactions.find((prev, idx) => idx < i && isFuzzyDuplicate(t, prev))
-        if (duplicate) {
+    // 4. Map Anomalies to database Findings
+    for (const t of processed) {
+        if (t.metadata?.anomaly) {
             findings.push({
                 organization_id: organizationId,
                 transaccion_id: t.id,
-                tipo: 'duplicado',
-                severidad: 'high',
+                tipo: t.metadata.anomaly === 'price_spike' ? 'anomalia' : (t.metadata.anomaly as any),
+                severidad: t.metadata.severity || 'low',
                 estado: 'detectado',
-                monto_estimado_recupero: Math.abs(t.monto),
+                monto_estimado_recupero: t.metadata.anomaly === 'price_spike'
+                    ? Math.abs(t.monto) - Math.abs(t.metadata.historical_avg || 0)
+                    : Math.abs(t.monto),
                 detalle: {
-                    razon: 'Posible duplicado (Fuzzy POS detection)',
-                    transaccion_original_id: duplicate.id,
-                    fecha_original: duplicate.fecha
+                    razon: t.metadata.anomaly === 'duplicate' ? 'Posible duplicado (Ventana +/- 30 días)' : 'Anomalía detectada por motor IA',
+                    ...t.metadata
                 }
             })
-        }
-
-        // --- B. Price Spike Detection ---
-        if (t.monto < 0) {
-            const avg = historyMap.get(t.descripcion)
-            if (avg) {
-                const currentAbs = Math.abs(t.monto)
-                const avgAbs = Math.abs(avg)
-                const deviation = (currentAbs - avgAbs) / avgAbs
-
-                if (deviation > 0.15) {
-                    findings.push({
-                        organization_id: organizationId,
-                        transaccion_id: t.id,
-                        tipo: 'anomalia',
-                        severidad: deviation > 0.5 ? 'critical' : 'high',
-                        estado: 'detectado',
-                        monto_estimado_recupero: currentAbs - avgAbs,
-                        detalle: {
-                            razon: 'Desvío de precio detectado (>15%)',
-                            promedio_historico: avg,
-                            desvio: deviation
-                        }
-                    })
-                }
-            }
-        }
-
-        // --- C. Fiscal Leaks (Retenciones) ---
-        const desc = t.descripcion.toUpperCase()
-        const keywords = ['RETENCION', 'PERCEPCION', 'SIRCREB', 'IIBB', 'IMPUESTO', 'DB.ALICUOTA']
-        if (keywords.some(k => desc.includes(k))) {
+        } else if (t.tags.includes('impuesto_recuperable')) {
             findings.push({
                 organization_id: organizationId,
                 transaccion_id: t.id,
@@ -125,7 +84,7 @@ export async function runAnalysis(organizationId: string) {
                 monto_estimado_recupero: Math.abs(t.monto),
                 detalle: {
                     razon: 'Retención impositiva / Gasto fiscal detectado',
-                    concepto_detectado: keywords.find(k => desc.includes(k))
+                    ...t.metadata
                 }
             })
         }

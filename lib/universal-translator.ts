@@ -1,9 +1,4 @@
 
-
-// Removed import to avoid lint error as Transaction is defined in file
-
-
-
 export interface Transaction {
     fecha: string;
     concepto: string;
@@ -12,7 +7,6 @@ export interface Transaction {
     tipo: 'DEBITO' | 'CREDITO';
     tags?: string[];
 }
-
 
 export interface TranslationResult {
     transactions: Transaction[];
@@ -28,359 +22,267 @@ export interface TranslationResult {
 }
 
 export class UniversalTranslator {
-    // CUITs oficiales para detección automática de retenciones
     private static TAX_IDS = {
         AFIP: "33-69345023-9",
         ARBA: "30-54674267-9",
-        SIRCREB: "30-99903208-3" // Example, needs verification or fuzzy match on "SIRCREB"
+        SIRCREB: "30-99903208-3"
     };
 
     /**
-     * Identifica el formato y procesa el archivo
+     * Identificación y proceso del archivo
      */
-    static translate(rawText: string, options?: { invertSigns?: boolean }): TranslationResult {
-        const lines = rawText.split('\n').filter(l => l.trim().length > 0);
+    static translate(rawText: string, options?: { invertSigns?: boolean, thesaurus?: Map<string, string> }): TranslationResult {
+        const lines = rawText.split(/\r?\n/).filter(l => l.trim().length > 0);
         if (lines.length === 0) return { transactions: [], hasExplicitTipo: false, metadata: {} };
 
-        const firstLine = lines[0];
+        // CORRECCIÓN: Escanear las primeras 10 líneas para detectar el formato (o todo el archivo si es corto)
+        const sampleText = lines.slice(0, 10).join('\n');
+        const detectedDelimiter = this.detectDelimiter(sampleText);
+
         let transactions: Transaction[] = [];
         let hasExplicitTipo = false;
 
-        // 1. Detección de Formato Posicional (Fixed-width)
-        if (!firstLine.includes(',') && !firstLine.includes(';') && !firstLine.includes('|')) {
-            transactions = this.parseFixedWith(lines);
-            hasExplicitTipo = false; // Fixed width usually doesn't have headers
-        } else {
-            // 2. Detección de Delimitadores (CSV/ERP/Pipe)
-            const delimiter = this.detectDelimiter(firstLine);
-            const result = this.parseDelimited(lines, delimiter);
+        if (detectedDelimiter) {
+            const result = this.parseDelimited(lines, detectedDelimiter, options?.thesaurus);
             transactions = result.transactions;
             hasExplicitTipo = result.hasExplicitTipo;
-        }
-
-        // Apply manual sign inversion if requested (Priority 2 Logic)
-        if (options?.invertSigns) {
-            transactions = transactions.map(t => ({ ...t, monto: -t.monto, tipo: t.monto > 0 ? 'DEBITO' : 'CREDITO' }));
-        }
-
-        const exampleRow = transactions.find(t => t.monto !== 0);
-
-        // 3. Metadata Extraction (Header Analysis for Balance)
-        const metadata = this.extractMetadata(lines, transactions);
-
-        return { transactions, hasExplicitTipo, exampleRow, metadata };
-    }
-
-    private static extractMetadata(lines: string[], transactions: Transaction[]) {
-        const headerLines = lines.slice(0, 15).join('\n').toLowerCase();
-
-        let saldoInicial = 0;
-        let saldoFinal = 0;
-
-        const currencyRegex = (key: string) => new RegExp(`${key}.*?([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})`, 'i');
-
-        const matchInicial = headerLines.match(currencyRegex('saldo (?:inicial|anterior)'));
-        if (matchInicial) {
-            saldoInicial = this.parseCurrency(matchInicial[1]);
-        }
-
-        const matchFinal = headerLines.match(currencyRegex('saldo (?:final|actual|al)'));
-        if (matchFinal) {
-            saldoFinal = this.parseCurrency(matchFinal[1]);
-        }
-
-        if (saldoInicial !== 0 || saldoFinal !== 0) {
-            const totalCreditos = transactions.filter(t => t.tipo === 'CREDITO').reduce((sum, t) => sum + t.monto, 0);
-            const totalDebitos = transactions.filter(t => t.tipo === 'DEBITO').reduce((sum, t) => sum + t.monto, 0);
-
-            const saldoCalculado = saldoInicial + totalCreditos - totalDebitos;
-            const diferencia = Math.abs(saldoFinal - saldoCalculado);
-            const isBalanced = diferencia < 0.05;
-
-            return {
-                saldoInicial,
-                saldoFinal,
-                saldoCalculado,
-                diferencia,
-                isBalanced
-            };
-        }
-
-        return {};
-    }
-
-    private static parseCurrency(str: string): number {
-        let clean = str.replace(/[^0-9.,-]/g, '');
-        if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-            clean = clean.replace(/\./g, '').replace(',', '.');
         } else {
-            clean = clean.replace(/,/g, '');
+            // Fallback inteligente para Ancho Fijo
+            transactions = this.parseFixedWith(lines, options?.thesaurus);
+            hasExplicitTipo = false;
         }
-        return parseFloat(clean);
+
+        // Inversión de signos manual si se solicita
+        if (options?.invertSigns) {
+            transactions = transactions.map(t => ({
+                ...t,
+                monto: -t.monto,
+                tipo: t.monto > 0 ? 'DEBITO' : 'CREDITO'
+            }));
+        }
+
+        return {
+            transactions,
+            hasExplicitTipo,
+            exampleRow: transactions.find(t => t.monto !== 0),
+            metadata: this.extractMetadata(lines, transactions)
+        };
     }
 
-    private static detectDelimiter(line: string): string {
-        if (line.includes(';')) return ';';
-        if (line.includes('|')) return '|';
-        return ',';
+    /**
+     * Detección basada en frecuencia (Umbral: Al menos 0.5 delimitadores por línea promedio)
+     */
+    private static detectDelimiter(textSample: string): string | null {
+        const pipes = (textSample.match(/\|/g) || []).length;
+        const semis = (textSample.match(/;/g) || []).length;
+        const commas = (textSample.match(/,/g) || []).length;
+        const tabs = (textSample.match(/\t/g) || []).length;
+
+        const lineCount = textSample.split('\n').length || 1;
+
+        // Prioridad: Pipes -> Semicolon -> Tab -> Comma
+        if (pipes >= lineCount * 0.5) return '|';
+        if (semis >= lineCount * 0.5) return ';';
+        if (tabs >= lineCount * 0.5) return '\t';
+        if (commas >= lineCount * 0.5) return ',';
+
+        return null;
     }
 
-    private static parseFixedWith(lines: string[]): Transaction[] {
-        return lines.map(line => {
-            const trimmed = line.replace(/(\r\n|\n|\r)/gm, "")
-            if (trimmed.length < 20) return null
+    private static parseDelimited(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
+        let headerIdx = -1;
+        const keys = ['fecha', 'concepto', 'monto', 'importe', 'cuit', 'tipo', 'descripcion', 'detalle'];
 
-            let fecha = ''
-            let concepto = ''
-            let monto = 0
-            let cuit = ''
-
-            const dateMatch = trimmed.match(/(?:01)?(202\d)(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/)
-            if (dateMatch) {
-                fecha = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
-            }
-
-            const amountMatch = trimmed.match(/(-?[\d\.,]+)$/)
-            if (amountMatch) {
-                const raw = amountMatch[1]
-                if (!raw.includes('.') && !raw.includes(',') && raw.length > 15) {
-                    const blocks = trimmed.split(/[^0-9]+/)
-                    const amountBlock = blocks.find(b => b.length >= 10 && b.length <= 14 && !b.startsWith('202'))
-
-                    if (amountBlock) {
-                        monto = parseFloat(amountBlock) / 100
-                    } else {
-                        // Fallback: Check for VERY long blocks (Amount + CUIT concatenated)
-                        // Example: 000000126318309276273170000000000
-                        const longBlock = blocks.find(b => b.length > 18)
-                        if (longBlock) {
-                            // Try to find a CUIT inside: 20/23/24/27/30/33 + 9 digits
-                            const cuitMatch = longBlock.match(/(20|23|24|27|30|33)[0-9]{9}/)
-                            if (cuitMatch) {
-                                const cuitFound = cuitMatch[0]
-                                const cuitIndex = longBlock.indexOf(cuitFound)
-
-                                // Assume everything BEFORE the CUIT is the Amount
-                                // (ignoring leading zeros which parseFloat handles)
-                                const amountPart = longBlock.substring(0, cuitIndex)
-
-                                if (amountPart.length > 0) {
-                                    monto = parseFloat(amountPart) / 100
-                                    cuit = cuitFound // Extract valid CUIT
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    monto = parseFloat(raw.replace(/\./g, '').replace(',', '.'))
-                }
-            }
-
-            if (fecha && monto !== 0) {
-                concepto = trimmed.substring(18, 50).replace(/[0-9]{10,}/g, '').trim()
-                const cuitMatch = trimmed.match(/\b(20|23|27|30|33|24)[0-9]{9}\b/)
-                if (cuitMatch) cuit = cuitMatch[0]
-            }
-
-            if (!fecha || monto === 0) return null
-
-            // Tax Tagging
-            let tags: string[] = []
-            if (this.isTax(cuit, concepto)) {
-                tags.push('impuesto_recuperable')
-            }
-
-            return {
-                fecha,
-                concepto: concepto || 'Sin concepto',
-                monto: Math.abs(monto),
-                cuit: cuit || '',
-                tipo: 'DEBITO',
-                tags
-            }
-        }).filter((t) => t !== null) as Transaction[]
-    }
-
-    private static isTax(cuit: string, concepto: string): boolean {
-        // Check exact CUITs
-        const cleanCuit = cuit.replace(/-/g, '')
-        const taxCuits = Object.values(this.TAX_IDS).map(id => id.replace(/-/g, ''))
-        if (taxCuits.includes(cleanCuit)) return true
-
-        // Check Keywords
-        const upperConcept = concepto.toUpperCase()
-        const taxKeywords = ['SIRCREB', 'IIBB', 'IMP.LEY', 'RETENCION', 'IMPUESTO', 'AGIP', 'ARBA', 'AFIP']
-        return taxKeywords.some(k => upperConcept.includes(k)) && !upperConcept.includes('IVA') // Exclude IVA usually
-    }
-
-    private static parseDelimited(lines: string[], delimiter: string): { transactions: Transaction[], hasExplicitTipo: boolean } {
-        if (lines.length < 2) return { transactions: [], hasExplicitTipo: false }
-
-        // 1. Ghost Header Scanner: Find the real header row
-        let headerRowIndex = 0;
-        const keywords = ['fecha', 'date', 'fec', 'concepto', 'descripcion', 'monto', 'importe', 'referencia'];
-
-        for (let i = 0; i < Math.min(lines.length, 20); i++) {
+        for (let i = 0; i < Math.min(lines.length, 30); i++) {
             const row = lines[i].toLowerCase();
-            const matchCount = keywords.filter(k => row.includes(k)).length;
-            if (matchCount >= 2) { // At least 2 financial keywords found
-                headerRowIndex = i;
+            if (keys.filter(k => row.includes(k)).length >= 2) {
+                headerIdx = i;
                 break;
             }
         }
 
-        const headers = lines[headerRowIndex].toLowerCase().split(delimiter).map(h => h.trim().replace(/^"/, '').replace(/"$/, ''))
-        let hasExplicitTipo = false;
+        if (headerIdx === -1) return this.parseNoHeader(lines, delimiter, thesaurus);
 
-        const findColIndex = (aliases: string[]) => {
-            for (const alias of aliases) {
-                const idx = headers.findIndex(h => h.includes(alias))
-                if (idx !== -1) return idx
-            }
-            return -1
-        }
+        const headers = lines[headerIdx].split(delimiter).map(h => h.trim().toLowerCase());
+        const idx = {
+            fecha: headers.findIndex(h => ['fecha', 'fec', 'date'].some(k => h.includes(k))),
+            monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total'].some(k => h.includes(k))),
+            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc'].some(k => h.includes(k))),
+            cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento'].some(k => h.includes(k))),
+            tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo'].some(k => h.includes(k)))
+        };
 
-        const findCol = (row: string[], idx: number) => {
-            if (idx !== -1 && row[idx]) return row[idx].trim().replace(/^"/, '').replace(/"$/, '')
-            return ''
-        }
+        const transactions: Transaction[] = [];
+        for (const line of lines.slice(headerIdx + 1)) {
+            const row = line.split(delimiter).map(v => v.trim());
+            if (row.length < 2) continue;
 
-        // 2. Formatting Detection (Separator Probability)
-        const debitColIdx = findColIndex(['debe', 'debito', 'debit', 'egreso']);
-        const creditColIdx = findColIndex(['haber', 'credito', 'credit', 'ingreso']);
-        let amountColIdx = findColIndex(['monto', 'importe', 'valor', 'saldo']);
+            const fecha = this.normalizeDate(row[idx.fecha]);
+            if (!fecha) continue;
 
-        let useSeparateCols = false;
-        if (debitColIdx !== -1 && creditColIdx !== -1) {
-            useSeparateCols = true;
-        } else if (amountColIdx === -1) {
-            if (debitColIdx !== -1) amountColIdx = debitColIdx;
-            else if (creditColIdx !== -1) amountColIdx = creditColIdx;
-        }
+            let monto = this.parseCurrency(row[idx.monto]);
 
-        const colResultIdx = useSeparateCols ? debitColIdx : amountColIdx;
-        let decimalSeparator = '.'; // Default
-
-        if (colResultIdx !== -1) {
-            // Analizar las primeras 20 filas de datos para determinar el formato
-            const samples = lines.slice(headerRowIndex + 1, headerRowIndex + 21)
-                .map(l => l.split(delimiter)[colResultIdx])
-                .filter(val => val && /[0-9]/.test(val));
-
-            if (samples.length > 0) {
-                let dotScore = 0;
-                let commaScore = 0;
-
-                samples.forEach(s => {
-                    const lastDot = s.lastIndexOf('.');
-                    const lastComma = s.lastIndexOf(',');
-                    if (lastComma > lastDot) commaScore++; // 1.000,00
-                    else if (lastDot > lastComma) dotScore++; // 1,000.00
-                });
-
-                if (commaScore > dotScore) decimalSeparator = ',';
-            }
-        }
-
-        // Peek to see if 'tipo' column exists in headers
-        hasExplicitTipo = headers.some(h => ['tipo', 'type', 'movimiento', 'category'].some(a => h.includes(a)));
-
-        const transactions = lines.slice(headerRowIndex + 1).map(line => {
-            // 4. Noise Filter: Ignore TOTAL/SALDO rows
-            const upperLine = line.toUpperCase();
-            if ((upperLine.includes('TOTAL') || upperLine.includes('SALDO')) && !upperLine.match(/[0-9]{2}[\/-][0-9]{2}/)) {
-                return null;
+            // CUIT TRAP: Si el monto tiene 11 dígitos y parece un CUIT, no es el monto
+            const montoRawClean = (row[idx.monto] || '').replace(/[^0-9]/g, '');
+            if (montoRawClean.length === 11 && Math.abs(monto) > 10000000) {
+                // Posible confusión con CUIT, intentar buscar monto en otra columna si falló el mapeo
+                // Pero aquí confiamos en el header.
             }
 
-            const row = line.split(delimiter)
-            if (row.length < 2) return null
+            const concepto = this.normalizeConcept(row[idx.desc], thesaurus);
+            const cuit = (idx.cuit !== -1 ? row[idx.cuit] : '').replace(/[^0-9]/g, '');
 
-            let fecha = findCol(row, findColIndex(['fecha', 'date', 'fec']))
-            const concepto = findCol(row, findColIndex(['concepto', 'detalle', 'descripcion', 'razon', 'referencia'])) || 'Sin concepto'
-            let cuit = findCol(row, findColIndex(['cuit', 'cuil', 'id', 'tax'])) || ''
-
-            if (fecha) {
-                const parts = fecha.split(/[\/-]/)
-                if (parts.length === 3) {
-                    if (parts[2].length === 4) fecha = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-                    else if (parts[0].length === 4) fecha = `${parts[0]}-${parts[1]}-${parts[2]}`
-                }
-            }
-
-            let monto = 0;
-            const parseWithFormat = (str: string) => {
-                let clean = str.replace(/[^0-9.,-]/g, '');
-                if (decimalSeparator === ',') {
-                    clean = clean.replace(/\./g, '').replace(',', '.');
+            // Sign Logic
+            let tipo: 'DEBITO' | 'CREDITO' = monto < 0 ? 'DEBITO' : 'CREDITO';
+            if (idx.tipo !== -1 && row[idx.tipo]) {
+                const tr = row[idx.tipo].toUpperCase();
+                const isDebit = ['DEB', 'EGRESO', 'D', 'DEBITO', '-', '1', 'BAJA', 'GASTO'].some(k => tr.includes(k));
+                if (isDebit) {
+                    monto = -Math.abs(monto);
+                    tipo = 'DEBITO';
                 } else {
-                    clean = clean.replace(/,/g, '');
-                }
-                return parseFloat(clean);
-            }
-
-            if (useSeparateCols) {
-                const debitStr = findCol(row, debitColIdx);
-                const creditStr = findCol(row, creditColIdx);
-                const debitVal = debitStr ? Math.abs(parseWithFormat(debitStr)) : 0;
-                const creditVal = creditStr ? Math.abs(parseWithFormat(creditStr)) : 0;
-
-                monto = creditVal - debitVal;
-            } else {
-                let montoStr = findCol(row, amountColIdx);
-                if (montoStr) {
-                    monto = parseWithFormat(montoStr);
-                } else {
-                    monto = NaN; // Invalid amount
+                    monto = Math.abs(monto);
+                    tipo = 'CREDITO';
                 }
             }
 
-            // 3. Remote CUIT Extraction
-            if (!cuit) {
-                // Regex for CUIT inside text: 20-12345678-9 or 20123456789
-                const cuitMatch = concepto.match(/\b(20|23|27|30|33|24)[-]?\d{8}[-]?\d{1}\b/);
-                if (cuitMatch) {
-                    cuit = cuitMatch[0].replace(/-/g, '');
-                }
-            }
-
-            if (!fecha || isNaN(monto)) return null
-
-            let tipoStr = findCol(row, findColIndex(['tipo', 'type', 'movimiento', 'category'])) || ''
-
-            // Logic to determine sign based on Type or Amount string
             if (monto !== 0) {
-                const cleanTipo = tipoStr.toUpperCase()
-
-                // 1. Explicit Type Column (Priority: Source of Truth)
-                if (cleanTipo) {
-                    const isExplicitNegative = cleanTipo.includes('DEBITO') || cleanTipo === 'D'
-                    const isExplicitPositive = cleanTipo.includes('CREDITO') || cleanTipo === 'C'
-
-                    if (isExplicitNegative) {
-                        monto = -Math.abs(monto)
-                    }
-                    else if (isExplicitPositive) {
-                        monto = Math.abs(monto)
-                    }
-                }
+                transactions.push({ fecha, concepto, monto, cuit, tipo, tags: this.isTax(cuit, concepto) ? ['impuesto_recuperable'] : [] });
             }
+        }
 
-            // Tax Tagging
-            let tags: string[] = []
-            if (this.isTax(cuit, concepto)) {
-                tags.push('impuesto_recuperable')
+        return { transactions, hasExplicitTipo: idx.tipo !== -1 };
+    }
+
+    private static parseNoHeader(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
+        const transactions: Transaction[] = [];
+        for (const line of lines) {
+            const row = line.split(delimiter).map(v => v.trim());
+            if (row.length < 2) continue;
+
+            const date = row.map(v => this.normalizeDate(v)).find(v => v !== null);
+            const montoObj = row.map(v => ({ v: this.parseCurrency(v), raw: v.replace(/[^0-9]/g, '') }))
+                .find(r => r.v !== 0 && r.raw.length < 10);
+
+            if (date && montoObj) {
+                const desc = row.find(v => v.length > 5 && isNaN(this.parseCurrency(v))) || 'Sin concepto';
+                transactions.push({
+                    fecha: date,
+                    concepto: this.normalizeConcept(desc, thesaurus),
+                    monto: montoObj.v,
+                    cuit: '',
+                    tipo: montoObj.v < 0 ? 'DEBITO' : 'CREDITO'
+                });
             }
+        }
+        return { transactions, hasExplicitTipo: false };
+    }
 
-            return {
-                fecha,
-                concepto,
-                monto: monto, // Signed amount
-                cuit,
-                tipo: monto < 0 ? 'DEBITO' : 'CREDITO',
-                tags
+    /**
+     * Parser de Ancho Fijo inteligente (sin tijeretazos hardcodeados)
+     */
+    private static parseFixedWith(lines: string[], thesaurus?: Map<string, string>): Transaction[] {
+        const transactions: Transaction[] = [];
+        for (const line of lines) {
+            const trimmed = line.trim();
+            // CORRECCIÓN: Si la línea tiene delimitadores, NO es fixed-width
+            if (trimmed.length < 20 || trimmed.includes('|') || trimmed.includes(';')) continue;
+
+            const dateMatch = trimmed.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/) || trimmed.match(/(202\d)(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/);
+            const amountMatch = trimmed.match(/(-?[\d\.,]+)$/);
+
+            if (dateMatch && amountMatch) {
+                const fechaRaw = dateMatch[0];
+                const amountRaw = amountMatch[0];
+                const fecha = this.normalizeDate(fechaRaw) || '';
+                const monto = this.parseCurrency(amountRaw);
+
+                // EXTRACCIÓN DINÁMICA: Lo que queda en medio
+                const descArea = trimmed
+                    .replace(fechaRaw, '')
+                    .replace(amountRaw, '')
+                    .trim();
+
+                const concepto = this.normalizeConcept(descArea, thesaurus);
+
+                transactions.push({
+                    fecha,
+                    concepto,
+                    monto,
+                    cuit: '',
+                    tipo: monto < 0 ? 'DEBITO' : 'CREDITO'
+                });
             }
-        }).filter((t) => t !== null) as Transaction[]
+        }
+        return transactions;
+    }
 
-        return { transactions, hasExplicitTipo };
+    public static normalizeConcept(raw: string, thesaurus?: Map<string, string>): string {
+        if (!raw) return 'Sin concepto';
+        let clean = raw.trim().toUpperCase()
+            .replace(/[0-9]{10,}/g, '')
+            .replace(/\b(REF|ID)[:]?\s*[0-9]*/g, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        if (thesaurus) {
+            if (thesaurus.has(clean)) return thesaurus.get(clean)!;
+            for (const [key, value] of thesaurus.entries()) {
+                if (clean.includes(key.toUpperCase())) return value;
+            }
+        }
+        return clean || 'Sin concepto';
+    }
+
+    private static normalizeDate(raw: string): string | null {
+        if (!raw) return null;
+        const clean = raw.replace(/[^\d/.-]/g, '');
+        const parts = clean.split(/[/-]/).filter(p => p.length > 0);
+        if (parts.length === 3) {
+            let [p1, p2, p3] = parts;
+            if (p1.length === 4) return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+            if (p3.length === 2) p3 = `20${p3}`;
+            if (p3.length === 4) return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+        }
+        return null;
+    }
+
+    private static parseCurrency(str: string): number {
+        if (!str) return 0;
+        let clean = str.replace(/[^0-9.,-]/g, '');
+        const lastComma = clean.lastIndexOf(',');
+        const lastDot = clean.lastIndexOf('.');
+
+        if (lastComma > lastDot) clean = clean.replace(/\./g, "").replace(",", ".");
+        else if (lastDot > lastComma && lastComma !== -1) clean = clean.replace(/,/g, "");
+        else if (lastDot === -1 && lastComma !== -1) clean = clean.replace(",", ".");
+
+        return parseFloat(clean) || 0;
+    }
+
+    public static isTax(cuit: string, concepto: string): boolean {
+        const cleanCuit = cuit.replace(/-/g, '');
+        const taxCuits = Object.values(this.TAX_IDS).map(id => id.replace(/-/g, ''));
+        if (taxCuits.includes(cleanCuit)) return true;
+        const upper = concepto.toUpperCase();
+        return ['SIRCREB', 'IIBB', 'RETENCION', 'IMPUESTO', 'AFIP', 'ARBA', 'PERCEPCION'].some(k => upper.includes(k)) && !upper.includes('IVA');
+    }
+
+    private static extractMetadata(lines: string[], transactions: Transaction[]) {
+        const headerLines = lines.slice(0, 15).join('\n').toLowerCase();
+        let saldoInicial = 0; let saldoFinal = 0;
+        const curRegex = (k: string) => new RegExp(`${k}.*?([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})`, 'i');
+        const mInit = headerLines.match(curRegex('saldo (?:inicial|anterior)'));
+        if (mInit) saldoInicial = this.parseCurrency(mInit[1]);
+        const mEnd = headerLines.match(curRegex('saldo (?:final|actual|al)'));
+        if (mEnd) saldoFinal = this.parseCurrency(mEnd[1]);
+
+        if (saldoInicial !== 0 || saldoFinal !== 0) {
+            const creds = transactions.filter(t => t.tipo === 'CREDITO').reduce((a, b) => a + b.monto, 0);
+            const debs = transactions.filter(t => t.tipo === 'DEBITO').reduce((a, b) => a + b.monto, 0);
+            const calc = saldoInicial + creds - debs;
+            return { saldoInicial, saldoFinal, saldoCalculado: calc, diferencia: Math.abs(saldoFinal - calc), isBalanced: Math.abs(saldoFinal - calc) < 0.05 };
+        }
+        return {};
     }
 }

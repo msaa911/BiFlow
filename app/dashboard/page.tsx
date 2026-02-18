@@ -5,7 +5,9 @@ import { KPICard } from '@/components/ui/kpi-card'
 import { DashboardActions } from '@/components/dashboard/actions'
 import { TaxRecoveryWidget } from '@/components/dashboard/tax-recovery-widget'
 import { ExpenseGuardWidget } from '@/components/dashboard/expense-guard-widget'
-import { CashHealthScore } from '@/components/dashboard/cash-health-score'
+import { DashboardCFO } from '@/components/dashboard/dashboard-cfo'
+import { LiquidityEngine } from '@/lib/liquidity-engine'
+import { getOrgId } from '@/lib/supabase/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,12 +31,19 @@ export default async function DashboardPage() {
         console.error('Error fetching transactions:', error)
     }
 
-    // Calculate Metrics (Simple sum for demo)
+    // Fetch Thesaurus
+    const { data: thesaurusEntries } = await supabase
+        .from('financial_thesaurus')
+        .select('raw_pattern, normalized_concept')
+
+    const thesaurusMap = new Map(thesaurusEntries?.map(e => [e.raw_pattern, e.normalized_concept]) || [])
+
+    // Calculate Metrics
     const { data: allTransactions } = await supabase
         .from('transacciones')
         .select('monto')
 
-    const totalBalance = allTransactions?.reduce((acc, curr) => acc + curr.monto, 0) || 0
+    const totalBalance = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
 
     // Fetch Tax Recovery Items
     const { data: taxItems } = await supabase
@@ -43,7 +52,7 @@ export default async function DashboardPage() {
         .contains('tags', ['impuesto_recuperable'])
         .order('fecha', { ascending: false })
 
-    const totalRecoverable = taxItems?.reduce((acc, curr) => acc + curr.monto, 0) || 0
+    const totalRecoverable = taxItems?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
 
     // Fetch Expense Guard Anomalies
     const { data: anomalies } = await supabase
@@ -77,7 +86,22 @@ export default async function DashboardPage() {
     }
     healthScore = Math.max(15, healthScore) // Floor at 15
 
+    // 3. Fetch Company Config (TNA & Overdraft)
+    const orgId = await getOrgId(supabase, user.id)
+    const { data: orgConfig } = await supabase
+        .from('configuracion_empresa')
+        .select('*')
+        .eq('organization_id', orgId)
+        .single()
+
+    const tna = orgConfig?.tna || 0.70
+    const overdraftLimit = orgConfig?.limite_descubierto || 0
+
     const recoveryPotential = totalBalance > 0 ? Math.round((totalRecoverable / Math.abs(totalBalance)) * 100) : 0
+
+    // Liquidity Logic
+    const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tna)
+    const daysOfRunway = LiquidityEngine.calculateHealthScore(totalBalance, Math.abs(totalBalance / 2) || 1000, overdraftLimit)
 
     return (
         <div className="space-y-8">
@@ -110,34 +134,16 @@ export default async function DashboardPage() {
             ) : null}
 
             {/* Algorithmic CFO Widgets */}
-            <div className="grid gap-6 md:grid-cols-4">
-                <div className="md:col-span-2">
-                    <CashHealthScore
-                        score={healthScore}
-                        anomalyCount={findings?.length || 0}
-                        recoveryPotential={recoveryPotential}
-                    />
-                </div>
-                <div className="md:col-span-1">
-                    <KPICard
-                        title="Saldo Operativo"
-                        value={formatCurrency(totalBalance)}
-                        description="Balance actual estimado"
-                        icon={<Activity className="h-5 w-5 text-blue-400" />}
-                        trend="neutral"
-                    />
-                </div>
-                <div className="md:col-span-1">
-                    <KPICard
-                        title="Recupero Pendiente"
-                        value={formatCurrency(totalRecoverable)}
-                        description="Impuestos AFIP/ARBA"
-                        icon={<DollarSign className="h-5 w-5 text-emerald-400" />}
-                        trend="up"
-                        trendValue="+5.2%"
-                    />
-                </div>
-            </div>
+            <DashboardCFO
+                healthScore={healthScore}
+                anomalyCount={anomalyCount}
+                recoveryPotential={recoveryPotential}
+                totalBalance={totalBalance}
+                totalRecoverable={totalRecoverable}
+                opportunityCost={opportunityCost}
+                daysOfRunway={daysOfRunway}
+                overdraftLimit={overdraftLimit}
+            />
 
             <div className="grid gap-6 md:grid-cols-2">
                 <TaxRecoveryWidget totalRecoverable={totalRecoverable} taxItems={taxItems || []} />
@@ -146,7 +152,6 @@ export default async function DashboardPage() {
 
             {/* Recent Transactions & Actions */}
             <div className="grid gap-6 md:grid-cols-3">
-                {/* Transacciones (Wider) */}
                 <div className="md:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
                     <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                         <h3 className="font-semibold text-white">Transacciones Recientes</h3>
@@ -197,7 +202,6 @@ export default async function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Accesos Rápidos / Anomalías */}
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
                     <h3 className="font-semibold text-white mb-4">Acciones Rápidas</h3>
                     <DashboardActions />

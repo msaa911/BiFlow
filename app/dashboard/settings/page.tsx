@@ -2,7 +2,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, Bell, Shield, CreditCard, LogOut } from 'lucide-react'
+import { User, Bell, Shield, CreditCard, LogOut, Settings2 } from 'lucide-react'
+import { CompanySettingsTab } from '@/components/dashboard/company-settings-tab'
+import { getOrgId } from '@/lib/supabase/utils'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -11,6 +13,8 @@ export default async function SettingsPage() {
     if (!user) {
         redirect('/login')
     }
+
+    const orgId = await getOrgId(supabase, user.id)
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
@@ -88,6 +92,9 @@ export default async function SettingsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Configuración de Empresa (Finanzas) */}
+            <CompanySettingsTab organizationId={orgId} />
 
             {/* Plan y Facturación */}
             <Card className="bg-gray-900 border-gray-800 text-white">

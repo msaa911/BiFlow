@@ -64,20 +64,24 @@ export async function POST(request: Request) {
                 const { UniversalTranslator } = require('@/lib/universal-translator')
                 const text = buffer.toString('utf-8')
                 console.log(`DEBUG: Custom Parser Input Length: ${text.length}`)
-                const res = parseFixed(text, format.reglas)
+                // Fetch Thesaurus for normalization
+                const { data: thesaurusRows } = await currentSupabase.from('financial_thesaurus').select('raw_pattern, normalized_concept')
+                const thesaurusMap = new Map(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || [])
+
+                const res = parseFixed(text, format.reglas, { thesaurus: thesaurusMap })
                 console.log(`DEBUG: Custom Parser Result - Trans: ${res.transactions?.length}, Review: ${res.reviewItems?.length}`)
 
                 // --- FIX: Map and Enrich Custom Format Results ---
                 transactions = res.transactions.map((t: any) => {
-                    // Tax identification for custom formats
-                    const isTax = UniversalTranslator.isTax(t.cuit || '', t.concepto || 'Sin concepto')
+                    const concepto = t.concepto || 'Sin concepto'
+                    const isTax = UniversalTranslator.isTax(t.cuit || '', concepto)
                     const tags = [...(t.tags || [])]
                     if (isTax) tags.push('impuesto_recuperable')
 
                     return {
                         ...t,
                         organization_id: orgId,
-                        descripcion: t.concepto || 'Sin concepto',
+                        descripcion: concepto,
                         tags,
                         estado: 'pendiente'
                     }
@@ -98,9 +102,13 @@ export async function POST(request: Request) {
             // Only run auto-detect if custom format didn't yield results (or wasn't provided)
             if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileName.endsWith('.dat')) {
                 const text = buffer.toString('utf-8')
+                // Fetch Thesaurus for normalization
+                const { data: thesaurusRows } = await currentSupabase.from('financial_thesaurus').select('raw_pattern, normalized_concept')
+                const thesaurusMap = new Map(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || [])
+
                 // Use Universal Translator
                 const { UniversalTranslator } = require('@/lib/universal-translator')
-                const uniTransactions = UniversalTranslator.translate(text, { invertSigns })
+                const uniTransactions = UniversalTranslator.translate(text, { invertSigns, thesaurus: thesaurusMap })
 
                 hasExplicitTipo = uniTransactions.hasExplicitTipo
                 exampleRow = uniTransactions.exampleRow
@@ -258,6 +266,7 @@ export async function POST(request: Request) {
                 const analysis = AnomalyEngine.analyze(transactions, historyMap, existing || [])
 
                 transactions = analysis.processed // Update transactions with metadata/tags
+                const detectedAnomalies = analysis.anomalies // Used for hallazgos later
 
                 // 3. Collect Warnings
                 const duplicateCount = transactions.filter(t => t.metadata?.anomaly === 'duplicate').length
@@ -267,6 +276,9 @@ export async function POST(request: Request) {
                 if (duplicateCount > 0) warnings.push(`Deduplicación: Se detectaron ${duplicateCount} posibles duplicados.`)
                 if (spikeCount > 0) warnings.push(`Guardián de Gastos: Se detectaron ${spikeCount} desvíos de precio (>15%).`)
                 if (recoveryCount > 0) warnings.push(`Recupero Fiscal: Se identificaron ${recoveryCount} movimientos recuperables (AFIP/ARBA).`)
+
+                    // Store anomalies temporarily to link them after insertion
+                    (transactions as any)._detected_anomalies = detectedAnomalies
 
             } catch (err: any) {
                 console.error('Anomaly Detection Error:', err)
@@ -316,12 +328,43 @@ export async function POST(request: Request) {
                 }))
 
                 console.log(`DEBUG: Inserting ${sanitizedTransactions.length} trans for org ${orgId}`)
-                const { error: insError } = await currentSupabase.from('transacciones').insert(sanitizedTransactions)
+                const { data: insertedTrans, error: insError } = await currentSupabase
+                    .from('transacciones')
+                    .insert(sanitizedTransactions)
+                    .select('id, fecha, descripcion, monto')
+
                 if (insError) {
                     await currentSupabase.from('archivos_importados').update({ estado: 'error', metadata: { error: insError.message } }).eq('id', importId)
                     console.error('Insert Error Full:', insError)
                     await logError(currentSupabase, 'Insert Transactions', `RLS/DB Error: ${insError.message}. Org: ${orgId}. First Row Org: ${sanitizedTransactions[0].organization_id}`, fileName, orgId)
                     throw new Error(`Error insertion: ${insError.message}`)
+                }
+
+                // --- NEW: Persist Findings (Hallazgos) ---
+                if (insertedTrans && insertedTrans.length > 0) {
+                    const findingsToInsert: any[] = []
+
+                    insertedTrans.forEach(it => {
+                        // Find matching processed transaction to get metadata
+                        const analyzed = transactions.find(t => t.fecha === it.fecha && t.descripcion === it.descripcion && t.monto === it.monto)
+                        if (analyzed?.metadata?.anomaly) {
+                            findingsToInsert.push({
+                                organization_id: orgId,
+                                transaccion_id: it.id,
+                                tipo: analyzed.metadata.anomaly === 'duplicate' ? 'duplicado' : 'anomalia',
+                                severidad: analyzed.metadata.severity || 'low',
+                                estado: 'detectado',
+                                detalle: {
+                                    razon: analyzed.metadata.anomaly === 'duplicate' ? 'Posible duplicado (Ventana 30d)' : 'Desvío de precio detectado',
+                                    score: analyzed.metadata.anomaly_score
+                                }
+                            })
+                        }
+                    })
+
+                    if (findingsToInsert.length > 0) {
+                        await currentSupabase.from('hallazgos').insert(findingsToInsert)
+                    }
                 }
             }
 

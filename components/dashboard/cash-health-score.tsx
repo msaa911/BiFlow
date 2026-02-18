@@ -7,9 +7,19 @@ interface CashHealthScoreProps {
     score: number
     anomalyCount: number
     recoveryPotential: number
+    opportunityCost?: number
+    daysOfRunway?: number | 'stable'
+    onOpenStressTest?: () => void
 }
 
-export function CashHealthScore({ score, anomalyCount, recoveryPotential }: CashHealthScoreProps) {
+export function CashHealthScore({
+    score,
+    anomalyCount,
+    recoveryPotential,
+    opportunityCost = 0,
+    daysOfRunway = 'stable',
+    onOpenStressTest
+}: CashHealthScoreProps) {
     // Determine status levels
     const getStatus = (s: number) => {
         if (s >= 90) return { label: 'Excelente', color: 'text-emerald-400', stroke: '#10b981', bg: 'bg-emerald-500/10' }
@@ -92,9 +102,21 @@ export function CashHealthScore({ score, anomalyCount, recoveryPotential }: Cash
                         </div>
                     </div>
 
-                    <div className={`text-xs font-bold px-3 py-1.5 rounded-full inline-flex ${status.bg} ${status.color} border border-current/20`}>
-                        Nivel {status.label}
+                    <div className="flex gap-2">
+                        <div className={`text-[10px] font-bold px-3 py-1.5 rounded-full inline-flex ${status.bg} ${status.color} border border-current/20`}>
+                            Nivel {status.label}
+                        </div>
+                        <div className="text-[10px] font-bold px-3 py-1.5 rounded-full inline-flex bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            Algoritmo v2.2 Active
+                        </div>
                     </div>
+
+                    <button
+                        onClick={onOpenStressTest}
+                        className="ml-4 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors border-b border-blue-400/30 pb-0.5"
+                    >
+                        Simular Stress Test →
+                    </button>
                 </div>
             </div>
         </div>

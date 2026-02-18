@@ -17,7 +17,7 @@ export interface FormatDefinition {
     reglas: Record<string, { start: number, end: number, type?: 'date' | 'number' | 'string' }>
 }
 
-export function parseFixed(text: string, rules: FormatDefinition['reglas']) {
+export function parseFixed(text: string, rules: FormatDefinition['reglas'], options?: { thesaurus?: Map<string, string> }) {
     const lines = text.split(/\r?\n/)
     console.log(`DEBUG: parseFixed lines count: ${lines.length}`)
     const transactions: any[] = []
@@ -44,12 +44,16 @@ export function parseFixed(text: string, rules: FormatDefinition['reglas']) {
             }
 
             // Descripcion/Concepto
+            let rawDesc = ''
             if (rules.descripcion) {
-                descripcion = safeSubstring(trimmed, rules.descripcion.start, rules.descripcion.end).trim()
+                rawDesc = safeSubstring(trimmed, rules.descripcion.start, rules.descripcion.end).trim()
             } else if (rules.concepto) {
-                // Support both names for the rule for extra robustness
-                descripcion = safeSubstring(trimmed, rules.concepto.start, rules.concepto.end).trim()
+                rawDesc = safeSubstring(trimmed, rules.concepto.start, rules.concepto.end).trim()
             }
+
+            // Basic normalization + Thesaurus (Harmonized with UniversalTranslator)
+            const { UniversalTranslator } = require('../universal-translator')
+            descripcion = UniversalTranslator.normalizeConcept(rawDesc, options?.thesaurus)
 
             // Monto
             if (rules.monto) {
