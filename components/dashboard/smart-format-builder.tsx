@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 interface SmartFormatBuilderProps {
     onClose: () => void
     onFormatSaved: (formatId?: string, file?: File) => void
+    initialFile?: File
 }
 
 interface FormatRule {
@@ -15,24 +16,33 @@ interface FormatRule {
     end: number
 }
 
-export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilderProps) {
-    const [file, setFile] = useState<File | null>(null)
+export function SmartFormatBuilder({ onClose, onFormatSaved, initialFile }: SmartFormatBuilderProps) {
+    const [file, setFile] = useState<File | null>(initialFile || null)
     const [lines, setLines] = useState<string[]>([])
     const [formatName, setFormatName] = useState('')
     const [rules, setRules] = useState<Record<string, FormatRule>>({})
     const [activeField, setActiveField] = useState<string | null>(null)
     const [selection, setSelection] = useState<FormatRule | null>(null)
     const [saving, setSaving] = useState(false)
-
     const textRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (initialFile) {
+            processFile(initialFile)
+        }
+    }, [initialFile])
+
+    const processFile = async (f: File) => {
+        const text = await f.text()
+        const previewLines = text.split('\n').slice(0, 10).map(l => l.replace(/(\r\n|\n|\r)/gm, ""))
+        setLines(previewLines)
+    }
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0]
         if (!f) return
         setFile(f)
-        const text = await f.text()
-        const previewLines = text.split('\n').slice(0, 10).map(l => l.replace(/(\r\n|\n|\r)/gm, ""))
-        setLines(previewLines)
+        await processFile(f)
     }
 
     const handleTextSelect = (lineIndex: number) => {
@@ -107,28 +117,18 @@ export function SmartFormatBuilder({ onClose, onFormatSaved }: SmartFormatBuilde
 
         if (!member) return
 
-        const { error } = await supabase.from('formato_archivos').insert({
+        const { data: newFormat, error } = await supabase.from('formato_archivos').insert({
             organization_id: member.organization_id,
             nombre: formatName,
             tipo: 'fixed_width',
             reglas: rules,
             descripcion: `Creado visualmente desde ${file?.name || 'archivo'}`
-        })
+        }).select('id').single()
 
         setSaving(false)
         if (error) {
             alert('Error: ' + error.message)
         } else {
-            // Fetch the just created format or just pass rules if we had the ID
-            // For now, reload formats in parent is enough, but passing ID helps
-            const { data: newFormat } = await supabase
-                .from('formato_archivos')
-                .select('id')
-                .eq('nombre', formatName)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single()
-
             onFormatSaved(newFormat?.id, file || undefined)
             onClose()
         }

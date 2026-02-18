@@ -101,16 +101,18 @@ export default function UploadPage() {
         setFiles(prev => prev.filter((_, i) => i !== index))
     }
 
-    const uploadFiles = async () => {
-        if (files.length === 0) return
+    const uploadFiles = async (overrideFiles?: File[], overrideFormatId?: string) => {
+        const filesToProcess = overrideFiles || files
+        if (filesToProcess.length === 0) return
 
         setUploading(true)
+        setSuccess(false)
         setProgress(0)
         setError(null)
         setUploadResult(null)
 
         let completed = 0
-        const totalFiles = files.length
+        const totalFiles = filesToProcess.length
         const totalProgressPerFile = 100 / totalFiles
 
         // Accumulate results
@@ -119,13 +121,13 @@ export default function UploadPage() {
         let totalReview = 0
         let allWarnings: string[] = []
 
-        for (const file of files) {
+        for (const file of filesToProcess) {
             try {
                 const result = await uploadSingleFile(file, (percent) => {
                     const currentBase = completed * totalProgressPerFile
                     const currentIncrement = (percent * totalProgressPerFile) / 100
                     setProgress(Math.round(currentBase + currentIncrement))
-                })
+                }, undefined, undefined, overrideFormatId)
 
                 if (result) {
                     totalCount += result.count || 0
@@ -155,7 +157,6 @@ export default function UploadPage() {
         })
         setRefreshHistory(prev => prev + 1)
 
-        // Don't auto-redirect if there are warnings or skipped items, so user can see them
         if (allWarnings.length === 0 && totalSkipped === 0 && totalReview === 0 && totalCount > 0) {
             setTimeout(() => {
                 router.refresh()
@@ -196,15 +197,17 @@ export default function UploadPage() {
         }
     }
 
-    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any, invertSigns?: boolean): Promise<any> => {
+    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any, invertSigns?: boolean, overrideFormatId?: string): Promise<any> => {
         return new Promise((resolve, reject) => {
             const formData = new FormData()
             formData.append('file', file)
             if (mapping) {
                 formData.append('mapping', JSON.stringify(mapping))
             }
-            if (selectedFormat) {
-                formData.append('formatId', selectedFormat)
+
+            const formatToUse = overrideFormatId || selectedFormat
+            if (formatToUse) {
+                formData.append('formatId', formatToUse)
             }
             if (invertSigns !== undefined) {
                 formData.append('invertSigns', String(invertSigns))
@@ -267,14 +270,16 @@ export default function UploadPage() {
         return (
             <SmartFormatBuilder
                 onClose={() => setShowFormatBuilder(false)}
+                initialFile={files[0]} // Pass the file that failed
                 onFormatSaved={async (newFormatId?: string, fileToProcess?: File) => {
                     await fetchFormats()
                     setShowFormatBuilder(false)
                     if (newFormatId) {
                         setSelectedFormat(newFormatId)
                         if (fileToProcess) {
-                            // Automatically add to files list and trigger upload flow
                             setFiles([fileToProcess])
+                            // SILENT AUTO-RETRY!
+                            uploadFiles([fileToProcess], newFormatId)
                         }
                     }
                 }}
@@ -450,7 +455,7 @@ export default function UploadPage() {
                         )}
 
                         <button
-                            onClick={uploadFiles}
+                            onClick={() => uploadFiles()}
                             disabled={files.length === 0 || uploading}
                             className={`w-full font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${files.length === 0 || uploading
                                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed shadow-none'
