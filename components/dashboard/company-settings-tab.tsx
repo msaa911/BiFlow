@@ -39,13 +39,15 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 })
             }
 
-            // Load latest market rate (Trying both column names for compatibility)
-            const { data: marketData } = await supabase
+            // Load latest market rate (Using maybeSingle to avoid errors if table is empty)
+            const { data: marketData, error: marketError } = await supabase
                 .from('indices_mercado')
                 .select('tasa_plazo_fijo_30d, tasa_plazo_fijo')
                 .order('fecha', { ascending: false })
                 .limit(1)
-                .single()
+                .maybeSingle()
+
+            if (marketError) console.error('Error loading market index:', marketError)
 
             if (marketData) {
                 const rate = marketData.tasa_plazo_fijo_30d || marketData.tasa_plazo_fijo
