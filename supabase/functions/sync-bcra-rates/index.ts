@@ -23,9 +23,9 @@ serve(async (req) => {
             throw new Error('Invalid data format from BCRA');
         }
 
-        // Tomamos el último valor disponible
+        // Tomamos el último valor disponible (TNA % anual)
         const ultimoDato = data[data.length - 1];
-        const tasaDiaria = ultimoDato.v / 100; // Convertimos de 75 a 0.75
+        const tnaMercado = ultimoDato.v / 100; // Convertimos de 75 a 0.75 (TNA Decimal)
 
         // 2. Guardar en nuestra base de datos
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -34,13 +34,13 @@ serve(async (req) => {
             .from('indices_mercado')
             .upsert({
                 fecha: new Date().toISOString().split('T')[0],
-                tasa_plazo_fijo: tasaDiaria
+                tasa_plazo_fijo: tnaMercado
             }, { onConflict: 'fecha' });
 
         if (error) throw error;
 
-        console.log(`Successfully synced BCRA rate: ${tasaDiaria}`);
-        return new Response(JSON.stringify({ success: true, rate: tasaDiaria }), {
+        console.log(`Successfully synced BCRA TNA: ${tnaMercado}`);
+        return new Response(JSON.stringify({ success: true, rate: tnaMercado }), {
             headers: { 'Content-Type': 'application/json' },
             status: 200
         });
