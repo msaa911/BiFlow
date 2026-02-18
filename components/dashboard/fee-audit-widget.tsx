@@ -122,9 +122,9 @@ export function FeeAuditWidget() {
                     </div>
                 )}
 
-                <button className="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 text-[10px] font-bold rounded-lg border border-gray-700 transition-colors uppercase tracking-widest">
+                <Link href="/dashboard/audit" className="block w-full text-center py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 text-[10px] font-bold rounded-lg border border-gray-700 transition-colors uppercase tracking-widest">
                     Ver Auditoría Completa
-                </button>
+                </Link>
             </CardContent>
         </Card>
     )

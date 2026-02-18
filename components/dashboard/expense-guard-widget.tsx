@@ -1,12 +1,13 @@
 
-import { AlertTriangle, TrendingUp } from 'lucide-react'
+import { AlertTriangle, TrendingUp, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import Link from 'next/link'
 
 interface ExpenseGuardWidgetProps {
     anomalies: any[]
 }
 
-export function ExpenseGuardWidget({ anomalies }: ExpenseGuardWidgetProps) {
+export function ExpenseGuardWidget({ anomalies }: ExpenseGuardGuardWidgetProps) {
     const anomalyCount = anomalies.length
 
     return (
