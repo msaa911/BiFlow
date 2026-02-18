@@ -231,10 +231,17 @@ export default function UploadPage() {
                         resolve({ count: 0, skipped: 0, warnings: [] })
                     }
                 } else if (xhr.status === 409) {
-                    // Requires Confirmation
+                    // Requires Confirmation or Training
                     try {
                         const res = JSON.parse(xhr.responseText)
                         if (res.status === 'requires_confirmation') {
+                            if (res.requiresTraining) {
+                                setShowFormatBuilder(true)
+                                setUploading(false)
+                                resolve({ count: 0, skipped: 0, warnings: [] }) // Resolve silently as we open a new flow
+                                return
+                            }
+
                             setConfirmationData({
                                 file,
                                 exampleRow: res.exampleRow,
@@ -242,7 +249,6 @@ export default function UploadPage() {
                             })
                             setShowSignModal(true)
                             setUploading(false)
-                            // We don't resolve/reject here yet, UI handles the next step
                         } else {
                             reject(new Error(res.error || 'Conflicto en servidor'))
                         }
@@ -349,8 +355,8 @@ export default function UploadPage() {
                         <div className="grid grid-cols-1 gap-3">
                             <div
                                 className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${selectedFormat === ''
-                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
-                                        : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:bg-gray-800'
+                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
+                                    : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:bg-gray-800'
                                     }`}
                                 onClick={() => setSelectedFormat('')}
                             >
@@ -370,8 +376,8 @@ export default function UploadPage() {
                                 <div
                                     key={f.id}
                                     className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${selectedFormat === f.id
-                                            ? 'bg-blue-500/10 border-blue-500/50 text-white'
-                                            : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:bg-gray-800'
+                                        ? 'bg-blue-500/10 border-blue-500/50 text-white'
+                                        : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:bg-gray-800'
                                         }`}
                                     onClick={() => setSelectedFormat(f.id)}
                                 >
@@ -643,7 +649,7 @@ export default function UploadPage() {
             </div>
 
             {/* Sign Confirmation Modal */}
-            {showSignModal && confirmationData && (
+            {showSignModal && confirmationData && confirmationData.exampleRow && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
                     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in duration-200">
                         <div className="flex items-center gap-3 text-emerald-500 mb-4">
