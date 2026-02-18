@@ -275,10 +275,10 @@ export async function POST(request: Request) {
 
                 if (duplicateCount > 0) warnings.push(`Deduplicación: Se detectaron ${duplicateCount} posibles duplicados.`)
                 if (spikeCount > 0) warnings.push(`Guardián de Gastos: Se detectaron ${spikeCount} desvíos de precio (>15%).`)
-                if (recoveryCount > 0) warnings.push(`Recupero Fiscal: Se identificaron ${recoveryCount} movimientos recuperables (AFIP/ARBA).`)
+                if (recoveryCount > 0) warnings.push(`Recupero Fiscal: Se identificaron ${recoveryCount} movimientos recuperables (AFIP/ARBA).`);
 
-                    // Store anomalies temporarily to link them after insertion
-                    (transactions as any)._detected_anomalies = detectedAnomalies
+                // Store anomalies temporarily to link them after insertion
+                (transactions as any)._detected_anomalies = detectedAnomalies;
 
             } catch (err: any) {
                 console.error('Anomaly Detection Error:', err)
@@ -344,7 +344,7 @@ export async function POST(request: Request) {
                 if (insertedTrans && insertedTrans.length > 0) {
                     const findingsToInsert: any[] = []
 
-                    insertedTrans.forEach(it => {
+                    insertedTrans.forEach((it: any) => {
                         // Find matching processed transaction to get metadata
                         const analyzed = transactions.find(t => t.fecha === it.fecha && t.descripcion === it.descripcion && t.monto === it.monto)
                         if (analyzed?.metadata?.anomaly) {
