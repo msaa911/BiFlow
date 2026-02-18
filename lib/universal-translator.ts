@@ -47,8 +47,24 @@ export class UniversalTranslator {
             transactions = result.transactions;
             hasExplicitTipo = result.hasExplicitTipo;
         } else {
-            // Fallback inteligente para Ancho Fijo
-            transactions = this.parseFixedWith(lines, options?.thesaurus);
+            // Detección de Interbanking (Record Type 01 al inicio de la línea)
+            const isInterbanking = lines[0].startsWith('01') || lines.some(l => l.startsWith('01'));
+
+            if (isInterbanking) {
+                // Preset Interbanking Estándar
+                const rules = {
+                    fecha: { start: 0, end: 8 },
+                    cuit: { start: 30, end: 41 },
+                    descripcion: { start: 41, end: 93 },
+                    monto: { start: 93, end: 105 }
+                };
+                const { parseFixed } = require('./parsers/fixed-width');
+                const result = parseFixed(rawText, rules, { thesaurus: options?.thesaurus });
+                transactions = result.transactions;
+            } else {
+                // Fallback inteligente para otros Anchos Fijos
+                transactions = this.parseFixedWith(lines, options?.thesaurus);
+            }
             hasExplicitTipo = false;
         }
 
