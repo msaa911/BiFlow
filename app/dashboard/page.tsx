@@ -94,13 +94,26 @@ export default async function DashboardPage() {
         .eq('organization_id', orgId)
         .single()
 
-    const tna = orgConfig?.tna || 0.70
+    const tnaManual = orgConfig?.tna || 0.70
+    const modoTasa = orgConfig?.modo_tasa || 'AUTOMATICO'
     const overdraftLimit = orgConfig?.limite_descubierto || 0
+
+    let tnaEfectiva = tnaManual
+    if (modoTasa === 'AUTOMATICO') {
+        const { data: marketData } = await supabase
+            .from('indices_mercado')
+            .select('tasa_plazo_fijo')
+            .order('fecha', { ascending: false })
+            .limit(1)
+            .single()
+
+        if (marketData) tnaEfectiva = marketData.tasa_plazo_fijo
+    }
 
     const recoveryPotential = totalBalance > 0 ? Math.round((totalRecoverable / Math.abs(totalBalance)) * 100) : 0
 
     // Liquidity Logic
-    const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tna)
+    const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tnaEfectiva)
     const daysOfRunway = LiquidityEngine.calculateHealthScore(totalBalance, Math.abs(totalBalance / 2) || 1000, overdraftLimit)
 
     return (

@@ -11,10 +11,12 @@ import { PiggyBank, TrendingDown, Save, Loader2, CheckCircle2 } from 'lucide-rea
 interface CompanyConfig {
     tna: number
     limite_descubierto: number
+    modo_tasa: 'AUTOMATICO' | 'MANUAL'
 }
 
 export function CompanySettingsTab({ organizationId }: { organizationId: string }) {
-    const [config, setConfig] = useState<CompanyConfig>({ tna: 0.70, limite_descubierto: 0 })
+    const [config, setConfig] = useState<CompanyConfig>({ tna: 0.70, limite_descubierto: 0, modo_tasa: 'AUTOMATICO' })
+    const [marketRate, setMarketRate] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [success, setSuccess] = useState(false)
@@ -32,14 +34,21 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             if (data) {
                 setConfig({
                     tna: data.tna,
-                    limite_descubierto: data.limite_descubierto
+                    limite_descubierto: data.limite_descubierto,
+                    modo_tasa: data.modo_tasa || 'AUTOMATICO'
                 })
-            } else if (error && error.code === 'PGRST116') {
-                // Not found is fine, we use defaults
-                console.log('No config found for organization, using defaults')
-            } else if (error) {
-                console.error('Error loading config:', error)
             }
+
+            // Load latest market rate
+            const { data: marketData } = await supabase
+                .from('indices_mercado')
+                .select('tasa_plazo_fijo')
+                .order('fecha', { ascending: false })
+                .limit(1)
+                .single()
+
+            if (marketData) setMarketRate(marketData.tasa_plazo_fijo)
+
             setLoading(false)
         }
 
@@ -56,6 +65,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 organization_id: organizationId,
                 tna: config.tna,
                 limite_descubierto: config.limite_descubierto,
+                modo_tasa: config.modo_tasa,
                 updated_at: new Date().toISOString()
             })
 
@@ -94,23 +104,41 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             <CardContent className="space-y-6 pt-6">
                 <div className="grid md:grid-cols-2 gap-8">
                     {/* TNA Section */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
                             <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">TASA NOMINAL ANUAL (TNA %)</Label>
+                            <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800">
+                                <button
+                                    onClick={() => setConfig({ ...config, modo_tasa: 'AUTOMATICO' })}
+                                    className={`px-3 py-1 text-[9px] uppercase font-bold rounded-md transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                >
+                                    Auto (BCRA)
+                                </button>
+                                <button
+                                    onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })}
+                                    className={`px-3 py-1 text-[9px] uppercase font-bold rounded-md transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                >
+                                    Manual
+                                </button>
+                            </div>
                         </div>
+
                         <div className="relative group">
                             <Input
                                 type="number"
                                 step="0.01"
-                                value={config.tna * 100}
+                                disabled={config.modo_tasa === 'AUTOMATICO'}
+                                value={config.modo_tasa === 'AUTOMATICO' ? (marketRate ? marketRate * 100 : 75) : (config.tna * 100)}
                                 onChange={(e) => setConfig({ ...config, tna: parseFloat(e.target.value) / 100 })}
-                                className="bg-gray-950 border-gray-800 focus:border-emerald-500/50 transition-all h-12 text-lg font-mono pl-4 pr-12"
+                                className={`bg-gray-950 border-gray-800 transition-all h-12 text-lg font-mono pl-4 pr-12 ${config.modo_tasa === 'AUTOMATICO' ? 'opacity-50 cursor-not-allowed' : 'focus:border-emerald-500/50'}`}
                             />
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">%</div>
                         </div>
                         <p className="text-[10px] text-gray-500 leading-tight">
-                            Usada para calcular el <span className="text-emerald-500 font-bold underline">Costo de Oportunidad</span> del dinero ocioso.
-                            Valores típicos en Argentina: 60% - 90% (Money Market).
+                            {config.modo_tasa === 'AUTOMATICO'
+                                ? `Usando tasa de referencia BCRA (Actualizada hoy).`
+                                : `Tasa personalizada definida por el usuario.`
+                            } Usada para calcular el <span className="text-emerald-500 font-bold underline">Costo de Oportunidad</span>.
                         </p>
                     </div>
 

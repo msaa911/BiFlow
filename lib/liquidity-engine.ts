@@ -83,6 +83,7 @@ export class LiquidityEngine {
 
     /**
      * Calcula el costo de oportunidad de dinero ocioso.
+     * annualRate puede venir de configuracion_empresa (Manual) o indices_mercado (Automático)
      */
     static calculateOpportunityCost(
         averageDailyBalance: number,
@@ -91,7 +92,7 @@ export class LiquidityEngine {
     ): number {
         if (averageDailyBalance <= 0) return 0;
 
-        // Simple interest for the period
+        // Simple interest for the period (TNA)
         const dailyRate = annualRate / 365;
         return averageDailyBalance * dailyRate * days;
     }
