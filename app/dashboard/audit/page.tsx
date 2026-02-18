@@ -31,6 +31,7 @@ interface AuditFinding {
         score?: number
         monto_esperado?: number
         monto_real?: number
+        notas?: string
     }
     created_at: string
     transaccion: {
@@ -69,23 +70,51 @@ export default function AuditCenterPage() {
 
     async function loadFindings() {
         setLoading(true)
-        const { data, error } = await supabase
+
+        // 1. Fetch Operative Findings
+        const { data: opData } = await supabase
             .from('hallazgos')
             .select(`
                 *,
-                transaccion:transaccion_id (
-                    id,
-                    fecha,
-                    descripcion,
-                    monto
-                )
+                transaccion:transaccion_id (id, fecha, descripcion, monto)
             `)
             .order('created_at', { ascending: false })
 
-        if (data) {
-            setFindings(data as any)
-            setFilteredFindings(data as any)
-        }
+        // 2. Fetch Bank Fee Findings
+        const { data: bankData } = await supabase
+            .from('hallazgos_auditoria')
+            .select(`
+                *,
+                transaccion:transaccion_id (id, fecha, descripcion, monto)
+            `)
+            .order('created_at', { ascending: false })
+
+        // 3. Normalize and Merge
+        const normalizedOp = (opData || []).map((f: any) => ({
+            ...f,
+            source: 'operative'
+        }))
+
+        const normalizedBank = (bankData || []).map((f: any) => ({
+            ...f,
+            tipo: 'banco',
+            severidad: f.diferencia > 10000 ? 'critical' : 'high',
+            detail_view: 'bank',
+            detalle: {
+                razon: f.tipo_error.replace(/_/g, ' '),
+                monto_esperado: f.monto_esperado,
+                monto_real: f.monto_real,
+                notas: f.notas_ia
+            },
+            source: 'bank_audit'
+        }))
+
+        const merged = [...normalizedOp, ...normalizedBank].sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+
+        setFindings(merged as any)
+        setFilteredFindings(merged as any)
         setLoading(false)
     }
 
@@ -245,10 +274,16 @@ export default function AuditCenterPage() {
 
                                         <div className="mt-6 pt-4 border-t border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                             <div className="flex items-center gap-6">
-                                                {finding.detalle.monto_esperado && (
+                                                {finding.detalle.monto_esperado !== undefined && (
                                                     <div className="space-y-1">
-                                                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Esperado</p>
-                                                        <p className="text-xs font-mono text-gray-300">$ {new Intl.NumberFormat('es-AR').format(finding.detalle.monto_esperado)}</p>
+                                                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Pactado (Esperado)</p>
+                                                        <p className="text-xs font-mono text-emerald-400">$ {new Intl.NumberFormat('es-AR').format(finding.detalle.monto_esperado)}</p>
+                                                    </div>
+                                                )}
+                                                {finding.detalle.notas && (
+                                                    <div className="space-y-1 border-l border-gray-700 pl-4">
+                                                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest italic">Nota de la IA</p>
+                                                        <p className="text-xs text-gray-300 max-w-md">{finding.detalle.notas}</p>
                                                     </div>
                                                 )}
                                                 {finding.detalle.score && (

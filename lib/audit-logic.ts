@@ -53,7 +53,9 @@ export class AuditEngine {
 
         // 3. Auditoría de Comisiones Bancarias Genéricas
         if (tags.includes('comision_bancaria')) {
-            if (agreement.comisiones_otras_pactadas === false) {
+            // Si el mantenimiento o cheque no fueron capturados específicamente, pero hay comisiones genéricas,
+            // validamos según políticas de la empresa (o simplemente reportamos como alerta si son montos altos).
+            if (montoAbs > 5000 && !tags.includes('mantenimiento')) {
                 return {
                     organization_id: transaction.organization_id,
                     transaccion_id: transaction.id,
@@ -61,7 +63,25 @@ export class AuditEngine {
                     monto_esperado: 0,
                     monto_real: montoAbs,
                     diferencia: montoAbs,
-                    notas_ia: `Se detectó la comisión '${transaction.descripcion}' que no figura como rubro permitido en los acuerdos.`
+                    notas_ia: `Se detectó la comisión '${transaction.descripcion}' con un importe inusual ($${montoAbs}).`
+                };
+            }
+        }
+
+        // 4. Tasa de Descubierto (Alerta de exceso sobre lo pactado)
+        if (tags.includes('comision_descubierto') || tags.includes('interes')) {
+            const tasaPactada = agreement.tasa_descubierto_anual_pactada || 0;
+            // Para auditar la tasa real necesitamos el saldo diario, pero si la tasa pactada es 0
+            // y cobran interés, ya es un hallazgo.
+            if (tasaPactada === 0 && montoAbs > 100) {
+                return {
+                    organization_id: transaction.organization_id,
+                    transaccion_id: transaction.id,
+                    tipo_error: 'CARGO_NO_PACTADO',
+                    monto_esperado: 0,
+                    monto_real: montoAbs,
+                    diferencia: montoAbs,
+                    notas_ia: `Se cobraron intereses/descubierto pero no figura una tasa pactada en tu convenio.`
                 };
             }
         }

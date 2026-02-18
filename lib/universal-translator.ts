@@ -7,6 +7,7 @@ export interface Transaction {
     cuit: string;
     tipo: 'DEBITO' | 'CREDITO';
     tags?: string[];
+    metadata?: any;
 }
 
 export interface TranslationResult {
@@ -139,6 +140,7 @@ export class UniversalTranslator {
                 const medio = trimmed.slice(8, -16);
                 let concepto = medio;
                 let cuit = '';
+                let cbu = '';
 
                 const cuitMatch = medio.match(/\b(20|23|27|30|33|24)\d{9}\b/);
                 if (cuitMatch) {
@@ -146,10 +148,19 @@ export class UniversalTranslator {
                     concepto = medio.replace(cuit, '').trim();
                 }
 
+                const cbuMatch = medio.match(/\b\d{22}\b/);
+                if (cbuMatch) {
+                    cbu = cbuMatch[0];
+                    if (!cuit) concepto = concepto.replace(cbu, '').trim();
+                }
+
+                const tags = this.getTags(cuit, concepto);
                 concepto = this.normalizeConcept(concepto, thesaurus);
+
                 txs.push({
                     fecha, concepto, monto: Math.abs(monto), cuit, tipo,
-                    tags: this.isTax(cuit, concepto) ? ['impuesto_recuperable'] : []
+                    tags,
+                    metadata: { cbu }
                 });
             } catch (e) { continue; }
         }
@@ -202,8 +213,14 @@ export class UniversalTranslator {
             if (isNaN(monto) || monto === 0) continue;
 
             const descRaw = idx.desc !== -1 ? row[idx.desc] : '';
-            const concepto = this.normalizeConcept(descRaw, thesaurus);
             const cuitVal = (idx.cuit !== -1 ? row[idx.cuit] : '').replace(/[^0-9]/g, '');
+
+            // CBU Extraction from description if not in its own column
+            const cbuMatch = descRaw.match(/\b\d{22}\b/);
+            const cbu = cbuMatch ? cbuMatch[0] : '';
+
+            const tags = this.getTags(cuitVal, descRaw);
+            const concepto = this.normalizeConcept(descRaw, thesaurus);
 
             let tipo: 'DEBITO' | 'CREDITO' = monto < 0 ? 'DEBITO' : 'CREDITO';
             if (idx.tipo !== -1) {
@@ -217,7 +234,8 @@ export class UniversalTranslator {
 
             txs.push({
                 fecha, concepto, monto: Math.abs(monto), cuit: cuitVal, tipo,
-                tags: this.isTax(cuitVal, concepto) ? ['impuesto_recuperable'] : []
+                tags,
+                metadata: { cbu }
             });
         }
         return { transactions: txs, hasExplicitTipo: idx.tipo !== -1 };
@@ -264,11 +282,18 @@ export class UniversalTranslator {
             const cuitVal = cuitIdx !== -1 && row[cuitIdx] ? row[cuitIdx].replace(/[^0-9]/g, '') : '';
             const descCandidates = row.filter((_, i) => i !== dateIdx && i !== amountIdx && i !== cuitIdx);
             const desc = descCandidates.sort((a, b) => b.length - a.length)[0] || 'Sin concepto';
+
+            // CBU Extraction
+            const cbuMatch = desc.match(/\b\d{22}\b/);
+            const cbu = cbuMatch ? cbuMatch[0] : '';
+
+            const tags = this.getTags(cuitVal, desc);
             const concepto = this.normalizeConcept(desc, thesaurus);
 
             txs.push({
                 fecha, concepto, monto: Math.abs(monto), cuit: cuitVal, tipo: monto < 0 ? 'DEBITO' : 'CREDITO',
-                tags: this.isTax(cuitVal, concepto) ? ['impuesto_recuperable'] : []
+                tags,
+                metadata: { cbu }
             });
         }
         return { transactions: txs, hasExplicitTipo: false };
@@ -351,8 +376,32 @@ export class UniversalTranslator {
     private static parseCurrencyUS(str: string): number { return parseFloat(str.replace(/,/g, '')) || 0; }
     private static parseCurrencyEU(str: string): number { return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0; }
 
-    public static isTax(cuit: string, concepto: string): boolean {
+    public static getTags(cuit: string, concepto: string): string[] {
         const upper = concepto.toUpperCase();
-        return ['SIRCREB', 'IIBB', 'RETENCION', 'IMPUESTO', 'AFIP', 'ARBA'].some(k => upper.includes(k));
+        const tags: string[] = [];
+
+        // 1. Impuestos
+        if (['SIRCREB', 'IIBB', 'RETENCION', 'IMPUESTO', 'AFIP', 'ARBA'].some(k => upper.includes(k))) {
+            tags.push('impuesto_recuperable');
+        }
+
+        // 2. Comisiones Bancarias
+        if (['MANT', 'COMISION', 'SERVICIO', 'PAQUETE', 'MANTENIMIENTO'].some(k => upper.includes(k)) && !upper.includes('IVA')) {
+            if (upper.includes('MANT') || upper.includes('PAQUETE')) {
+                tags.push('mantenimiento');
+            }
+            tags.push('comision_bancaria');
+        }
+
+        // 3. Cheques
+        if (['CHEQUE', 'CHQ', 'ECHEQ'].some(k => upper.includes(k)) && upper.includes('COM')) {
+            tags.push('comision_cheque');
+        }
+
+        return tags;
+    }
+
+    public static isTax(cuit: string, concepto: string): boolean {
+        return this.getTags(cuit, concepto).includes('impuesto_recuperable');
     }
 }

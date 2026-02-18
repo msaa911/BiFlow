@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 // BI-FLOW ENGINE v5.1 - Intelligence Unified - Forensic Sync
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import { AuditEngine } from '@/lib/audit-logic'
+import { TrustLedger } from '@/lib/trust-ledger'
+import { AnomalyEngine } from '@/lib/anomaly-engine'
 
 export const dynamic = 'force-dynamic'
 
@@ -263,7 +266,6 @@ export async function POST(request: Request) {
                     .lte('fecha', maxDateStr)
 
                 // 2. Run Engine
-                const { AnomalyEngine } = require('@/lib/anomaly-engine')
                 const analysis = AnomalyEngine.analyze(transactions, historyMap, existing || [])
 
                 transactions = analysis.processed // Update transactions with metadata/tags
@@ -362,6 +364,25 @@ export async function POST(request: Request) {
                             })
                         }
                     })
+
+                    // --- NEW: Trust Ledger (BEC Prevention) ---
+                    const becAlerts = await TrustLedger.validateTransactions(
+                        insertedTrans.map((it: { id: any; metadata: any; }) => ({
+                            ...it,
+                            db_id: it.id,
+                            metadata: it.metadata || {}
+                        })),
+                        orgId
+                    )
+                    if (becAlerts.length > 0) {
+                        findingsToInsert.push(...becAlerts)
+                    }
+
+                    // Learn new pairs implicitly
+                    await TrustLedger.learn(
+                        insertedTrans.map((it: { metadata: any; }) => ({ ...it, metadata: it.metadata || {} })),
+                        orgId
+                    )
 
                     if (findingsToInsert.length > 0) {
                         await currentSupabase.from('hallazgos').insert(findingsToInsert)
