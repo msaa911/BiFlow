@@ -91,7 +91,7 @@ export class UniversalTranslator {
 
     private static parseDelimited(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
         let headerIdx = -1;
-        const keys = ['fecha', 'concepto', 'monto', 'importe', 'cuit', 'tipo', 'descripcion', 'detalle'];
+        const keys = ['fecha', 'concepto', 'monto', 'importe', 'cuit', 'tipo', 'descripcion', 'detalle', 'debito', 'credito', 'debe', 'haber'];
 
         for (let i = 0; i < Math.min(lines.length, 30); i++) {
             const row = lines[i].toLowerCase();
@@ -109,7 +109,9 @@ export class UniversalTranslator {
             monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total'].some(k => h.includes(k))),
             desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc'].some(k => h.includes(k))),
             cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento'].some(k => h.includes(k))),
-            tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo'].some(k => h.includes(k)))
+            tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo'].some(k => h.includes(k))),
+            debito: headers.findIndex(h => ['debito', 'debe', 'egreso', 'salida'].some(k => h.includes(k))),
+            credito: headers.findIndex(h => ['credito', 'haber', 'ingreso', 'entrada'].some(k => h.includes(k)))
         };
 
         const transactions: Transaction[] = [];
@@ -120,13 +122,24 @@ export class UniversalTranslator {
             const fecha = this.normalizeDate(row[idx.fecha]);
             if (!fecha) continue;
 
-            let monto = this.parseCurrency(row[idx.monto]);
+            let monto = idx.monto !== -1 ? this.parseCurrency(row[idx.monto]) : 0;
+
+            // Lógica de Doble Columna (Débito/Crédito)
+            if (monto === 0) {
+                const valDeb = idx.debito !== -1 ? this.parseCurrency(row[idx.debito]) : 0;
+                const valCre = idx.credito !== -1 ? this.parseCurrency(row[idx.credito]) : 0;
+
+                if (valDeb !== 0) {
+                    monto = -Math.abs(valDeb);
+                } else if (valCre !== 0) {
+                    monto = Math.abs(valCre);
+                }
+            }
 
             // CUIT TRAP: Si el monto tiene 11 dígitos y parece un CUIT, no es el monto
-            const montoRawClean = (row[idx.monto] || '').replace(/[^0-9]/g, '');
+            const montoRawClean = (idx.monto !== -1 ? (row[idx.monto] || '') : '').replace(/[^0-9]/g, '');
             if (montoRawClean.length === 11 && Math.abs(monto) > 10000000) {
-                // Posible confusión con CUIT, intentar buscar monto en otra columna si falló el mapeo
-                // Pero aquí confiamos en el header.
+                monto = 0; // Invalidar si es claramente un CUIT
             }
 
             const concepto = this.normalizeConcept(row[idx.desc], thesaurus);
