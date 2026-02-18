@@ -17,20 +17,28 @@ export interface TranslationResult {
 
 export class UniversalTranslator {
 
-    // --- ESTRATEGIA PRINCIPAL (ROUTER) ---
+    private static TAX_IDS = {
+        AFIP: "33-69345023-9",
+        ARBA: "30-54674267-9",
+        SIRCREB: "30-99903208-3"
+    };
 
+    /**
+     * Router Principal: Decide qué estrategia usar antes de procesar
+     */
     static translate(rawText: string, options?: { invertSigns?: boolean, thesaurus?: Map<string, string> }): TranslationResult {
         const lines = rawText.split(/\r?\n/).filter(l => l.trim().length > 0);
-        if (lines.length === 0) return this.emptyResult();
+        if (lines.length === 0) return { transactions: [], hasExplicitTipo: false, metadata: {} };
+
+        // 1. DETECCIÓN DE ESTRATEGIA
+        const strategy = this.detectStrategy(lines);
 
         let transactions: Transaction[] = [];
         let hasExplicitTipo = false;
 
-        // DETECCIÓN DE ESTRATEGIA
-        const strategy = this.detectStrategy(lines);
+        console.log(`[UniversalTranslator] v5.0 Strategy: ${strategy.type} (Delim: ${strategy.delimiter || 'none'})`);
 
-        console.log(`[UniversalTranslator] Estrategia detectada: ${strategy.type}`);
-
+        // 2. EJECUCIÓN
         if (strategy.type === 'INTERBANKING') {
             transactions = this.parseInterbankingStrategy(lines, options?.thesaurus);
             hasExplicitTipo = true;
@@ -39,9 +47,11 @@ export class UniversalTranslator {
             transactions = res.transactions;
             hasExplicitTipo = res.hasExplicitTipo;
         } else {
+            // Fallback: Fixed Width (Solo si NO es delimitado)
             transactions = this.parseGenericFixedStrategy(lines, options?.thesaurus);
         }
 
+        // 3. POST-PROCESAMIENTO
         if (options?.invertSigns) {
             transactions = transactions.map(t => ({
                 ...t,
@@ -54,48 +64,66 @@ export class UniversalTranslator {
             transactions,
             hasExplicitTipo,
             exampleRow: transactions.find(t => t.monto !== 0),
-            metadata: this.extractMetadata(lines, transactions)
+            metadata: {}
         };
     }
 
-    private static detectStrategy(lines: string[]): { type: 'INTERBANKING' | 'DELIMITED' | 'FIXED', delimiter?: string } {
-        const sample = lines.slice(0, 15);
+    // --- DETECTORES ---
 
-        // 1. Prioridad Interbanking
+    private static detectStrategy(lines: string[]): { type: 'INTERBANKING' | 'DELIMITED' | 'FIXED', delimiter?: string } {
+        const sample = lines.slice(0, 50);
+
+        // A. Interbanking: Firma (Fecha al inicio ... D/C al final)
         const interbankingMatches = sample.filter(l => /^\d{8}.*[DC]$/.test(l.trim())).length;
-        if (interbankingMatches > 0 && interbankingMatches >= sample.length * 0.4) {
+        if (interbankingMatches > 0 && interbankingMatches >= Math.min(sample.length, 5) * 0.4) {
             return { type: 'INTERBANKING' };
         }
 
-        // 2. Prioridad PIPES (Agresivo)
-        const pipesCount = sample.filter(l => l.split('|').length > 1).length;
-        if (pipesCount > sample.length * 0.3) {
-            return { type: 'DELIMITED', delimiter: '|' };
+        // B. Delimitado: Detección por RACHA (Cluster)
+        const candidates = [
+            { char: '|', threshold: 2 },
+            { char: ';', threshold: 2 },
+            { char: '\t', threshold: 2 },
+            { char: ',', threshold: 3 }
+        ];
+
+        for (const cand of candidates) {
+            let streak = 0;
+            let lastCount = -1;
+            for (const line of sample) {
+                const count = line.split(cand.char).length;
+                if (count > 1) {
+                    if (count === lastCount || lastCount === -1) {
+                        streak++;
+                        lastCount = count;
+                    } else {
+                        streak = 1; lastCount = count;
+                    }
+                } else {
+                    streak = 0; lastCount = -1;
+                }
+                if (streak >= cand.threshold) return { type: 'DELIMITED', delimiter: cand.char };
+            }
         }
 
-        // 3. Otros Delimitadores
-        const semiCount = sample.filter(l => l.split(';').length > 1).length;
-        if (semiCount > sample.length * 0.5) {
-            return { type: 'DELIMITED', delimiter: ';' };
-        }
-
-        const commaCount = sample.filter(l => l.split(',').length > 2).length;
-        if (commaCount > sample.length * 0.6) {
-            return { type: 'DELIMITED', delimiter: ',' };
-        }
+        // Fallback de densidad para CSVs sucios
+        const totalLines = sample.length;
+        if (sample.filter(l => l.split('|').length > 1).length > totalLines * 0.2) return { type: 'DELIMITED', delimiter: '|' };
+        if (sample.filter(l => l.split(';').length > 1).length > totalLines * 0.3) return { type: 'DELIMITED', delimiter: ';' };
 
         return { type: 'FIXED' };
     }
 
-    // --- ESTRATEGIA 1: INTERBANKING ---
+    // --- PARSERS ---
+
+    // 1. INTERBANKING (Datanet)
     private static parseInterbankingStrategy(lines: string[], thesaurus?: Map<string, string>): Transaction[] {
         const txs: Transaction[] = [];
-
         for (const line of lines) {
             const trimmed = line.replace(/(\r\n|\n|\r)/gm, "");
             if (trimmed.length < 20 || !/^\d{8}/.test(trimmed)) continue;
-
             const lastChar = trimmed.slice(-1).toUpperCase();
+
             if (lastChar !== 'D' && lastChar !== 'C') continue;
 
             try {
@@ -107,14 +135,8 @@ export class UniversalTranslator {
 
                 if (isNaN(monto)) continue;
 
-                let tipo: 'DEBITO' | 'CREDITO' = 'DEBITO';
-                if (lastChar === 'D') {
-                    monto = -Math.abs(monto);
-                    tipo = 'DEBITO';
-                } else {
-                    monto = Math.abs(monto);
-                    tipo = 'CREDITO';
-                }
+                const tipo: 'DEBITO' | 'CREDITO' = lastChar === 'D' ? 'DEBITO' : 'CREDITO';
+                monto = lastChar === 'D' ? -Math.abs(monto) : Math.abs(monto);
 
                 const medio = trimmed.slice(8, -16);
                 let concepto = medio;
@@ -127,34 +149,23 @@ export class UniversalTranslator {
                 }
 
                 concepto = this.normalizeConcept(concepto, thesaurus);
-
                 txs.push({
-                    fecha,
-                    concepto,
-                    monto: Math.abs(monto),
-                    cuit,
-                    tipo,
+                    fecha, concepto, monto: Math.abs(monto), cuit, tipo,
                     tags: this.isTax(cuit, concepto) ? ['impuesto_recuperable'] : []
                 });
-            } catch (e) {
-                continue;
-            }
+            } catch (e) { continue; }
         }
         return txs;
     }
 
-    // --- ESTRATEGIA 2: DELIMITADOS ---
+    // 2. DELIMITADOS (CSV/Pipe)
     private static parseDelimitedStrategy(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
         let headerIdx = -1;
-        const keys = ['fecha', 'concepto', 'monto', 'importe', 'tipo', 'descripcion'];
-
-        for (let i = 0; i < Math.min(lines.length, 20); i++) {
+        for (let i = 0; i < Math.min(lines.length, 30); i++) {
             const row = lines[i].toLowerCase();
-            const hasDate = row.includes('fecha') || row.includes('date') || row.includes('fec');
-            const hasAmount = row.includes('monto') || row.includes('importe') || row.includes('valor') || row.includes('saldo');
-            if (hasDate || hasAmount) {
-                headerIdx = i;
-                break;
+            if ((row.includes('fecha') || row.includes('date') || row.includes('fec')) &&
+                (row.includes('monto') || row.includes('importe') || row.includes('valor') || row.includes('descripcion') || row.includes('desc'))) {
+                headerIdx = i; break;
             }
         }
 
@@ -163,12 +174,11 @@ export class UniversalTranslator {
         }
 
         const headers = lines[headerIdx].split(delimiter).map(h => h.trim().toLowerCase());
-
         const idx = {
-            fecha: headers.findIndex(h => h.includes('fecha') || h.includes('fec') || h.includes('date')),
+            fecha: headers.findIndex(h => h.includes('fecha') || h.includes('date') || h.includes('fec')),
             monto: headers.findIndex(h => h.includes('monto') || h.includes('importe') || h.includes('valor') || h.includes('saldo')),
             desc: headers.findIndex(h => h.includes('concepto') || h.includes('desc') || h.includes('detalle') || h.includes('descripcion')),
-            cuit: headers.findIndex(h => h.includes('cuit') || h.includes('cuil') || h.includes('doc')),
+            cuit: headers.findIndex(h => h.includes('cuit') || h.includes('doc')),
             tipo: headers.findIndex(h => h.includes('tipo') || h.includes('signo') || h.includes('movimiento'))
         };
 
@@ -178,49 +188,40 @@ export class UniversalTranslator {
             const row = line.split(delimiter).map(v => v.trim());
             if (row.length < 2) continue;
 
-            const fecha = this.normalizeDate(row[idx.fecha]);
+            const fechaStr = row[idx.fecha];
+            const fecha = this.normalizeDate(fechaStr);
             if (!fecha) continue;
 
-            let montoStr = row[idx.monto];
+            let montoStr = idx.monto !== -1 ? row[idx.monto] : '';
             if (!montoStr) continue;
 
             let monto = this.parseCurrency(montoStr);
 
+            // VALIDACIÓN CUIT (FIX 10M)
             const cleanRaw = montoStr.replace(/[^0-9]/g, '');
-            if (cleanRaw.length === 11 && this.isValidCUIT(cleanRaw)) {
-                continue;
-            }
+            if (cleanRaw.length === 11 && this.isValidCUIT(cleanRaw)) continue;
 
             if (isNaN(monto) || monto === 0) continue;
 
             const descRaw = idx.desc !== -1 ? row[idx.desc] : '';
             const concepto = this.normalizeConcept(descRaw, thesaurus);
-
-            const cuitRaw = idx.cuit !== -1 ? row[idx.cuit] : '';
-            const cuit = cuitRaw.replace(/[^0-9]/g, '');
+            const cuitVal = (idx.cuit !== -1 ? row[idx.cuit] : '').replace(/[^0-9]/g, '');
 
             let tipo: 'DEBITO' | 'CREDITO' = monto < 0 ? 'DEBITO' : 'CREDITO';
             if (idx.tipo !== -1) {
                 const tipoStr = row[idx.tipo]?.toUpperCase() || '';
                 if (tipoStr.startsWith('D') || tipoStr.includes('DEB') || tipoStr.includes('EGRESO')) {
-                    tipo = 'DEBITO';
-                    monto = -Math.abs(monto);
+                    tipo = 'DEBITO'; monto = -Math.abs(monto);
                 } else if (tipoStr.startsWith('C') || tipoStr.includes('CRE') || tipoStr.includes('INGRESO')) {
-                    tipo = 'CREDITO';
-                    monto = Math.abs(monto);
+                    tipo = 'CREDITO'; monto = Math.abs(monto);
                 }
             }
 
             txs.push({
-                fecha,
-                concepto,
-                monto: Math.abs(monto),
-                cuit,
-                tipo,
-                tags: this.isTax(cuit, concepto) ? ['impuesto_recuperable'] : []
+                fecha, concepto, monto: Math.abs(monto), cuit: cuitVal, tipo,
+                tags: this.isTax(cuitVal, concepto) ? ['impuesto_recuperable'] : []
             });
         }
-
         return { transactions: txs, hasExplicitTipo: idx.tipo !== -1 };
     }
 
@@ -230,7 +231,6 @@ export class UniversalTranslator {
         let amountIdx = -1;
         let cuitIdx = -1;
 
-        // Take a small sample to identify columns
         const sample = lines.slice(0, 10).map(l => l.split(delimiter).map(v => v.trim()));
 
         for (const row of sample) {
@@ -260,7 +260,6 @@ export class UniversalTranslator {
             let monto = this.parseCurrency(row[amountIdx]);
             if (monto === 0) continue;
 
-            // Blindaje CUIT in amount column
             const cleanRaw = row[amountIdx].replace(/[^0-9]/g, '');
             if (cleanRaw.length === 11 && this.isValidCUIT(cleanRaw)) continue;
 
@@ -270,26 +269,19 @@ export class UniversalTranslator {
             const concepto = this.normalizeConcept(desc, thesaurus);
 
             txs.push({
-                fecha,
-                concepto,
-                monto: Math.abs(monto),
-                cuit: cuitVal,
-                tipo: monto < 0 ? 'DEBITO' : 'CREDITO',
+                fecha, concepto, monto: Math.abs(monto), cuit: cuitVal, tipo: monto < 0 ? 'DEBITO' : 'CREDITO',
                 tags: this.isTax(cuitVal, concepto) ? ['impuesto_recuperable'] : []
             });
         }
-
         return { transactions: txs, hasExplicitTipo: false };
     }
 
-    // --- ESTRATEGIA 3: FIXED WIDTH GENÉRICO ---
+    // 3. FALLBACK (Fixed Width Genérico)
     private static parseGenericFixedStrategy(lines: string[], thesaurus?: Map<string, string>): Transaction[] {
         const txs: Transaction[] = [];
         for (const line of lines) {
             const trimmed = line.replace(/(\r\n|\n|\r)/gm, "");
             if (trimmed.length < 15) continue;
-
-            // VÁLVULA DE SEGURIDAD: Si tiene delimitadores, NO usar este parser
             if (trimmed.includes('|') || trimmed.includes(';')) continue;
 
             const dateMatch = trimmed.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/);
@@ -303,8 +295,7 @@ export class UniversalTranslator {
                     concepto = this.normalizeConcept(concepto, thesaurus);
                     txs.push({
                         fecha, concepto, monto: Math.abs(monto), cuit: '',
-                        tipo: monto < 0 ? 'DEBITO' : 'CREDITO',
-                        tags: []
+                        tipo: monto < 0 ? 'DEBITO' : 'CREDITO', tags: []
                     });
                 }
             }
@@ -313,7 +304,6 @@ export class UniversalTranslator {
     }
 
     // --- UTILS ---
-
     public static isValidCUIT(cuit: string): boolean {
         const clean = cuit.replace(/[^0-9]/g, '');
         if (clean.length !== 11) return false;
@@ -329,10 +319,7 @@ export class UniversalTranslator {
 
     public static normalizeConcept(raw: string, thesaurus?: Map<string, string>): string {
         if (!raw) return 'Sin concepto';
-        let clean = raw.trim().toUpperCase()
-            .replace(/[0-9]{10,}/g, '')
-            .replace(/\s{2,}/g, ' ')
-            .trim();
+        let clean = raw.trim().toUpperCase().replace(/\s{2,}/g, ' ').trim();
         if (thesaurus && thesaurus.has(clean)) return thesaurus.get(clean)!;
         return clean;
     }
@@ -354,35 +341,18 @@ export class UniversalTranslator {
     private static parseCurrency(montoStr: string): number {
         if (!montoStr) return 0;
         let clean = montoStr.replace(/[^0-9.,-]/g, '');
-
         if (clean.includes(',') && clean.includes('.')) {
-            if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) return this.parseCurrencyEU(clean); // 1.000,00
-            else return this.parseCurrencyUS(clean); // 1,000.00
-        } else if (clean.includes(',')) {
-            return this.parseCurrencyEU(clean); // Asumimos coma es decimal
-        } else {
-            return this.parseCurrencyUS(clean);
-        }
+            if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) return this.parseCurrencyEU(clean);
+            else return this.parseCurrencyUS(clean);
+        } else if (clean.includes(',')) return this.parseCurrencyEU(clean);
+        else return this.parseCurrencyUS(clean);
     }
 
-    private static parseCurrencyUS(str: string): number {
-        return parseFloat(str.replace(/,/g, '')) || 0; // 1,000.50 -> 1000.50
-    }
-
-    private static parseCurrencyEU(str: string): number {
-        return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0; // 1.000,50 -> 1000.50
-    }
+    private static parseCurrencyUS(str: string): number { return parseFloat(str.replace(/,/g, '')) || 0; }
+    private static parseCurrencyEU(str: string): number { return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0; }
 
     public static isTax(cuit: string, concepto: string): boolean {
         const upper = concepto.toUpperCase();
         return ['SIRCREB', 'IIBB', 'RETENCION', 'IMPUESTO', 'AFIP', 'ARBA'].some(k => upper.includes(k));
-    }
-
-    private static emptyResult(): TranslationResult {
-        return { transactions: [], hasExplicitTipo: false, metadata: {} };
-    }
-
-    private static extractMetadata(lines: string[], transactions: Transaction[]) {
-        return {};
     }
 }
