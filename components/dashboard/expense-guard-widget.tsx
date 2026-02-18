@@ -7,7 +7,7 @@ interface ExpenseGuardWidgetProps {
     anomalies: any[]
 }
 
-export function ExpenseGuardWidget({ anomalies }: ExpenseGuardGuardWidgetProps) {
+export function ExpenseGuardWidget({ anomalies }: ExpenseGuardWidgetProps) {
     const anomalyCount = anomalies.length
 
     return (
