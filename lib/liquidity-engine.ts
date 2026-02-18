@@ -49,7 +49,8 @@ export class LiquidityEngine {
         let failureDate: string | null = null
 
         normalizedPayments.forEach(payment => {
-            runningBalance += payment.amount // Payments are negative, so += works
+            const amount = Number(payment.amount) || 0;
+            runningBalance += amount;
 
             if (runningBalance < lowestBalance) lowestBalance = runningBalance
 

@@ -94,7 +94,7 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                                             type="number"
                                             placeholder="Monto"
                                             value={p.amount || ''}
-                                            onChange={(e) => updatePayment(p.id, 'amount', parseFloat(e.target.value))}
+                                            onChange={(e) => updatePayment(p.id, 'amount', Number(e.target.value) || 0)}
                                             className="bg-gray-900 border-gray-800 h-9 text-sm text-right"
                                         />
                                     </div>
@@ -168,7 +168,7 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                                         <div className="bg-black/20 rounded-lg p-2 text-center">
                                             <div className="text-[10px] uppercase font-bold text-gray-400">Saldo Final</div>
                                             <div className="text-xl font-black">
-                                                ${result.projection[result.projection.length - 1].balance.toLocaleString()}
+                                                ${result.projection[result.projection.length - 1]?.balance?.toLocaleString() || '0'}
                                             </div>
                                         </div>
                                     </div>
@@ -179,7 +179,7 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                 </div>
 
                 <DialogFooter>
-                    <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-white">Cerrrar</Button>
+                    <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-white">Cerrar</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
