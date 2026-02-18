@@ -150,13 +150,17 @@ export class UniversalTranslator {
 
         for (let i = 0; i < Math.min(lines.length, 20); i++) {
             const row = lines[i].toLowerCase();
-            if ((row.includes('fecha') || row.includes('date')) && (row.includes('monto') || row.includes('importe'))) {
+            const hasDate = row.includes('fecha') || row.includes('date') || row.includes('fec');
+            const hasAmount = row.includes('monto') || row.includes('importe') || row.includes('valor') || row.includes('saldo');
+            if (hasDate || hasAmount) {
                 headerIdx = i;
                 break;
             }
         }
 
-        if (headerIdx === -1) return { transactions: [], hasExplicitTipo: false };
+        if (headerIdx === -1) {
+            return this.parseDelimitedNoHeader(lines, delimiter, thesaurus);
+        }
 
         const headers = lines[headerIdx].split(delimiter).map(h => h.trim().toLowerCase());
 
@@ -218,6 +222,64 @@ export class UniversalTranslator {
         }
 
         return { transactions: txs, hasExplicitTipo: idx.tipo !== -1 };
+    }
+
+    private static parseDelimitedNoHeader(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
+        const txs: Transaction[] = [];
+        let dateIdx = -1;
+        let amountIdx = -1;
+        let cuitIdx = -1;
+
+        // Take a small sample to identify columns
+        const sample = lines.slice(0, 10).map(l => l.split(delimiter).map(v => v.trim()));
+
+        for (const row of sample) {
+            if (row.length < 2) continue;
+            if (dateIdx === -1) dateIdx = row.findIndex(v => this.normalizeDate(v) !== null);
+            if (amountIdx === -1) {
+                const candidates = row.map((v, i) => ({ v: this.parseCurrency(v), i }))
+                    .filter(c => c.i !== dateIdx && c.v !== 0);
+                if (candidates.length > 0) {
+                    amountIdx = candidates.sort((a, b) => b.i - a.i)[0].i;
+                }
+            }
+            if (cuitIdx === -1) {
+                cuitIdx = row.findIndex((v, i) => i !== dateIdx && i !== amountIdx && v.replace(/[^0-9]/g, '').length === 11 && this.isValidCUIT(v));
+            }
+        }
+
+        if (dateIdx === -1 || amountIdx === -1) return { transactions: [], hasExplicitTipo: false };
+
+        for (const line of lines) {
+            const row = line.split(delimiter).map(v => v.trim());
+            if (row.length <= Math.max(dateIdx, amountIdx)) continue;
+
+            const fecha = this.normalizeDate(row[dateIdx]);
+            if (!fecha) continue;
+
+            let monto = this.parseCurrency(row[amountIdx]);
+            if (monto === 0) continue;
+
+            // Blindaje CUIT in amount column
+            const cleanRaw = row[amountIdx].replace(/[^0-9]/g, '');
+            if (cleanRaw.length === 11 && this.isValidCUIT(cleanRaw)) continue;
+
+            const cuitVal = cuitIdx !== -1 && row[cuitIdx] ? row[cuitIdx].replace(/[^0-9]/g, '') : '';
+            const descCandidates = row.filter((_, i) => i !== dateIdx && i !== amountIdx && i !== cuitIdx);
+            const desc = descCandidates.sort((a, b) => b.length - a.length)[0] || 'Sin concepto';
+            const concepto = this.normalizeConcept(desc, thesaurus);
+
+            txs.push({
+                fecha,
+                concepto,
+                monto: Math.abs(monto),
+                cuit: cuitVal,
+                tipo: monto < 0 ? 'DEBITO' : 'CREDITO',
+                tags: this.isTax(cuitVal, concepto) ? ['impuesto_recuperable'] : []
+            });
+        }
+
+        return { transactions: txs, hasExplicitTipo: false };
     }
 
     // --- ESTRATEGIA 3: FIXED WIDTH GENÉRICO ---
