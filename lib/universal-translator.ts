@@ -73,23 +73,36 @@ export class UniversalTranslator {
      * Detección basada en frecuencia (Umbral: Al menos 0.5 delimitadores por línea promedio)
      */
     private static detectDelimiter(textSample: string): string | null {
-        const lines = textSample.split('\n').filter(l => l.trim().length > 0).slice(0, 10);
+        // Ignorar líneas vacías o muy cortas para el análisis de frecuencia
+        const lines = textSample.split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 10)
+            .slice(0, 15);
+
         if (lines.length === 0) return null;
 
         const candidates = ['|', ';', '\t', ','];
         const scores = candidates.map(char => {
             const counts = lines.map(line => line.split(char).length);
             const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
-            const variance = counts.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / counts.length;
-            return { char, avg, variance };
+            // Medimos consistencia: si todas las líneas tienen la misma cantidad de separadores
+            const isConsistent = counts.every(c => c > 1 && c === counts[0]);
+            const max = Math.max(...counts);
+            return { char, avg, max, isConsistent };
         });
 
-        // Ganador: El que tenga más columnas promedio (> 1.5) y menor varianza (consistencia)
-        const winner = scores
-            .filter(s => s.avg > 1.5)
-            .sort((a, b) => (a.variance - b.variance) || (b.avg - a.avg))[0];
+        // Prioridad: 
+        // 1. Delimitadores consistentes (misma cantidad de columnas en todas las líneas de muestra)
+        // 2. Delimitadores con mayor número de columnas (> 1)
+        const best = scores
+            .filter(s => s.max > 1)
+            .sort((a, b) => {
+                if (a.isConsistent && !b.isConsistent) return -1;
+                if (!a.isConsistent && b.isConsistent) return 1;
+                return b.avg - a.avg;
+            })[0];
 
-        return winner ? winner.char : null;
+        return best ? best.char : null;
     }
 
     private static parseDelimited(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
@@ -189,15 +202,19 @@ export class UniversalTranslator {
             }
 
             // 3. Encontrar Monto (evitando la columna de la fecha y tipo)
-            const amountCandidates = row.map((v, i) => ({
-                v: this.parseCurrency(v),
-                raw: v.replace(/[^0-9]/g, ''),
-                idx: i
-            })).filter(c =>
+            const amountCandidates = row.map((v, i) => {
+                const cleaned = v.replace(/[^0-9]/g, '');
+                return {
+                    v: this.parseCurrency(v),
+                    raw: cleaned,
+                    isLikelyCuit: cleaned.length === 11 || (cleaned.length === 10 && (cleaned.startsWith('20') || cleaned.startsWith('30') || cleaned.startsWith('27'))),
+                    idx: i
+                };
+            }).filter(c =>
                 c.idx !== dateIdx &&
                 c.v !== 0 &&
-                c.raw.length < 10 && // Mucho más estricto: un monto rara vez tiene 10 dígitos "puros" seguidos (ej: 1.000.000.000)
-                Math.abs(c.v) < 100000000 && // Si el monto es > 100 millones, probablemente es basura/CUIT
+                !c.isLikelyCuit && // BLOQUEO TOTAL DE CUITS
+                Math.abs(c.v) < 100000000 && // Bloqueo de montos imposibles (> 100M)
                 !row[dateIdx].includes(c.raw) // Evita que la fecha sea interpretada como monto
             );
 
