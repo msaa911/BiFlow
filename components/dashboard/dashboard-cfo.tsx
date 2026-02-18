@@ -68,6 +68,7 @@ export function DashboardCFO({
                     score={healthScore}
                     anomalyCount={anomalyCount}
                     recoveryPotential={recoveryPotential}
+                    opportunityCost={opportunityCost}
                     onOpenStressTest={() => setIsStressTestOpen(true)}
                 />
             </div>

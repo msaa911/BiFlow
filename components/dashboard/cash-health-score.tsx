@@ -81,7 +81,7 @@ export function CashHealthScore({
                         <p className="text-sm text-gray-400">Tu estado financiero basado en auditoría algorítmica.</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3 pb-2">
                         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-3 flex items-center gap-3">
                             <div className={`p-2 rounded-lg ${anomalyCount > 0 ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
                                 {anomalyCount > 0 ? <AlertCircle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
@@ -92,15 +92,34 @@ export function CashHealthScore({
                             </div>
                         </div>
                         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-3 flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
                                 <TrendingUp className="w-4 h-4" />
                             </div>
                             <div>
-                                <div className="text-[10px] text-gray-500 font-bold uppercase">Optimización</div>
+                                <div className="text-[10px] text-gray-500 font-bold uppercase">Recupero</div>
                                 <div className="text-sm font-bold text-white">+{recoveryPotential}%</div>
                             </div>
                         </div>
                     </div>
+
+                    {opportunityCost > 0 && (
+                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between group/leak hover:border-amber-500/40 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 animate-pulse">
+                                    <TrendingUp className="w-4 h-4 rotate-180" />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] text-amber-500/70 font-bold uppercase">Fuga de Capital (Est.)</div>
+                                    <div className="text-sm font-bold text-white">
+                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(opportunityCost)}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                                DINERO OCIOSO
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex gap-2">
                         <div className={`text-[10px] font-bold px-3 py-1.5 rounded-full inline-flex ${status.bg} ${status.color} border border-current/20`}>

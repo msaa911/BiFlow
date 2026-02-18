@@ -112,7 +112,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                     onClick={() => setConfig({ ...config, modo_tasa: 'AUTOMATICO' })}
                                     className={`px-3 py-1 text-[9px] uppercase font-bold rounded-md transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                                 >
-                                    Auto (BCRA)
+                                    Auto (Mercado)
                                 </button>
                                 <button
                                     onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })}
@@ -136,7 +136,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         </div>
                         <p className="text-[10px] text-gray-500 leading-tight">
                             {config.modo_tasa === 'AUTOMATICO'
-                                ? `Usando tasa de referencia BCRA (Actualizada hoy).`
+                                ? `Usando tasa promedio de mercado (ArgentinaDatos).`
                                 : `Tasa personalizada definida por el usuario.`
                             } Usada para calcular el <span className="text-emerald-500 font-bold underline">Costo de Oportunidad</span>.
                         </p>

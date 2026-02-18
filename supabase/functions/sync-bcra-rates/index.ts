@@ -1,61 +1,61 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const BCRA_TOKEN = Deno.env.get('BCRA_API_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
     try {
-        console.log('--- BCRA Sync Function Start ---');
+        console.log("📊 Iniciando sincronización: ArgentinaDatos (Promedio Bancos)...");
 
-        // 1. Consultar API BCRA (Tasa Plazo Fijo como referencia)
-        const response = await fetch('https://api.estadisticasbcra.com/tasa_depositos_30_dias', {
-            headers: { 'Authorization': `BEARER ${BCRA_TOKEN}` }
-        });
+        // 1. Consultar API ArgentinaDatos (Listado de bancos y sus tasas de Plazo Fijo)
+        const response = await fetch('https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo');
 
         if (!response.ok) {
-            throw new Error(`BCRA API error: ${response.status} ${response.statusText}`);
+            throw new Error(`Error API externa: ${response.statusText}`);
         }
 
         const data = await response.json();
-        if (!Array.isArray(data) || data.length === 0) {
-            throw new Error('Invalid data format from BCRA');
+
+        // 2. Calcular el promedio de las tasas informadas
+        const bancosConTasa = data.filter((b: any) => b.tnaClientes !== null && b.tnaClientes > 0);
+
+        if (bancosConTasa.length === 0) {
+            throw new Error("No se encontraron tasas válidas en la API.");
         }
 
-        // Tomamos el último valor disponible (TNA % anual)
-        const ultimoDato = data[data.length - 1];
-        let tnaMercado = ultimoDato.v / 100; // Convertimos de 75 a 0.75 (TNA Decimal)
+        const sumaTasas = bancosConTasa.reduce((acc: number, b: any) => acc + b.tnaClientes, 0);
+        const tasaPromedio = sumaTasas / bancosConTasa.length;
 
-        // CORRECCIÓN FORENSE: Si la API devuelve datos de 2024 pero estamos en 2026,
-        // ajustamos a la realidad del mercado actual (~35% según BNA) para la demo.
-        const currentYear = new Date().getFullYear();
-        const dataYear = new Date(ultimoDato.d).getFullYear();
-        if (currentYear === 2026 && dataYear < 2026) {
-            console.log('API data is outdated (2024). Adjusting to 2026 market TNA (35%).');
-            tnaMercado = 0.3502; // TNA Banco Nación 2026
-        }
+        console.log(`✅ Tasa promedio detectada: ${(tasaPromedio * 100).toFixed(2)}% (Bancos analizados: ${bancosConTasa.length})`);
 
-        // 2. Guardar en nuestra base de datos
+        // 3. Guardar en Supabase
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const hoy = new Date().toISOString().split('T')[0];
 
         const { error } = await supabase
             .from('indices_mercado')
             .upsert({
-                fecha: new Date().toISOString().split('T')[0],
-                tasa_plazo_fijo: tnaMercado
+                fecha: hoy,
+                tasa_plazo_fijo_30d: tasaPromedio,
+                tasa_plazo_fijo: tasaPromedio, // Compatibilidad
+                origen: `ArgentinaDatos (Promedio ${bancosConTasa.length} bancos)`,
+                updated_at: new Date()
             }, { onConflict: 'fecha' });
 
         if (error) throw error;
 
-        console.log(`Successfully synced BCRA TNA: ${tnaMercado}`);
-        return new Response(JSON.stringify({ success: true, rate: tnaMercado }), {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200
-        });
+        return new Response(JSON.stringify({
+            success: true,
+            source: "ArgentinaDatos",
+            label: "Promedio Mercado",
+            rate: tasaPromedio,
+            banks_count: bancosConTasa.length,
+            sync_date: hoy
+        }), { headers: { 'Content-Type': 'application/json' } });
 
     } catch (error: any) {
-        console.error('BCRA Sync Error:', error.message);
+        console.error("❌ Error Sync:", error.message);
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { 'Content-Type': 'application/json' },
             status: 500
