@@ -189,6 +189,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 <Input
                                     type="number"
                                     placeholder="0"
+                                    value={agreement.mantenimiento_mensual_pactado}
+                                    onChange={(e) => setAgreement({ ...agreement, mantenimiento_mensual_pactado: parseFloat(e.target.value) || 0 })}
                                     className="bg-gray-950 border-gray-800 text-sm h-10"
                                 />
                             </div>
@@ -196,7 +198,10 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 <Label className="text-[10px] text-gray-400 uppercase">Comisión Cheque (%)</Label>
                                 <Input
                                     type="number"
+                                    step="0.001"
                                     placeholder="0"
+                                    value={agreement.comision_cheque_porcentaje}
+                                    onChange={(e) => setAgreement({ ...agreement, comision_cheque_porcentaje: parseFloat(e.target.value) || 0 })}
                                     className="bg-gray-950 border-gray-800 text-sm h-10"
                                 />
                             </div>
