@@ -139,7 +139,7 @@ export class UniversalTranslator {
             }
         }
 
-        if (headerIdx === -1) return { transactions: [], hasExplicitTipo: false };
+        if (headerIdx === -1) return this.parseNoHeader(lines, delimiter, thesaurus);
 
         const headers = lines[headerIdx].split(delimiter).map(h => h.trim().toLowerCase());
 
@@ -360,5 +360,74 @@ export class UniversalTranslator {
             return { saldoInicial, saldoFinal, saldoCalculado: calc, diferencia: Math.abs(saldoFinal - calc), isBalanced: Math.abs(saldoFinal - calc) < 0.05 };
         }
         return {};
+    }
+
+    private static parseNoHeader(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
+        const transactions: Transaction[] = [];
+        let detectedTipoIdx = -1;
+
+        for (const line of lines) {
+            const row = line.split(delimiter).map(v => v.trim());
+            if (row.length < 2) continue;
+
+            const dateIdx = row.findIndex(v => this.normalizeDate(v) !== null);
+            if (dateIdx === -1) continue;
+            const fecha = this.normalizeDate(row[dateIdx])!;
+
+            if (detectedTipoIdx === -1) {
+                detectedTipoIdx = row.findIndex(v => ['DEBITO', 'CREDITO', 'DEB', 'CRE', 'EGRESO', 'INGRESO'].some(k => v.toUpperCase().includes(k)));
+            }
+
+            const amountCandidates = row.map((v, i) => {
+                const cleaned = v.replace(/[^0-9]/g, '');
+                const isCuit = this.isValidCUIT(cleaned);
+                return {
+                    v: this.parseCurrency(v),
+                    raw: cleaned,
+                    isLikelyCuit: isCuit,
+                    idx: i
+                };
+            }).filter(c =>
+                c.idx !== dateIdx &&
+                c.v !== 0 &&
+                !c.isLikelyCuit &&
+                !row[dateIdx].includes(c.raw)
+            );
+
+            const montoObj = amountCandidates.sort((a, b) => b.idx - a.idx)[0];
+
+            if (montoObj) {
+                const cuitIdx = row.findIndex((v, i) => i !== dateIdx && i !== montoObj.idx && v.replace(/[^0-9]/g, '').length === 11);
+                const cuit = cuitIdx !== -1 ? row[cuitIdx].replace(/[^0-9]/g, '') : '';
+
+                const conceptCandidates = row.filter((v, i) => i !== dateIdx && i !== montoObj.idx && i !== detectedTipoIdx && i !== cuitIdx);
+                const desc = conceptCandidates.sort((a, b) => b.length - a.length)[0] || 'Sin concepto';
+
+                let monto = montoObj.v;
+                let tipo: 'DEBITO' | 'CREDITO' = monto < 0 ? 'DEBITO' : 'CREDITO';
+
+                if (detectedTipoIdx !== -1 && row[detectedTipoIdx]) {
+                    const tr = row[detectedTipoIdx].toUpperCase();
+                    const isDebit = ['DEB', 'EGRESO', 'D', 'DEBITO', '-', '1', 'BAJA'].some(k => tr.includes(k));
+                    if (isDebit) {
+                        monto = -Math.abs(monto);
+                        tipo = 'DEBITO';
+                    } else {
+                        monto = Math.abs(monto);
+                        tipo = 'CREDITO';
+                    }
+                }
+
+                transactions.push({
+                    fecha,
+                    concepto: this.normalizeConcept(desc, thesaurus),
+                    monto: Math.abs(monto),
+                    cuit,
+                    tipo,
+                    tags: this.isTax(cuit, desc) ? ['impuesto_recuperable'] : []
+                });
+            }
+        }
+        return { transactions, hasExplicitTipo: detectedTipoIdx !== -1 };
     }
 }
