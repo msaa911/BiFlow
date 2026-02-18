@@ -102,12 +102,14 @@ export default async function DashboardPage() {
     if (modoTasa === 'AUTOMATICO') {
         const { data: marketData } = await supabase
             .from('indices_mercado')
-            .select('tasa_plazo_fijo')
+            .select('tasa_plazo_fijo_30d, tasa_plazo_fijo')
             .order('fecha', { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()
 
-        if (marketData) tnaEfectiva = marketData.tasa_plazo_fijo
+        if (marketData) {
+            tnaEfectiva = marketData.tasa_plazo_fijo_30d || marketData.tasa_plazo_fijo || tnaManual
+        }
     }
 
     const recoveryPotential = totalBalance > 0 ? Math.round((totalRecoverable / Math.abs(totalBalance)) * 100) : 0

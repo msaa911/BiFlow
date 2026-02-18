@@ -39,15 +39,18 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 })
             }
 
-            // Load latest market rate
+            // Load latest market rate (Trying both column names for compatibility)
             const { data: marketData } = await supabase
                 .from('indices_mercado')
-                .select('tasa_plazo_fijo')
+                .select('tasa_plazo_fijo_30d, tasa_plazo_fijo')
                 .order('fecha', { ascending: false })
                 .limit(1)
                 .single()
 
-            if (marketData) setMarketRate(marketData.tasa_plazo_fijo)
+            if (marketData) {
+                const rate = marketData.tasa_plazo_fijo_30d || marketData.tasa_plazo_fijo
+                setMarketRate(rate)
+            }
 
             setLoading(false)
         }
@@ -128,7 +131,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 type="number"
                                 step="0.01"
                                 disabled={config.modo_tasa === 'AUTOMATICO'}
-                                value={config.modo_tasa === 'AUTOMATICO' ? (marketRate ? marketRate * 100 : 75) : (config.tna * 100)}
+                                value={config.modo_tasa === 'AUTOMATICO' ? (marketRate ? (marketRate * 100).toFixed(2) : '---') : (config.tna * 100).toFixed(2)}
                                 onChange={(e) => setConfig({ ...config, tna: parseFloat(e.target.value) / 100 })}
                                 className={`bg-gray-950 border-gray-800 transition-all h-12 text-lg font-mono pl-4 pr-12 ${config.modo_tasa === 'AUTOMATICO' ? 'opacity-50 cursor-not-allowed' : 'focus:border-emerald-500/50'}`}
                             />
