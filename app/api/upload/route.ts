@@ -365,6 +365,14 @@ export async function POST(request: Request) {
                     if (findingsToInsert.length > 0) {
                         await currentSupabase.from('hallazgos').insert(findingsToInsert)
                     }
+
+                    // --- NEW: Bank Fee Audit ---
+                    try {
+                        const { AuditEngine } = require('@/lib/audit-logic')
+                        await AuditEngine.runAuditOnBatch(orgId, insertedTrans.map((t: any) => t.id))
+                    } catch (auditErr) {
+                        console.error('Audit Engine Error (Non-critical):', auditErr)
+                    }
                 }
             }
 

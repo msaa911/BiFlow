@@ -147,6 +147,32 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         </p>
                     </div>
 
+                    <div className="pt-4 border-t border-gray-800 space-y-4">
+                        <Label className="text-xs font-bold uppercase tracking-widest text-emerald-500/80">Acuerdos Bancarios (Auditoría)</Label>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] text-gray-400 uppercase">Mantenimiento Pactado ($)</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="0"
+                                    className="bg-gray-950 border-gray-800 text-sm h-10"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] text-gray-400 uppercase">Comisión Cheque (%)</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="0"
+                                    className="bg-gray-950 border-gray-800 text-sm h-10"
+                                />
+                            </div>
+                        </div>
+                        <p className="text-[9px] text-gray-600">
+                            BiFlow detectará automáticamente si el banco te cobra más de lo definido aquí.
+                        </p>
+                    </div>
+
                     {/* Overdraft Section */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
