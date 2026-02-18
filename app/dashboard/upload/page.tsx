@@ -340,41 +340,77 @@ export default function UploadPage() {
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
                 {/* Format Selector */}
                 {formats.length > 0 && !success && (
-                    <div className="mb-6">
-                        <label className="block text-xs font-medium text-gray-400 mb-2 uppercase">Formato de Archivo (Opcional)</label>
-                        <div className="flex gap-2">
-                            <select
-                                value={selectedFormat}
-                                onChange={(e) => setSelectedFormat(e.target.value)}
-                                className="flex-1 bg-gray-800 border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Modelos Entrenados</label>
+                            <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-medium">{formats.length} Guardado{formats.length !== 1 ? 's' : ''}</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                            <div
+                                className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${selectedFormat === ''
+                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
+                                        : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:bg-gray-800'
+                                    }`}
+                                onClick={() => setSelectedFormat('')}
                             >
-                                <option value="">Detección Automática (Recomendado)</option>
-                                {formats.map(f => (
-                                    <option key={f.id} value={f.id}>{f.nombre} ({f.tipo === 'fixed_width' ? 'Manual' : 'Auto'})</option>
-                                ))}
-                            </select>
-                            {selectedFormat && (
-                                <button
-                                    onClick={async () => {
-                                        if (!confirm('¿Estás seguro de eliminar este formato guardado?')) return
-                                        try {
-                                            const res = await fetch(`/api/formats?id=${selectedFormat}`, { method: 'DELETE' })
-                                            if (res.ok) {
-                                                setSelectedFormat('')
-                                                fetchFormats()
-                                            } else {
-                                                alert('Error al eliminar')
-                                            }
-                                        } catch (e) {
-                                            alert('Error de conexión')
-                                        }
-                                    }}
-                                    className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition-colors"
-                                    title="Eliminar formato seleccionado"
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${selectedFormat === '' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-500'}`}>
+                                        <Settings className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold">Detección Inteligente (v4.0)</p>
+                                        <p className="text-[10px] opacity-70">Recomendado para la mayoría de archivos</p>
+                                    </div>
+                                </div>
+                                {selectedFormat === '' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                            </div>
+
+                            {formats.map(f => (
+                                <div
+                                    key={f.id}
+                                    className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${selectedFormat === f.id
+                                            ? 'bg-blue-500/10 border-blue-500/50 text-white'
+                                            : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:bg-gray-800'
+                                        }`}
+                                    onClick={() => setSelectedFormat(f.id)}
                                 >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            )}
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className={`p-2 rounded-lg flex-shrink-0 ${selectedFormat === f.id ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-500'}`}>
+                                            <FileText className="w-4 h-4" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold truncate">{f.nombre}</p>
+                                            <p className="text-[10px] opacity-70 truncate">{f.descripcion || 'Formato manual'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        {selectedFormat === f.id && <CheckCircle className="w-4 h-4 text-blue-500" />}
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (!confirm(`¿Eliminar modelo "${f.nombre}"?`)) return
+                                                try {
+                                                    const res = await fetch(`/api/formats?id=${f.id}`, { method: 'DELETE' })
+                                                    if (res.ok) {
+                                                        if (selectedFormat === f.id) setSelectedFormat('')
+                                                        fetchFormats()
+                                                    } else {
+                                                        alert('Error al eliminar')
+                                                    }
+                                                } catch (e) {
+                                                    alert('Error de conexión')
+                                                }
+                                            }}
+                                            className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                                            title="Eliminar este modelo"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
