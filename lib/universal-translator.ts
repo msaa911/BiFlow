@@ -59,23 +59,29 @@ export class UniversalTranslator {
     }
 
     private static detectStrategy(lines: string[]): { type: 'INTERBANKING' | 'DELIMITED' | 'FIXED', delimiter?: string } {
-        const sample = lines.slice(0, 10);
+        const sample = lines.slice(0, 15);
 
+        // 1. Prioridad Interbanking
         const interbankingMatches = sample.filter(l => /^\d{8}.*[DC]$/.test(l.trim())).length;
         if (interbankingMatches > 0 && interbankingMatches >= sample.length * 0.4) {
             return { type: 'INTERBANKING' };
         }
 
-        const candidates = ['|', ';', '\t', ','];
-        const scores = candidates.map(char => {
-            const count = sample.filter(l => l.split(char).length > 2).length;
-            return { char, count };
-        });
+        // 2. Prioridad PIPES (Agresivo)
+        const pipesCount = sample.filter(l => l.split('|').length > 1).length;
+        if (pipesCount > sample.length * 0.3) {
+            return { type: 'DELIMITED', delimiter: '|' };
+        }
 
-        const bestDelimiter = scores.sort((a, b) => b.count - a.count)[0];
+        // 3. Otros Delimitadores
+        const semiCount = sample.filter(l => l.split(';').length > 1).length;
+        if (semiCount > sample.length * 0.5) {
+            return { type: 'DELIMITED', delimiter: ';' };
+        }
 
-        if (bestDelimiter && bestDelimiter.count > sample.length * 0.5) {
-            return { type: 'DELIMITED', delimiter: bestDelimiter.char };
+        const commaCount = sample.filter(l => l.split(',').length > 2).length;
+        if (commaCount > sample.length * 0.6) {
+            return { type: 'DELIMITED', delimiter: ',' };
         }
 
         return { type: 'FIXED' };
@@ -144,7 +150,7 @@ export class UniversalTranslator {
 
         for (let i = 0; i < Math.min(lines.length, 20); i++) {
             const row = lines[i].toLowerCase();
-            if (row.includes('fecha') && (row.includes('monto') || row.includes('importe'))) {
+            if ((row.includes('fecha') || row.includes('date')) && (row.includes('monto') || row.includes('importe'))) {
                 headerIdx = i;
                 break;
             }
@@ -157,9 +163,9 @@ export class UniversalTranslator {
         const idx = {
             fecha: headers.findIndex(h => h.includes('fecha') || h.includes('fec') || h.includes('date')),
             monto: headers.findIndex(h => h.includes('monto') || h.includes('importe') || h.includes('valor') || h.includes('saldo')),
-            desc: headers.findIndex(h => h.includes('concepto') || h.includes('desc') || h.includes('detalle')),
+            desc: headers.findIndex(h => h.includes('concepto') || h.includes('desc') || h.includes('detalle') || h.includes('descripcion')),
             cuit: headers.findIndex(h => h.includes('cuit') || h.includes('cuil') || h.includes('doc')),
-            tipo: headers.findIndex(h => h.includes('tipo') || h.includes('signo'))
+            tipo: headers.findIndex(h => h.includes('tipo') || h.includes('signo') || h.includes('movimiento'))
         };
 
         const txs: Transaction[] = [];
@@ -221,6 +227,9 @@ export class UniversalTranslator {
             const trimmed = line.replace(/(\r\n|\n|\r)/gm, "");
             if (trimmed.length < 15) continue;
 
+            // VÁLVULA DE SEGURIDAD: Si tiene delimitadores, NO usar este parser
+            if (trimmed.includes('|') || trimmed.includes(';')) continue;
+
             const dateMatch = trimmed.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/);
             const amountMatch = trimmed.match(/(-?[\d\.,]+)$/);
 
@@ -280,14 +289,26 @@ export class UniversalTranslator {
         return null;
     }
 
-    private static parseCurrency(str: string): number {
-        if (!str) return 0;
-        let clean = str.replace(/[^0-9.,-]/g, '');
-        const lastComma = clean.lastIndexOf(',');
-        const lastDot = clean.lastIndexOf('.');
-        if (lastComma > lastDot) clean = clean.replace(/\./g, "").replace(",", ".");
-        else if (lastDot > lastComma) clean = clean.replace(/,/g, "");
-        return parseFloat(clean) || 0;
+    private static parseCurrency(montoStr: string): number {
+        if (!montoStr) return 0;
+        let clean = montoStr.replace(/[^0-9.,-]/g, '');
+
+        if (clean.includes(',') && clean.includes('.')) {
+            if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) return this.parseCurrencyEU(clean); // 1.000,00
+            else return this.parseCurrencyUS(clean); // 1,000.00
+        } else if (clean.includes(',')) {
+            return this.parseCurrencyEU(clean); // Asumimos coma es decimal
+        } else {
+            return this.parseCurrencyUS(clean);
+        }
+    }
+
+    private static parseCurrencyUS(str: string): number {
+        return parseFloat(str.replace(/,/g, '')) || 0; // 1,000.50 -> 1000.50
+    }
+
+    private static parseCurrencyEU(str: string): number {
+        return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0; // 1.000,50 -> 1000.50
     }
 
     public static isTax(cuit: string, concepto: string): boolean {
