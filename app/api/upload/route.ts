@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-// Rebuild force - timestamp 1612 - breadcrumbs added
+// BI-FLOW ENGINE v5.1 - Intelligence Unified - Forensic Sync
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 

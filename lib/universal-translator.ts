@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/client';
 
 export interface Transaction {
     fecha: string;
@@ -24,21 +25,21 @@ export class UniversalTranslator {
     };
 
     /**
-     * Router Principal: Decide qué estrategia usar antes de procesar
+     * ROUTER DE ESTRATEGIAS (Inteligencia Unificada v5.1)
      */
     static translate(rawText: string, options?: { invertSigns?: boolean, thesaurus?: Map<string, string> }): TranslationResult {
         const lines = rawText.split(/\r?\n/).filter(l => l.trim().length > 0);
         if (lines.length === 0) return { transactions: [], hasExplicitTipo: false, metadata: {} };
 
-        // 1. DETECCIÓN DE ESTRATEGIA
+        // 1. DETECCIÓN INTELIGENTE
         const strategy = this.detectStrategy(lines);
 
         let transactions: Transaction[] = [];
         let hasExplicitTipo = false;
 
-        console.log(`[UniversalTranslator] v5.0 Strategy: ${strategy.type} (Delim: ${strategy.delimiter || 'none'})`);
+        console.log(`[UniversalTranslator] v5.1 Strategy: ${strategy.type} (Delim: ${strategy.delimiter || 'none'})`);
 
-        // 2. EJECUCIÓN
+        // 2. EJECUCIÓN AISLADA
         if (strategy.type === 'INTERBANKING') {
             transactions = this.parseInterbankingStrategy(lines, options?.thesaurus);
             hasExplicitTipo = true;
@@ -68,8 +69,7 @@ export class UniversalTranslator {
         };
     }
 
-    // --- DETECTORES ---
-
+    // --- DETECTOR DE ESTRATEGIA (CEREBRO) ---
     private static detectStrategy(lines: string[]): { type: 'INTERBANKING' | 'DELIMITED' | 'FIXED', delimiter?: string } {
         const sample = lines.slice(0, 50);
 
@@ -79,7 +79,7 @@ export class UniversalTranslator {
             return { type: 'INTERBANKING' };
         }
 
-        // B. Delimitado: Detección por RACHA (Cluster)
+        // B. Delimitado: Detección por RACHA (Streaks)
         const candidates = [
             { char: '|', threshold: 2 },
             { char: ';', threshold: 2 },
@@ -106,7 +106,7 @@ export class UniversalTranslator {
             }
         }
 
-        // Fallback de densidad para CSVs sucios
+        // Fallback de densidad para CSVs con mucho ruido arriba
         const totalLines = sample.length;
         if (sample.filter(l => l.split('|').length > 1).length > totalLines * 0.2) return { type: 'DELIMITED', delimiter: '|' };
         if (sample.filter(l => l.split(';').length > 1).length > totalLines * 0.3) return { type: 'DELIMITED', delimiter: ';' };
@@ -114,16 +114,14 @@ export class UniversalTranslator {
         return { type: 'FIXED' };
     }
 
-    // --- PARSERS ---
-
-    // 1. INTERBANKING (Datanet)
+    // --- PARSER 1: INTERBANKING ---
     private static parseInterbankingStrategy(lines: string[], thesaurus?: Map<string, string>): Transaction[] {
         const txs: Transaction[] = [];
         for (const line of lines) {
             const trimmed = line.replace(/(\r\n|\n|\r)/gm, "");
             if (trimmed.length < 20 || !/^\d{8}/.test(trimmed)) continue;
-            const lastChar = trimmed.slice(-1).toUpperCase();
 
+            const lastChar = trimmed.slice(-1).toUpperCase();
             if (lastChar !== 'D' && lastChar !== 'C') continue;
 
             try {
@@ -158,7 +156,7 @@ export class UniversalTranslator {
         return txs;
     }
 
-    // 2. DELIMITADOS (CSV/Pipe)
+    // --- PARSER 2: DELIMITADOS (Flexible v5.1) ---
     private static parseDelimitedStrategy(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
         let headerIdx = -1;
         for (let i = 0; i < Math.min(lines.length, 30); i++) {
@@ -276,7 +274,7 @@ export class UniversalTranslator {
         return { transactions: txs, hasExplicitTipo: false };
     }
 
-    // 3. FALLBACK (Fixed Width Genérico)
+    // --- PARSER 3: FALLBACK (Fixed Width Genérico) ---
     private static parseGenericFixedStrategy(lines: string[], thesaurus?: Map<string, string>): Transaction[] {
         const txs: Transaction[] = [];
         for (const line of lines) {
@@ -303,7 +301,7 @@ export class UniversalTranslator {
         return txs;
     }
 
-    // --- UTILS ---
+    // --- UTILS (Modulo 11 Real & Clean Normalization) ---
     public static isValidCUIT(cuit: string): boolean {
         const clean = cuit.replace(/[^0-9]/g, '');
         if (clean.length !== 11) return false;
@@ -331,7 +329,9 @@ export class UniversalTranslator {
         const parts = raw.split(/[/-]/);
         if (parts.length === 3) {
             let [d, m, y] = parts;
+            // Caso YYYY-MM-DD
             if (d.length === 4) return `${d}-${m.padStart(2, '0')}-${y.padStart(2, '0')}`;
+            // Caso DD/MM/YY o DD/MM/YYYY
             if (y.length === 2) y = `20${y}`;
             return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
         }
