@@ -73,20 +73,23 @@ export class UniversalTranslator {
      * Detección basada en frecuencia (Umbral: Al menos 0.5 delimitadores por línea promedio)
      */
     private static detectDelimiter(textSample: string): string | null {
-        const pipes = (textSample.match(/\|/g) || []).length;
-        const semis = (textSample.match(/;/g) || []).length;
-        const commas = (textSample.match(/,/g) || []).length;
-        const tabs = (textSample.match(/\t/g) || []).length;
+        const lines = textSample.split('\n').filter(l => l.trim().length > 0).slice(0, 10);
+        if (lines.length === 0) return null;
 
-        const lineCount = textSample.split('\n').length || 1;
+        const candidates = ['|', ';', '\t', ','];
+        const scores = candidates.map(char => {
+            const counts = lines.map(line => line.split(char).length);
+            const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
+            const variance = counts.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / counts.length;
+            return { char, avg, variance };
+        });
 
-        // Prioridad: Pipes -> Semicolon -> Tab -> Comma
-        if (pipes >= lineCount * 0.5) return '|';
-        if (semis >= lineCount * 0.5) return ';';
-        if (tabs >= lineCount * 0.5) return '\t';
-        if (commas >= lineCount * 0.5) return ',';
+        // Ganador: El que tenga más columnas promedio (> 1.5) y menor varianza (consistencia)
+        const winner = scores
+            .filter(s => s.avg > 1.5)
+            .sort((a, b) => (a.variance - b.variance) || (b.avg - a.avg))[0];
 
-        return null;
+        return winner ? winner.char : null;
     }
 
     private static parseDelimited(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
@@ -193,7 +196,8 @@ export class UniversalTranslator {
             })).filter(c =>
                 c.idx !== dateIdx &&
                 c.v !== 0 &&
-                c.raw.length < 11 && // Evita CUITs puros
+                c.raw.length < 10 && // Mucho más estricto: un monto rara vez tiene 10 dígitos "puros" seguidos (ej: 1.000.000.000)
+                Math.abs(c.v) < 100000000 && // Si el monto es > 100 millones, probablemente es basura/CUIT
                 !row[dateIdx].includes(c.raw) // Evita que la fecha sea interpretada como monto
             );
 
