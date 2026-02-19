@@ -244,8 +244,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                         <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
                                         <Input
                                             type="number"
-                                            value={acc.saldo_inicial} // Wait, is it saldo_inicial or saldo_initial?
-                                            onChange={(e) => updateAccount(idx, 'saldo_inicial', parseFloat(e.target.value) || 0)}
+                                            value={acc.saldo_inicial}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value)
+                                                updateAccount(idx, 'saldo_inicial', isNaN(val) ? 0 : val)
+                                            }}
                                             className="pl-8 bg-gray-900 border-gray-700 text-white font-mono text-lg"
                                         />
                                     </div>
@@ -289,7 +292,10 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 <Input
                                     type="number"
                                     value={config.modo_tasa === 'AUTOMATICO' ? ((marketRate || 0) * 100).toFixed(2) : (config.tna * 100).toFixed(2)}
-                                    onChange={(e) => setConfig({ ...config, tna: parseFloat(e.target.value) / 100 })}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value)
+                                        setConfig({ ...config, tna: (isNaN(val) ? 0 : val) / 100 })
+                                    }}
                                     disabled={config.modo_tasa === 'AUTOMATICO'}
                                     className="bg-gray-950 border-gray-800 text-lg font-mono pl-4 pr-12 focus:border-blue-500/50 text-white"
                                 />
@@ -304,7 +310,10 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 <Input
                                     type="number"
                                     value={config.colchon_liquidez}
-                                    onChange={(e) => setConfig({ ...config, colchon_liquidez: parseFloat(e.target.value) || 0 })}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value)
+                                        setConfig({ ...config, colchon_liquidez: isNaN(val) ? 0 : val })
+                                    }}
                                     className="pl-8 bg-gray-950 border-gray-800 text-lg font-mono focus:border-emerald-500/50 text-white"
                                 />
                             </div>
@@ -322,15 +331,40 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     <CardContent className="space-y-4 pt-6">
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase text-gray-400">Límite Descubierto Total</Label>
-                            <Input type="number" value={config.limite_descubierto} onChange={(e) => setConfig({ ...config, limite_descubierto: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white" />
+                            <Input
+                                type="number"
+                                value={config.limite_descubierto}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value)
+                                    setConfig({ ...config, limite_descubierto: isNaN(val) ? 0 : val })
+                                }}
+                                className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase text-gray-400">Mantenimiento Pactado ($/mes)</Label>
-                            <Input type="number" value={agreement.mantenimiento_mensual_pactado} onChange={(e) => setAgreement({ ...agreement, mantenimiento_mensual_pactado: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white" />
+                            <Input
+                                type="number"
+                                value={agreement.mantenimiento_mensual_pactado}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value)
+                                    setAgreement({ ...agreement, mantenimiento_mensual_pactado: isNaN(val) ? 0 : val })
+                                }}
+                                className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase text-gray-400">Comisión Cheque (%)</Label>
-                            <Input type="number" step="0.01" value={agreement.comision_cheque_porcentaje} onChange={(e) => setAgreement({ ...agreement, comision_cheque_porcentaje: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white" />
+                            <Input
+                                type="number"
+                                step="0.01"
+                                value={agreement.comision_cheque_porcentaje}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value)
+                                    setAgreement({ ...agreement, comision_cheque_porcentaje: isNaN(val) ? 0 : val })
+                                }}
+                                className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white"
+                            />
                         </div>
                     </CardContent>
                 </Card>

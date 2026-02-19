@@ -231,7 +231,7 @@ export class UniversalTranslator {
             const trimmed = line.replace(/(\r\n|\n|\r)/gm, "");
             if (trimmed.length < 10 || trimmed.includes('|') || trimmed.includes(';')) continue;
 
-            const dateMatch = trimmed.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/) || trimmed.match(/(202\d)(0[1-9]|1[1, 2])(0[1-9]|[10]\d|3[1])/);
+            const dateMatch = trimmed.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/) || trimmed.match(/(202\d)(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/);
             const amountMatch = trimmed.match(/(-?[\d\.,]+)$/);
 
             if (dateMatch && amountMatch) {

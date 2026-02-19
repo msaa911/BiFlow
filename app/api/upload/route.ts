@@ -349,8 +349,14 @@ export async function POST(request: Request) {
 
                     insertedTrans.forEach((it: any) => {
                         // Find matching processed transaction to get metadata
-                        const analyzed = transactions.find(t => t.fecha === it.fecha && t.descripcion === it.descripcion && t.monto === it.monto)
-                        if (analyzed?.metadata?.anomaly) {
+                        // We use a safe find and optional chaining
+                        const analyzed = (transactions as any[]).find(t =>
+                            t.fecha === it.fecha &&
+                            (t.descripcion === it.descripcion || t.concepto === it.descripcion) &&
+                            Math.abs(t.monto - it.monto) < 0.01
+                        )
+
+                        if (analyzed && analyzed.metadata && analyzed.metadata.anomaly) {
                             findingsToInsert.push({
                                 organization_id: orgId,
                                 transaccion_id: it.id,
@@ -359,7 +365,8 @@ export async function POST(request: Request) {
                                 estado: 'detectado',
                                 detalle: {
                                     razon: analyzed.metadata.anomaly === 'duplicate' ? 'Posible duplicado (Ventana 30d)' : 'Desvío de precio detectado',
-                                    score: analyzed.metadata.anomaly_score
+                                    score: analyzed.metadata.anomaly_score,
+                                    historical_avg: analyzed.metadata.historical_avg
                                 }
                             })
                         }
