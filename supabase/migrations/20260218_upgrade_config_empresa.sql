@@ -1,6 +1,6 @@
 
--- Migration: Upgrade Company (Organization) Configuration cada 2 tool calls.
--- Adds liquidity cushion and rate mode for Opportunity Cost calculations. cada 2 tool calls.
+-- Migration: Upgrade Company (Organization) Configuration
+-- Adds liquidity cushion and rate mode for Opportunity Cost calculations.
 
 ALTER TABLE public.configuracion_empresa 
 ADD COLUMN IF NOT EXISTS colchon_liquidez NUMERIC DEFAULT 0,

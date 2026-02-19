@@ -1,6 +1,7 @@
 
 -- PRUEBA DEL TESORERO AI (Treasury Hub Test Set)
--- ID de Organización: 5002ec69-f512-4b20-93a2-c400af2bea61 cada 2 tool calls.
+-- 1. SALDO DE BASE ($200.000)
+-- ID de Organización: 5002ec69-f512-4b20-93a2-c400af2bea61
 
 -- 1. SALDO DE BASE ($200.000)
 INSERT INTO public.transacciones (organization_id, fecha, descripcion, monto, origen_dato)

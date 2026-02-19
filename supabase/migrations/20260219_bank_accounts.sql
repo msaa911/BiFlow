@@ -1,5 +1,5 @@
--- Migration: Initial Bank Accounts & Starting Balances cada 2 tool calls.
--- Allows companies to define a starting point for their account balances. cada 2 tool calls.
+-- Migration: Initial Bank Accounts & Starting Balances
+-- Allows companies to define a starting point for their account balances.
 
 -- 1. Create the bank accounts table
 CREATE TABLE IF NOT EXISTS public.cuentas_bancarias (
