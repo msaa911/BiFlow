@@ -120,17 +120,28 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             updated_at: new Date().toISOString()
         }, { onConflict: 'organization_id' })
 
-        // GUARDAR CUENTAS (Lo nuevo)
-        for (const acc of accounts) {
-            if (acc.banco_nombre) {
-                await supabase.from('cuentas_bancarias').upsert({
-                    id: acc.id, // Si tiene ID actualiza, sino crea
-                    organization_id: organizationId,
-                    banco_nombre: acc.banco_nombre,
-                    cbu: acc.cbu,
-                    saldo_inicial: acc.saldo_inicial,
-                    updated_at: new Date().toISOString()
-                })
+        // GUARDAR CUENTAS (Mejorado)
+        const accountsToUpsert = accounts
+            .filter(acc => acc.banco_nombre.trim() !== '')
+            .map(acc => ({
+                id: acc.id,
+                organization_id: organizationId,
+                banco_nombre: acc.banco_nombre,
+                cbu: acc.cbu,
+                saldo_inicial: acc.saldo_inicial,
+                updated_at: new Date().toISOString()
+            }))
+
+        if (accountsToUpsert.length > 0) {
+            const { data, error } = await supabase
+                .from('cuentas_bancarias')
+                .upsert(accountsToUpsert)
+                .select()
+
+            if (error) {
+                console.error("Error al guardar cuentas:", error)
+            } else if (data) {
+                setAccounts(data)
             }
         }
 

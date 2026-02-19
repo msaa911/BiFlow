@@ -44,7 +44,18 @@ export default async function DashboardPage() {
         .from('transacciones')
         .select('monto')
 
-    const totalBalance = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
+    const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
+
+    // Fetch Initial Bank Balances
+    const orgId = await getOrgId(supabase, user.id)
+    const { data: bankAccounts } = await supabase
+        .from('cuentas_bancarias')
+        .select('saldo_inicial')
+        .eq('organization_id', orgId)
+
+    const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
+
+    const totalBalance = transactionsSum + initialBalancesSum
 
     // Fetch Tax Recovery Items
     const { data: taxItems } = await supabase
@@ -87,8 +98,7 @@ export default async function DashboardPage() {
     }
     healthScore = Math.max(15, healthScore) // Floor at 15
 
-    // 3. Fetch Company Config (TNA & Overdraft)
-    const orgId = await getOrgId(supabase, user.id)
+    // 3. Fetch Company Config (TNA & Overdraft) (orgId already fetched above)
     const { data: orgConfig } = await supabase
         .from('configuracion_empresa')
         .select('*')
@@ -199,8 +209,8 @@ export default async function DashboardPage() {
                                                     <span
                                                         key={tag}
                                                         className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border ${tag === 'impuesto_recuperable'
-                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                                : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                            : 'bg-red-500/10 text-red-500 border-red-500/20'
                                                             }`}
                                                     >
                                                         {tag === 'posible_duplicado' ? 'Duplicado' : tag === 'alerta_precio' ? 'Sobreprecio' : 'Crédito Fiscal'}
