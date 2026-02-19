@@ -128,32 +128,6 @@ export default async function SettingsPage() {
                 </CardFooter>
             </Card>
 
-            {/* Zona de Peligro */}
-            <Card className="bg-red-950/10 border-red-900/50 text-white">
-                <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-red-500" />
-                        <CardTitle className="text-red-500">Zona de Peligro</CardTitle>
-                    </div>
-                    <CardDescription className="text-gray-400">
-                        Acciones irreversibles para tu cuenta.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between p-4 border border-red-900/30 rounded-lg bg-red-900/5">
-                        <div className="space-y-1">
-                            <h4 className="text-sm font-medium text-white">Eliminar Cuenta</h4>
-                            <p className="text-xs text-gray-400">
-                                Se borrarán todos tus datos, transacciones y configuraciones permanentemente.
-                            </p>
-                        </div>
-                        <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-bold transition-colors">
-                            ELIMINAR
-                        </button>
-                    </div>
-                </CardContent>
-            </Card>
-
             <div className="flex justify-center pt-8 pb-4">
                 <form action="/auth/signout" method="post">
                     <button className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
