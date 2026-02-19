@@ -301,6 +301,7 @@ export async function POST(request: Request) {
                 success: true,
                 count: uniqueTransactions.length,
                 reviewCount: reviewItems?.length || 0,
+                findingsCount: analysisResult.findings || 0,
                 message: `OK: ${uniqueTransactions.length} procesados.`,
                 warnings: warnings.slice(0, 10), // Limit warnings
                 balanceCheck: transactions[0]?.origen_dato === 'universal_translator' && transactions.length > 0

@@ -27,6 +27,7 @@ export default function UploadPage() {
         skipped: number;
         warnings: string[];
         reviewCount: number;
+        findingsCount?: number;
     } | null>(null)
     const [showDetails, setShowDetails] = useState(false)
     const [refreshHistory, setRefreshHistory] = useState(0)
@@ -149,9 +150,12 @@ export default function UploadPage() {
                     totalCount += result.count || 0
                     totalSkipped += result.skipped || 0
                     totalReview += result.reviewCount || 0
+                    const findings = result.findingsCount || 0
                     if (result.warnings && Array.isArray(result.warnings)) {
                         allWarnings = [...allWarnings, ...result.warnings]
                     }
+                    // Update findings count in state if present
+                    setUploadResult(prev => prev ? { ...prev, findingsCount: (prev.findingsCount || 0) + findings } : null)
                 }
 
                 completed++
@@ -169,16 +173,20 @@ export default function UploadPage() {
             count: totalCount,
             skipped: totalSkipped,
             warnings: allWarnings,
-            reviewCount: totalReview
+            reviewCount: totalReview,
+            findingsCount: 0 // Will be updated if a single file returns it
         })
         setRefreshHistory(prev => prev + 1)
 
+        // Remove auto-redirect to give user time to read and choose path
+        /*
         if (allWarnings.length === 0 && totalSkipped === 0 && totalReview === 0 && totalCount > 0) {
             setTimeout(() => {
                 router.refresh()
                 router.push('/dashboard')
             }, 2000)
         }
+        */
     }
 
     const handleSignConfirmation = async (invert: boolean) => {
@@ -202,7 +210,8 @@ export default function UploadPage() {
                 count: result.count,
                 skipped: result.skipped,
                 warnings: result.warnings,
-                reviewCount: result.reviewCount || 0
+                reviewCount: result.reviewCount || 0,
+                findingsCount: result.findingsCount || 0
             })
             setRefreshHistory(prev => prev + 1)
         } catch (err: any) {
@@ -670,14 +679,29 @@ export default function UploadPage() {
 
                                 <div className="flex gap-4 mt-8">
                                     <Link href="/dashboard" className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-all">
-                                        Ir al Dashboard
+                                        Ir al Panel
                                     </Link>
-                                    <Link href="/dashboard/audit" className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all flex items-center gap-2">
-                                        Audit Center <ArrowRight className="w-4 h-4" />
+                                    <Link href="/dashboard/audit" className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all flex flex-col items-center gap-1 group">
+                                        <div className="flex items-center gap-2">
+                                            <span>Centro de Auditoría</span>
+                                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                        </div>
+                                        {uploadResult?.findingsCount && uploadResult.findingsCount > 0 ? (
+                                            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">
+                                                {uploadResult.findingsCount} hallazgos detectados
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] opacity-70">Ver reglas y anomalías</span>
+                                        )}
                                     </Link>
                                 </div>
 
-                                <p className="text-sm text-gray-500 mt-6 italic">Se han detectado nuevos patrones para clasificar en el centro de auditoría.</p>
+                                <p className="text-sm text-gray-500 mt-6 italic text-center max-w-sm">
+                                    {uploadResult?.findingsCount && uploadResult.findingsCount > 0
+                                        ? "La IA ha detectado oportunidades de ahorro y reglas pendientes en el centro de auditoría."
+                                        : "Se han procesado los datos. Puedes revisar las anomalías y reglas de impuestos en el centro de auditoría."
+                                    }
+                                </p>
                             </div>
                         )}
                     </div>

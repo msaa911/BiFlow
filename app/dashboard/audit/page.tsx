@@ -76,7 +76,7 @@ export default function AuditCenterPage() {
         // 0. Get Org ID
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-            const { data: mem } = await supabase.from('memberships').select('organization_id').eq('user_id', user.id).single()
+            const { data: mem } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).single()
             if (mem) setOrganizationId(mem.organization_id)
         }
 
