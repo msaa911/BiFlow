@@ -361,7 +361,7 @@ export default function UploadPage() {
         <div className="max-w-2xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-white">Carga de Documentos</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-white">Carga de Documentos v3</h2>
                     <p className="text-gray-400">Sube extractos, listas de clientes, facturas o cualquier documento financiero para análisis.</p>
                 </div>
                 <button
