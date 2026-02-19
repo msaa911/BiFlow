@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Wallet, TrendingUp, TrendingDown, Calculator, Briefcase } from 'lucide-react'
 import { TreasuryEngine } from '@/lib/treasury-engine'
+import { CashFlowHub } from './cash-flow-hub'
+import { Shield } from 'lucide-react'
 
 interface TreasuryTabProps {
     orgId: string
@@ -14,24 +16,34 @@ interface TreasuryTabProps {
 
 export function TreasuryTab({ orgId }: TreasuryTabProps) {
     const [invoices, setInvoices] = useState<any[]>([])
+    const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
 
     useEffect(() => {
         async function fetchData() {
             setLoading(true)
-            const { data, error } = await supabase
-                .from('comprobantes')
-                .select('*')
-                .eq('organization_id', orgId)
-                .order('fecha_vencimiento', { ascending: true })
+            const [invRes, bankRes] = await Promise.all([
+                supabase
+                    .from('comprobantes')
+                    .select('*')
+                    .eq('organization_id', orgId)
+                    .order('fecha_vencimiento', { ascending: true }),
+                supabase
+                    .from('cuentas_bancarias')
+                    .select('saldo_inicial')
+                    .eq('organization_id', orgId)
+            ])
 
-            if (data) setInvoices(data)
+            if (invRes.data) setInvoices(invRes.data)
+            if (bankRes.data) setBankAccounts(bankRes.data)
             setLoading(false)
         }
 
         fetchData()
     }, [orgId])
+
+    const initialBalancesSum = bankAccounts.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0)
 
     const totalAR = invoices
         .filter(i => i.tipo === 'factura_venta' && i.estado !== 'pagado')
@@ -102,13 +114,7 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                 </TabsContent>
 
                 <TabsContent value="cashflow">
-                    <Card className="p-12 text-center bg-gray-900 border-gray-800">
-                        <Wallet className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-white mb-2">Próximamente: Cash Flow 360</h3>
-                        <p className="text-gray-500 max-w-md mx-auto">
-                            Estamos integrando el motor de simulación dual para que puedas proyectar tu caja con precisión quirúrgica.
-                        </p>
-                    </Card>
+                    <CashFlowHub invoices={invoices} currentBalance={initialBalancesSum} />
                 </TabsContent>
 
                 <TabsContent value="advisor">

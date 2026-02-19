@@ -10,8 +10,70 @@ export interface Invoice {
     estado: 'pendiente' | 'parcial' | 'pagado' | 'anulado';
 }
 
+export interface SimulationMovement {
+    id: string;
+    descripcion: string;
+    monto: number;
+    fecha: string;
+    isDraft: boolean;
+}
+
+export interface DailyBalance {
+    date: string;
+    balance: number;
+    isProjected: boolean;
+}
+
 export class TreasuryEngine {
     static INFLATION_FACTOR = 2.44;
+
+    /**
+     * Projects daily balance for the next 30 days based on current balance,
+     * pending invoices, and draft simulation movements.
+     */
+    static projectDailyBalance(
+        currentBalance: number,
+        invoices: Invoice[],
+        drafts: SimulationMovement[]
+    ): DailyBalance[] {
+        const projection: DailyBalance[] = [];
+        const today = new Date();
+
+        // Combine all relevant movements
+        const movements = [
+            ...invoices.filter(i => i.estado !== 'pagado').map(i => ({
+                fecha: i.fecha_vencimiento,
+                monto: i.tipo === 'factura_venta' || i.tipo === 'nota_debito' ? i.monto_pendiente : -i.monto_pendiente,
+                isDraft: false
+            })),
+            ...drafts.map(d => ({
+                fecha: d.fecha,
+                monto: d.monto,
+                isDraft: true
+            }))
+        ].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+        let runningBalance = currentBalance;
+
+        // Generate a 30-day window
+        for (let i = 0; i < 30; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
+
+            // Apply movements for this specific date
+            const dateMovements = movements.filter(m => m.fecha === dateStr);
+            dateMovements.forEach(m => runningBalance += m.monto);
+
+            projection.push({
+                date: dateStr,
+                balance: runningBalance,
+                isProjected: i > 0
+            });
+        }
+
+        return projection;
+    }
 
     /**
      * Calculates the "Real Value" of an invoice adjusted by historical inflation

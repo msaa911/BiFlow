@@ -21,26 +21,40 @@ export async function POST(request: Request) {
     if (!member) return NextResponse.json({ error: 'No org' }, { status: 403 })
     const orgId = member.organization_id
 
-    // 2. Fetch Financial Context
-    const { data: transactions } = await supabase
-        .from('transacciones')
-        .select('monto, descripcion, fecha')
-        .eq('organization_id', orgId)
-        .order('fecha', { ascending: false })
-        .limit(500)
+    // 2. Fetch Comprehensive Financial Context
+    const [
+        { data: transactions },
+        { data: findings },
+        { data: bankFindings },
+        { data: invoices },
+        { data: projections },
+        { data: bankAccounts },
+        { data: orgConfig }
+    ] = await Promise.all([
+        supabase
+            .from('transacciones')
+            .select('monto, descripcion, fecha, tags')
+            .eq('organization_id', orgId)
+            .order('fecha', { ascending: false })
+            .limit(500),
+        supabase.from('hallazgos').select('*').eq('organization_id', orgId).eq('estado', 'detectado'),
+        supabase.from('hallazgos_auditoria').select('*').eq('organization_id', orgId),
+        supabase.from('comprobantes').select('*').eq('organization_id', orgId).neq('estado', 'pagado'),
+        supabase.from('pagos_proyectados').select('*').eq('organization_id', orgId).eq('estado', 'programado'),
+        supabase.from('cuentas_bancarias').select('*').eq('organization_id', orgId),
+        supabase.from('configuracion_empresa').select('*').eq('organization_id', orgId).maybeSingle()
+    ])
 
-    const { data: findings } = await supabase.from('hallazgos').select('*').eq('organization_id', orgId).eq('estado', 'detectado')
-    const { data: bankFindings } = await supabase.from('hallazgos_auditoria').select('*').eq('organization_id', orgId)
+    const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
+    const transactionsSum = transactions?.reduce((acc, t) => acc + t.monto, 0) || 0
+    const balance = transactionsSum + initialBalancesSum
 
-    // --- NUEVO: CONTEXTO TREASURY ---
-    const { data: invoices } = await supabase.from('comprobantes').select('*').eq('organization_id', orgId).neq('estado', 'pagado')
-    const { data: projections } = await supabase.from('pagos_proyectados').select('*').eq('organization_id', orgId).eq('estado', 'programado')
-
-    const balance = transactions?.reduce((acc, t) => acc + t.monto, 0) || 0
     const anomalies = findings?.filter(f => f.tipo === 'anomalia' || f.tipo === 'duplicado') || []
     const becAlerts = findings?.filter(f => f.detalle?.is_bec) || []
-    const taxLeaks = findings?.filter(f => f.tipo === 'fuga_fiscal') || []
-    const totalRecoverable = taxLeaks.reduce((acc, f) => acc + (f.monto_estimado_recupero || 0), 0)
+
+    // Improved Tax Strategy Logic: Using tags as source of truth
+    const taxLeaks = transactions?.filter(t => t.tags?.includes('impuesto_recuperable')) || []
+    const totalRecoverable = taxLeaks.reduce((acc, t) => acc + Math.abs(t.monto), 0)
 
     const bankFeesDiff = bankFindings?.reduce((acc, f) => acc + (f.diferencia || 0), 0) || 0
 
@@ -156,6 +170,27 @@ export async function POST(request: Request) {
             reply = `Tienes ${overdue.length} facturas de venta vencidas por un total de $${overdue.reduce((acc, i) => acc + Number(i.monto_pendiente), 0).toLocaleString('es-AR')}. Los deudores principales son: ${overdue.slice(0, 3).map(i => i.razon_social_socio).join(', ')}.`
         } else {
             reply = "No detecté facturas de venta vencidas. Tu cartera de cobros parece al día."
+        }
+    }
+    // New Logic for Tax Expenditure
+    else if (msgLower.includes('gasto') && (msgLower.includes('impuesto') || msgLower.includes('afip') || msgLower.includes('arba'))) {
+        const taxKeywords = ['afip', 'arba', 'retencion', 'impuesto', 'percepcion', 'iivv', 'iva'];
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+
+        const currentMonthTaxes = (transactions || []).filter(t => {
+            const txDate = new Date(t.fecha);
+            const matchesKeyword = taxKeywords.some(k => t.descripcion.toLowerCase().includes(k));
+            const matchesTag = t.tags?.includes('impuesto_recuperable');
+            return (matchesKeyword || matchesTag) && txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+        });
+
+        const totalTaxExpense = currentMonthTaxes.reduce((acc, t) => acc + Math.abs(t.monto), 0);
+
+        if (totalTaxExpense > 0) {
+            reply = `El gasto total en impuestos/retenciones detectado para este mes es de $${totalTaxExpense.toLocaleString('es-AR')}. Esto incluye ${currentMonthTaxes.length} movimientos entre AFIP, ARBA y otras retenciones bancarias.`
+        } else {
+            reply = "No he detectado movimientos de impuestos procesados en el mes en curso aún. ¿Deseas que revise el mes anterior?"
         }
     }
     else if (msgLower.includes('pagar') || msgLower.includes('debo') || msgLower.includes('deuda') || msgLower.includes('cubrir')) {
