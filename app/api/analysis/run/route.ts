@@ -4,6 +4,8 @@ import { getOrgId } from '@/lib/supabase/utils'
 import { runAnalysis } from '@/lib/analysis/engine'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: Request) {
     try {
         const supabase = await createClient()
@@ -11,9 +13,14 @@ export async function POST(req: Request) {
         if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
         const orgId = await getOrgId(supabase, user.id)
-        if (!orgId) return NextResponse.json({ error: 'Org no encontrada' }, { status: 404 })
+        if (!orgId) {
+            console.error('[API/ANALYSIS] Org no encontrada')
+            return NextResponse.json({ error: 'Org no encontrada' }, { status: 404 })
+        }
 
+        console.log(`[API/ANALYSIS] Executing manual analysis for org: ${orgId}...`)
         const result = await runAnalysis(orgId)
+        console.log('[API/ANALYSIS] Analysis completed:', result)
 
         return NextResponse.json({ success: true, result })
     } catch (error: any) {
