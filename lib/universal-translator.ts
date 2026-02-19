@@ -272,6 +272,12 @@ export class UniversalTranslator {
     private static normalizeDate(raw: string): string | null {
         if (!raw) return null;
         const clean = raw.replace(/[^\d/.-]/g, ''); // Limpiar caracteres invisibles
+
+        // Soporte para YYYYMMDD (Sin separadores)
+        if (clean.length === 8 && /^\d{8}$/.test(clean)) {
+            return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}`;
+        }
+
         const parts = clean.split(/[/-]/).filter(p => p.length > 0);
 
         if (parts.length === 3) {
@@ -320,8 +326,8 @@ export class UniversalTranslator {
         let saldoInicial = 0;
         let saldoFinal = 0;
 
-        // Regex para detectar montos con etiquetas de saldo
-        const currencyRegex = (key: string) => new RegExp(`${key}.*?([1-9]{1,3}(?:[.,][1-9]{3})*[.,][1-9]{2})`, 'i');
+        // Regex para detectar montos con etiquetas de saldo (Más inclusivo)
+        const currencyRegex = (key: string) => new RegExp(`${key}.*?([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})`, 'i');
 
         // Detectar saldos en encabezado
         const mInit = headerLines.match(currencyRegex('saldo (?:inicial|anterior)'));
