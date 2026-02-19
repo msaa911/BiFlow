@@ -6,6 +6,7 @@ import { AuditEngine } from '@/lib/audit-logic'
 import { TrustLedger } from '@/lib/trust-ledger'
 import { AnomalyEngine } from '@/lib/anomaly-engine'
 import { runAnalysis } from '@/lib/analysis/engine'
+import { UniversalTranslator } from '@/lib/universal-translator'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,12 +67,11 @@ export async function POST(request: Request) {
 
             if (format) {
                 const { parseFixed } = require('@/lib/parsers/fixed-width')
-                const { UniversalTranslator } = require('@/lib/universal-translator')
                 const text = buffer.toString('utf-8')
                 console.log(`DEBUG: Custom Parser Input Length: ${text.length}`)
                 // Fetch Thesaurus for normalization
                 const { data: thesaurusRows } = await currentSupabase.from('financial_thesaurus').select('raw_pattern, normalized_concept')
-                const thesaurusMap = new Map(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || [])
+                const thesaurusMap = new Map<string, string>(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || [])
 
                 const res = parseFixed(text, format.reglas, { thesaurus: thesaurusMap })
                 console.log(`DEBUG: Custom Parser Result - Trans: ${res.transactions?.length}, Review: ${res.reviewItems?.length}`)
@@ -107,10 +107,9 @@ export async function POST(request: Request) {
                 const text = buffer.toString('utf-8')
                 // Fetch Thesaurus for normalization
                 const { data: thesaurusRows } = await currentSupabase.from('financial_thesaurus').select('raw_pattern, normalized_concept')
-                const thesaurusMap = new Map(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || [])
+                const thesaurusMap = new Map<string, string>(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || [])
 
                 // Use Universal Translator
-                const { UniversalTranslator } = require('@/lib/universal-translator')
                 const uniTransactions = UniversalTranslator.translate(text, { invertSigns, thesaurus: thesaurusMap })
 
                 hasExplicitTipo = uniTransactions.hasExplicitTipo
