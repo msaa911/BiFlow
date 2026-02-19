@@ -111,7 +111,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 modo_tasa: config.modo_tasa,
                 colchon_liquidez: config.colchon_liquidez,
                 updated_at: new Date().toISOString()
-            })
+            }, { onConflict: 'organization_id' })
 
             if (errorConfig) throw new Error("Error en Configuración Empresa: " + errorConfig.message)
 
