@@ -15,8 +15,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: true, action: 'later' })
         }
 
-        // Fetch the pattern to clean up existing transactions
-        const { data: rule } = await supabase
+        const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
+        const serviceSupabase = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+
+        // Fetch the pattern
+        const { data: rule } = await serviceSupabase
             .from('tax_intelligence_rules')
             .select('patron_busqueda')
             .eq('id', id)
@@ -25,8 +31,7 @@ export async function POST(req: Request) {
         if (rule) {
             console.log(`[CLASSIFY] Cleaning up tags for pattern: ${rule.patron_busqueda}`)
 
-            // 1. Get all transactions with this pattern and tags
-            const { data: transactions } = await supabase
+            const { data: transactions } = await serviceSupabase
                 .from('transacciones')
                 .select('id, tags')
                 .eq('organization_id', organization_id)
@@ -34,17 +39,24 @@ export async function POST(req: Request) {
 
             if (transactions && transactions.length > 0) {
                 for (const t of transactions) {
-                    if (t.tags && (t.tags.includes('pendiente_clasificacion') || t.tags.includes('servicio_detectado'))) {
-                        const newTags = t.tags.filter((tag: string) =>
-                            tag !== 'pendiente_clasificacion' && tag !== 'servicio_detectado'
-                        )
-                        await supabase.from('transacciones').update({ tags: newTags }).eq('id', t.id)
+                    let tags = t.tags || []
+
+                    // Always remove pending tags
+                    tags = tags.filter((tag: string) =>
+                        tag !== 'pendiente_clasificacion' && tag !== 'servicio_detectado'
+                    )
+
+                    // If it's recoverable, add the tag
+                    if (es_recuperable && !tags.includes('impuesto_recuperable')) {
+                        tags.push('impuesto_recuperable')
                     }
+
+                    await serviceSupabase.from('transacciones').update({ tags }).eq('id', t.id)
                 }
             }
         }
 
-        const { error } = await supabase
+        const { error } = await serviceSupabase
             .from('tax_intelligence_rules')
             .update({
                 es_recuperable,
