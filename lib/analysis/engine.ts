@@ -148,7 +148,9 @@ export async function runAnalysis(organizationId: string) {
 
                 // Tag the transaction based on category
                 const tag = match.category === 'impuesto' ? 'pendiente_clasificacion' : 'servicio_detectado'
-                const tags = [...(t.tags || [])]
+                // Clean old tags to avoid mixing categories after logic update
+                let tags = (t.tags || []).filter((tg: string) => tg !== 'pendiente_clasificacion' && tg !== 'servicio_detectado')
+
                 if (!tags.includes(tag)) {
                     tags.push(tag)
                     t.tags = tags
@@ -157,7 +159,9 @@ export async function runAnalysis(organizationId: string) {
             } else if (config.estado === 'PENDIENTE') {
                 console.log(`[ANALYSIS] [EXISTING_PENDING] "${t.descripcion}" is already PENDIENTE.`)
                 const tag = match.category === 'impuesto' ? 'pendiente_clasificacion' : 'servicio_detectado'
-                const tags = [...(t.tags || [])]
+                // Clean old tags to avoid mixing categories after logic update
+                let tags = (t.tags || []).filter((tg: string) => tg !== 'pendiente_clasificacion' && tg !== 'servicio_detectado')
+
                 if (!tags.includes(tag)) {
                     tags.push(tag)
                     t.tags = tags
