@@ -12,6 +12,7 @@ interface CompanyConfig {
     tna: number
     limite_descubierto: number
     modo_tasa: 'AUTOMATICO' | 'MANUAL'
+    colchon_liquidez: number
 }
 
 interface BankAgreement {
@@ -20,7 +21,12 @@ interface BankAgreement {
 }
 
 export function CompanySettingsTab({ organizationId }: { organizationId: string }) {
-    const [config, setConfig] = useState<CompanyConfig>({ tna: 0.70, limite_descubierto: 0, modo_tasa: 'AUTOMATICO' })
+    const [config, setConfig] = useState<CompanyConfig>({
+        tna: 0.70,
+        limite_descubierto: 0,
+        modo_tasa: 'AUTOMATICO',
+        colchon_liquidez: 0
+    })
     const [agreement, setAgreement] = useState<BankAgreement>({ mantenimiento_mensual_pactado: 0, comision_cheque_porcentaje: 0 })
     const [marketRate, setMarketRate] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
@@ -41,7 +47,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 setConfig({
                     tna: data.tna,
                     limite_descubierto: data.limite_descubierto,
-                    modo_tasa: data.modo_tasa || 'AUTOMATICO'
+                    modo_tasa: data.modo_tasa || 'AUTOMATICO',
+                    colchon_liquidez: data.colchon_liquidez || 0
                 })
             }
 
@@ -92,6 +99,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 tna: config.tna,
                 limite_descubierto: config.limite_descubierto,
                 modo_tasa: config.modo_tasa,
+                colchon_liquidez: config.colchon_liquidez,
                 updated_at: new Date().toISOString()
             })
 
@@ -228,6 +236,26 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         <p className="text-[10px] text-gray-500 leading-tight">
                             Define el <span className="text-red-400 font-bold underline">Acuerdo Bancario</span>.
                             Afecta las alertas de Stress Test y el Score de Salud de Caja.
+                        </p>
+                    </div>
+
+                    {/* Liquidity Cushion Section */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">COLCHÓN DE LIQUIDEZ (ARS)</Label>
+                        </div>
+                        <div className="relative group">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</div>
+                            <Input
+                                type="number"
+                                value={config.colchon_liquidez}
+                                onChange={(e) => setConfig({ ...config, colchon_liquidez: parseFloat(e.target.value) || 0 })}
+                                className="bg-gray-950 border-gray-800 focus:border-emerald-500/50 transition-all h-12 text-lg font-mono pl-8"
+                            />
+                        </div>
+                        <p className="text-[10px] text-gray-500 leading-tight">
+                            Monto que deseas mantener como <span className="text-emerald-400 font-bold">reserva operativa</span>.
+                            Se resta del cálculo de Costo de Oportunidad (dinero ocioso). cada 2 tool calls te informaré.
                         </p>
                     </div>
                 </div>

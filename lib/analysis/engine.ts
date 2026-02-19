@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { AnomalyEngine } from '@/lib/anomaly-engine'
-// 
+import { LiquidityEngine } from '@/lib/liquidity-engine'
 
 interface Transaction {
     id: string
@@ -39,7 +39,7 @@ export async function runAnalysis(organizationId: string) {
     const findings: Finding[] = []
 
     // 2. Fetch Historical Averages (for Price Spike Detection)
-    const descriptions = [...new Set(transactions.map(t => t.descripcion))]
+    const descriptions = [...new Set(transactions.map((t: any) => t.descripcion))]
     const { data: history } = await supabase.rpc('get_historical_averages', {
         p_org_id: organizationId,
         p_descriptions: descriptions,
@@ -90,20 +90,37 @@ export async function runAnalysis(organizationId: string) {
         }
     }
 
-    // 4. Save Findings
+    // --- NUEVO: AUDITORÍA DE ACUERDOS BANCARIOS ---
+    const { data: agreement } = await supabase
+        .from('convenios_bancarios')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .maybeSingle()
+
+    if (agreement) {
+        const auditFindings = await LiquidityEngine.verifyAgreements(transactions, agreement, organizationId)
+
+        if (auditFindings.length > 0) {
+            const { error: auditError } = await supabase.from('hallazgos_auditoria').insert(auditFindings)
+            if (auditError) console.error('Error saving bank audit findings:', auditError)
+        }
+    }
+
+    // 5. Save Findings
     if (findings.length > 0) {
         const { data: existingFindings } = await supabase
             .from('hallazgos')
             .select('transaccion_id, tipo')
             .eq('organization_id', organizationId)
 
-        const existingSet = new Set(existingFindings?.map(f => `${f.transaccion_id}-${f.tipo}`))
-        const newFindings = findings.filter(f => !existingSet.has(`${f.transaccion_id}-${f.tipo}`))
+        const existingSet = new Set(existingFindings?.map((f: any) => `${f.transaccion_id}-${f.tipo}`))
+        const newFindings = findings.filter((f: any) => !existingSet.has(`${f.transaccion_id}-${f.tipo}`))
 
         if (newFindings.length > 0) {
             const { error: insertError } = await supabase.from('hallazgos').insert(newFindings)
             if (insertError) console.error('Error saving findings:', insertError)
-            return { findings: newFindings.length }
+            return { findings: newFindings.length + (agreement ? 1 : 0) } // Simplified count for audit findings too
         }
     }
 
