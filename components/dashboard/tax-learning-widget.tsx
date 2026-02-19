@@ -50,9 +50,13 @@ export function TaxLearningWidget({ organizationId }: { organizationId: string }
 
             if (res.ok) {
                 setPending(prev => prev.filter(p => p.id !== id))
+            } else {
+                const err = await res.json()
+                alert(`Error al clasificar: ${err.error || 'No se pudo guardar la decisión'}`)
             }
         } catch (error) {
             console.error('Classification failed', error)
+            alert('Error de conexión al guardar la clasificación')
         } finally {
             setProcessingId(null)
         }
