@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain } from 'lucide-react'
+import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain, AlertTriangle, RotateCcw } from 'lucide-react'
 
 // Interfaces actualizadas
 interface BankAccount {
@@ -127,6 +127,27 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         const { error } = await supabase.from('configuracion_impuestos').delete().eq('id', ruleId)
         if (!error) {
             setTaxRules(prev => prev.filter(r => r.id !== ruleId))
+        }
+    }
+
+    const handlePurge = async () => {
+        if (!confirm('¿Estás seguro de que deseas REINICIAR todo el entorno? Se borrarán transacciones, facturas y reglas de aprendizaje. Esta acción NO se puede deshacer.')) return
+        if (!confirm('ÚLTIMA ADVERTENCIA: Se perderán todos los datos cargados. ¿Confirmar reinicio total?')) return
+
+        setSaving(true)
+        try {
+            const res = await fetch('/api/data/purge', { method: 'DELETE' })
+            if (res.ok) {
+                alert('Entorno reiniciado con éxito. La página se recargará.')
+                window.location.reload()
+            } else {
+                const err = await res.json()
+                alert('Error al reiniciar: ' + (err.details || err.error))
+            }
+        } catch (err) {
+            alert('Error de conexión al purgar datos.')
+        } finally {
+            setSaving(false)
         }
     }
 
@@ -466,6 +487,36 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     </CardContent>
                 </Card>
             </div>
+
+            {/* ZONA DE PELIGRO / REINICIO */}
+            <Card className="bg-red-500/5 border-red-500/20 md:col-span-2">
+                <CardHeader>
+                    <CardTitle className="text-red-500 font-black italic tracking-tighter uppercase flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5" />
+                        Zona de Peligro
+                    </CardTitle>
+                    <CardDescription className="text-red-400/70">
+                        Acciones destructivas para mantenimiento y pruebas.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-red-500/10 rounded-xl border border-red-500/20">
+                        <div className="space-y-1">
+                            <p className="text-white font-bold">Reiniciar Entorno de Prueba</p>
+                            <p className="text-xs text-red-400/80">Borra todos los extractos, facturas, hallazgos y el aprendizaje de la IA para esta organización.</p>
+                        </div>
+                        <Button
+                            variant="destructive"
+                            onClick={handlePurge}
+                            disabled={saving}
+                            className="bg-red-600 hover:bg-red-500 font-black uppercase tracking-tighter"
+                        >
+                            {saving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                            Reiniciar Todo
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
 
             <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50">
                 <Button onClick={handleSave} disabled={saving} size="lg" className={`h-14 px-8 text-lg font-black uppercase tracking-tighter shadow-2xl transition-all duration-500 ${success ? 'bg-emerald-500 ring-4 ring-emerald-500/20' : 'bg-emerald-600 hover:bg-emerald-500'}`}>

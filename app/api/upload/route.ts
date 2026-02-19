@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import { AuditEngine } from '@/lib/audit-logic'
 import { TrustLedger } from '@/lib/trust-ledger'
 import { AnomalyEngine } from '@/lib/anomaly-engine'
+import { runAnalysis } from '@/lib/analysis/engine'
 
 export const dynamic = 'force-dynamic'
 
@@ -228,66 +229,7 @@ export async function POST(request: Request) {
         }
 
         // --- 3.6. Anomaly Detection (Expense Guard & Duplicates) ---
-        if (transactions.length > 0) {
-            try {
-                // 1. Prepare Data for Engine
-                // Need History (for Price Spikes) and Existing Transactions (for Duplicates)
-
-                // A. Fetch History
-                const descriptions = [...new Set(transactions.map(t => t.descripcion))]
-                let historyMap = new Map<string, number>()
-
-                if (descriptions.length > 0) {
-                    const { data: history } = await currentSupabase.rpc('get_historical_averages', {
-                        p_org_id: orgId,
-                        p_descriptions: descriptions,
-                        p_months_back: 3
-                    })
-                    if (history) {
-                        historyMap = new Map<string, number>(
-                            history.map((h: any) => [h.descripcion, Number(h.avg_monto)])
-                        )
-                    }
-                }
-
-                // B. Fetch Existing Transactions (Window: Min Date - Max Date of batch)
-                // We expand the window slightly to catch boundary duplicates
-                const batchDates = transactions.map(t => new Date(t.fecha).getTime())
-                const minDateEpoch = Math.min(...batchDates)
-                const maxDateEpoch = Math.max(...batchDates)
-                const minDateStr = new Date(minDateEpoch).toISOString().split('T')[0]
-                const maxDateStr = new Date(maxDateEpoch).toISOString().split('T')[0]
-
-                const { data: existing } = await currentSupabase
-                    .from('transacciones')
-                    .select('fecha, descripcion, monto, cuit')
-                    .eq('organization_id', orgId)
-                    .gte('fecha', minDateStr)
-                    .lte('fecha', maxDateStr)
-
-                // 2. Run Engine
-                const analysis = AnomalyEngine.analyze(transactions, historyMap, existing || [])
-
-                transactions = analysis.processed // Update transactions with metadata/tags
-                const detectedAnomalies = analysis.anomalies // Used for hallazgos later
-
-                // 3. Collect Warnings
-                const duplicateCount = transactions.filter(t => t.metadata?.anomaly === 'duplicate').length
-                const spikeCount = transactions.filter(t => t.metadata?.anomaly === 'price_spike').length
-                const recoveryCount = transactions.filter(t => t.metadata?.recovery_potential).length
-
-                if (duplicateCount > 0) warnings.push(`Deduplicación: Se detectaron ${duplicateCount} posibles duplicados.`)
-                if (spikeCount > 0) warnings.push(`Guardián de Gastos: Se detectaron ${spikeCount} desvíos de precio (>15%).`)
-                if (recoveryCount > 0) warnings.push(`Recupero Fiscal: Se identificaron ${recoveryCount} movimientos recuperables (AFIP/ARBA).`);
-
-                // Store anomalies temporarily to link them after insertion
-                (transactions as any)._detected_anomalies = detectedAnomalies;
-
-            } catch (err: any) {
-                console.error('Anomaly Detection Error:', err)
-                // Non-critical, continue
-            }
-        }
+        // DEPRECATED: Inline detection removed in favor of unified engine
 
 
         // --- 4. Store Data & Finish Link ---
@@ -344,73 +286,18 @@ export async function POST(request: Request) {
                     throw new Error(`Error insertion: ${insError.message}`)
                 }
 
-                // --- NEW: Persist Findings (Hallazgos) ---
-                if (insertedTrans && insertedTrans.length > 0) {
-                    const findingsToInsert: any[] = []
-
-                    insertedTrans.forEach((it: any) => {
-                        // Find matching processed transaction to get metadata
-                        // We use a safe find and optional chaining
-                        const analyzed = (transactions as any[]).find(t =>
-                            t.fecha === it.fecha &&
-                            (t.descripcion === it.descripcion || t.concepto === it.descripcion) &&
-                            Math.abs(t.monto - it.monto) < 0.01
-                        )
-
-                        if (analyzed && analyzed.metadata && analyzed.metadata.anomaly) {
-                            findingsToInsert.push({
-                                organization_id: orgId,
-                                transaccion_id: it.id,
-                                tipo: analyzed.metadata.anomaly, // Already in Spanish now
-                                severidad: analyzed.metadata.severity || 'low',
-                                estado: 'detectado',
-                                detalle: {
-                                    razon: analyzed.metadata.anomaly === 'duplicado' ? 'Posible duplicado (Ventana 30d)' : 'Desvío de precio detectado',
-                                    score: analyzed.metadata.anomaly_score,
-                                    historical_avg: analyzed.metadata.historical_avg,
-                                    duplicate_of: analyzed.metadata.duplicate_of // New: Store the reference
-                                }
-                            })
-                        }
-                    })
-
-                    // --- NEW: Trust Ledger (BEC Prevention) ---
-                    const becAlerts = await TrustLedger.validateTransactions(
-                        insertedTrans.map((it: { id: any; metadata: any; }) => ({
-                            ...it,
-                            db_id: it.id,
-                            metadata: it.metadata || {}
-                        })),
-                        orgId
-                    )
-                    if (becAlerts.length > 0) {
-                        findingsToInsert.push(...becAlerts)
-                    }
-
-                    // Learn new pairs implicitly
-                    await TrustLedger.learn(
-                        insertedTrans.map((it: { metadata: any; }) => ({ ...it, metadata: it.metadata || {} })),
-                        orgId
-                    )
-
-                    if (findingsToInsert.length > 0) {
-                        await currentSupabase.from('hallazgos').insert(findingsToInsert)
-                    }
-
-                    // --- NEW: Bank Fee Audit ---
-                    try {
-                        const { AuditEngine } = require('@/lib/audit-logic')
-                        await AuditEngine.runAuditOnBatch(orgId, insertedTrans.map((t: any) => t.id))
-                    } catch (auditErr) {
-                        console.error('Audit Engine Error (Non-critical):', auditErr)
-                    }
-                }
+                // --- DEPRECATED: Findings generation moved to unified engine ---
             }
 
             await currentSupabase.from('archivos_importados').update({
                 estado: 'completado',
                 metadata: { processed: transactions.length, inserted: uniqueTransactions.length, warnings: warnings.slice(0, 20) }
             }).eq('id', importId)
+
+            // --- EJECUTAR MOTOR DE ANÁLISIS UNIFICADO ---
+            console.log(`[UPLOAD] Triggering unified analysis for org: ${orgId}`)
+            const analysisResult = await runAnalysis(orgId)
+            console.log(`[UPLOAD] Analysis completed: ${analysisResult.findings} findings found`)
 
             return NextResponse.json({
                 success: true,

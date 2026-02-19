@@ -82,33 +82,29 @@ export async function runAnalysis(organizationId: string) {
     await supabase.from('hallazgos').delete().eq('organization_id', organizationId).eq('estado', 'detectado')
 
     // 5. Map Anomalies & Handle Tax Learning
+    const transactionsToUpdate: any[] = []
+
     for (const t of processed) {
         const descUpper = t.descripcion.toUpperCase()
-
-        // Logical check for taxes
         const matchedKeyword = TAX_KEYWORDS.find(k => descUpper.includes(k))
 
         if (matchedKeyword) {
-            // Check if we have a config for this specific pattern or generic keyword
-            // For now, let's use the full description as the pattern to be precise
             const config = taxMap.get(descUpper)
 
             if (!config) {
-                // Potential new tax detected, add to pending learning
                 newTaxConfigs.push({
                     organization_id: organizationId,
                     patron_busqueda: t.descripcion,
                     estado: 'PENDIENTE'
                 })
             } else if (config.estado === 'PENDIENTE') {
-                // If the config exists but is still pending, tag the transaction for UI feedback
                 const tags = [...(t.tags || [])]
                 if (!tags.includes('pendiente_clasificacion')) {
                     tags.push('pendiente_clasificacion')
+                    t.tags = tags
+                    transactionsToUpdate.push({ id: t.id, tags: t.tags })
                 }
-                t.tags = tags
             } else if (config.es_recuperable && !config.omitir_siempre) {
-                // If known and recoverable, add to findings
                 findings.push({
                     organization_id: organizationId,
                     transaccion_id: t.id,
@@ -122,7 +118,6 @@ export async function runAnalysis(organizationId: string) {
                     }
                 })
             }
-            // If es_recuperable is false or omitir_siempre is true, we skip it as a regular expense
             continue
         }
 
@@ -130,7 +125,7 @@ export async function runAnalysis(organizationId: string) {
             findings.push({
                 organization_id: organizationId,
                 transaccion_id: t.id,
-                tipo: t.metadata.anomaly, // Use direct type (duplicado/anomalia)
+                tipo: t.metadata.anomaly,
                 severidad: t.metadata.severity || 'low',
                 estado: 'detectado',
                 monto_estimado_recupero: t.metadata.anomaly === 'price_spike'
@@ -144,13 +139,28 @@ export async function runAnalysis(organizationId: string) {
         }
     }
 
-    // Save New Tax Configs (Learning state)
+    // --- NUEVO: TRUST LEDGER (BEC PREVENTION) ---
+    const { TrustLedger } = require('@/lib/trust-ledger')
+    const becAlerts = await TrustLedger.validateTransactions(transactions, organizationId)
+    if (becAlerts.length > 0) {
+        findings.push(...becAlerts)
+    }
+    // Update profiles
+    await TrustLedger.learn(transactions, organizationId)
+
+    // Save New Tax Configs
     if (newTaxConfigs.length > 0) {
-        // Upsert to avoid duplicates if multiple transactions have the same pattern in one batch
         await supabase.from('configuracion_impuestos').upsert(newTaxConfigs, {
             onConflict: 'organization_id, patron_busqueda',
             ignoreDuplicates: true
         })
+    }
+
+    // Update Transaction Tags (if modified)
+    if (transactionsToUpdate.length > 0) {
+        for (const update of transactionsToUpdate) {
+            await supabase.from('transacciones').update({ tags: update.tags }).eq('id', update.id)
+        }
     }
 
     // --- NUEVO: AUDITORÍA DE ACUERDOS BANCARIOS ---
@@ -163,8 +173,8 @@ export async function runAnalysis(organizationId: string) {
 
     if (agreement) {
         const auditFindings = await LiquidityEngine.verifyAgreements(transactions, agreement, organizationId)
-
         if (auditFindings.length > 0) {
+            await supabase.from('hallazgos_auditoria').delete().eq('organization_id', organizationId) // Clear old audit findings
             const { error: auditError } = await supabase.from('hallazgos_auditoria').insert(auditFindings)
             if (auditError) console.error('Error saving bank audit findings:', auditError)
         }
@@ -183,7 +193,7 @@ export async function runAnalysis(organizationId: string) {
         if (newFindings.length > 0) {
             const { error: insertError } = await supabase.from('hallazgos').insert(newFindings)
             if (insertError) console.error('Error saving findings:', insertError)
-            return { findings: newFindings.length + (agreement ? 1 : 0) } // Simplified count for audit findings too
+            return { findings: newFindings.length + (agreement ? 1 : 0) }
         }
     }
 
