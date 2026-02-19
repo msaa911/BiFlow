@@ -14,14 +14,18 @@ export function DashboardActions() {
     const runAnalysis = async () => {
         setAnalyzing(true)
         try {
-            const res = await fetch('/api/analyze', { method: 'POST' })
+            const res = await fetch('/api/analysis/run', { method: 'POST' })
             if (res.ok) {
                 setSuccess(true)
                 router.refresh()
                 setTimeout(() => setSuccess(false), 3000)
+            } else {
+                const err = await res.json()
+                alert(`Error: ${err.error || 'No se pudo completar el análisis'}`)
             }
         } catch (error) {
             console.error('Analysis failed', error)
+            alert('Error de conexión al ejecutar el análisis')
         } finally {
             setAnalyzing(false)
         }
