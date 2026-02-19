@@ -1,44 +1,57 @@
-
+import { createClient as createServiceRoleClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+// Nuclear Purge API - Used to reset the test environment
 export async function DELETE(request: Request) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // 1. Authenticate the user session first
+    const sessionClient = await createClient()
+    const { data: { user } } = await sessionClient.auth.getUser()
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get Organization
-    const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).single()
-    if (!member) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
+    // 2. Get the organization ID from the session (bound by RLS)
+    const { data: member } = await sessionClient
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single()
 
+    if (!member) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     const orgId = member.organization_id
+
+    // 3. Create a service role client to perform the actual deletion
+    // This bypasses RLS but only for the specific orgId we just verified
+    const supabase = createServiceRoleClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     try {
         console.log(`[PURGE] Starting global reset for org: ${orgId}`)
 
-        // 1. Delete Findings (Audit)
-        await supabase.from('hallazgos').delete().eq('organization_id', orgId)
-        await supabase.from('hallazgos_auditoria').delete().eq('organization_id', orgId)
+        const tablesToClear = [
+            'hallazgos',
+            'hallazgos_auditoria',
+            'comprobantes',
+            'configuracion_impuestos',
+            'transacciones',
+            'transacciones_revision',
+            'archivos_importados'
+        ]
 
-        // 2. Delete Treasury data (comprobantes) - The "Ghost" data
-        await supabase.from('comprobantes').delete().eq('organization_id', orgId)
+        for (const table of tablesToClear) {
+            const { error } = await supabase.from(table).delete().eq('organization_id', orgId)
+            if (error && error.code !== 'PGRST205') {
+                console.warn(`[PURGE] Warning: Failed to clear ${table}:`, error.message)
+            }
+        }
 
-        // 3. Delete Tax Rules (IA Learning)
-        await supabase.from('configuracion_impuestos').delete().eq('organization_id', orgId)
-
-        // 4. Delete Transactions & Files (Cascades usually handle transactions, but let's be explicit if needed)
-        // transacciones has archivo_importacion_id, deleting files should clear them if FK is set to cascade.
-        // But some transactions might not have a file id if manually entered (future-proofing).
-        await supabase.from('transacciones').delete().eq('organization_id', orgId)
-        await supabase.from('transacciones_revision').delete().eq('organization_id', orgId)
-        await supabase.from('archivos_importados').delete().eq('organization_id', orgId)
-
-        // 5. Cleanup Storage
+        // 4. Cleanup Storage
         const { data: files } = await supabase.storage.from('raw-imports').list(orgId)
         if (files && files.length > 0) {
             const paths = files.map(f => `${orgId}/${f.name}`)
