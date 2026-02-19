@@ -150,8 +150,8 @@ export class UniversalTranslator {
         const idx = {
             fecha: headers.findIndex(h => ['fecha', 'fec', 'date', 'emision', 'emisión'].some(k => h.includes(k))),
             monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo', 'precio', 'neto', 'bruto'].some(k => h.includes(k))),
-            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio'].some(k => h.includes(k))),
-            razon_social: headers.findIndex(h => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'empresa', 'denominacion', 'denominación', 'emisor', 'receptor'].some(k => h.includes(k))),
+            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio', 'nota'].some(k => h.includes(k))),
+            razon_social: headers.findIndex(h => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'denominacion', 'denominación', 'emisor', 'receptor'].some(k => h.includes(k))),
             cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento', 'id'].some(k => h.includes(k))),
             tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado'].some(k => h.includes(k))),
             vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
@@ -236,7 +236,7 @@ export class UniversalTranslator {
     private static parseNoHeader(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
         const transactions: Transaction[] = [];
         for (const line of lines) {
-            const row = line.split(delimiter);
+            const row = delimiter === 'SPACE_MULTI' ? line.trim().split(/\s{2,}/) : line.split(delimiter);
             if (row.length < 2) continue;
 
             const dateMatch = line.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/);
@@ -353,6 +353,14 @@ export class UniversalTranslator {
         // Caso: 1,000.00 (US)
         else if (lastDot > lastComma && lastDot !== -1) {
             clean = clean.replace(/,/g, '');
+        }
+        // Caso: 156.436 (Punto como miles sin coma decimal)
+        else if (lastDot !== -1 && lastComma === -1) {
+            const parts = clean.split('.');
+            // Heurística: Si hay 3 dígitos después del punto, es separador de miles
+            if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+                clean = clean.replace(/\./g, '');
+            }
         }
         // Caso: 1000,00 (Sin separador miles, coma decimal)
         else if (lastComma !== -1 && lastDot === -1) {

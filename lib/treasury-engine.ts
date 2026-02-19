@@ -25,7 +25,7 @@ export interface DailyBalance {
 }
 
 export class TreasuryEngine {
-    static INFLATION_FACTOR = 2.44;
+    static INFLATION_FACTOR = 1.08;
 
     /**
      * Projects daily balance for the next 30 days based on current balance,
