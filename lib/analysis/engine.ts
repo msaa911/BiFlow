@@ -89,12 +89,21 @@ export async function runAnalysis(organizationId: string) {
         { windowDays: 30 } // 30-day window as requested in Task 1.1
     )
 
-    // Keywords to detect taxes and potential recoverable items (utilities)
-    const TAX_KEYWORDS = [
-        'AFIP', 'ARBA', 'RETENCION', 'PERCEPCION', 'IIBB', 'SUSS', 'IMPUESTO',
-        'IVA', 'GANANCIAS', 'BIENES PERSONALES', 'DREI', 'CANON',
-        'AYSA', 'EDENOR', 'EDESUR', 'METROGAS', 'TELECOM', 'PERSONAL', 'CLARO', 'MOVISTAR', 'TELMEX'
+    // Keywords categorized to avoid confusion (Services vs direct Taxes)
+    const KEYWORD_GROUPS = [
+        {
+            category: 'impuesto',
+            keywords: ['AFIP', 'ARBA', 'RETENCION', 'PERCEPCION', 'IIBB', 'SUSS', 'IMPUESTO', 'IVA', 'GANANCIAS', 'BIENES PERSONALES', 'DREI', 'CANON']
+        },
+        {
+            category: 'servicio',
+            keywords: ['AYSA', 'EDENOR', 'EDESUR', 'METROGAS', 'TELECOM', 'PERSONAL', 'CLARO', 'MOVISTAR', 'TELMEX']
+        }
     ]
+
+    // Flatten for easy searching while keeping category info
+    const ALL_KEYWORDS = KEYWORD_GROUPS.flatMap(g => g.keywords.map(k => ({ word: k, category: g.category })))
+
     const newTaxConfigs: any[] = []
     const seenNewPatrons = new Set<string>()
 
@@ -112,16 +121,16 @@ export async function runAnalysis(organizationId: string) {
         const descUpper = t.descripcion.toUpperCase()
 
         // Improved detection: use word boundaries for short keywords to avoid false positives (e.g. "IVA" in "RIVAS")
-        const matchedKeyword = TAX_KEYWORDS.find(k => {
-            if (k.length <= 8) {
-                const regex = new RegExp(`\\b${k}\\b`, 'i');
+        const match = ALL_KEYWORDS.find(k => {
+            if (k.word.length <= 8) {
+                const regex = new RegExp(`\\b${k.word}\\b`, 'i');
                 return regex.test(descUpper);
             }
-            return descUpper.includes(k);
+            return descUpper.includes(k.word);
         })
 
-        if (matchedKeyword) {
-            console.log(`[ANALYSIS] [MATCH] "${t.descripcion}" matched with keyword "${matchedKeyword}"`)
+        if (match) {
+            console.log(`[ANALYSIS] [MATCH] "${t.descripcion}" matched with keyword "${match.word}" (${match.category})`)
             const config = taxMap.get(descUpper)
 
             if (!config) {
@@ -136,18 +145,20 @@ export async function runAnalysis(organizationId: string) {
                     seenNewPatrons.add(descUpper)
                 }
 
-                // Tag the transaction as pending classification
+                // Tag the transaction based on category
+                const tag = match.category === 'impuesto' ? 'pendiente_clasificacion' : 'servicio_detectado'
                 const tags = [...(t.tags || [])]
-                if (!tags.includes('pendiente_clasificacion')) {
-                    tags.push('pendiente_clasificacion')
+                if (!tags.includes(tag)) {
+                    tags.push(tag)
                     t.tags = tags
                     transactionsToUpdate.push({ id: t.id, tags: t.tags })
                 }
             } else if (config.estado === 'PENDIENTE') {
                 console.log(`[ANALYSIS] [EXISTING_PENDING] "${t.descripcion}" is already PENDIENTE.`)
+                const tag = match.category === 'impuesto' ? 'pendiente_clasificacion' : 'servicio_detectado'
                 const tags = [...(t.tags || [])]
-                if (!tags.includes('pendiente_clasificacion')) {
-                    tags.push('pendiente_clasificacion')
+                if (!tags.includes(tag)) {
+                    tags.push(tag)
                     t.tags = tags
                     transactionsToUpdate.push({ id: t.id, tags: t.tags })
                 }

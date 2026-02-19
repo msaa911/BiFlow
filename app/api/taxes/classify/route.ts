@@ -15,6 +15,35 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: true, action: 'later' })
         }
 
+        // Fetch the pattern to clean up existing transactions
+        const { data: rule } = await supabase
+            .from('tax_intelligence_rules')
+            .select('patron_busqueda')
+            .eq('id', id)
+            .single()
+
+        if (rule) {
+            console.log(`[CLASSIFY] Cleaning up tags for pattern: ${rule.patron_busqueda}`)
+
+            // 1. Get all transactions with this pattern and tags
+            const { data: transactions } = await supabase
+                .from('transacciones')
+                .select('id, tags')
+                .eq('organization_id', organization_id)
+                .ilike('descripcion', `%${rule.patron_busqueda}%`)
+
+            if (transactions && transactions.length > 0) {
+                for (const t of transactions) {
+                    if (t.tags && (t.tags.includes('pendiente_clasificacion') || t.tags.includes('servicio_detectado'))) {
+                        const newTags = t.tags.filter((tag: string) =>
+                            tag !== 'pendiente_clasificacion' && tag !== 'servicio_detectado'
+                        )
+                        await supabase.from('transacciones').update({ tags: newTags }).eq('id', t.id)
+                    }
+                }
+            }
+        }
+
         const { error } = await supabase
             .from('tax_intelligence_rules')
             .update({

@@ -98,11 +98,11 @@ export default function AuditCenterPage() {
             `)
             .order('created_at', { ascending: false })
 
-        // 3. NEW: Fetch Pending Tax Classifications from Transactions Tags
+        // 3. NEW: Fetch Pending Classifications from Transactions Tags
         const { data: pendingTaxTrans } = await supabase
             .from('transacciones')
             .select('id, fecha, descripcion, monto, tags')
-            .contains('tags', ['pendiente_clasificacion'])
+            .or('tags.cs.{"pendiente_clasificacion"},tags.cs.{"servicio_detectado"}')
             .order('fecha', { ascending: false })
 
         // 4. Normalize and Merge
@@ -113,11 +113,13 @@ export default function AuditCenterPage() {
 
         const normalizedPendingTaxes = (pendingTaxTrans || []).map((t: any) => ({
             id: `virtual-tax-${t.id}`,
-            tipo: 'impuesto',
+            tipo: t.tags.includes('pendiente_clasificacion') ? 'impuesto' : 'servicio',
             severidad: 'medium',
             estado: 'detectado',
             detalle: {
-                razon: 'Patrón de pago detectado (Requiere clasificación en Dashboard)'
+                razon: t.tags.includes('pendiente_clasificacion')
+                    ? 'Patrón impositivo detectado (Requiere clasificación)'
+                    : 'Servicio detectado con IVA recuperable (Requiere clasificación)'
             },
             created_at: new Date().toISOString(),
             transaccion: {
@@ -267,7 +269,7 @@ export default function AuditCenterPage() {
 
             {/* Tax Learning Section */}
             {organizationId && (
-                <div className="max-w-2xl">
+                <div className="max-w-2xl" id="tax-learning">
                     <TaxLearningWidget organizationId={organizationId} />
                 </div>
             )}
@@ -289,9 +291,12 @@ export default function AuditCenterPage() {
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${finding.tipo === 'duplicado' ? 'bg-red-500/10 text-red-500' :
-                                                        finding.tipo === 'anomalia' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'
+                                                        finding.tipo === 'anomalia' ? 'bg-amber-500/10 text-amber-500' :
+                                                            finding.tipo === 'impuesto' ? 'bg-blue-500/10 text-blue-500' :
+                                                                finding.tipo === 'servicio' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                                    'bg-gray-500/10 text-gray-500'
                                                         }`}>
-                                                        {finding.tipo}
+                                                        {finding.tipo === 'servicio' ? 'detección ia' : finding.tipo}
                                                     </span>
                                                     <span className="text-[10px] text-gray-500 font-mono flex items-center gap-1">
                                                         <Calendar className="w-3 h-3" /> {new Date(finding.transaccion.fecha).toLocaleDateString('es-AR')}
@@ -336,9 +341,9 @@ export default function AuditCenterPage() {
                                             </div>
 
                                             <div className="flex items-center gap-2">
-                                                {finding.tipo === 'impuesto' ? (
+                                                {finding.tipo === 'impuesto' || finding.tipo === 'servicio' ? (
                                                     <Link
-                                                        href="/dashboard"
+                                                        href="/dashboard?focus=tax-learning"
                                                         className="px-4 py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 text-xs font-bold rounded-lg transition-colors border border-emerald-500/30 flex items-center gap-2 group/btn"
                                                     >
                                                         Ir a Clasificar <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
