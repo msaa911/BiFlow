@@ -225,15 +225,20 @@ export default async function DashboardPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-wrap gap-1">
-                                                {t.tags && t.tags.filter((tag: string) => ['posible_duplicado', 'alerta_precio', 'impuesto_recuperable'].includes(tag)).map((tag: string) => (
+                                                {t.tags && t.tags.filter((tag: string) => ['posible_duplicado', 'alerta_precio', 'impuesto_recuperable', 'pendiente_clasificacion'].includes(tag)).map((tag: string) => (
                                                     <span
                                                         key={tag}
                                                         className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border ${tag === 'impuesto_recuperable'
                                                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                            : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                            : tag === 'pendiente_clasificacion'
+                                                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                                                : 'bg-red-500/10 text-red-500 border-red-500/20'
                                                             }`}
                                                     >
-                                                        {tag === 'posible_duplicado' ? 'Duplicado' : tag === 'alerta_precio' ? 'Sobreprecio' : 'Crédito Fiscal'}
+                                                        {tag === 'posible_duplicado' ? 'Duplicado' :
+                                                            tag === 'alerta_precio' ? 'Sobreprecio' :
+                                                                tag === 'pendiente_clasificacion' ? 'Pendiente' :
+                                                                    'Crédito Fiscal'}
                                                     </span>
                                                 ))}
                                                 {(!t.tags || t.tags.length === 0) && <span className="text-gray-600 text-[10px]">---</span>}

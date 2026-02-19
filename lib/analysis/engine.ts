@@ -29,7 +29,15 @@ interface Finding {
 }
 
 export async function runAnalysis(organizationId: string) {
-    const supabase = await createClient()
+    const { createClient: createServiceRoleClient } = require('@supabase/supabase-js')
+
+    // Use Service Role to bypass RLS and ensure complete analysis
+    const supabase = createServiceRoleClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    console.log(`[ANALYSIS] Starting analysis for org: ${organizationId}`)
 
     // 1. Fetch all transactions for the org
     const { data: transactions, error } = await supabase
@@ -38,10 +46,17 @@ export async function runAnalysis(organizationId: string) {
         .eq('organization_id', organizationId)
         .order('fecha', { ascending: true })
 
-    if (error || !transactions || transactions.length === 0) {
-        console.log('No transactions found or error fetching')
+    if (error) {
+        console.error('[ANALYSIS] Error fetching transactions:', error.message)
         return { findings: 0 }
     }
+
+    if (!transactions || transactions.length === 0) {
+        console.log('[ANALYSIS] No transactions found')
+        return { findings: 0 }
+    }
+
+    console.log(`[ANALYSIS] Found ${transactions.length} transactions`)
 
     const findings: Finding[] = []
 
@@ -74,13 +89,21 @@ export async function runAnalysis(organizationId: string) {
         { windowDays: 30 } // 30-day window as requested in Task 1.1
     )
 
-    // Keywords to detect taxes
-    const TAX_KEYWORDS = ['AFIP', 'ARBA', 'RETENCION', 'PERCEPCION', 'IIBB', 'SUSS', 'IMPUESTO']
+    // Keywords to detect taxes and potential recoverable items (utilities)
+    const TAX_KEYWORDS = [
+        'AFIP', 'ARBA', 'RETENCION', 'PERCEPCION', 'IIBB', 'SUSS', 'IMPUESTO',
+        'IVA', 'GANANCIAS', 'BIENES PERSONALES', 'DREI', 'CANON',
+        'AYSA', 'EDENOR', 'EDESUR', 'METROGAS', 'TELECOM', 'PERSONAL', 'CLARO', 'MOVISTAR', 'TELMEX'
+    ]
     const newTaxConfigs: any[] = []
     const seenNewPatrons = new Set<string>()
 
+    console.log(`[ANALYSIS] Processing ${processed.length} transactions for tax detection...`)
+
     // Clear existing detectado findings to allow "re-runs" to update data
-    await supabase.from('hallazgos').delete().eq('organization_id', organizationId).eq('estado', 'detectado')
+    console.log(`[ANALYSIS] Clearing old findings for org ${organizationId}...`)
+    const { error: clearError } = await supabase.from('hallazgos').delete().eq('organization_id', organizationId).eq('estado', 'detectado')
+    if (clearError) console.error('[ANALYSIS] Clear findings error:', clearError.message)
 
     // 5. Map Anomalies & Handle Tax Learning
     const transactionsToUpdate: any[] = []
@@ -90,9 +113,11 @@ export async function runAnalysis(organizationId: string) {
         const matchedKeyword = TAX_KEYWORDS.find(k => descUpper.includes(k))
 
         if (matchedKeyword) {
+            console.log(`[ANALYSIS] [MATCH] "${t.descripcion}" matched with keyword "${matchedKeyword}"`)
             const config = taxMap.get(descUpper)
 
             if (!config) {
+                console.log(`[ANALYSIS] [NEW_TAX] No config found for "${t.descripcion}". Creating PENDIENTE rule.`)
                 // First time seeing this patron in this org
                 if (!seenNewPatrons.has(descUpper)) {
                     newTaxConfigs.push({
@@ -111,6 +136,7 @@ export async function runAnalysis(organizationId: string) {
                     transactionsToUpdate.push({ id: t.id, tags: t.tags })
                 }
             } else if (config.estado === 'PENDIENTE') {
+                console.log(`[ANALYSIS] [EXISTING_PENDING] "${t.descripcion}" is already PENDIENTE.`)
                 const tags = [...(t.tags || [])]
                 if (!tags.includes('pendiente_clasificacion')) {
                     tags.push('pendiente_clasificacion')
@@ -118,6 +144,7 @@ export async function runAnalysis(organizationId: string) {
                     transactionsToUpdate.push({ id: t.id, tags: t.tags })
                 }
             } else if (config.es_recuperable && !config.omitir_siempre) {
+                console.log(`[ANALYSIS] [RECUPERABLE] "${t.descripcion}" is classified as tax recovery.`)
                 // Already classified as manageable tax
                 const tags = [...(t.tags || [])]
                 if (!tags.includes('impuesto_recuperable')) {
@@ -143,6 +170,7 @@ export async function runAnalysis(organizationId: string) {
         }
 
         if (t.metadata?.anomaly) {
+            console.log(`[ANALYSIS] [ANOMALY] "${t.descripcion}" identified as ${t.metadata.anomaly}`)
             findings.push({
                 organization_id: organizationId,
                 transaccion_id: t.id,
@@ -162,8 +190,10 @@ export async function runAnalysis(organizationId: string) {
 
     // --- NUEVO: TRUST LEDGER (BEC PREVENTION) ---
     const { TrustLedger } = require('@/lib/trust-ledger')
+    console.log(`[ANALYSIS] Running TrustLedger check...`)
     const becAlerts = await TrustLedger.validateTransactions(transactions, organizationId)
     if (becAlerts.length > 0) {
+        console.log(`[ANALYSIS] TrustLedger found ${becAlerts.length} alerts`)
         findings.push(...becAlerts)
     }
     // Update profiles
@@ -171,20 +201,25 @@ export async function runAnalysis(organizationId: string) {
 
     // Save New Tax Configs
     if (newTaxConfigs.length > 0) {
-        await supabase.from('configuracion_impuestos').upsert(newTaxConfigs, {
+        console.log(`[ANALYSIS] Saving ${newTaxConfigs.length} new tax configurations...`)
+        const { error: upsertError } = await supabase.from('configuracion_impuestos').upsert(newTaxConfigs, {
             onConflict: 'organization_id, patron_busqueda',
             ignoreDuplicates: true
         })
+        if (upsertError) console.error('[ANALYSIS] Error saving tax configs:', upsertError.message)
     }
 
     // Update Transaction Tags (if modified)
     if (transactionsToUpdate.length > 0) {
+        console.log(`[ANALYSIS] Updating tags for ${transactionsToUpdate.length} transactions...`)
         for (const update of transactionsToUpdate) {
-            await supabase.from('transacciones').update({ tags: update.tags }).eq('id', update.id)
+            const { error: tagError } = await supabase.from('transacciones').update({ tags: update.tags }).eq('id', update.id)
+            if (tagError) console.error(`[ANALYSIS] Error updating tag for ${update.id}:`, tagError.message)
         }
     }
 
     // --- NUEVO: AUDITORÍA DE ACUERDOS BANCARIOS ---
+    console.log(`[ANALYSIS] Checking bank agreements...`)
     const { data: agreement } = await supabase
         .from('convenios_bancarios')
         .select('*')
@@ -195,6 +230,7 @@ export async function runAnalysis(organizationId: string) {
     if (agreement) {
         const auditFindings = await LiquidityEngine.verifyAgreements(transactions, agreement, organizationId)
         if (auditFindings.length > 0) {
+            console.log(`[ANALYSIS] Bank audit found ${auditFindings.length} findings`)
             await supabase.from('hallazgos_auditoria').delete().eq('organization_id', organizationId) // Clear old audit findings
             const { error: auditError } = await supabase.from('hallazgos_auditoria').insert(auditFindings)
             if (auditError) console.error('Error saving bank audit findings:', auditError)
@@ -203,6 +239,7 @@ export async function runAnalysis(organizationId: string) {
 
     // 5. Save Findings
     if (findings.length > 0) {
+        console.log(`[ANALYSIS] Saving ${findings.length} findings...`)
         const { data: existingFindings } = await supabase
             .from('hallazgos')
             .select('transaccion_id, tipo')
@@ -212,11 +249,13 @@ export async function runAnalysis(organizationId: string) {
         const newFindings = findings.filter((f: any) => !existingSet.has(`${f.transaccion_id}-${f.tipo}`))
 
         if (newFindings.length > 0) {
+            console.log(`[ANALYSIS] Inserting ${newFindings.length} NEW findings...`)
             const { error: insertError } = await supabase.from('hallazgos').insert(newFindings)
-            if (insertError) console.error('Error saving findings:', insertError)
+            if (insertError) console.error('[ANALYSIS] Error saving findings:', insertError.message)
             return { findings: newFindings.length + (agreement ? 1 : 0) }
         }
     }
 
+    console.log(`[ANALYSIS] Analysis finished for org ${organizationId}.`)
     return { findings: 0 }
 }
