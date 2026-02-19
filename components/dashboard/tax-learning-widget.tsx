@@ -21,7 +21,7 @@ export function TaxLearningWidget({ organizationId }: { organizationId: string }
     useEffect(() => {
         async function loadPending() {
             const { data } = await supabase
-                .from('reglas_fiscales_ia')
+                .from('tax_intelligence_rules')
                 .select('id, patron_busqueda')
                 .eq('organization_id', organizationId)
                 .eq('estado', 'PENDIENTE')

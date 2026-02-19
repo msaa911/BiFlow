@@ -98,10 +98,35 @@ export default function AuditCenterPage() {
             `)
             .order('created_at', { ascending: false })
 
-        // 3. Normalize and Merge
+        // 3. NEW: Fetch Pending Tax Classifications from Transactions Tags
+        const { data: pendingTaxTrans } = await supabase
+            .from('transacciones')
+            .select('id, fecha, descripcion, monto, tags')
+            .contains('tags', ['pendiente_clasificacion'])
+            .order('fecha', { ascending: false })
+
+        // 4. Normalize and Merge
         const normalizedOp = (opData || []).map((f: any) => ({
             ...f,
             source: 'operative'
+        }))
+
+        const normalizedPendingTaxes = (pendingTaxTrans || []).map((t: any) => ({
+            id: `virtual-tax-${t.id}`,
+            tipo: 'impuesto',
+            severidad: 'medium',
+            estado: 'detectado',
+            detalle: {
+                razon: 'Patrón de pago detectado (Requiere clasificación en Dashboard)'
+            },
+            created_at: new Date().toISOString(),
+            transaccion: {
+                id: t.id,
+                fecha: t.fecha,
+                descripcion: t.descripcion,
+                monto: t.monto
+            },
+            source: 'virtual_tax'
         }))
 
         const normalizedBank = (bankData || []).map((f: any) => ({
@@ -118,7 +143,7 @@ export default function AuditCenterPage() {
             source: 'bank_audit'
         }))
 
-        const merged = [...normalizedOp, ...normalizedBank].sort((a, b) =>
+        const merged = [...normalizedOp, ...normalizedPendingTaxes, ...normalizedBank].sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )
 

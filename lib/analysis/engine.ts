@@ -73,7 +73,7 @@ export async function runAnalysis(organizationId: string) {
 
     // 3. Fetch Tax Configurations
     const { data: taxConfigs } = await supabase
-        .from('reglas_fiscales_ia')
+        .from('tax_intelligence_rules')
         .select('*')
         .eq('organization_id', organizationId)
 
@@ -202,7 +202,7 @@ export async function runAnalysis(organizationId: string) {
     // Save New Tax Configs
     if (newTaxConfigs.length > 0) {
         console.log(`[ANALYSIS] Saving ${newTaxConfigs.length} new tax configurations...`)
-        const { error: upsertError } = await supabase.from('reglas_fiscales_ia').upsert(newTaxConfigs, {
+        const { error: upsertError } = await supabase.from('tax_intelligence_rules').upsert(newTaxConfigs, {
             onConflict: 'organization_id, patron_busqueda',
             ignoreDuplicates: true
         })

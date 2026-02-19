@@ -16,7 +16,7 @@ export async function POST(req: Request) {
         }
 
         const { error } = await supabase
-            .from('reglas_fiscales_ia')
+            .from('tax_intelligence_rules')
             .update({
                 es_recuperable,
                 omitir_siempre,
