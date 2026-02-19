@@ -148,11 +148,12 @@ export class UniversalTranslator {
         const idx = {
             fecha: headers.findIndex(h => ['fecha', 'fec', 'date'].some(k => h.includes(k))),
             monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo', 'precio'].some(k => h.includes(k))),
-            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'razon social', 'razón social', 'nombre'].some(k => h.includes(k))),
+            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio'].some(k => h.includes(k))),
+            razon_social: headers.findIndex(h => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'empresa', 'denominacion', 'denominación', 'emisor', 'receptor'].some(k => h.includes(k))),
             cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento', 'id'].some(k => h.includes(k))),
             tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado'].some(k => h.includes(k))),
             vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date'].some(k => h.includes(k))),
-            numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'id'].some(k => h.includes(k))),
+            numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'factura', 'id'].some(k => h.includes(k))),
             // AQUÍ EL FIX DE TILDES:
             debito: headers.findIndex(h => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo'].some(k => h.includes(k))),
             credito: headers.findIndex(h => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono'].some(k => h.includes(k)))
@@ -191,7 +192,11 @@ export class UniversalTranslator {
                 // Es probable que sea un CUIT en la columna incorrecta
             }
 
-            const concepto = this.normalizeConcept(row[idx.desc], thesaurus);
+            let conceptoRaw = idx.desc !== -1 ? row[idx.desc] : '';
+            if (!conceptoRaw && idx.razon_social !== -1) {
+                conceptoRaw = row[idx.razon_social];
+            }
+            const concepto = this.normalizeConcept(conceptoRaw, thesaurus);
             const cuit = (idx.cuit !== -1 ? row[idx.cuit] : '').replace(/[^0-9]/g, '');
 
             // Lógica de Signos si viene en columna Tipo
@@ -214,11 +219,11 @@ export class UniversalTranslator {
                     concepto,
                     monto,
                     cuit,
-                    razon_social: idx.desc !== -1 ? row[idx.desc] : undefined,
+                    razon_social: idx.razon_social !== -1 ? row[idx.razon_social] : undefined,
                     vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) || undefined : undefined,
                     numero: idx.numero !== -1 ? row[idx.numero] : undefined,
                     tipo,
-                    tags: [] // Remove automatic tagging to allow AI Learning flow
+                    tags: []
                 });
             }
         }
