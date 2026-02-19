@@ -248,7 +248,7 @@ export async function POST(request: Request) {
                 const sanitizedComprobantes = transactionsWithLink.map((t: any) => ({
                     organization_id: t.organization_id || orgId,
                     tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
-                    numero: t.numero || (t.concepto && t.concepto.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
+                    numero: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
                     cuit_socio: t.cuit || '00-00000000-0',
                     razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
                     fecha_emision: t.fecha,
@@ -256,8 +256,7 @@ export async function POST(request: Request) {
                     monto_total: Math.abs(t.monto),
                     monto_pendiente: Math.abs(t.monto),
                     estado: 'pendiente',
-                    moneda: t.moneda || 'ARS',
-                    metadata: { ...t, original_concepto: t.concepto }
+                    moneda: t.moneda || 'ARS'
                 }))
 
                 console.log(`[UPLOAD] [TREASURY] Final mapped count for ${uploadContext}: ${sanitizedComprobantes.length}`)

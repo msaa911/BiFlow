@@ -96,23 +96,24 @@ export class UniversalTranslator {
             { char: '|', threshold: 0.3 },
             { char: ';', threshold: 0.5 },
             { char: '\t', threshold: 0.5 },
-            { char: ',', threshold: 0.5 }
+            { char: ',', threshold: 0.5 },
+            { char: 'SPACE_MULTI', threshold: 0.4 } // Nueva opción para archivos alineados
         ];
 
         for (const cand of candidates) {
             let consistentLines = 0;
-            let maxCols = 0;
+            const delimiter = cand.char === 'SPACE_MULTI' ? /\s{2,}/ : cand.char;
 
             lines.forEach(l => {
-                const c = countOutsideQuotes(l, cand.char);
-                if (c > 1) {
+                const parts = l.trim().split(delimiter);
+                if (parts.length > 2) {
                     consistentLines++;
-                    if (c > maxCols) maxCols = c;
                 }
             });
 
-            // Si la mayoría de las líneas tienen estructura, ganamos
-            if (consistentLines >= lines.length * 0.5) return cand.char;
+            if (consistentLines >= lines.length * 0.4) {
+                return cand.char;
+            }
         }
         return null;
     }
@@ -121,11 +122,11 @@ export class UniversalTranslator {
 
         // Función de Split Inteligente (Maneja comillas: "1,200.00")
         const splitSmart = (text: string, delim: string) => {
+            if (delim === 'SPACE_MULTI') return text.trim().split(/\s{2,}/);
             if (delim !== ',') return text.split(delim);
-            // Regex para partir por coma salvo que esté entre comillas
             const matches = text.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
             if (!matches || matches.length < 2) return text.split(delim);
-            return matches.map(m => m.replace(/^"|"$/g, '').trim()); // Quitar comillas envolventes
+            return matches.map(m => m.replace(/^"|"$/g, '').trim());
         };
 
         let headerIdx = -1;
