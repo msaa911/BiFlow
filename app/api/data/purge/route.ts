@@ -58,6 +58,14 @@ export async function DELETE(request: Request) {
             await supabase.storage.from('raw-imports').remove(paths)
         }
 
+        // 5. Reset Company Settings to Default
+        await supabase.from('configuracion_empresa').update({
+            tna: 0,
+            colchon_liquidez: 0,
+            limite_descubierto: 0,
+            modo_tasa: 'AUTOMATICO'
+        }).eq('organization_id', orgId)
+
         console.log(`[PURGE] Completed global reset for org: ${orgId}`)
         return NextResponse.json({ success: true, message: 'All organizational data has been reset.' })
 

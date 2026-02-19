@@ -77,6 +77,7 @@ export async function runAnalysis(organizationId: string) {
     // Keywords to detect taxes
     const TAX_KEYWORDS = ['AFIP', 'ARBA', 'RETENCION', 'PERCEPCION', 'IIBB', 'SUSS', 'IMPUESTO']
     const newTaxConfigs: any[] = []
+    const seenNewPatrons = new Set<string>()
 
     // Clear existing detectado findings to allow "re-runs" to update data
     await supabase.from('hallazgos').delete().eq('organization_id', organizationId).eq('estado', 'detectado')
@@ -92,11 +93,23 @@ export async function runAnalysis(organizationId: string) {
             const config = taxMap.get(descUpper)
 
             if (!config) {
-                newTaxConfigs.push({
-                    organization_id: organizationId,
-                    patron_busqueda: t.descripcion,
-                    estado: 'PENDIENTE'
-                })
+                // First time seeing this patron in this org
+                if (!seenNewPatrons.has(descUpper)) {
+                    newTaxConfigs.push({
+                        organization_id: organizationId,
+                        patron_busqueda: t.descripcion,
+                        estado: 'PENDIENTE'
+                    })
+                    seenNewPatrons.add(descUpper)
+                }
+
+                // Tag the transaction as pending classification
+                const tags = [...(t.tags || [])]
+                if (!tags.includes('pendiente_clasificacion')) {
+                    tags.push('pendiente_clasificacion')
+                    t.tags = tags
+                    transactionsToUpdate.push({ id: t.id, tags: t.tags })
+                }
             } else if (config.estado === 'PENDIENTE') {
                 const tags = [...(t.tags || [])]
                 if (!tags.includes('pendiente_clasificacion')) {
@@ -105,6 +118,14 @@ export async function runAnalysis(organizationId: string) {
                     transactionsToUpdate.push({ id: t.id, tags: t.tags })
                 }
             } else if (config.es_recuperable && !config.omitir_siempre) {
+                // Already classified as manageable tax
+                const tags = [...(t.tags || [])]
+                if (!tags.includes('impuesto_recuperable')) {
+                    tags.push('impuesto_recuperable')
+                    t.tags = tags
+                    transactionsToUpdate.push({ id: t.id, tags: t.tags })
+                }
+
                 findings.push({
                     organization_id: organizationId,
                     transaccion_id: t.id,

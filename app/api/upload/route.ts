@@ -78,9 +78,7 @@ export async function POST(request: Request) {
                 // --- FIX: Map and Enrich Custom Format Results ---
                 transactions = res.transactions.map((t: any) => {
                     const concepto = t.concepto || 'Sin concepto'
-                    const isTax = UniversalTranslator.isTax(t.cuit || '', concepto)
                     const tags = [...(t.tags || [])]
-                    if (isTax) tags.push('impuesto_recuperable')
 
                     return {
                         ...t,

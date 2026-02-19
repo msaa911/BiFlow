@@ -210,7 +210,7 @@ export class UniversalTranslator {
                     monto,
                     cuit,
                     tipo,
-                    tags: this.isTax(cuit, concepto) ? ['impuesto_recuperable'] : []
+                    tags: [] // Remove automatic tagging to allow AI Learning flow
                 });
             }
         }
