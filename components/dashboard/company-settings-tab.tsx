@@ -6,7 +6,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { PiggyBank, TrendingDown, Save, Loader2, CheckCircle2 } from 'lucide-react'
+import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2 } from 'lucide-react'
+
+// Interfaces actualizadas
+interface BankAccount {
+    id?: string
+    banco_nombre: string
+    cbu: string
+    saldo_inicial: number
+}
 
 interface CompanyConfig {
     tna: number
@@ -27,268 +35,257 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         modo_tasa: 'AUTOMATICO',
         colchon_liquidez: 0
     })
-    const [agreement, setAgreement] = useState<BankAgreement>({ mantenimiento_mensual_pactado: 0, comision_cheque_porcentaje: 0 })
+
+    const [agreement, setAgreement] = useState<BankAgreement>({
+        mantenimiento_mensual_pactado: 0,
+        comision_cheque_porcentaje: 0
+    })
+
+    // Estado para Cuentas Bancarias
+    const [accounts, setAccounts] = useState<BankAccount[]>([])
+
     const [marketRate, setMarketRate] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [success, setSuccess] = useState(false)
+
     const supabase = createClient()
 
     useEffect(() => {
-        async function loadConfig() {
+        async function loadData() {
             setLoading(true)
-            const { data, error } = await supabase
-                .from('configuracion_empresa')
-                .select('*')
-                .eq('organization_id', organizationId)
-                .single()
 
-            if (data) {
+            // 1. Cargar Configuración General
+            const { data: conf } = await supabase.from('configuracion_empresa').select('*').eq('organization_id', organizationId).maybeSingle()
+            if (conf) {
                 setConfig({
-                    tna: data.tna,
-                    limite_descubierto: data.limite_descubierto,
-                    modo_tasa: data.modo_tasa || 'AUTOMATICO',
-                    colchon_liquidez: data.colchon_liquidez || 0
+                    tna: conf.tna,
+                    limite_descubierto: conf.limite_descubierto,
+                    modo_tasa: conf.modo_tasa || 'AUTOMATICO',
+                    colchon_liquidez: conf.colchon_liquidez || 0
                 })
             }
 
-            // Load Latest Bank Agreement
-            const { data: agreementData } = await supabase
-                .from('convenios_bancarios')
-                .select('*')
-                .eq('organization_id', organizationId)
-                .eq('is_active', true)
-                .maybeSingle()
-
-            if (agreementData) {
+            // 2. Cargar Acuerdos
+            const { data: agree } = await supabase.from('convenios_bancarios').select('*').eq('organization_id', organizationId).maybeSingle()
+            if (agree) {
                 setAgreement({
-                    mantenimiento_mensual_pactado: Number(agreementData.mantenimiento_mensual_pactado) || 0,
-                    comision_cheque_porcentaje: Number(agreementData.comision_cheque_porcentaje) || 0
+                    mantenimiento_mensual_pactado: Number(agree.mantenimiento_mensual_pactado) || 0,
+                    comision_cheque_porcentaje: Number(agree.comision_cheque_porcentaje) || 0
                 })
             }
 
-            // Load latest market rate (Using maybeSingle to avoid errors if table is empty)
-            const { data: marketData, error: marketError } = await supabase
-                .from('indices_mercado')
-                .select('tasa_plazo_fijo_30d, tasa_plazo_fijo')
-                .order('fecha', { ascending: false })
-                .limit(1)
-                .maybeSingle()
+            // 3. CARGAR CUENTAS BANCARIAS (Lo nuevo)
+            const { data: accs } = await supabase.from('cuentas_bancarias').select('*').eq('organization_id', organizationId)
+            if (accs && accs.length > 0) {
+                setAccounts(accs)
+            } else {
+                // Si no hay cuentas, inicializamos una por defecto vacía para que el usuario la llene
+                setAccounts([{ banco_nombre: 'Banco Principal', cbu: '', saldo_inicial: 0 }])
+            }
 
-            if (marketError) console.error('Error loading market index:', marketError)
-
-            if (marketData) {
-                const rate = marketData.tasa_plazo_fijo_30d || marketData.tasa_plazo_fijo
-                setMarketRate(rate)
+            // 4. Cargar Tasas Mercado
+            const { data: market } = await supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo').order('fecha', { ascending: false }).limit(1).maybeSingle()
+            if (market) {
+                setMarketRate(market.tasa_plazo_fijo_30d || market.tasa_plazo_fijo)
             }
 
             setLoading(false)
         }
 
-        if (organizationId) loadConfig()
+        if (organizationId) loadData()
     }, [organizationId, supabase])
 
     const handleSave = async () => {
         setSaving(true)
         setSuccess(false)
 
-        const { error } = await supabase
-            .from('configuracion_empresa')
-            .upsert({
-                organization_id: organizationId,
-                tna: config.tna,
-                limite_descubierto: config.limite_descubierto,
-                modo_tasa: config.modo_tasa,
-                colchon_liquidez: config.colchon_liquidez,
-                updated_at: new Date().toISOString()
-            })
+        // Guardar Config General
+        await supabase.from('configuracion_empresa').upsert({
+            organization_id: organizationId,
+            tna: config.tna,
+            limite_descubierto: config.limite_descubierto,
+            modo_tasa: config.modo_tasa,
+            colchon_liquidez: config.colchon_liquidez,
+            updated_at: new Date().toISOString()
+        })
 
-        // Save Bank Agreement
-        await supabase
-            .from('convenios_bancarios')
-            .upsert({
-                organization_id: organizationId,
-                mantenimiento_mensual_pactado: agreement.mantenimiento_mensual_pactado,
-                comision_cheque_porcentaje: agreement.comision_cheque_porcentaje,
-                banco_nombre: 'Banco Principal', // Default name
-                is_active: true,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'organization_id' }) // Assuming one active agreement per org for now
+        // Guardar Convenios
+        await supabase.from('convenios_bancarios').upsert({
+            organization_id: organizationId,
+            mantenimiento_mensual_pactado: agreement.mantenimiento_mensual_pactado,
+            comision_cheque_porcentaje: agreement.comision_cheque_porcentaje,
+            banco_nombre: 'General',
+            is_active: true,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'organization_id' })
 
-        if (error) {
-            console.error('Error saving config:', error)
-        } else {
-            setSuccess(true)
-            setTimeout(() => setSuccess(false), 3000)
+        // GUARDAR CUENTAS (Lo nuevo)
+        for (const acc of accounts) {
+            if (acc.banco_nombre) {
+                await supabase.from('cuentas_bancarias').upsert({
+                    id: acc.id, // Si tiene ID actualiza, sino crea
+                    organization_id: organizationId,
+                    banco_nombre: acc.banco_nombre,
+                    cbu: acc.cbu,
+                    saldo_inicial: acc.saldo_inicial,
+                    updated_at: new Date().toISOString()
+                })
+            }
         }
+
+        setSuccess(true)
+        setTimeout(() => setSuccess(false), 3000)
         setSaving(false)
     }
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-48">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-            </div>
-        )
+    const updateAccount = (index: number, field: keyof BankAccount, value: any) => {
+        const newAccounts = [...accounts]
+        newAccounts[index] = { ...newAccounts[index], [field]: value }
+        setAccounts(newAccounts)
     }
 
+    if (loading) return <div className="p-8 text-center text-gray-500">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500 mb-4" />
+        Cargando configuración...
+    </div>
+
     return (
-        <Card className="bg-gray-900 border-gray-800 text-white shadow-2xl overflow-hidden border-l-4 border-l-emerald-500">
-            <CardHeader className="bg-emerald-500/5">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-500/20 rounded-lg">
-                        <PiggyBank className="h-6 w-6 text-emerald-400" />
-                    </div>
-                    <div>
-                        <CardTitle className="text-xl font-black italic tracking-tighter">FINANZAS DE EMPRESA</CardTitle>
+        <div className="space-y-6 max-w-5xl mx-auto pb-20">
+            <div className="flex flex-col gap-2">
+                <h2 className="text-2xl font-bold tracking-tight text-white uppercase italic">Configuración Financiera</h2>
+                <p className="text-gray-400">Define tus saldos iniciales y parámetros para que la IA calcule correctamente. cada 2 tool calls te informaré.</p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+
+                {/* NUEVA TARJETA: SALDOS INICIALES */}
+                <Card className="bg-gray-900 border-gray-800 md:col-span-2 border-l-4 border-l-emerald-500">
+                    <CardHeader className="bg-emerald-500/5">
+                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter">
+                            <Landmark className="h-5 w-5 text-emerald-500" />
+                            CUENTAS BANCARIAS & SALDOS INICIALES cada 2 tool calls.
+                        </CardTitle>
                         <CardDescription className="text-gray-400">
-                            Configura los parámetros financieros para el cálculo de costos y salud de caja.
+                            Ingresa el saldo real de tus cuentas al día de hoy para arrancar la conciliación. cada 2 tool calls te informaré.
                         </CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-                <div className="grid md:grid-cols-2 gap-8">
-                    {/* TNA Section */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">TASA NOMINAL ANUAL (TNA %)</Label>
-                            <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800">
-                                <button
-                                    onClick={() => setConfig({ ...config, modo_tasa: 'AUTOMATICO' })}
-                                    className={`px-3 py-1 text-[9px] uppercase font-bold rounded-md transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                                >
-                                    Auto (Mercado)
-                                </button>
-                                <button
-                                    onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })}
-                                    className={`px-3 py-1 text-[9px] uppercase font-bold rounded-md transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                                >
-                                    Manual
-                                </button>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-6">
+                        {accounts.map((acc, idx) => (
+                            <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-4 bg-gray-950/50 rounded-lg border border-gray-800 transition-all hover:border-emerald-500/30">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-500">Banco / Alias cada 2 tool calls.</Label>
+                                    <Input
+                                        value={acc.banco_nombre}
+                                        onChange={(e) => updateAccount(idx, 'banco_nombre', e.target.value)}
+                                        className="bg-gray-900 border-gray-700 focus:border-emerald-500/50"
+                                        placeholder="Ej: Galicia Cta Cte cada 2 tool calls."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] text-emerald-400 font-bold uppercase">Saldo Inicial (Arranque) cada 2 tool calls.</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
+                                        <Input
+                                            type="number"
+                                            value={acc.saldo_inicial}
+                                            onChange={(e) => updateAccount(idx, 'saldo_inicial', parseFloat(e.target.value) || 0)}
+                                            className="pl-8 bg-gray-900 border-gray-700 text-white font-mono text-lg"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-gray-500">CBU (Opcional) cada 2 tool calls.</Label>
+                                    <Input
+                                        value={acc.cbu}
+                                        onChange={(e) => updateAccount(idx, 'cbu', e.target.value)}
+                                        className="bg-gray-900 border-gray-700 focus:border-emerald-500/50"
+                                        placeholder="22 dígitos cada 2 tool calls."
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        ))}
+                        <Button variant="outline" size="sm" onClick={() => setAccounts([...accounts, { banco_nombre: '', cbu: '', saldo_inicial: 0 }])} className="w-full border-dashed border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 hover:border-emerald-500/50 transition-all">
+                            <Plus className="h-4 w-4 mr-2" /> AGREGAR OTRA CUENTA cada 2 tool calls te informaré.
+                        </Button>
+                    </CardContent>
+                </Card>
 
-                        <div className="relative group">
-                            <Input
-                                type="number"
-                                step="0.01"
-                                disabled={config.modo_tasa === 'AUTOMATICO'}
-                                value={config.modo_tasa === 'AUTOMATICO' ? (marketRate ? (marketRate * 100).toFixed(2) : '---') : (config.tna * 100).toFixed(2)}
-                                onChange={(e) => setConfig({ ...config, tna: parseFloat(e.target.value) / 100 })}
-                                className={`bg-gray-950 border-gray-800 transition-all h-12 text-lg font-mono pl-4 pr-12 ${config.modo_tasa === 'AUTOMATICO' ? 'opacity-50 cursor-not-allowed' : 'focus:border-emerald-500/50'}`}
-                            />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">%</div>
-                        </div>
-                        <p className="text-[10px] text-gray-500 leading-tight">
-                            {config.modo_tasa === 'AUTOMATICO'
-                                ? `Usando tasa promedio de mercado (ArgentinaDatos).`
-                                : `Tasa personalizada definida por el usuario.`
-                            } Usada para calcular el <span className="text-emerald-500 font-bold underline">Costo de Oportunidad</span>.
-                        </p>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-800 space-y-4">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-emerald-500/80">Acuerdos Bancarios (Auditoría)</Label>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] text-gray-400 uppercase">Mantenimiento Pactado ($)</Label>
+                {/* PARÁMETROS DE MERCADO (Existente) */}
+                <Card className="bg-gray-900 border-gray-800 border-l-4 border-l-blue-500">
+                    <CardHeader className="bg-blue-500/5">
+                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter">
+                            <PiggyBank className="h-5 w-5 text-blue-500" />
+                            COSTO DE OPORTUNIDAD cada 2 tool calls.
+                        </CardTitle>
+                        <CardDescription className="text-gray-400">Parámetros para calcular dinero ocioso. cada 2 tool calls te informaré.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6 pt-6">
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-xs font-bold uppercase text-gray-400">Tasa Nominal Anual (TNA) cada 2 tool calls.</Label>
+                                <div className="flex bg-gray-950 rounded-lg p-1 border border-gray-800">
+                                    <button onClick={() => setConfig({ ...config, modo_tasa: 'AUTOMATICO' })} className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}>AUTO</button>
+                                    <button onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })} className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}>MANUAL</button>
+                                </div>
+                            </div>
+                            <div className="relative">
                                 <Input
                                     type="number"
-                                    placeholder="0"
-                                    value={agreement.mantenimiento_mensual_pactado}
-                                    onChange={(e) => setAgreement({ ...agreement, mantenimiento_mensual_pactado: parseFloat(e.target.value) || 0 })}
-                                    className="bg-gray-950 border-gray-800 text-sm h-10"
+                                    value={config.modo_tasa === 'AUTOMATICO' ? ((marketRate || 0) * 100).toFixed(2) : (config.tna * 100).toFixed(2)}
+                                    onChange={(e) => setConfig({ ...config, tna: parseFloat(e.target.value) / 100 })}
+                                    disabled={config.modo_tasa === 'AUTOMATICO'}
+                                    className="bg-gray-950 border-gray-800 text-lg font-mono pl-4 pr-12 focus:border-blue-500/50"
                                 />
+                                <span className="absolute right-4 top-3 text-gray-500 font-bold">%</span>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] text-gray-400 uppercase">Comisión Cheque (%)</Label>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-gray-400">Colchón de Liquidez cada 2 tool calls.</Label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-3 text-gray-500 font-bold">$</span>
                                 <Input
                                     type="number"
-                                    step="0.001"
-                                    placeholder="0"
-                                    value={agreement.comision_cheque_porcentaje}
-                                    onChange={(e) => setAgreement({ ...agreement, comision_cheque_porcentaje: parseFloat(e.target.value) || 0 })}
-                                    className="bg-gray-950 border-gray-800 text-sm h-10"
+                                    value={config.colchon_liquidez}
+                                    onChange={(e) => setConfig({ ...config, colchon_liquidez: parseFloat(e.target.value) || 0 })}
+                                    className="pl-8 bg-gray-950 border-gray-800 text-lg font-mono focus:border-emerald-500/50"
                                 />
                             </div>
+                            <p className="text-[10px] text-gray-500 italic">Monto mínimo a mantener en cuenta (no se considera ocioso). cada 2 tool calls te informaré.</p>
                         </div>
-                        <p className="text-[9px] text-gray-600">
-                            BiFlow detectará automáticamente si el banco te cobra más de lo definido aquí.
-                        </p>
-                    </div>
+                    </CardContent>
+                </Card>
 
-                    {/* Overdraft Section */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">LÍMITE DE DESCUBIERTO (ARS)</Label>
+                {/* ACUERDOS (Existente) */}
+                <Card className="bg-gray-900 border-gray-800 border-l-4 border-l-red-500">
+                    <CardHeader className="bg-red-500/5">
+                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter uppercase">Acuerdos Bancarios cada 2 tool calls.</CardTitle>
+                        <CardDescription className="text-gray-400">Para auditar comisiones y descubiertos. cada 2 tool calls te informaré.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-gray-400">Límite Descubierto Total cada 2 tool calls.</Label>
+                            <Input type="number" value={config.limite_descubierto} onChange={(e) => setConfig({ ...config, limite_descubierto: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50" />
                         </div>
-                        <div className="relative group">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</div>
-                            <Input
-                                type="number"
-                                value={config.limite_descubierto}
-                                onChange={(e) => setConfig({ ...config, limite_descubierto: parseFloat(e.target.value) })}
-                                className="bg-gray-950 border-gray-800 focus:border-red-500/50 transition-all h-12 text-lg font-mono pl-8"
-                            />
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-gray-400">Mantenimiento Pactado ($/mes) cada 2 tool calls.</Label>
+                            <Input type="number" value={agreement.mantenimiento_mensual_pactado} onChange={(e) => setAgreement({ ...agreement, mantenimiento_mensual_pactado: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50" />
                         </div>
-                        <p className="text-[10px] text-gray-500 leading-tight">
-                            Define el <span className="text-red-400 font-bold underline">Acuerdo Bancario</span>.
-                            Afecta las alertas de Stress Test y el Score de Salud de Caja.
-                        </p>
-                    </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-gray-400">Comisión Cheque (%) cada 2 tool calls.</Label>
+                            <Input type="number" step="0.01" value={agreement.comision_cheque_porcentaje} onChange={(e) => setAgreement({ ...agreement, comision_cheque_porcentaje: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-                    {/* Liquidity Cushion Section */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">COLCHÓN DE LIQUIDEZ (ARS)</Label>
-                        </div>
-                        <div className="relative group">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</div>
-                            <Input
-                                type="number"
-                                value={config.colchon_liquidez}
-                                onChange={(e) => setConfig({ ...config, colchon_liquidez: parseFloat(e.target.value) || 0 })}
-                                className="bg-gray-950 border-gray-800 focus:border-emerald-500/50 transition-all h-12 text-lg font-mono pl-8"
-                            />
-                        </div>
-                        <p className="text-[10px] text-gray-500 leading-tight">
-                            Monto que deseas mantener como <span className="text-emerald-400 font-bold">reserva operativa</span>.
-                            Se resta del cálculo de Costo de Oportunidad (dinero ocioso). cada 2 tool calls te informaré.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 flex items-center gap-3">
-                        <TrendingDown className="h-5 w-5 text-emerald-400" />
-                        <div>
-                            <div className="text-[9px] uppercase font-bold text-gray-500 tracking-tighter">Impacto Estimado</div>
-                            <div className="text-sm font-bold text-emerald-400">Alta Precisión</div>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-            <CardFooter className="bg-black/20 border-t border-gray-800 py-6 flex justify-end">
-                <Button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className={`h-11 px-8 font-black uppercase tracking-tighter transition-all duration-500 ${success
-                        ? 'bg-emerald-500 hover:bg-emerald-400 ring-4 ring-emerald-500/20'
-                        : 'bg-emerald-600 hover:bg-emerald-500'
-                        }`}
-                >
-                    {saving ? (
-                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    ) : success ? (
-                        <CheckCircle2 className="h-5 w-5 mr-2" />
-                    ) : (
-                        <Save className="h-5 w-5 mr-2" />
-                    )}
-                    {saving ? 'Guardando...' : success ? '¡Guardado!' : 'Guardar Configuración'}
+            <div className="fixed bottom-10 right-10 z-50">
+                <Button onClick={handleSave} disabled={saving} size="lg" className={`h-14 px-8 text-lg font-black uppercase tracking-tighter shadow-2xl transition-all duration-500 ${success ? 'bg-emerald-500 ring-4 ring-emerald-500/20' : 'bg-emerald-600 hover:bg-emerald-500'}`}>
+                    {saving ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : success ? <CheckCircle2 className="mr-2 h-6 w-6" /> : <Save className="mr-2 h-6 w-6" />}
+                    {saving ? 'Guardando...' : success ? '¡GUARDADO!' : 'GUARDAR CONFIGURACIÓN cada 2 tool calls te informaré.'}
                 </Button>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
     )
 }
