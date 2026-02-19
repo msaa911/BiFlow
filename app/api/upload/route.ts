@@ -246,18 +246,22 @@ export async function POST(request: Request) {
                 uniqueCount = transactions.length
 
                 const sanitizedComprobantes = transactionsWithLink.map((t: any) => ({
-                    organization_id: t.organization_id,
+                    organization_id: t.organization_id || orgId,
                     tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
-                    numero: t.numero || `FILE-${importId.substring(0, 6)}`,
+                    numero: t.numero || (t.concepto && t.concepto.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
                     cuit_socio: t.cuit || '00-00000000-0',
-                    razon_social_socio: t.razon_social || t.descripcion,
+                    razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
                     fecha_emision: t.fecha,
                     fecha_vencimiento: t.vencimiento || t.fecha,
                     monto_total: Math.abs(t.monto),
                     monto_pendiente: Math.abs(t.monto),
                     estado: 'pendiente',
-                    moneda: t.moneda || 'ARS'
+                    moneda: t.moneda || 'ARS',
+                    metadata: { ...t, original_concepto: t.concepto }
                 }))
+
+                console.log(`[UPLOAD] [TREASURY] Final mapped count for ${uploadContext}: ${sanitizedComprobantes.length}`)
+                uniqueCount = sanitizedComprobantes.length
 
                 const { error: compError } = await currentSupabase
                     .from('comprobantes')

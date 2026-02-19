@@ -152,8 +152,8 @@ export class UniversalTranslator {
             razon_social: headers.findIndex(h => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'empresa', 'denominacion', 'denominación', 'emisor', 'receptor'].some(k => h.includes(k))),
             cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento', 'id'].some(k => h.includes(k))),
             tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado'].some(k => h.includes(k))),
-            vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date'].some(k => h.includes(k))),
-            numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'factura', 'id'].some(k => h.includes(k))),
+            vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
+            numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta'].some(k => h.includes(k))),
             // AQUÍ EL FIX DE TILDES:
             debito: headers.findIndex(h => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo'].some(k => h.includes(k))),
             credito: headers.findIndex(h => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono'].some(k => h.includes(k)))
@@ -232,9 +232,37 @@ export class UniversalTranslator {
     }
 
     private static parseNoHeader(lines: string[], delimiter: string, thesaurus?: Map<string, string>): { transactions: Transaction[], hasExplicitTipo: boolean } {
-        // (Misma lógica heurística existente, útil para archivos sin cabecera)
         const transactions: Transaction[] = [];
-        // ... Implementación simplificada para brevedad ...
+        for (const line of lines) {
+            const row = line.split(delimiter);
+            if (row.length < 2) continue;
+
+            const dateMatch = line.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/);
+            if (!dateMatch) continue;
+
+            const fecha = this.normalizeDate(dateMatch[1]);
+            if (!fecha) continue;
+
+            // Buscar el primer número que parezca un importe
+            let monto = 0;
+            for (const cell of row) {
+                const val = this.parseCurrency(cell);
+                if (val !== 0 && Math.abs(val) < 10000000) { // Evitar CUITs
+                    monto = val;
+                    break;
+                }
+            }
+
+            if (monto !== 0) {
+                transactions.push({
+                    fecha,
+                    concepto: this.normalizeConcept(line.substring(0, 50), thesaurus),
+                    monto,
+                    cuit: '',
+                    tipo: monto < 0 ? 'DEBITO' : 'CREDITO'
+                });
+            }
+        }
         return { transactions, hasExplicitTipo: false };
     }
 
@@ -298,8 +326,10 @@ export class UniversalTranslator {
             // Soporte YYYY-MM-DD
             if (p1.length === 4) return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
             // Soporte DD-MM-YY o DD-MM-YYYY
-            if (p3.length === 2) p3 = `20${p3}`;
-            if (p3.length === 4) return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+            if (p1.length < 3 && p3.length >= 2) {
+                if (p3.length === 2) p3 = `20${p3}`;
+                return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+            }
         }
         return null;
     }
