@@ -140,6 +140,7 @@ export async function runAnalysis(organizationId: string) {
                     newTaxConfigs.push({
                         organization_id: organizationId,
                         patron_busqueda: t.descripcion,
+                        categoria: match.category,
                         estado: 'PENDIENTE'
                     })
                     seenNewPatrons.add(descUpper)

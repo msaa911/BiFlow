@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 interface PendingTax {
     id: string
     patron_busqueda: string
+    categoria: string
 }
 
 export function TaxLearningWidget({ organizationId }: { organizationId: string }) {
@@ -22,7 +23,7 @@ export function TaxLearningWidget({ organizationId }: { organizationId: string }
         async function loadPending() {
             const { data } = await supabase
                 .from('tax_intelligence_rules')
-                .select('id, patron_busqueda')
+                .select('id, patron_busqueda, categoria')
                 .eq('organization_id', organizationId)
                 .eq('estado', 'PENDIENTE')
                 .limit(1) // Only show one at a time to not overwhelm
@@ -79,11 +80,17 @@ export function TaxLearningWidget({ organizationId }: { organizationId: string }
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
                 <div className="space-y-1">
-                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-tighter">He detectado un nuevo concepto impositivo:</p>
+                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-tighter">
+                        {current.categoria === 'servicio' ? 'He detectado un gasto recurrente:' : 'He detectado un nuevo concepto impositivo:'}
+                    </p>
                     <div className="bg-gray-900 border border-gray-800 p-3 rounded-lg">
                         <p className="text-lg font-mono font-bold text-white tracking-tight">{current.patron_busqueda}</p>
                     </div>
-                    <p className="text-xs font-bold text-gray-300 mt-2">¿Este impuesto es recuperable (percepción/retención) para tu empresa?</p>
+                    <p className="text-xs font-bold text-gray-300 mt-2">
+                        {current.categoria === 'servicio'
+                            ? '¿Este servicio suele tener IVA recuperable (ej: Factura A)?'
+                            : '¿Este impuesto es recuperable (percepción/retención) para tu empresa?'}
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -99,9 +106,9 @@ export function TaxLearningWidget({ organizationId }: { organizationId: string }
                         onClick={() => handleClassify(current.id, 'NO')}
                         variant="outline"
                         disabled={processingId === current.id}
-                        className="border-gray-800 hover:bg-red-500/10 hover:text-red-400 font-bold uppercase tracking-tighter text-[10px] h-9"
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold uppercase tracking-tighter text-[10px] h-9"
                     >
-                        No, es un Gasto
+                        {current.categoria === 'servicio' ? 'No, es un Gasto Simple' : 'No, no es recuperable'}
                     </Button>
                     <Button
                         onClick={() => handleClassify(current.id, 'LATER')}
