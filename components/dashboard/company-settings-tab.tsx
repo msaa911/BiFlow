@@ -103,7 +103,6 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 .from('configuracion_impuestos')
                 .select('*')
                 .eq('organization_id', organizationId)
-                .neq('estado', 'PENDIENTE')
 
             if (rules) setTaxRules(rules)
 
@@ -432,8 +431,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                             <tr key={rule.id} className="group hover:bg-white/5 transition-colors">
                                                 <td className="py-4 pl-2 font-mono text-xs text-white max-w-[300px] truncate">{rule.patron_busqueda}</td>
                                                 <td className="py-4 text-[10px] font-bold">
-                                                    <span className={`px-2 py-0.5 rounded-full ${rule.omitir_siempre ? 'bg-gray-800 text-gray-400' : 'bg-purple-500/10 text-purple-400'}`}>
-                                                        {rule.omitir_siempre ? 'IGNORADO' : 'CLASIFICADO'}
+                                                    <span className={`px-2 py-0.5 rounded-full ${rule.estado === 'PENDIENTE' ? 'bg-amber-500/10 text-amber-500 animate-pulse' : rule.omitir_siempre ? 'bg-gray-800 text-gray-400' : 'bg-purple-500/10 text-purple-400'}`}>
+                                                        {rule.estado === 'PENDIENTE' ? 'NUEVO' : rule.omitir_siempre ? 'IGNORADO' : 'CLASIFICADO'}
                                                     </span>
                                                 </td>
                                                 <td className="py-4">

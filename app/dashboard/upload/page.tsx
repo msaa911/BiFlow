@@ -2,8 +2,9 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle, Trash2 } from 'lucide-react'
+import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle, Trash2, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ImportHistory } from '@/components/dashboard/import-history'
 import { ColumnMapper } from '@/components/dashboard/column-mapper'
 import { SmartFormatBuilder } from '@/components/dashboard/smart-format-builder'
@@ -667,7 +668,16 @@ export default function UploadPage() {
                                     </div>
                                 )}
 
-                                <p className="text-sm text-gray-500 mt-4 italic">Redirigiendo al dashboard automáticamente...</p>
+                                <div className="flex gap-4 mt-8">
+                                    <Link href="/dashboard" className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-all">
+                                        Ir al Dashboard
+                                    </Link>
+                                    <Link href="/dashboard/audit" className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all flex items-center gap-2">
+                                        Audit Center <ArrowRight className="w-4 h-4" />
+                                    </Link>
+                                </div>
+
+                                <p className="text-sm text-gray-500 mt-6 italic">Se han detectado nuevos patrones para clasificar en el centro de auditoría.</p>
                             </div>
                         )}
                     </div>

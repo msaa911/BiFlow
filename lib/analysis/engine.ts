@@ -100,6 +100,13 @@ export async function runAnalysis(organizationId: string) {
                     patron_busqueda: t.descripcion,
                     estado: 'PENDIENTE'
                 })
+            } else if (config.estado === 'PENDIENTE') {
+                // If the config exists but is still pending, tag the transaction for UI feedback
+                const tags = [...(t.tags || [])]
+                if (!tags.includes('pendiente_clasificacion')) {
+                    tags.push('pendiente_clasificacion')
+                }
+                t.tags = tags
             } else if (config.es_recuperable && !config.omitir_siempre) {
                 // If known and recoverable, add to findings
                 findings.push({

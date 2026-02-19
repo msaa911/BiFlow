@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ArrowUpRight, AlertTriangle, Activity, DollarSign } from 'lucide-react'
+import { ArrowUpRight, AlertTriangle, Activity, DollarSign, Brain, Link as LinkIcon, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { KPICard } from '@/components/ui/kpi-card'
 import { DashboardActions } from '@/components/dashboard/actions'
 import { TaxRecoveryWidget } from '@/components/dashboard/tax-recovery-widget'
@@ -84,6 +86,13 @@ export default async function DashboardPage() {
         .select('*', { count: 'exact', head: true })
         .eq('estado', 'pendiente')
 
+    // Fetch Pending Tax Rules for Alert
+    const { count: pendingTaxesCount } = await supabase
+        .from('configuracion_impuestos')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .eq('estado', 'PENDIENTE')
+
     // 2. Fetch Audit Findings for Score
     const { data: findings } = await supabase
         .from('hallazgos')
@@ -159,6 +168,28 @@ export default async function DashboardPage() {
                     >
                         Revisar Cuarentena
                     </a>
+                </div>
+            ) : null}
+
+            {/* Tax Learning Alert */}
+            {pendingTaxesCount && pendingTaxesCount > 0 ? (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500 shadow-[0_0_40px_rgba(245,158,11,0.05)]">
+                    <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 bg-amber-500/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-amber-500/20">
+                            <Brain className="w-8 h-8 text-amber-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Entrenamiento IA Pendiente</h3>
+                            <p className="text-gray-400 text-sm max-w-md mt-1">
+                                Detectamos <span className="text-amber-400 font-bold">{pendingTaxesCount} {pendingTaxesCount === 1 ? 'nuevo tipo de impuesto' : 'nuevos tipos de impuestos'}</span>. Clasifícalos para mejorar la precisión de tu auditoría.
+                            </p>
+                        </div>
+                    </div>
+                    <Link href="/dashboard/audit" className="w-full md:w-auto">
+                        <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-tighter px-8 h-12 rounded-xl group">
+                            Clasificar Ahora <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                    </Link>
                 </div>
             ) : null}
 
