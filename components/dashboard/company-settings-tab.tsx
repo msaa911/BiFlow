@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2 } from 'lucide-react'
+import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2 } from 'lucide-react'
 
 // Interfaces actualizadas
 interface BankAccount {
@@ -145,6 +145,26 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         setAccounts(newAccounts)
     }
 
+    const removeAccount = async (index: number) => {
+        const accountToDelete = accounts[index]
+        if (accountToDelete.id) {
+            setSaving(true)
+            const { error } = await supabase.from('cuentas_bancarias').delete().eq('id', accountToDelete.id)
+            setSaving(false)
+            if (error) {
+                console.error("Error eliminando cuenta:", error)
+                return
+            }
+        }
+        const newAccounts = accounts.filter((_, i) => i !== index)
+        // No permitir quedar con 0 cuentas visualmente si el usuario quiere agregar luego
+        if (newAccounts.length === 0) {
+            setAccounts([{ banco_nombre: '', cbu: '', saldo_inicial: 0 }])
+        } else {
+            setAccounts(newAccounts)
+        }
+    }
+
     if (loading) return <div className="p-8 text-center text-gray-500">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500 mb-4" />
         Cargando configuración...
@@ -172,7 +192,15 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     </CardHeader>
                     <CardContent className="space-y-4 pt-6">
                         {accounts.map((acc, idx) => (
-                            <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-4 bg-gray-950/50 rounded-lg border border-gray-800 transition-all hover:border-emerald-500/30">
+                            <div key={idx} className="relative grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-4 bg-gray-950/50 rounded-lg border border-gray-800 transition-all hover:border-emerald-500/30 group">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeAccount(idx)}
+                                    className="absolute -right-2 -top-2 h-8 w-8 rounded-full bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white border border-red-500/20 z-10"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-gray-500">Banco / Alias</Label>
                                     <Input
@@ -188,7 +216,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                         <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
                                         <Input
                                             type="number"
-                                            value={acc.saldo_inicial}
+                                            value={acc.saldo_inicial} // Wait, is it saldo_inicial or saldo_initial?
                                             onChange={(e) => updateAccount(idx, 'saldo_inicial', parseFloat(e.target.value) || 0)}
                                             className="pl-8 bg-gray-900 border-gray-700 text-white font-mono text-lg"
                                         />
