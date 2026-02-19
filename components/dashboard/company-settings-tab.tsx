@@ -154,7 +154,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         <div className="space-y-6 max-w-5xl mx-auto pb-20">
             <div className="flex flex-col gap-2">
                 <h2 className="text-2xl font-bold tracking-tight text-white uppercase italic">Configuración Financiera</h2>
-                <p className="text-gray-400">Define tus saldos iniciales y parámetros para que la IA calcule correctamente. cada 2 tool calls te informaré.</p>
+                <p className="text-gray-400">Define tus saldos iniciales y parámetros para que la IA calcule correctamente.</p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -164,26 +164,26 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     <CardHeader className="bg-emerald-500/5">
                         <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter">
                             <Landmark className="h-5 w-5 text-emerald-500" />
-                            CUENTAS BANCARIAS & SALDOS INICIALES cada 2 tool calls.
+                            CUENTAS BANCARIAS & SALDOS INICIALES
                         </CardTitle>
                         <CardDescription className="text-gray-400">
-                            Ingresa el saldo real de tus cuentas al día de hoy para arrancar la conciliación. cada 2 tool calls te informaré.
+                            Ingresa el saldo real de tus cuentas al día de hoy para arrancar la conciliación.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 pt-6">
                         {accounts.map((acc, idx) => (
                             <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-4 bg-gray-950/50 rounded-lg border border-gray-800 transition-all hover:border-emerald-500/30">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-500">Banco / Alias cada 2 tool calls.</Label>
+                                    <Label className="text-[10px] font-bold uppercase text-gray-500">Banco / Alias</Label>
                                     <Input
                                         value={acc.banco_nombre}
                                         onChange={(e) => updateAccount(idx, 'banco_nombre', e.target.value)}
-                                        className="bg-gray-900 border-gray-700 focus:border-emerald-500/50"
-                                        placeholder="Ej: Galicia Cta Cte cada 2 tool calls."
+                                        className="bg-gray-900 border-gray-700 focus:border-emerald-500/50 text-white"
+                                        placeholder="Ej: Galicia Cta Cte"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] text-emerald-400 font-bold uppercase">Saldo Inicial (Arranque) cada 2 tool calls.</Label>
+                                    <Label className="text-[10px] text-emerald-400 font-bold uppercase">Saldo Inicial (Arranque)</Label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
                                         <Input
@@ -195,18 +195,18 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-500">CBU (Opcional) cada 2 tool calls.</Label>
+                                    <Label className="text-[10px] font-bold uppercase text-gray-500">CBU (Opcional)</Label>
                                     <Input
                                         value={acc.cbu}
                                         onChange={(e) => updateAccount(idx, 'cbu', e.target.value)}
-                                        className="bg-gray-900 border-gray-700 focus:border-emerald-500/50"
-                                        placeholder="22 dígitos cada 2 tool calls."
+                                        className="bg-gray-900 border-gray-700 focus:border-emerald-500/50 text-white"
+                                        placeholder="22 dígitos"
                                     />
                                 </div>
                             </div>
                         ))}
                         <Button variant="outline" size="sm" onClick={() => setAccounts([...accounts, { banco_nombre: '', cbu: '', saldo_inicial: 0 }])} className="w-full border-dashed border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 hover:border-emerald-500/50 transition-all">
-                            <Plus className="h-4 w-4 mr-2" /> AGREGAR OTRA CUENTA cada 2 tool calls te informaré.
+                            <Plus className="h-4 w-4 mr-2" /> AGREGAR OTRA CUENTA
                         </Button>
                     </CardContent>
                 </Card>
@@ -216,14 +216,14 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     <CardHeader className="bg-blue-500/5">
                         <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter">
                             <PiggyBank className="h-5 w-5 text-blue-500" />
-                            COSTO DE OPORTUNIDAD cada 2 tool calls.
+                            COSTO DE OPORTUNIDAD
                         </CardTitle>
-                        <CardDescription className="text-gray-400">Parámetros para calcular dinero ocioso. cada 2 tool calls te informaré.</CardDescription>
+                        <CardDescription className="text-gray-400">Parámetros para calcular dinero ocioso.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <Label className="text-xs font-bold uppercase text-gray-400">Tasa Nominal Anual (TNA) cada 2 tool calls.</Label>
+                                <Label className="text-xs font-bold uppercase text-gray-400">Tasa Nominal Anual (TNA)</Label>
                                 <div className="flex bg-gray-950 rounded-lg p-1 border border-gray-800">
                                     <button onClick={() => setConfig({ ...config, modo_tasa: 'AUTOMATICO' })} className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}>AUTO</button>
                                     <button onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })} className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}>MANUAL</button>
@@ -235,24 +235,24 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                     value={config.modo_tasa === 'AUTOMATICO' ? ((marketRate || 0) * 100).toFixed(2) : (config.tna * 100).toFixed(2)}
                                     onChange={(e) => setConfig({ ...config, tna: parseFloat(e.target.value) / 100 })}
                                     disabled={config.modo_tasa === 'AUTOMATICO'}
-                                    className="bg-gray-950 border-gray-800 text-lg font-mono pl-4 pr-12 focus:border-blue-500/50"
+                                    className="bg-gray-950 border-gray-800 text-lg font-mono pl-4 pr-12 focus:border-blue-500/50 text-white"
                                 />
                                 <span className="absolute right-4 top-3 text-gray-500 font-bold">%</span>
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Colchón de Liquidez cada 2 tool calls.</Label>
+                            <Label className="text-xs font-bold uppercase text-gray-400">Colchón de Liquidez</Label>
                             <div className="relative">
                                 <span className="absolute left-3 top-3 text-gray-500 font-bold">$</span>
                                 <Input
                                     type="number"
                                     value={config.colchon_liquidez}
                                     onChange={(e) => setConfig({ ...config, colchon_liquidez: parseFloat(e.target.value) || 0 })}
-                                    className="pl-8 bg-gray-950 border-gray-800 text-lg font-mono focus:border-emerald-500/50"
+                                    className="pl-8 bg-gray-950 border-gray-800 text-lg font-mono focus:border-emerald-500/50 text-white"
                                 />
                             </div>
-                            <p className="text-[10px] text-gray-500 italic">Monto mínimo a mantener en cuenta (no se considera ocioso). cada 2 tool calls te informaré.</p>
+                            <p className="text-[10px] text-gray-500 italic">Monto mínimo a mantener en cuenta (no se considera ocioso).</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -260,21 +260,21 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 {/* ACUERDOS (Existente) */}
                 <Card className="bg-gray-900 border-gray-800 border-l-4 border-l-red-500">
                     <CardHeader className="bg-red-500/5">
-                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter uppercase">Acuerdos Bancarios cada 2 tool calls.</CardTitle>
-                        <CardDescription className="text-gray-400">Para auditar comisiones y descubiertos. cada 2 tool calls te informaré.</CardDescription>
+                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter uppercase">Acuerdos Bancarios</CardTitle>
+                        <CardDescription className="text-gray-400">Para auditar comisiones y descubiertos.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 pt-6">
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Límite Descubierto Total cada 2 tool calls.</Label>
-                            <Input type="number" value={config.limite_descubierto} onChange={(e) => setConfig({ ...config, limite_descubierto: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50" />
+                            <Label className="text-xs font-bold uppercase text-gray-400">Límite Descubierto Total</Label>
+                            <Input type="number" value={config.limite_descubierto} onChange={(e) => setConfig({ ...config, limite_descubierto: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Mantenimiento Pactado ($/mes) cada 2 tool calls.</Label>
-                            <Input type="number" value={agreement.mantenimiento_mensual_pactado} onChange={(e) => setAgreement({ ...agreement, mantenimiento_mensual_pactado: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50" />
+                            <Label className="text-xs font-bold uppercase text-gray-400">Mantenimiento Pactado ($/mes)</Label>
+                            <Input type="number" value={agreement.mantenimiento_mensual_pactado} onChange={(e) => setAgreement({ ...agreement, mantenimiento_mensual_pactado: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Comisión Cheque (%) cada 2 tool calls.</Label>
-                            <Input type="number" step="0.01" value={agreement.comision_cheque_porcentaje} onChange={(e) => setAgreement({ ...agreement, comision_cheque_porcentaje: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50" />
+                            <Label className="text-xs font-bold uppercase text-gray-400">Comisión Cheque (%)</Label>
+                            <Input type="number" step="0.01" value={agreement.comision_cheque_porcentaje} onChange={(e) => setAgreement({ ...agreement, comision_cheque_porcentaje: parseFloat(e.target.value) })} className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white" />
                         </div>
                     </CardContent>
                 </Card>
@@ -283,7 +283,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             <div className="fixed bottom-10 right-10 z-50">
                 <Button onClick={handleSave} disabled={saving} size="lg" className={`h-14 px-8 text-lg font-black uppercase tracking-tighter shadow-2xl transition-all duration-500 ${success ? 'bg-emerald-500 ring-4 ring-emerald-500/20' : 'bg-emerald-600 hover:bg-emerald-500'}`}>
                     {saving ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : success ? <CheckCircle2 className="mr-2 h-6 w-6" /> : <Save className="mr-2 h-6 w-6" />}
-                    {saving ? 'Guardando...' : success ? '¡GUARDADO!' : 'GUARDAR CONFIGURACIÓN cada 2 tool calls te informaré.'}
+                    {saving ? 'Guardando...' : success ? '¡GUARDADO!' : 'GUARDAR CONFIGURACIÓN'}
                 </Button>
             </div>
         </div>
