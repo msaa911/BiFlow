@@ -129,7 +129,7 @@ export class UniversalTranslator {
         };
 
         let headerIdx = -1;
-        const keys = ['fecha', 'date', 'fec', 'concepto', 'descripcion', 'monto', 'importe', 'referencia', 'debito', 'credito', 'débito', 'crédito'];
+        const keys = ['fecha', 'date', 'fec', 'concepto', 'descripcion', 'monto', 'importe', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'razon social'];
 
         for (let i = 0; i < Math.min(lines.length, 30); i++) {
             const row = lines[i].toLowerCase();
@@ -306,22 +306,29 @@ export class UniversalTranslator {
 
     private static parseCurrency(str: string): number {
         if (!str) return 0;
-        // Limpieza de símbolos de moneda y espacios
-        let clean = str.replace(/[^0-9.,-]/g, '');
+        // Limpieza de símbolos de moneda y espacios, manteniendo signos iniciales
+        let clean = str.trim().replace(/[^0-9.,-]/g, '');
+        if (!clean) return 0;
 
-        // Detección automática de formato (EU vs US)
+        // Detección automática de formato (EU/AR vs US)
         const lastComma = clean.lastIndexOf(',');
         const lastDot = clean.lastIndexOf('.');
 
-        if (lastComma > lastDot) {
-            // Formato Argentino/Europeo: 1.000,00 -> 1000.00
+        // Caso: 1.000,00 (AR/EU)
+        if (lastComma > lastDot && lastComma !== -1) {
             clean = clean.replace(/\./g, '').replace(',', '.');
-        } else if (lastDot > lastComma) {
-            // Formato US: 1,000.00 -> 1000.00
+        }
+        // Caso: 1,000.00 (US)
+        else if (lastDot > lastComma && lastDot !== -1) {
             clean = clean.replace(/,/g, '');
         }
+        // Caso: 1000,00 (Sin separador miles, coma decimal)
+        else if (lastComma !== -1 && lastDot === -1) {
+            clean = clean.replace(',', '.');
+        }
 
-        return parseFloat(clean) || 0;
+        const num = parseFloat(clean);
+        return isNaN(num) ? 0 : num;
     }
 
     public static isTax(cuit: string, concepto: string): boolean {
