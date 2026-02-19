@@ -316,7 +316,36 @@ export class UniversalTranslator {
     }
 
     private static extractMetadata(lines: string[], transactions: Transaction[]) {
-        // Extracción de metadatos simple
+        const headerLines = lines.slice(0, 15).join('\n').toLowerCase();
+        let saldoInicial = 0;
+        let saldoFinal = 0;
+
+        // Regex para detectar montos con etiquetas de saldo
+        const currencyRegex = (key: string) => new RegExp(`${key}.*?([1-9]{1,3}(?:[.,][1-9]{3})*[.,][1-9]{2})`, 'i');
+
+        // Detectar saldos en encabezado
+        const mInit = headerLines.match(currencyRegex('saldo (?:inicial|anterior)'));
+        if (mInit) saldoInicial = this.parseCurrency(mInit[1]);
+
+        const mEnd = headerLines.match(currencyRegex('saldo (?:final|actual|al)'));
+        if (mEnd) saldoFinal = this.parseCurrency(mEnd[1]);
+
+        // Calcular integridad matemática (Arqueo)
+        if (saldoInicial !== 0 || saldoFinal !== 0) {
+            const debs = transactions.filter(t => t.tipo === 'DEBITO').reduce((acc, t) => acc + Math.abs(t.monto), 0);
+            const creds = transactions.filter(t => t.tipo === 'CREDITO').reduce((acc, t) => acc + Math.abs(t.monto), 0);
+
+            const calc = saldoInicial + creds - debs;
+            const diff = Math.abs(saldoFinal - calc);
+
+            return {
+                saldoInicial,
+                saldoFinal,
+                saldoCalculado: calc,
+                diferencia: diff,
+                isBalanced: diff < 0.05
+            };
+        }
         return {};
     }
 }
