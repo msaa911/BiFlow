@@ -32,9 +32,11 @@ export class LiquidityEngine {
     static simulateStressTest(
         currentBalance: number,
         plannedPayments: { description?: string, descripcion?: string, amount?: number, monto?: number, date?: string, fecha?: string }[],
-        overdraftLimit: number = 0
+        overdraftLimit: number = 0,
+        monthlyInflation: number = 0
     ): StressTestResponse {
         let runningBalance = currentBalance
+        const now = new Date()
         const projection: { date: string, balance: number, alert?: 'low' | 'medium' | 'high' }[] = []
 
         // Normalize keys for both manual and batch inputs
@@ -49,7 +51,13 @@ export class LiquidityEngine {
         let failureDate: string | null = null
 
         normalizedPayments.forEach(payment => {
-            const amount = Number(payment.amount) || 0;
+            const paymentDate = new Date(payment.date)
+            const monthsDiff = Math.max(0, (paymentDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+
+            // Adjust for inflation (compounded monthly)
+            const inflationMultiplier = Math.pow(1 + monthlyInflation, monthsDiff)
+            const amount = (Number(payment.amount) || 0) * inflationMultiplier;
+
             runningBalance += amount;
 
             if (runningBalance < lowestBalance) lowestBalance = runningBalance

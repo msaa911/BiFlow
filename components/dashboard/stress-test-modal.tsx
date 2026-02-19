@@ -34,6 +34,7 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
         ]
     )
     const [overdraftLimit, setOverdraftLimit] = useState(0)
+    const [inflation, setInflation] = useState(0) // Monthly inflation %
     const [result, setResult] = useState<StressTestResponse | null>(null)
 
     const addPayment = () => {
@@ -54,7 +55,7 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
     }
 
     const runSimulation = () => {
-        const res = LiquidityEngine.simulateStressTest(currentBalance, payments, overdraftLimit)
+        const res = LiquidityEngine.simulateStressTest(currentBalance, payments, overdraftLimit, inflation / 100)
         setResult(res)
     }
 
@@ -114,9 +115,9 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-500">Límite de Descubierto ($)</Label>
+                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-500">Límite Descubierto ($)</Label>
                             <Input
                                 type="number"
                                 value={overdraftLimit}
@@ -124,9 +125,19 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                                 className="bg-gray-900 border-gray-800"
                             />
                         </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-500">Inflación Mensual (%)</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={inflation}
+                                onChange={(e) => setInflation(parseFloat(e.target.value))}
+                                className="bg-gray-900 border-gray-800"
+                            />
+                        </div>
                         <div className="flex items-end">
                             <Button onClick={runSimulation} className="w-full bg-blue-600 hover:bg-blue-500 font-bold uppercase tracking-tighter">
-                                Ejecutar Simulación
+                                Simular
                             </Button>
                         </div>
                     </div>
@@ -171,6 +182,26 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                                                 ${result.projection[result.projection.length - 1]?.balance?.toLocaleString() || '0'}
                                             </div>
                                         </div>
+                                    </div>
+                                    <div className="mt-4 flex gap-2">
+                                        <Button
+                                            onClick={() => {
+                                                window.dispatchEvent(new CustomEvent('biflow-add-multiple-projections', {
+                                                    detail: result.projection.map((p, i) => {
+                                                        const original = result.projection[i - 1]?.balance || currentBalance
+                                                        return {
+                                                            descripcion: `Simulación Stress: ${payments[i]?.description || 'Pago'}`,
+                                                            monto: p.balance - original,
+                                                            fecha: p.date
+                                                        }
+                                                    })
+                                                }));
+                                                onClose();
+                                            }}
+                                            className="bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold uppercase h-8"
+                                        >
+                                            Aplicar a Proyecciones
+                                        </Button>
                                     </div>
                                 </div>
                             </div>

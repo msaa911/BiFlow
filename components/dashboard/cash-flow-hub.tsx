@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,43 @@ export function CashFlowHub({ invoices, currentBalance }: CashFlowHubProps) {
         monto: 0,
         fecha: new Date().toISOString().split('T')[0]
     })
+
+    // Listen for AI Suggestions
+    useEffect(() => {
+        const handleAISuggestion = (e: any) => {
+            const { descripcion, monto, fecha } = e.detail;
+            const movement: ProjectedMovement = {
+                id: Math.random().toString(36).substr(2, 9),
+                descripcion,
+                monto,
+                fecha,
+                isProjected: true
+            };
+            setProjections(prev => [...prev, movement]);
+
+            // UI feedback toast/scroll could go here
+        };
+
+        window.addEventListener('biflow-add-projection', handleAISuggestion);
+
+        const handleMultipleSuggestions = (e: any) => {
+            const movements = e.detail.map((m: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                descripcion: m.descripcion,
+                monto: m.monto,
+                fecha: m.fecha,
+                isProjected: true
+            }));
+            setProjections(prev => [...prev, ...movements]);
+        };
+
+        window.addEventListener('biflow-add-multiple-projections', handleMultipleSuggestions);
+
+        return () => {
+            window.removeEventListener('biflow-add-projection', handleAISuggestion);
+            window.removeEventListener('biflow-add-multiple-projections', handleMultipleSuggestions);
+        };
+    }, []);
 
     const projection = TreasuryEngine.projectDailyBalance(currentBalance, invoices, projections)
 

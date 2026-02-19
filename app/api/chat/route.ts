@@ -143,7 +143,12 @@ export async function POST(request: Request) {
 
         if (weeklyExpenses > 0) {
             const days = Math.floor((balance / (weeklyExpenses / 7)));
-            reply = `Con tu saldo actual de $${balance.toLocaleString('es-AR')} y un gasto promedio semanal de $${weeklyExpenses.toLocaleString('es-AR')}, tienes aproximadamente **${days} días de runway** operativo.`
+            const suggestion = JSON.stringify({
+                descripcion: "Reducción de Gastos Operativos (10%)",
+                monto: -Math.round(weeklyExpenses * 0.1),
+                fecha: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            });
+            reply = `Con tu saldo actual de $${balance.toLocaleString('es-AR')} y un gasto promedio semanal de $${weeklyExpenses.toLocaleString('es-AR')}, tienes aproximadamente **${days} días de runway** operativo. ¿Te interesa simular una reducción del 10% en gastos? [[SUGGESTION:${suggestion}]]`
         } else {
             reply = "No tengo suficiente historial de gastos para calcular tu runway, pero tu balance actual es sólido."
         }
@@ -211,7 +216,12 @@ export async function POST(request: Request) {
     }
     else if (msgLower.includes('ahorro') || msgLower.includes('consejo')) {
         if (taxLeaks.length > 0) {
-            reply = "Mi consejo principal hoy: gestiona el recupero de las percepciones detectadas. Representan una fuga de capital que podrías reinvertir en la operación."
+            const suggestion = JSON.stringify({
+                descripcion: "Recupero de Impuestos AFIP/ARBA",
+                monto: totalRecoverable,
+                fecha: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            });
+            reply = `Mi consejo principal hoy: gestiona el recupero de las percepciones detectadas ($${totalRecoverable.toLocaleString('es-AR')}). Representan una fuga de capital que podrías reinvertir. ¿Quieres ver cómo impactaría este ingreso en tu flujo de caja? [[SUGGESTION:${suggestion}]]`
         } else {
             reply = "Tu eficiencia financiera es alta. Mi recomendación es optimizar los saldos ociosos si tu flujo de caja proyectado lo permite."
         }

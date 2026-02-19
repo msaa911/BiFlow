@@ -55,7 +55,10 @@ export default async function DashboardPage() {
 
     const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
 
-    const totalBalance = transactionsSum + initialBalancesSum
+    // If there are no transactions at all, we show 0 balance (Reset state)
+    const totalBalance = (allTransactions && allTransactions.length > 0)
+        ? (transactionsSum + initialBalancesSum)
+        : 0
 
     // Fetch Tax Recovery Items
     const { data: taxItems } = await supabase

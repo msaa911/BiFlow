@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, X, Sparkles, Loader2, MessageSquare } from 'lucide-react'
+import { Send, Bot, User, X, Sparkles, Loader2, MessageSquare, Calculator } from 'lucide-react'
 
 interface Message {
     id: string
@@ -91,21 +91,65 @@ export function AIAdvisor() {
 
             {/* Chat Body */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
-                {messages.map(m => (
-                    <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                            <div className={`p-2 rounded-xl h-fit ${m.role === 'user' ? 'bg-blue-500/10' : 'bg-emerald-500/10'}`}>
-                                {m.role === 'user' ? <User className="w-4 h-4 text-blue-400" /> : <Bot className="w-4 h-4 text-emerald-400" />}
+                {messages.map(m => {
+                    const suggestionMatch = m.content.match(/\[\[SUGGESTION:(.*?)\]\]/)
+                    const displayContent = m.content.replace(/\[\[SUGGESTION:.*?\]\]/, '')
+                    const suggestionData = suggestionMatch ? JSON.parse(suggestionMatch[1]) : null
+
+                    return (
+                        <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} gap-2`}>
+                            <div className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                <div className={`p-2 rounded-xl h-fit ${m.role === 'user' ? 'bg-blue-500/10' : 'bg-emerald-500/10'}`}>
+                                    {m.role === 'user' ? <User className="w-4 h-4 text-blue-400" /> : <Bot className="w-4 h-4 text-emerald-400" />}
+                                </div>
+                                <div className={`p-3 rounded-2xl text-sm leading-relaxed ${m.role === 'user'
+                                    ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-600/10'
+                                    : 'bg-gray-900 text-gray-200 border border-gray-800 rounded-tl-none'
+                                    }`}>
+                                    {displayContent}
+                                </div>
                             </div>
-                            <div className={`p-3 rounded-2xl text-sm leading-relaxed ${m.role === 'user'
-                                ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-600/10'
-                                : 'bg-gray-900 text-gray-200 border border-gray-800 rounded-tl-none'
-                                }`}>
-                                {m.content}
-                            </div>
+
+                            {suggestionData && (
+                                <div className="ml-11 mt-1 p-3 bg-gray-900 border border-emerald-500/30 rounded-2xl max-w-[80%] animate-in slide-in-from-left-2 duration-300">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="p-1 bg-emerald-500/20 rounded">
+                                            <Calculator className="w-3 h-3 text-emerald-400" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Simulación Disponible</span>
+                                    </div>
+                                    <p className="text-xs text-white font-medium mb-1">{suggestionData.descripcion}</p>
+                                    <p className={`text-xs font-bold mb-3 ${suggestionData.monto > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                        Impacto: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(suggestionData.monto)}
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                window.dispatchEvent(new CustomEvent('biflow-add-projection', { detail: suggestionData }));
+                                                setMessages(prev => prev.filter(msg => msg.id !== m.id).concat({
+                                                    ...m,
+                                                    id: m.id + '-done',
+                                                    content: m.content.replace(/\[\[SUGGESTION:.*?\]\]/, '[Sugerencia aplicada ✅]')
+                                                }));
+                                            }}
+                                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase rounded-lg transition-colors"
+                                        >
+                                            Aplicar Impacto
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, content: msg.content.replace(/\[\[SUGGESTION:.*?\]\]/, '') } : msg));
+                                            }}
+                                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-[10px] font-bold uppercase rounded-lg transition-colors"
+                                        >
+                                            Ignorar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                ))}
+                    )
+                })}
                 {isLoading && (
                     <div className="flex justify-start">
                         <div className="flex gap-3 bg-gray-900 border border-gray-800 p-3 rounded-2xl rounded-tl-none">

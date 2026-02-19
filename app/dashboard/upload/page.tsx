@@ -29,6 +29,7 @@ export default function UploadPage() {
     } | null>(null)
     const [showDetails, setShowDetails] = useState(false)
     const [refreshHistory, setRefreshHistory] = useState(0)
+    const [isFirstUpload, setIsFirstUpload] = useState(false)
 
     // Sign Confirmation State
     const [confirmationData, setConfirmationData] = useState<{
@@ -42,7 +43,21 @@ export default function UploadPage() {
 
     useEffect(() => {
         fetchFormats()
+        checkFirstUpload()
     }, [])
+
+    const checkFirstUpload = async () => {
+        try {
+            const res = await fetch('/api/imports')
+            if (res.ok) {
+                const data = await res.json()
+                // If no imports exist, this will be the first one
+                setIsFirstUpload(data.length === 0)
+            }
+        } catch (e) {
+            console.error('Failed to check import history')
+        }
+    }
 
     const fetchFormats = async () => {
         try {
@@ -641,7 +656,18 @@ export default function UploadPage() {
                                 <CheckCircle className="w-20 h-20 text-emerald-500 mb-6" />
                                 <h3 className="text-2xl font-bold text-white mb-2">¡Carga Completada!</h3>
                                 <p className="text-gray-400">Se han procesado {uploadResult?.count} registros correctamente.</p>
-                                <p className="text-sm text-gray-500 mt-4">Redirigiendo al dashboard...</p>
+
+                                {isFirstUpload && (
+                                    <div className="mt-6 mb-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3 text-blue-300 animate-in fade-in slide-in-from-bottom-2 duration-700">
+                                        <Settings className="w-5 h-5 mt-0.5 text-blue-400 flex-shrink-0" />
+                                        <p className="text-sm leading-relaxed">
+                                            <span className="font-bold text-white block mb-1">💡 Tip de Configuración</span>
+                                            No te olvides de ir a <span className="font-bold text-blue-400">Configuración</span> y colocar tu <span className="font-bold text-blue-400">Saldo Inicial</span> si tienes saldo disponible en cuenta. Esto es clave para que la IA calcule tu salud financiera correctamente.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <p className="text-sm text-gray-500 mt-4 italic">Redirigiendo al dashboard automáticamente...</p>
                             </div>
                         )}
                     </div>

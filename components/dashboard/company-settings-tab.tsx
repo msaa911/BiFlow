@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2 } from 'lucide-react'
+import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain } from 'lucide-react'
 
 // Interfaces actualizadas
 interface BankAccount {
@@ -21,6 +21,14 @@ interface CompanyConfig {
     limite_descubierto: number
     modo_tasa: 'AUTOMATICO' | 'MANUAL'
     colchon_liquidez: number
+}
+
+interface TaxRule {
+    id: string
+    patron_busqueda: string
+    es_recuperable: boolean
+    omitir_siempre: boolean
+    estado: string
 }
 
 interface BankAgreement {
@@ -43,6 +51,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
     // Estado para Cuentas Bancarias
     const [accounts, setAccounts] = useState<BankAccount[]>([])
+    const [taxRules, setTaxRules] = useState<TaxRule[]>([])
 
     const [marketRate, setMarketRate] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
@@ -75,12 +84,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 })
             }
 
-            // 3. CARGAR CUENTAS BANCARIAS (Lo nuevo)
+            // 3. CARGAR CUENTAS BANCARIAS
             const { data: accs } = await supabase.from('cuentas_bancarias').select('*').eq('organization_id', organizationId)
             if (accs && accs.length > 0) {
                 setAccounts(accs)
             } else {
-                // Si no hay cuentas, inicializamos una por defecto vacía para que el usuario la llene
                 setAccounts([{ banco_nombre: 'Banco Principal', cbu: '', saldo_inicial: 0 }])
             }
 
@@ -90,11 +98,38 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 setMarketRate(market.tasa_plazo_fijo_30d || market.tasa_plazo_fijo)
             }
 
+            // 5. Cargar Reglas de Impuestos
+            const { data: rules } = await supabase
+                .from('configuracion_impuestos')
+                .select('*')
+                .eq('organization_id', organizationId)
+                .neq('estado', 'PENDIENTE')
+
+            if (rules) setTaxRules(rules)
+
             setLoading(false)
         }
 
         if (organizationId) loadData()
     }, [organizationId, supabase])
+
+    const toggleTaxRule = async (ruleId: string, currentStatus: boolean) => {
+        const { error } = await supabase
+            .from('configuracion_impuestos')
+            .update({ es_recuperable: !currentStatus, updated_at: new Date().toISOString() })
+            .eq('id', ruleId)
+
+        if (!error) {
+            setTaxRules(prev => prev.map(r => r.id === ruleId ? { ...r, es_recuperable: !currentStatus } : r))
+        }
+    }
+
+    const deleteTaxRule = async (ruleId: string) => {
+        const { error } = await supabase.from('configuracion_impuestos').delete().eq('id', ruleId)
+        if (!error) {
+            setTaxRules(prev => prev.filter(r => r.id !== ruleId))
+        }
+    }
 
     const handleSave = async () => {
         setSaving(true)
@@ -366,6 +401,69 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white"
                             />
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* NUEVA TARJETA: REGLAS DE IMPUESTOS */}
+                <Card className="bg-gray-900 border-gray-800 md:col-span-2 border-l-4 border-l-purple-500">
+                    <CardHeader className="bg-purple-500/5">
+                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter uppercase">
+                            <Brain className="h-5 w-5 text-purple-500" />
+                            Reglas de Impuestos (Aprendizaje)
+                        </CardTitle>
+                        <CardDescription className="text-gray-400">
+                            Gestiona cómo BiFlow clasifica los impuestos detectados en tus extractos.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        {taxRules.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead>
+                                        <tr className="border-b border-gray-800 text-[10px] uppercase text-gray-500 font-bold">
+                                            <th className="pb-3 pl-2">Concepto Detectado</th>
+                                            <th className="pb-3">Estado</th>
+                                            <th className="pb-3">¿Es Recuperable?</th>
+                                            <th className="pb-3 text-right pr-2">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-800">
+                                        {taxRules.map((rule) => (
+                                            <tr key={rule.id} className="group hover:bg-white/5 transition-colors">
+                                                <td className="py-4 pl-2 font-mono text-xs text-white max-w-[300px] truncate">{rule.patron_busqueda}</td>
+                                                <td className="py-4 text-[10px] font-bold">
+                                                    <span className={`px-2 py-0.5 rounded-full ${rule.omitir_siempre ? 'bg-gray-800 text-gray-400' : 'bg-purple-500/10 text-purple-400'}`}>
+                                                        {rule.omitir_siempre ? 'IGNORADO' : 'CLASIFICADO'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4">
+                                                    <button
+                                                        onClick={() => toggleTaxRule(rule.id, rule.es_recuperable)}
+                                                        className={`px-3 py-1 rounded text-[10px] font-black transition-all ${rule.es_recuperable ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-500'}`}
+                                                    >
+                                                        {rule.es_recuperable ? 'SÍ (RECO)' : 'NO (GASTO)'}
+                                                    </button>
+                                                </td>
+                                                <td className="py-4 text-right pr-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => deleteTaxRule(rule.id)}
+                                                        className="h-8 w-8 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-500 italic text-sm">
+                                No hay reglas guardadas aún. El sistema aprenderá a medida que clasifiques impuestos en el Centro de Auditoría.
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

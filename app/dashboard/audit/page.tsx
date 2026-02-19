@@ -18,6 +18,7 @@ import {
     Loader2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TaxLearningWidget } from '@/components/dashboard/tax-learning-widget'
 import * as XLSX from 'xlsx'
 import Link from 'next/link'
 
@@ -48,6 +49,7 @@ export default function AuditCenterPage() {
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState('all')
     const [searchTerm, setSearchTerm] = useState('')
+    const [organizationId, setOrganizationId] = useState<string | null>(null)
     const supabase = createClient()
 
     useEffect(() => {
@@ -70,6 +72,13 @@ export default function AuditCenterPage() {
 
     async function loadFindings() {
         setLoading(true)
+
+        // 0. Get Org ID
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+            const { data: mem } = await supabase.from('memberships').select('organization_id').eq('user_id', user.id).single()
+            if (mem) setOrganizationId(mem.organization_id)
+        }
 
         // 1. Fetch Operative Findings
         const { data: opData } = await supabase
@@ -230,6 +239,13 @@ export default function AuditCenterPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Tax Learning Section */}
+            {organizationId && (
+                <div className="max-w-2xl">
+                    <TaxLearningWidget organizationId={organizationId} />
+                </div>
+            )}
 
             {/* Main Content */}
             <div className="grid grid-cols-1 gap-4">
