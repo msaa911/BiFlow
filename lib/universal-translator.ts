@@ -130,7 +130,7 @@ export class UniversalTranslator {
         };
 
         let headerIdx = -1;
-        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'concepto', 'descripcion', 'detalle', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto'];
+        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'concepto', 'descripcion', 'detalle', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto', 'banco', 'bank'];
 
         for (let i = 0; i < Math.min(lines.length, 30); i++) {
             const row = lines[i].toLowerCase();
@@ -153,10 +153,10 @@ export class UniversalTranslator {
             desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio', 'nota'].some(k => h.includes(k))),
             razon_social: headers.findIndex(h => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'denominacion', 'denominación', 'emisor', 'receptor'].some(k => h.includes(k))),
             cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento', 'id'].some(k => h.includes(k))),
+            banco: headers.findIndex(h => ['banco', 'bank', 'entidad', 'origen'].some(k => h.includes(k))),
             tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado'].some(k => h.includes(k))),
             vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
             numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta'].some(k => h.includes(k))),
-            // AQUÍ EL FIX DE TILDES:
             debito: headers.findIndex(h => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo'].some(k => h.includes(k))),
             credito: headers.findIndex(h => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono'].some(k => h.includes(k)))
         };
