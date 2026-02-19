@@ -38,7 +38,7 @@ export async function DELETE(request: Request) {
             'hallazgos',
             'hallazgos_auditoria',
             'comprobantes',
-            'configuracion_impuestos',
+            'reglas_fiscales_ia',
             'transacciones',
             'transacciones_revision',
             'archivos_importados'

@@ -89,7 +89,7 @@ export default async function DashboardPage() {
 
     // Fetch Pending Tax Rules for Alert
     const { count: pendingTaxesCount } = await supabase
-        .from('configuracion_impuestos')
+        .from('reglas_fiscales_ia')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', orgId)
         .eq('estado', 'PENDIENTE')
