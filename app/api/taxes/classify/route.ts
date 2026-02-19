@@ -49,8 +49,7 @@ export async function POST(req: Request) {
             .update({
                 es_recuperable,
                 omitir_siempre,
-                estado,
-                updated_at: new Date().toISOString()
+                estado
             })
             .eq('id', id)
             .eq('organization_id', organization_id)
