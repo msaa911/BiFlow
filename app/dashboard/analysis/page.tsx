@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AlertCircle, ShieldCheck, TrendingDown, RefreshCcw, Info } from 'lucide-react'
 import { AuditCard } from '@/components/dashboard/audit-card'
+import { ExportAuditButton } from '@/components/dashboard/export-audit-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,8 @@ export default async function AnalysisPage() {
                     </h2>
                     <p className="text-gray-400">Hallazgos y anomalías detectadas en tu flujo financiero.</p>
                 </div>
+
+                <ExportAuditButton />
             </div>
 
             <div className="grid gap-6">
