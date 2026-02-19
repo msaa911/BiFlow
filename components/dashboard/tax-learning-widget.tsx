@@ -101,18 +101,18 @@ export function TaxLearningWidget({ organizationId }: { organizationId: string }
                     <Button
                         onClick={() => handleClassify(current.id, 'YES')}
                         disabled={processingId === current.id}
-                        className="bg-emerald-600 hover:bg-emerald-500 font-bold uppercase tracking-tighter text-[10px] h-9"
+                        className="bg-emerald-600 hover:bg-emerald-500 font-bold uppercase tracking-tighter text-[10px] h-9 shadow-lg shadow-emerald-500/20"
                     >
                         {processingId === current.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
-                        Sí, es Recuperable
+                        {current.categoria === 'servicio' ? 'Sí, tiene IVA Reco' : 'Sí, es Crédito Fiscal'}
                     </Button>
                     <Button
                         onClick={() => handleClassify(current.id, 'NO')}
                         variant="outline"
                         disabled={processingId === current.id}
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold uppercase tracking-tighter text-[10px] h-9"
+                        className="border-gray-700 text-gray-400 hover:bg-gray-800 font-bold uppercase tracking-tighter text-[10px] h-9"
                     >
-                        {current.categoria === 'servicio' ? 'No, es un Gasto Simple' : 'No, es un Costo Impositivo'}
+                        {current.categoria === 'servicio' ? 'No, es Gasto Final' : 'No, es Costo Fiscal'}
                     </Button>
                     <Button
                         onClick={() => handleClassify(current.id, 'LATER')}

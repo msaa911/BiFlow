@@ -482,9 +482,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                                 <td className="py-4">
                                                     <button
                                                         onClick={() => toggleTaxRule(rule.id, rule.es_recuperable)}
-                                                        className={`px-3 py-1 rounded text-[10px] font-black transition-all ${rule.es_recuperable ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-500'}`}
+                                                        className={`px-3 py-1 rounded text-[10px] font-black transition-all ${rule.es_recuperable ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'bg-gray-800 text-gray-400'}`}
                                                     >
-                                                        {rule.es_recuperable ? 'SÍ (RECO)' : rule.categoria === 'servicio' ? 'NO (GASTO)' : 'NO (COSTO)'}
+                                                        {rule.es_recuperable
+                                                            ? (rule.categoria === 'servicio' ? 'SÍ (IVA RECO)' : 'SÍ (CRÉDITO FISCAL)')
+                                                            : (rule.categoria === 'servicio' ? 'NO (GASTO FINAL)' : 'NO (COSTO FISCAL)')}
                                                     </button>
                                                 </td>
                                                 <td className="py-4 text-right pr-2">
