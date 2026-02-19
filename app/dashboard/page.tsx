@@ -9,6 +9,9 @@ import { TaxRecoveryWidget } from '@/components/dashboard/tax-recovery-widget'
 import { ExpenseGuardWidget } from '@/components/dashboard/expense-guard-widget'
 import { FeeAuditWidget } from '@/components/dashboard/fee-audit-widget'
 import { DashboardCFO } from '@/components/dashboard/dashboard-cfo'
+import { TaxLearningWidget } from '@/components/dashboard/tax-learning-widget'
+import { LiquidityEngine } from '@/lib/liquidity-engine'
+import { getOrgId } from '@/lib/supabase/utils'
 import { ScrollToFocus } from '@/components/dashboard/scroll-to-focus'
 import { Suspense } from 'react'
 
@@ -231,9 +234,9 @@ export default async function DashboardPage() {
                                                     <span
                                                         key={tag}
                                                         className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border ${tag === 'impuesto_recuperable' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                                tag === 'pendiente_clasificacion' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                                    tag === 'servicio_detectado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                                        'bg-red-500/10 text-red-500 border-red-500/20'
+                                                            tag === 'pendiente_clasificacion' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                                tag === 'servicio_detectado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                                                    'bg-red-500/10 text-red-500 border-red-500/20'
                                                             }`}
                                                     >
                                                         {tag === 'posible_duplicado' ? 'Duplicado' :
