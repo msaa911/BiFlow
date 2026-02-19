@@ -110,7 +110,15 @@ export async function runAnalysis(organizationId: string) {
 
     for (const t of processed) {
         const descUpper = t.descripcion.toUpperCase()
-        const matchedKeyword = TAX_KEYWORDS.find(k => descUpper.includes(k))
+
+        // Improved detection: use word boundaries for short keywords to avoid false positives (e.g. "IVA" in "RIVAS")
+        const matchedKeyword = TAX_KEYWORDS.find(k => {
+            if (k.length <= 8) {
+                const regex = new RegExp(`\\b${k}\\b`, 'i');
+                return regex.test(descUpper);
+            }
+            return descUpper.includes(k);
+        })
 
         if (matchedKeyword) {
             console.log(`[ANALYSIS] [MATCH] "${t.descripcion}" matched with keyword "${matchedKeyword}"`)

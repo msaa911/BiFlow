@@ -336,12 +336,23 @@ export default function AuditCenterPage() {
                                             </div>
 
                                             <div className="flex items-center gap-2">
-                                                <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg transition-colors border border-gray-700">
-                                                    Ignorar
-                                                </button>
-                                                <button className="px-4 py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 text-xs font-bold rounded-lg transition-colors border border-emerald-500/30 flex items-center gap-2 group/btn">
-                                                    Generar Reclamo <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
-                                                </button>
+                                                {finding.tipo === 'impuesto' ? (
+                                                    <Link
+                                                        href="/dashboard"
+                                                        className="px-4 py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 text-xs font-bold rounded-lg transition-colors border border-emerald-500/30 flex items-center gap-2 group/btn"
+                                                    >
+                                                        Ir a Clasificar <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
+                                                    </Link>
+                                                ) : (
+                                                    <>
+                                                        <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg transition-colors border border-gray-700">
+                                                            Ignorar
+                                                        </button>
+                                                        <button className="px-4 py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 text-xs font-bold rounded-lg transition-colors border border-emerald-500/30 flex items-center gap-2 group/btn">
+                                                            Generar Reclamo <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
