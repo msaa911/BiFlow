@@ -111,7 +111,7 @@ export class UniversalTranslator {
                 }
             });
 
-            if (consistentLines >= lines.length * 0.4) {
+            if (consistentLines >= lines.length * 0.3) {
                 return cand.char;
             }
         }
@@ -130,10 +130,11 @@ export class UniversalTranslator {
         };
 
         let headerIdx = -1;
-        const keys = ['fecha', 'date', 'fec', 'concepto', 'descripcion', 'monto', 'importe', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'razon social'];
+        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'concepto', 'descripcion', 'detalle', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto'];
 
         for (let i = 0; i < Math.min(lines.length, 30); i++) {
             const row = lines[i].toLowerCase();
+            // Check if at least 2 keys are present in the row
             if (keys.filter(k => row.includes(k)).length >= 2) {
                 headerIdx = i;
                 break;
@@ -147,8 +148,8 @@ export class UniversalTranslator {
 
         // DICCIONARIO EXTENDIDO (Soporte de Tildes y Variantes)
         const idx = {
-            fecha: headers.findIndex(h => ['fecha', 'fec', 'date'].some(k => h.includes(k))),
-            monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo', 'precio'].some(k => h.includes(k))),
+            fecha: headers.findIndex(h => ['fecha', 'fec', 'date', 'emision', 'emisión'].some(k => h.includes(k))),
+            monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo', 'precio', 'neto', 'bruto'].some(k => h.includes(k))),
             desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio'].some(k => h.includes(k))),
             razon_social: headers.findIndex(h => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'empresa', 'denominacion', 'denominación', 'emisor', 'receptor'].some(k => h.includes(k))),
             cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento', 'id'].some(k => h.includes(k))),
