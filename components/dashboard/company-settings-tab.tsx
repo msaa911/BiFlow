@@ -319,7 +319,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 </Card>
             </div>
 
-            <div className="fixed bottom-10 right-10 z-50">
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50">
                 <Button onClick={handleSave} disabled={saving} size="lg" className={`h-14 px-8 text-lg font-black uppercase tracking-tighter shadow-2xl transition-all duration-500 ${success ? 'bg-emerald-500 ring-4 ring-emerald-500/20' : 'bg-emerald-600 hover:bg-emerald-500'}`}>
                     {saving ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : success ? <CheckCircle2 className="mr-2 h-6 w-6" /> : <Save className="mr-2 h-6 w-6" />}
                     {saving ? 'Guardando...' : success ? '¡GUARDADO!' : 'GUARDAR CONFIGURACIÓN'}

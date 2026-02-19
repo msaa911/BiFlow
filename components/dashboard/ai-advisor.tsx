@@ -66,7 +66,7 @@ export function AIAdvisor() {
                     <Bot className="w-6 h-6" />
                     <span className="absolute top-0 right-0 w-2 h-2 bg-white rounded-full border-2 border-emerald-500 animate-pulse"></span>
                 </div>
-                <span className="font-bold text-sm pr-2">CFO AI</span>
+                <span className="font-bold text-sm pr-2">BiFLOW AI</span>
             </button>
         )
     }
@@ -80,7 +80,7 @@ export function AIAdvisor() {
                         <Sparkles className="w-5 h-5 text-emerald-400" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-white text-sm">Advisor CFO AI</h3>
+                        <h3 className="font-bold text-white text-sm">Advisor BiFLOW AI</h3>
                         <p className="text-[10px] text-emerald-400/70 font-bold uppercase tracking-widest">En línea - Algoritmos v2.0</p>
                     </div>
                 </div>
@@ -98,8 +98,8 @@ export function AIAdvisor() {
                                 {m.role === 'user' ? <User className="w-4 h-4 text-blue-400" /> : <Bot className="w-4 h-4 text-emerald-400" />}
                             </div>
                             <div className={`p-3 rounded-2xl text-sm leading-relaxed ${m.role === 'user'
-                                    ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-600/10'
-                                    : 'bg-gray-900 text-gray-200 border border-gray-800 rounded-tl-none'
+                                ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-600/10'
+                                : 'bg-gray-900 text-gray-200 border border-gray-800 rounded-tl-none'
                                 }`}>
                                 {m.content}
                             </div>
