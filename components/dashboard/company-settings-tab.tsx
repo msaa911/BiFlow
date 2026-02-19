@@ -100,54 +100,71 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         setSaving(true)
         setSuccess(false)
 
-        // Guardar Config General
-        await supabase.from('configuracion_empresa').upsert({
-            organization_id: organizationId,
-            tna: config.tna,
-            limite_descubierto: config.limite_descubierto,
-            modo_tasa: config.modo_tasa,
-            colchon_liquidez: config.colchon_liquidez,
-            updated_at: new Date().toISOString()
-        })
+        try {
+            console.log("Iniciando guardado de configuración para organización:", organizationId)
 
-        // Guardar Convenios
-        await supabase.from('convenios_bancarios').upsert({
-            organization_id: organizationId,
-            mantenimiento_mensual_pactado: agreement.mantenimiento_mensual_pactado,
-            comision_cheque_porcentaje: agreement.comision_cheque_porcentaje,
-            banco_nombre: 'General',
-            is_active: true,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'organization_id' })
-
-        // GUARDAR CUENTAS (Mejorado)
-        const accountsToUpsert = accounts
-            .filter(acc => acc.banco_nombre.trim() !== '')
-            .map(acc => ({
-                id: acc.id,
+            // 1. Guardar Config General
+            const { error: errorConfig } = await supabase.from('configuracion_empresa').upsert({
                 organization_id: organizationId,
-                banco_nombre: acc.banco_nombre,
-                cbu: acc.cbu,
-                saldo_inicial: acc.saldo_inicial,
+                tna: config.tna,
+                limite_descubierto: config.limite_descubierto,
+                modo_tasa: config.modo_tasa,
+                colchon_liquidez: config.colchon_liquidez,
                 updated_at: new Date().toISOString()
-            }))
+            })
 
-        if (accountsToUpsert.length > 0) {
-            const { data, error } = await supabase
-                .from('cuentas_bancarias')
-                .upsert(accountsToUpsert)
-                .select()
+            if (errorConfig) throw new Error("Error en Configuración Empresa: " + errorConfig.message)
 
-            if (error) {
-                console.error("Error al guardar cuentas:", error)
-            } else if (data) {
-                setAccounts(data)
+            // 2. Guardar Convenios
+            const { error: errorAgree } = await supabase.from('convenios_bancarios').upsert({
+                organization_id: organizationId,
+                mantenimiento_mensual_pactado: agreement.mantenimiento_mensual_pactado,
+                comision_cheque_porcentaje: agreement.comision_cheque_porcentaje,
+                banco_nombre: 'General',
+                is_active: true,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'organization_id' })
+
+            if (errorAgree) throw new Error("Error en Convenios Bancarios: " + errorAgree.message)
+
+            // 3. GUARDAR CUENTAS
+            const accountsToUpsert = accounts
+                .filter(acc => acc.banco_nombre.trim() !== '')
+                .map(acc => {
+                    const payload: any = {
+                        organization_id: organizationId,
+                        banco_nombre: acc.banco_nombre,
+                        cbu: acc.cbu,
+                        saldo_inicial: acc.saldo_inicial,
+                        updated_at: new Date().toISOString()
+                    }
+                    if (acc.id) payload.id = acc.id
+                    return payload
+                })
+
+            if (accountsToUpsert.length > 0) {
+                console.log("Upserting accounts:", accountsToUpsert)
+                const { data, error: errorAccounts } = await supabase
+                    .from('cuentas_bancarias')
+                    .upsert(accountsToUpsert)
+                    .select()
+
+                if (errorAccounts) throw new Error("Error en Cuentas Bancarias: " + errorAccounts.message)
+
+                if (data) {
+                    console.log("Cuentas guardadas:", data)
+                    setAccounts(data)
+                }
             }
-        }
 
-        setSuccess(true)
-        setTimeout(() => setSuccess(false), 3000)
-        setSaving(false)
+            setSuccess(true)
+            setTimeout(() => setSuccess(false), 3000)
+        } catch (err: any) {
+            console.error("Error crítico durante el guardado:", err)
+            alert(err.message || "Ocurrió un error inesperado al guardar.")
+        } finally {
+            setSaving(false)
+        }
     }
 
     const updateAccount = (index: number, field: keyof BankAccount, value: any) => {
