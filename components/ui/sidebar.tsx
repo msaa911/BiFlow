@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, List, Shield, Settings, FileText, LogOut, Clock } from 'lucide-react'
+import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet } from 'lucide-react'
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Tesorería', href: '/dashboard/treasury', icon: Wallet },
     { name: 'Cargar Archivos', href: '/dashboard/upload', icon: FileText },
     { name: 'Historial', href: '/dashboard/history', icon: Clock },
     { name: 'Transacciones', href: '/dashboard/transactions', icon: List },
