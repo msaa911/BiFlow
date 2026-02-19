@@ -311,8 +311,9 @@ export async function POST(request: Request) {
                 .gte('fecha', minDate)
                 .lte('fecha', maxDate)
 
-            const existingSet = new Set(existing?.map((e: any) => `${e.fecha}-${e.descripcion}-${e.monto}`))
-            const uniqueTransactions = transactionsWithLink.filter((t: any) => !existingSet.has(`${t.fecha}-${t.descripcion}-${t.monto}`))
+            const normalize = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+            const existingSet = new Set(existing?.map((e: any) => `${e.fecha}-${normalize(e.descripcion)}-${e.monto}`))
+            const uniqueTransactions = transactionsWithLink.filter((t: any) => !existingSet.has(`${t.fecha}-${normalize(t.descripcion)}-${t.monto}`))
 
             if (uniqueTransactions.length > 0) {
                 // SANITIZATION: Strict Allow-List of columns to prevent 'concepto' or other extra fields from leaking
@@ -366,7 +367,8 @@ export async function POST(request: Request) {
                                 detalle: {
                                     razon: analyzed.metadata.anomaly === 'duplicate' ? 'Posible duplicado (Ventana 30d)' : 'Desvío de precio detectado',
                                     score: analyzed.metadata.anomaly_score,
-                                    historical_avg: analyzed.metadata.historical_avg
+                                    historical_avg: analyzed.metadata.historical_avg,
+                                    duplicate_of: analyzed.metadata.duplicate_of // New: Store the reference
                                 }
                             })
                         }

@@ -10,12 +10,12 @@ export interface Invoice {
     estado: 'pendiente' | 'parcial' | 'pagado' | 'anulado';
 }
 
-export interface SimulationMovement {
+export interface ProjectedMovement {
     id: string;
     descripcion: string;
     monto: number;
     fecha: string;
-    isDraft: boolean;
+    isProjected: boolean;
 }
 
 export interface DailyBalance {
@@ -29,12 +29,12 @@ export class TreasuryEngine {
 
     /**
      * Projects daily balance for the next 30 days based on current balance,
-     * pending invoices, and draft simulation movements.
+     * pending invoices, and projected simulation movements.
      */
     static projectDailyBalance(
         currentBalance: number,
         invoices: Invoice[],
-        drafts: SimulationMovement[]
+        projects: ProjectedMovement[]
     ): DailyBalance[] {
         const projection: DailyBalance[] = [];
         const today = new Date();
@@ -44,12 +44,12 @@ export class TreasuryEngine {
             ...invoices.filter(i => i.estado !== 'pagado').map(i => ({
                 fecha: i.fecha_vencimiento,
                 monto: i.tipo === 'factura_venta' || i.tipo === 'nota_debito' ? i.monto_pendiente : -i.monto_pendiente,
-                isDraft: false
+                isProjected: false
             })),
-            ...drafts.map(d => ({
-                fecha: d.fecha,
-                monto: d.monto,
-                isDraft: true
+            ...projects.map(p => ({
+                fecha: p.fecha,
+                monto: p.monto,
+                isProjected: true
             }))
         ].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 

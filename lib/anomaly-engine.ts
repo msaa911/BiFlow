@@ -21,12 +21,21 @@ export class AnomalyEngine {
             let hasAnomaly = false;
 
             // 1. Duplicate Detection (Intra-batch & Inter-batch)
-            const isDuplicate = this.checkDuplicate(t, transactions, existingTransactions, config.windowDays);
-            if (isDuplicate) {
+            const match = this.checkDuplicate(t, transactions, existingTransactions, config.windowDays);
+            if (match) {
                 metadata.anomaly = 'duplicate';
                 metadata.anomaly_score = 1.0;
                 metadata.severity = 'high';
                 metadata.window_check = config.windowDays;
+
+                // Track the match for transparency
+                metadata.duplicate_of = {
+                    id: match.id,
+                    fecha: match.fecha,
+                    descripcion: match.descripcion,
+                    monto: match.monto
+                };
+
                 tags.push('posible_duplicado');
                 hasAnomaly = true;
             }
@@ -71,19 +80,19 @@ export class AnomalyEngine {
         return { processed, anomalies };
     }
 
-    private static checkDuplicate(current: any, batch: any[], existing: any[], windowDays: number = 30): boolean {
+    private static checkDuplicate(current: any, batch: any[], existing: any[], windowDays: number = 30): any | null {
         // 1. Check against other items in the SAME batch
-        const matchesInBatch = batch.filter(t => {
+        const matchInBatch = batch.find(t => {
             if (t === current) return false; // Don't match itself
             return this.isFuzzyMatch(current, t, windowDays);
         });
 
-        if (matchesInBatch.length > 0) return true;
+        if (matchInBatch) return matchInBatch;
 
         // 2. Check against EXISTING DB transactions
-        const matchesInHistory = existing.filter(t => this.isFuzzyMatch(current, t, windowDays));
+        const matchInHistory = existing.find(t => this.isFuzzyMatch(current, t, windowDays));
 
-        return matchesInHistory.length > 0;
+        return matchInHistory || null;
     }
 
     private static isFuzzyMatch(a: any, b: any, windowDays: number = 30): boolean {
