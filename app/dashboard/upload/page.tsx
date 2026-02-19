@@ -677,31 +677,33 @@ export default function UploadPage() {
                                     </div>
                                 )}
 
-                                <div className="flex gap-4 mt-8">
-                                    <Link href="/dashboard" className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-all">
-                                        Ir al Panel
+                                <div className="flex flex-col md:flex-row gap-4 mt-8 w-full max-w-xl">
+                                    <Link href="/dashboard" className="flex-1 px-6 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-2xl transition-all flex flex-col items-center gap-1 group border border-gray-700">
+                                        <span className="font-bold text-sm">Ver Panel General</span>
+                                        <span className="text-[10px] text-gray-400">Resumen de liquidez y saldos</span>
                                     </Link>
-                                    <Link href="/dashboard/audit" className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all flex flex-col items-center gap-1 group">
+
+                                    <Link href="/dashboard/audit" className="flex-1 px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl transition-all flex flex-col items-center gap-1 group shadow-[0_0_20px_rgba(16,185,129,0.2)]">
                                         <div className="flex items-center gap-2">
-                                            <span>Centro de Auditoría</span>
+                                            <span className="font-bold text-sm">Analizar Hallazgos</span>
                                             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                         </div>
                                         {uploadResult?.findingsCount && uploadResult.findingsCount > 0 ? (
-                                            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">
+                                            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
                                                 {uploadResult.findingsCount} hallazgos detectados
                                             </span>
                                         ) : (
-                                            <span className="text-[10px] opacity-70">Ver reglas y anomalías</span>
+                                            <span className="text-[10px] text-emerald-100/70 italic">Impuestos y anomalías</span>
                                         )}
                                     </Link>
                                 </div>
 
-                                <p className="text-sm text-gray-500 mt-6 italic text-center max-w-sm">
-                                    {uploadResult?.findingsCount && uploadResult.findingsCount > 0
-                                        ? "La IA ha detectado oportunidades de ahorro y reglas pendientes en el centro de auditoría."
-                                        : "Se han procesado los datos. Puedes revisar las anomalías y reglas de impuestos en el centro de auditoría."
-                                    }
-                                </p>
+                                <div className="mt-8 p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl max-w-sm">
+                                    <p className="text-[11px] text-blue-300 text-center leading-relaxed">
+                                        <span className="font-bold block mb-1">💡 ¿Cuál elegir?</span>
+                                        Usa el <b>Panel</b> para ver tu dinero hoy. Usa <b>Audit Center</b> si la IA detectó nuevos impuestos que necesitan tu clasificación.
+                                    </p>
+                                </div>
                             </div>
                         )}
                     </div>

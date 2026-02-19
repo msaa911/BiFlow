@@ -9,6 +9,7 @@ import { TaxRecoveryWidget } from '@/components/dashboard/tax-recovery-widget'
 import { ExpenseGuardWidget } from '@/components/dashboard/expense-guard-widget'
 import { FeeAuditWidget } from '@/components/dashboard/fee-audit-widget'
 import { DashboardCFO } from '@/components/dashboard/dashboard-cfo'
+import { TaxLearningWidget } from '@/components/dashboard/tax-learning-widget'
 import { LiquidityEngine } from '@/lib/liquidity-engine'
 import { getOrgId } from '@/lib/supabase/utils'
 
@@ -171,25 +172,10 @@ export default async function DashboardPage() {
                 </div>
             ) : null}
 
-            {/* Tax Learning Alert */}
+            {/* Tax Learning Widget - Direct interaction if pending taxes exist */}
             {pendingTaxesCount && pendingTaxesCount > 0 ? (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500 shadow-[0_0_40px_rgba(245,158,11,0.05)]">
-                    <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 bg-amber-500/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-amber-500/20">
-                            <Brain className="w-8 h-8 text-amber-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Entrenamiento IA Pendiente</h3>
-                            <p className="text-gray-400 text-sm max-w-md mt-1">
-                                Detectamos <span className="text-amber-400 font-bold">{pendingTaxesCount} {pendingTaxesCount === 1 ? 'nuevo tipo de impuesto' : 'nuevos tipos de impuestos'}</span>. Clasifícalos para mejorar la precisión de tu auditoría.
-                            </p>
-                        </div>
-                    </div>
-                    <Link href="/dashboard/audit" className="w-full md:w-auto">
-                        <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-tighter px-8 h-12 rounded-xl group">
-                            Clasificar Ahora <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                    </Link>
+                <div className="max-w-4xl mx-auto">
+                    <TaxLearningWidget organizationId={orgId} />
                 </div>
             ) : null}
 
