@@ -16,6 +16,7 @@ interface TaxConfig {
     es_recuperable: boolean;
     omitir_siempre: boolean;
     estado: 'PENDIENTE' | 'CLASIFICADO' | 'IGNORADO';
+    categoria?: 'impuesto' | 'servicio';
 }
 
 interface Finding {
@@ -170,7 +171,7 @@ export async function runAnalysis(organizationId: string) {
             } else if (config.es_recuperable && !config.omitir_siempre) {
                 console.log(`[ANALYSIS] [RECUPERABLE] "${t.descripcion}" is classified as tax recovery.`)
                 // Already classified as manageable tax
-                const tags = [...(t.tags || [])]
+                let tags = (t.tags || []).filter((tg: string) => tg !== 'pendiente_clasificacion' && tg !== 'servicio_detectado' && tg !== 'costo_impositivo' && tg !== 'gasto_simple')
                 if (!tags.includes('impuesto_recuperable')) {
                     tags.push('impuesto_recuperable')
                     t.tags = tags
@@ -189,6 +190,22 @@ export async function runAnalysis(organizationId: string) {
                         ...t.metadata
                     }
                 })
+            } else if (!config.es_recuperable && !config.omitir_siempre && config.estado === 'CLASIFICADO') {
+                console.log(`[ANALYSIS] [COSTO] "${t.descripcion}" classified as non-recoverable.`)
+                const tag = config.categoria === 'servicio' ? 'gasto_simple' : 'costo_impositivo'
+                let tags = (t.tags || []).filter((tg: string) =>
+                    tg !== 'pendiente_clasificacion' &&
+                    tg !== 'servicio_detectado' &&
+                    tg !== 'impuesto_recuperable' &&
+                    tg !== 'costo_impositivo' &&
+                    tg !== 'gasto_simple'
+                )
+
+                if (!tags.includes(tag)) {
+                    tags.push(tag)
+                    t.tags = tags
+                    transactionsToUpdate.push({ id: t.id, tags: t.tags })
+                }
             }
             continue
         }

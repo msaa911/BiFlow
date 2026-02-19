@@ -100,9 +100,10 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
             // 5. Cargar Reglas de Impuestos
             const { data: rules } = await supabase
-                .from('configuracion_impuestos')
+                .from('tax_intelligence_rules')
                 .select('*')
                 .eq('organization_id', organizationId)
+                .order('created_at', { ascending: false })
 
             if (rules) setTaxRules(rules)
 
@@ -113,18 +114,35 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     }, [organizationId, supabase])
 
     const toggleTaxRule = async (ruleId: string, currentStatus: boolean) => {
-        const { error } = await supabase
-            .from('configuracion_impuestos')
-            .update({ es_recuperable: !currentStatus, updated_at: new Date().toISOString() })
-            .eq('id', ruleId)
+        // We use the same API as the widget to ensure tags are synced
+        const rule = taxRules.find(r => r.id === ruleId)
+        if (!rule) return
 
-        if (!error) {
-            setTaxRules(prev => prev.map(r => r.id === ruleId ? { ...r, es_recuperable: !currentStatus } : r))
+        setSaving(true)
+        try {
+            const res = await fetch('/api/taxes/classify', {
+                method: 'POST',
+                body: JSON.stringify({
+                    id: ruleId,
+                    organization_id: organizationId,
+                    es_recuperable: !currentStatus,
+                    omitir_siempre: rule.omitir_siempre,
+                    action: !currentStatus ? 'YES' : 'NO'
+                })
+            })
+
+            if (res.ok) {
+                setTaxRules(prev => prev.map(r => r.id === ruleId ? { ...r, es_recuperable: !currentStatus, estado: 'CLASIFICADO' } : r))
+            }
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setSaving(false)
         }
     }
 
     const deleteTaxRule = async (ruleId: string) => {
-        const { error } = await supabase.from('configuracion_impuestos').delete().eq('id', ruleId)
+        const { error } = await supabase.from('tax_intelligence_rules').delete().eq('id', ruleId)
         if (!error) {
             setTaxRules(prev => prev.filter(r => r.id !== ruleId))
         }
@@ -448,9 +466,14 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">
-                                        {taxRules.map((rule) => (
+                                        {taxRules.map((rule: any) => (
                                             <tr key={rule.id} className="group hover:bg-white/5 transition-colors">
-                                                <td className="py-4 pl-2 font-mono text-xs text-white max-w-[300px] truncate">{rule.patron_busqueda}</td>
+                                                <td className="py-4 pl-2 font-mono text-xs text-white max-w-[300px] truncate">
+                                                    <div className="flex flex-col">
+                                                        <span>{rule.patron_busqueda}</span>
+                                                        <span className="text-[9px] text-gray-500 uppercase">{rule.categoria || 'impuesto'}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="py-4 text-[10px] font-bold">
                                                     <span className={`px-2 py-0.5 rounded-full ${rule.estado === 'PENDIENTE' ? 'bg-amber-500/10 text-amber-500 animate-pulse' : rule.omitir_siempre ? 'bg-gray-800 text-gray-400' : 'bg-purple-500/10 text-purple-400'}`}>
                                                         {rule.estado === 'PENDIENTE' ? 'NUEVO' : rule.omitir_siempre ? 'IGNORADO' : 'CLASIFICADO'}
@@ -461,7 +484,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                                         onClick={() => toggleTaxRule(rule.id, rule.es_recuperable)}
                                                         className={`px-3 py-1 rounded text-[10px] font-black transition-all ${rule.es_recuperable ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-500'}`}
                                                     >
-                                                        {rule.es_recuperable ? 'SÍ (RECO)' : 'NO (GASTO)'}
+                                                        {rule.es_recuperable ? 'SÍ (RECO)' : rule.categoria === 'servicio' ? 'NO (GASTO)' : 'NO (COSTO)'}
                                                     </button>
                                                 </td>
                                                 <td className="py-4 text-right pr-2">

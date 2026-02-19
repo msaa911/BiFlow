@@ -43,12 +43,21 @@ export async function POST(req: Request) {
 
                     // Always remove pending tags
                     tags = tags.filter((tag: string) =>
-                        tag !== 'pendiente_clasificacion' && tag !== 'servicio_detectado'
+                        tag !== 'pendiente_clasificacion' && tag !== 'servicio_detectado' && tag !== 'costo_impositivo' && tag !== 'gasto_simple'
                     )
 
                     // If it's recoverable, add the tag
                     if (es_recuperable && !tags.includes('impuesto_recuperable')) {
                         tags.push('impuesto_recuperable')
+                    } else if (!es_recuperable) {
+                        // Remove recoverable tag if it was there (editing a rule)
+                        tags = tags.filter((tag: string) => tag !== 'impuesto_recuperable')
+
+                        // Add specific "cost" tag
+                        const costTag = rule.categoria === 'servicio' ? 'gasto_simple' : 'costo_impositivo'
+                        if (!tags.includes(costTag)) {
+                            tags.push(costTag)
+                        }
                     }
 
                     await serviceSupabase.from('transacciones').update({ tags }).eq('id', t.id)

@@ -112,7 +112,7 @@ export function TaxLearningWidget({ organizationId }: { organizationId: string }
                         disabled={processingId === current.id}
                         className="border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold uppercase tracking-tighter text-[10px] h-9"
                     >
-                        {current.categoria === 'servicio' ? 'No, es un Gasto Simple' : 'No, no es recuperable'}
+                        {current.categoria === 'servicio' ? 'No, es un Gasto Simple' : 'No, es un Costo Impositivo'}
                     </Button>
                     <Button
                         onClick={() => handleClassify(current.id, 'LATER')}
