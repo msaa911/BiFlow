@@ -23,7 +23,7 @@ export class AnomalyEngine {
             // 1. Duplicate Detection (Intra-batch & Inter-batch)
             const match = this.checkDuplicate(t, transactions, existingTransactions, config.windowDays);
             if (match) {
-                metadata.anomaly = 'duplicate';
+                metadata.anomaly = 'duplicado';
                 metadata.anomaly_score = 1.0;
                 metadata.severity = 'high';
                 metadata.window_check = config.windowDays;
@@ -53,7 +53,7 @@ export class AnomalyEngine {
                     const deviation = (currentAbs - avgAbs) / avgAbs;
 
                     if (deviation > this.SPIKE_THRESHOLD) {
-                        metadata.anomaly = 'price_spike';
+                        metadata.anomaly = 'desvio_precio';
                         metadata.anomaly_score = deviation;
                         metadata.historical_avg = avgAmount;
                         metadata.severity = deviation > 0.5 ? 'critical' : 'high';
@@ -83,14 +83,19 @@ export class AnomalyEngine {
     private static checkDuplicate(current: any, batch: any[], existing: any[], windowDays: number = 30): any | null {
         // 1. Check against other items in the SAME batch
         const matchInBatch = batch.find(t => {
-            if (t === current) return false; // Don't match itself
+            if (t === current) return false; // Identity check (object ref)
+            if (t.id && current.id && t.id === current.id) return false; // Identity check (DB ID)
             return this.isFuzzyMatch(current, t, windowDays);
         });
 
         if (matchInBatch) return matchInBatch;
 
         // 2. Check against EXISTING DB transactions
-        const matchInHistory = existing.find(t => this.isFuzzyMatch(current, t, windowDays));
+        const matchInHistory = existing.find(t => {
+            if (t === current) return false; // Identity check (object ref)
+            if (t.id && current.id && t.id === current.id) return false; // Identity check (DB ID)
+            return this.isFuzzyMatch(current, t, windowDays);
+        });
 
         return matchInHistory || null;
     }

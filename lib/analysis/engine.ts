@@ -57,20 +57,23 @@ export async function runAnalysis(organizationId: string) {
         { windowDays: 30 } // 30-day window as requested in Task 1.1
     )
 
+    // Clear existing detectado findings to allow "re-runs" to update data
+    await supabase.from('hallazgos').delete().eq('organization_id', organizationId).eq('estado', 'detectado')
+
     // 4. Map Anomalies to database Findings
     for (const t of processed) {
         if (t.metadata?.anomaly) {
             findings.push({
                 organization_id: organizationId,
                 transaccion_id: t.id,
-                tipo: t.metadata.anomaly === 'price_spike' ? 'anomalia' : (t.metadata.anomaly as any),
+                tipo: t.metadata.anomaly, // Use direct type (duplicado/anomalia)
                 severidad: t.metadata.severity || 'low',
                 estado: 'detectado',
                 monto_estimado_recupero: t.metadata.anomaly === 'price_spike'
                     ? Math.abs(t.monto) - Math.abs(t.metadata.historical_avg || 0)
                     : Math.abs(t.monto),
                 detalle: {
-                    razon: t.metadata.anomaly === 'duplicate' ? 'Posible duplicado (Ventana +/- 30 días)' : 'Anomalía detectada por motor IA',
+                    razon: t.metadata.anomaly === 'duplicado' ? 'Posible duplicado (Ventana +/- 30 días)' : 'Anomalía detectada por motor IA',
                     ...t.metadata
                 }
             })

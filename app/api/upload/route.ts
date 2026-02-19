@@ -361,11 +361,11 @@ export async function POST(request: Request) {
                             findingsToInsert.push({
                                 organization_id: orgId,
                                 transaccion_id: it.id,
-                                tipo: analyzed.metadata.anomaly === 'duplicate' ? 'duplicado' : 'anomalia',
+                                tipo: analyzed.metadata.anomaly, // Already in Spanish now
                                 severidad: analyzed.metadata.severity || 'low',
                                 estado: 'detectado',
                                 detalle: {
-                                    razon: analyzed.metadata.anomaly === 'duplicate' ? 'Posible duplicado (Ventana 30d)' : 'Desvío de precio detectado',
+                                    razon: analyzed.metadata.anomaly === 'duplicado' ? 'Posible duplicado (Ventana 30d)' : 'Desvío de precio detectado',
                                     score: analyzed.metadata.anomaly_score,
                                     historical_avg: analyzed.metadata.historical_avg,
                                     duplicate_of: analyzed.metadata.duplicate_of // New: Store the reference
