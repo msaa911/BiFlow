@@ -5,6 +5,9 @@ export interface Transaction {
     concepto: string;
     monto: number;
     cuit: string;
+    razon_social?: string;
+    vencimiento?: string;
+    numero?: string;
     tipo: 'DEBITO' | 'CREDITO';
     tags?: string[];
 }
@@ -144,10 +147,12 @@ export class UniversalTranslator {
         // DICCIONARIO EXTENDIDO (Soporte de Tildes y Variantes)
         const idx = {
             fecha: headers.findIndex(h => ['fecha', 'fec', 'date'].some(k => h.includes(k))),
-            monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo'].some(k => h.includes(k))),
-            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda'].some(k => h.includes(k))),
+            monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo', 'precio'].some(k => h.includes(k))),
+            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'razon social', 'razón social', 'nombre'].some(k => h.includes(k))),
             cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento', 'id'].some(k => h.includes(k))),
-            tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento'].some(k => h.includes(k))),
+            tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado'].some(k => h.includes(k))),
+            vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date'].some(k => h.includes(k))),
+            numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'id'].some(k => h.includes(k))),
             // AQUÍ EL FIX DE TILDES:
             debito: headers.findIndex(h => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo'].some(k => h.includes(k))),
             credito: headers.findIndex(h => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono'].some(k => h.includes(k)))
@@ -209,6 +214,9 @@ export class UniversalTranslator {
                     concepto,
                     monto,
                     cuit,
+                    razon_social: idx.desc !== -1 ? row[idx.desc] : undefined,
+                    vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) || undefined : undefined,
+                    numero: idx.numero !== -1 ? row[idx.numero] : undefined,
                     tipo,
                     tags: [] // Remove automatic tagging to allow AI Learning flow
                 });

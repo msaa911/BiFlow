@@ -20,6 +20,7 @@ export default function UploadPage() {
     const [showFormatBuilder, setShowFormatBuilder] = useState(false)
     const [formats, setFormats] = useState<any[]>([])
     const [selectedFormat, setSelectedFormat] = useState<string>('')
+    const [uploadContext, setUploadContext] = useState<'bank' | 'income' | 'expense'>('bank')
 
     // New state for detailed feedback
     const [uploadResult, setUploadResult] = useState<{
@@ -144,7 +145,7 @@ export default function UploadPage() {
                     const currentBase = completed * totalProgressPerFile
                     const currentIncrement = (percent * totalProgressPerFile) / 100
                     setProgress(Math.round(currentBase + currentIncrement))
-                }, undefined, undefined, overrideFormatId)
+                }, undefined, undefined, overrideFormatId, uploadContext)
 
                 if (result) {
                     totalCount += result.count || 0
@@ -201,7 +202,9 @@ export default function UploadPage() {
                 confirmationData.file,
                 confirmationData.onProgress,
                 undefined,
-                invert
+                invert,
+                undefined,
+                uploadContext
             )
 
             setSuccess(true)
@@ -222,12 +225,15 @@ export default function UploadPage() {
         }
     }
 
-    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any, invertSigns?: boolean, overrideFormatId?: string): Promise<any> => {
+    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any, invertSigns?: boolean, overrideFormatId?: string, context?: string): Promise<any> => {
         return new Promise((resolve, reject) => {
             const formData = new FormData()
             formData.append('file', file)
             if (mapping) {
                 formData.append('mapping', JSON.stringify(mapping))
+            }
+            if (context) {
+                formData.append('context', context)
             }
 
             const formatToUse = overrideFormatId || selectedFormat
@@ -369,6 +375,38 @@ export default function UploadPage() {
             </div>
 
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
+                {/* Document Type Selector */}
+                {!success && !uploading && (
+                    <div className="mb-8">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Tipo de Documento</label>
+                        <div className="flex bg-gray-800 p-1 rounded-xl gap-1">
+                            <button
+                                onClick={() => setUploadContext('bank')}
+                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${uploadContext === 'bank' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                                Extracto Bancario
+                            </button>
+                            <button
+                                onClick={() => setUploadContext('income')}
+                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${uploadContext === 'income' ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                                Ingresos
+                            </button>
+                            <button
+                                onClick={() => setUploadContext('expense')}
+                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${uploadContext === 'expense' ? 'bg-purple-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                                Egresos
+                            </button>
+                        </div>
+                        <p className="mt-2 text-[10px] text-gray-500 text-center italic">
+                            {uploadContext === 'bank' && 'Los movimientos irán a tu Flujo de Caja bancario.'}
+                            {uploadContext === 'income' && 'Las facturas se cargarán en Cuentas por Cobrar.'}
+                            {uploadContext === 'expense' && 'Las facturas se cargarán en Cuentas por Pagar.'}
+                        </p>
+                    </div>
+                )}
+
                 {/* Format Selector */}
                 {formats.length > 0 && !success && (
                     <div className="mb-8">

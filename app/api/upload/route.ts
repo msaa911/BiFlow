@@ -54,6 +54,7 @@ export async function POST(request: Request) {
         const formatId = formData.get('formatId') as string
         const invertSigns = formData.get('invertSigns') === 'true'
         const hasConfirmedSign = formData.has('invertSigns')
+        const uploadContext = (formData.get('context') || 'bank') as 'bank' | 'income' | 'expense'
 
         if (formatId) {
             console.log(`9. Using Custom Format: ${formatId}`)
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
                 exampleRow = uniTransactions.exampleRow
 
                 // --- PRIORITY 2 LOGIC: INTERRUPT IF NO EXPLICIT TIPO AND NO CONFIRMATION ---
-                if (!hasExplicitTipo && !hasConfirmedSign && uniTransactions.transactions.length > 0) {
+                if (!hasExplicitTipo && !hasConfirmedSign && uniTransactions.transactions.length > 0 && uploadContext === 'bank') {
                     console.log('NOTICE: Missing Tipo column, requiring user confirmation.')
                     return NextResponse.json({
                         status: 'requires_confirmation',
@@ -132,13 +133,16 @@ export async function POST(request: Request) {
                         descripcion: t.concepto || 'Sin concepto', // Map concepto -> descripcion
                         monto: t.monto,
                         cuit: t.cuit,
-                        tags: t.tags,
+                        razon_social: t.razon_social,
+                        vencimiento: t.vencimiento,
+                        numero: t.numero,
+                        tags: t.tags || [],
                         moneda: 'ARS',
                         origen_dato: 'universal_translator',
                         estado: 'pendiente'
                     }))
-                    // Add balance check warnings if any
-                    if (uniTransactions.metadata?.isBalanced === false) {
+                    // Add balance check warnings if any (only for bank statements)
+                    if (uploadContext === 'bank' && uniTransactions.metadata?.isBalanced === false) {
                         warnings.push(`Advertencia de Saldo: El total de movimientos no coincide con los saldos detectados (Dif: $${uniTransactions.metadata.diferencia?.toFixed(2)})`)
                     }
                 } else if (uniTransactions.transactions.length === 0 && !hasConfirmedSign) {
@@ -231,78 +235,101 @@ export async function POST(request: Request) {
 
 
         // --- 4. Store Data & Finish Link ---
+        let uniqueCount = 0
         if (transactions.length > 0) {
             const transactionsWithLink = transactions.map((t: any) => ({
                 ...t,
                 archivo_importacion_id: importId
             }))
 
-            let minDate = transactionsWithLink[0].fecha
-            let maxDate = transactionsWithLink[0].fecha
-            transactionsWithLink.forEach((t: any) => {
-                if (t.fecha < minDate) minDate = t.fecha
-                if (t.fecha > maxDate) maxDate = t.fecha
-            })
+            if (uploadContext === 'income' || uploadContext === 'expense') {
+                console.log(`[UPLOAD] [TREASURY] Routing ${transactions.length} rows to comprobantes`)
+                uniqueCount = transactions.length
 
-            const { data: existing } = await currentSupabase
-                .from('transacciones')
-                .select('fecha, descripcion, monto')
-                .eq('organization_id', orgId)
-                .gte('fecha', minDate)
-                .lte('fecha', maxDate)
-
-            const normalize = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
-            const existingSet = new Set(existing?.map((e: any) => `${e.fecha}-${normalize(e.descripcion)}-${e.monto}`))
-            const uniqueTransactions = transactionsWithLink.filter((t: any) => !existingSet.has(`${t.fecha}-${normalize(t.descripcion)}-${t.monto}`))
-
-            if (uniqueTransactions.length > 0) {
-                // SANITIZATION: Strict Allow-List of columns to prevent 'concepto' or other extra fields from leaking
-                const sanitizedTransactions = uniqueTransactions.map((t: any) => ({
+                const sanitizedComprobantes = transactionsWithLink.map((t: any) => ({
                     organization_id: t.organization_id,
-                    fecha: t.fecha,
-                    descripcion: t.descripcion || 'Sin Descripción',
-                    monto: t.monto,
-                    cuit: t.cuit || null,
-                    moneda: t.moneda || 'ARS',
-                    origen_dato: t.origen_dato,
-                    estado: t.estado,
-                    archivo_importacion_id: t.archivo_importacion_id,
-                    tags: t.tags || [], // Ensure tags are passed
-                    metadata: t.metadata || {}
+                    tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
+                    numero: t.numero || `FILE-${importId.substring(0, 6)}`,
+                    cuit_socio: t.cuit || '00-00000000-0',
+                    razon_social_socio: t.razon_social || t.descripcion,
+                    fecha_emision: t.fecha,
+                    fecha_vencimiento: t.vencimiento || t.fecha,
+                    monto_total: Math.abs(t.monto),
+                    monto_pendiente: Math.abs(t.monto),
+                    estado: 'pendiente',
+                    moneda: t.moneda || 'ARS'
                 }))
 
-                console.log(`DEBUG: Inserting ${sanitizedTransactions.length} trans for org ${orgId}`)
-                const { data: insertedTrans, error: insError } = await currentSupabase
-                    .from('transacciones')
-                    .insert(sanitizedTransactions)
-                    .select('id, fecha, descripcion, monto')
+                const { error: compError } = await currentSupabase
+                    .from('comprobantes')
+                    .insert(sanitizedComprobantes)
 
-                if (insError) {
-                    await currentSupabase.from('archivos_importados').update({ estado: 'error', metadata: { error: insError.message } }).eq('id', importId)
-                    console.error('Insert Error Full:', insError)
-                    await logError(currentSupabase, 'Insert Transactions', `RLS/DB Error: ${insError.message}. Org: ${orgId}. First Row Org: ${sanitizedTransactions[0].organization_id}`, fileName, orgId)
-                    throw new Error(`Error insertion: ${insError.message}`)
+                if (compError) {
+                    console.error('[UPLOAD] [TREASURY] Insert Error:', compError)
+                    throw new Error(`Error insertion treasury: ${compError.message}`)
                 }
+            } else {
+                // DEFAULT: BANK TRANSACTIONS
+                let minDate = transactionsWithLink[0].fecha
+                let maxDate = transactionsWithLink[0].fecha
+                transactionsWithLink.forEach((t: any) => {
+                    if (t.fecha < minDate) minDate = t.fecha
+                    if (t.fecha > maxDate) maxDate = t.fecha
+                })
 
-                // --- DEPRECATED: Findings generation moved to unified engine ---
+                const { data: existing } = await currentSupabase
+                    .from('transacciones')
+                    .select('fecha, descripcion, monto')
+                    .eq('organization_id', orgId)
+                    .gte('fecha', minDate)
+                    .lte('fecha', maxDate)
+
+                const normalize = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+                const existingSet = new Set(existing?.map((e: any) => `${e.fecha}-${normalize(e.descripcion)}-${e.monto}`))
+                const uniqueTransactions = transactionsWithLink.filter((t: any) => !existingSet.has(`${t.fecha}-${normalize(t.descripcion)}-${t.monto}`))
+                uniqueCount = uniqueTransactions.length
+
+                if (uniqueTransactions.length > 0) {
+                    const sanitizedTransactions = uniqueTransactions.map((t: any) => ({
+                        organization_id: t.organization_id,
+                        fecha: t.fecha,
+                        descripcion: t.descripcion || 'Sin Descripción',
+                        monto: t.monto,
+                        cuit: t.cuit || null,
+                        moneda: t.moneda || 'ARS',
+                        origen_dato: t.origen_dato,
+                        estado: t.estado,
+                        archivo_importacion_id: t.archivo_importacion_id,
+                        tags: t.tags || [],
+                        metadata: t.metadata || {}
+                    }))
+
+                    const { error: insError } = await currentSupabase
+                        .from('transacciones')
+                        .insert(sanitizedTransactions)
+
+                    if (insError) throw new Error(`Error insertion: ${insError.message}`)
+                }
             }
 
             await currentSupabase.from('archivos_importados').update({
                 estado: 'completado',
-                metadata: { processed: transactions.length, inserted: uniqueTransactions.length, warnings: warnings.slice(0, 20) }
+                metadata: { processed: transactions.length, inserted: uniqueCount, context: uploadContext, warnings: warnings.slice(0, 20) }
             }).eq('id', importId)
 
-            // --- EJECUTAR MOTOR DE ANÁLISIS UNIFICADO ---
-            console.log(`[UPLOAD] Triggering unified analysis for org: ${orgId}`)
-            const analysisResult = await runAnalysis(orgId)
-            console.log(`[UPLOAD] Analysis completed: ${analysisResult.findings} findings found`)
+            // Solo ejecutar análisis bancario si el contexto es 'bank'
+            let analysisResult = { findings: 0 }
+            if (uploadContext === 'bank') {
+                console.log(`[UPLOAD] Triggering unified analysis for org: ${orgId}`)
+                analysisResult = await runAnalysis(orgId)
+            }
 
             return NextResponse.json({
                 success: true,
-                count: uniqueTransactions.length,
+                count: uniqueCount,
                 reviewCount: reviewItems?.length || 0,
                 findingsCount: analysisResult.findings || 0,
-                message: `OK: ${uniqueTransactions.length} procesados.`,
+                message: `OK: ${uniqueCount} procesados.`,
                 warnings: warnings.slice(0, 10), // Limit warnings
                 balanceCheck: transactions[0]?.origen_dato === 'universal_translator' && transactions.length > 0
                     ? (transactions as any).metadata // Access metadata if attached (needs better piping)
