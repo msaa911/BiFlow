@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle, Trash2, ArrowRight } from 'lucide-react'
+import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle, Trash2, ArrowRight, Download, FileSpreadsheet } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ImportHistory } from '@/components/dashboard/import-history'
@@ -392,7 +392,15 @@ export default function UploadPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight text-white">Carga de Documentos v4 (FORCE RELOAD)</h2>
-                    <p className="text-gray-400">Sube extractos, listas de clientes, facturas o cualquier documento financiero para análisis.</p>
+                    <p className="text-gray-400 text-sm">Sube extractos, listas de clientes, facturas o cualquier documento financiero para análisis.</p>
+                    <a
+                        href="/templates/biflow_formato_recomendado.xlsx"
+                        download
+                        className="inline-flex items-center gap-2 mt-2 text-xs text-emerald-500 hover:text-emerald-400 font-medium transition-colors cursor-pointer"
+                    >
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        Descargar Formato Recomendado (.xlsx)
+                    </a>
                 </div>
                 <button
                     onClick={() => setShowFormatBuilder(true)}

@@ -146,9 +146,9 @@ export class UniversalTranslator {
         };
 
         let headerIdx = -1;
-        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'concepto', 'descripcion', 'detalle', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'cuil', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto', 'banco', 'bank', 'cheque', 'nro ch', 'nº cheque'];
+        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'concepto', 'descripcion', 'detalle', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'cuil', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto', 'banco', 'bank', 'cheque', 'nro ch', 'nº cheque', 'iva', 'neto', 'bruto', 'subtotal', 'total', 'remito', 'orden de pago', 'op', 'orden de compra', 'oc', 'comision', 'cargo'];
 
-        for (let i = 0; i < Math.min(lines.length, 30); i++) {
+        for (let i = 0; i < Math.min(lines.length, 100); i++) {
             const row = lines[i].toLowerCase();
             // Check if at least 2 keys are present in the row
             if (keys.filter(k => row.includes(k)).length >= 2) {
@@ -164,19 +164,19 @@ export class UniversalTranslator {
 
         // DICCIONARIO EXTENDIDO (Soporte de Tildes y Variantes)
         const idx = {
-            fecha: headers.findIndex(h => ['fecha', 'fec', 'date', 'emision', 'emisión'].some(k => h.includes(k))),
-            monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo', 'precio', 'neto', 'bruto'].some(k => h.includes(k))),
-            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio', 'nota'].some(k => h.includes(k))),
-            razon_social: headers.findIndex(h => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'denominacion', 'denominación', 'emisor', 'receptor'].some(k => h.includes(k))),
-            cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento', 'id'].some(k => h.includes(k))),
-            banco: headers.findIndex(h => ['banco', 'bank', 'entidad', 'origen'].some(k => h.includes(k))),
-            tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado'].some(k => h.includes(k))),
+            fecha: headers.findIndex(h => ['fecha', 'fec', 'date', 'emision', 'emisión', 'emiti'].some(k => h.includes(k))),
+            monto: headers.findIndex(h => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo', 'precio', 'neto', 'bruto', 'subtotal', 'pagado'].some(k => h.includes(k))),
+            desc: headers.findIndex(h => ['concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio', 'nota', 'obs', 'observacion', 'glosa'].some(k => h.includes(k))),
+            razon_social: headers.findIndex(h => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'denominacion', 'denominación', 'emisor', 'receptor', 'empresa', 'ente'].some(k => h.includes(k))),
+            cuit: headers.findIndex(h => ['cuit', 'cuil', 'documento', 'id', 'taxid', 'tipo/nro'].some(k => h.includes(k))),
+            banco: headers.findIndex(h => ['banco', 'bank', 'entidad', 'origen', 'sucursal'].some(k => h.includes(k))),
+            tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado', 'mod', 'comp'].some(k => h.includes(k))),
             vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
-            numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta'].some(k => h.includes(k))),
-            cheque: headers.findIndex(h => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque'].some(k => h.includes(k))),
-            cbu: headers.findIndex(h => ['cbu', 'cta destino', 'cvu', 'cuenta destino', 'coordenada'].some(k => h.includes(k))),
-            debito: headers.findIndex(h => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo'].some(k => h.includes(k))),
-            credito: headers.findIndex(h => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono'].some(k => h.includes(k)))
+            numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta', 'nro doc'].some(k => h.includes(k))),
+            cheque: headers.findIndex(h => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque', 'nro_valor'].some(k => h.includes(k))),
+            cbu: headers.findIndex(h => ['cbu', 'cta destino', 'cvu', 'cuenta destino', 'coordenada', 'cbu/alias'].some(k => h.includes(k))),
+            debito: headers.findIndex(h => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo', 'retiro'].some(k => h.includes(k))),
+            credito: headers.findIndex(h => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono', 'deposito'].some(k => h.includes(k)))
         };
 
         const transactions: Transaction[] = [];
