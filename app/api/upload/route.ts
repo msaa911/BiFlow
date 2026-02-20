@@ -7,6 +7,7 @@ import { TrustLedger } from '@/lib/trust-ledger'
 import { AnomalyEngine } from '@/lib/anomaly-engine'
 import { runAnalysis } from '@/lib/analysis/engine'
 import { UniversalTranslator } from '@/lib/universal-translator'
+import { ReconciliationEngine } from '@/lib/reconciliation-engine'
 
 export const dynamic = 'force-dynamic'
 
@@ -329,6 +330,9 @@ export async function POST(request: Request) {
             if (uploadContext === 'bank') {
                 console.log(`[UPLOAD] Triggering unified analysis for org: ${orgId}`)
                 analysisResult = await runAnalysis(orgId)
+
+                console.log(`[UPLOAD] Triggering automatic reconciliation engine for org: ${orgId}`)
+                await ReconciliationEngine.matchAndReconcile(orgId)
             }
 
             return NextResponse.json({

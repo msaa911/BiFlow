@@ -6,10 +6,10 @@ Este documento es la fuente de verdad del proyecto. Integra la visión macro de 
 
 ## 🏁 ESTADO DEL PROYECTO
 - **Fase 1: Core & Estabilidad** 🟢 *Terminado*
-- **Fase 2: El Motor de Importación (Universal Translator)** 🟢 *Terminado*
-- **Fase 3: Robustez Enterprise (Parsing 2.0)** 🟢 *Terminado* (Re-ensamblado multilínea incluido)
+- **Fase 2: El Motor de Importación (Universal Translator v6.0)** 🟢 *Terminado*
+- **Fase 3: Robustez Enterprise & Tesorería (AR/AP)** 🟢 *Terminado* (Arquitectura desacoplada, CUIT/Cheque integrado)
 - **Fase 7: CFO Algorítmico (Motor de Anomalías)** 🔵 *En curso (Refinamiento)*
-- **Fase 8: Dashboard de Salud de Caja** 🔵 *En curso (Visión Pro)*
+- **Fase 8: Dashboard de Salud de Caja** 🟢 *Terminado* (Treasury Hub v2 operativo)
 
 ---
 
@@ -28,10 +28,14 @@ Este documento es la fuente de verdad del proyecto. Integra la visión macro de 
 - [x] **1.2 Tesauro Financiero:** Normalización semántica de conceptos bancarios (Setup SQL operativo).
 - [x] **1.3 Re-ensamblado Multilínea:** "Pegado" de descripciones fragmentadas (Implementado).
 
-#### Módulo 2: MOTOR DE LIQUIDEZ (Money Maker) 🔵 EN CURSO
-- [x] **2.1 Stress Test:** Simulador de saldo post-lote y alertas de descubierto (Implementado).
-- [x] **2.2 Costo de Oportunidad:** Dinero ocioso vs tasas de mercado (Implementado - Modo Manual & Benchmark 2026).
-- [ ] **2.3 Auditoría de Acuerdos:** Validación de tarifas bancarias pactadas vs cobradas.
+#### Módulo 2: MOTOR DE LIQUIDEZ Y TESORERÍA 🟢 COMPLETADO
+- [x] **2.1 Stress Test:** Simulador de saldo post-lote y alertas de descubierto.
+- [x] **2.2 Costo de Oportunidad:** Dinero ocioso vs tasas de mercado.
+- [x] **2.3 Rediseño Treasury Hub (v2.0):** Gestión de AR/AP con Banco, CUIT y Cheque.
+
+#### Módulo 3: SEGURIDAD Y CONCILIACIÓN (Trust Ledger) 🔵 PRÓXIMO PASO
+- [ ] **3.1 Conciliación Automática:** Match entre Movimientos Bancarios y Facturas (vía Cheque/CUIT).
+- [ ] **3.2 Trust Ledger:** Validación CUIT vs CBU para prevenir fraude (BEC).
 
 #### Módulo 3: SEGURIDAD Y ANTI-FRAUDE (Trust Ledger)
 - [ ] **3.1 Extracción de CBU:** Captura de 22 dígitos en parsers.
