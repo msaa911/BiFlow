@@ -251,12 +251,16 @@ export async function POST(request: Request) {
                     numero: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
                     cuit_socio: t.cuit || '00-00000000-0',
                     razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
+                    nombre_entidad: t.razon_social || t.concepto || 'Sin Razón Social',
+                    banco: t.banco || null,
+                    numero_cheque: t.numero_cheque || null,
                     fecha_emision: t.fecha,
                     fecha_vencimiento: t.vencimiento || t.fecha,
                     monto_total: Math.abs(t.monto),
                     monto_pendiente: Math.abs(t.monto),
                     estado: 'pendiente',
-                    moneda: t.moneda || 'ARS'
+                    moneda: t.moneda || 'ARS',
+                    metadata: { ...(t.metadata || {}), raw_row: t.raw }
                 }))
 
                 console.log(`[UPLOAD] [TREASURY] Final mapped count for ${uploadContext}: ${sanitizedComprobantes.length}`)
@@ -295,10 +299,11 @@ export async function POST(request: Request) {
                     const sanitizedTransactions = uniqueTransactions.map((t: any) => ({
                         organization_id: t.organization_id,
                         fecha: t.fecha,
-                        descripcion: t.descripcion || 'Sin Descripción',
+                        descripcion: t.descripcion || t.concepto || 'Sin Descripción',
                         monto: t.monto,
                         cuit: t.cuit || null,
                         moneda: t.moneda || 'ARS',
+                        numero_cheque: t.numero_cheque || null,
                         origen_dato: t.origen_dato,
                         estado: t.estado,
                         archivo_importacion_id: t.archivo_importacion_id,

@@ -58,11 +58,11 @@ export function InvoicePanel({ invoices, loading }: InvoicePanelProps) {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-800/50 text-xs uppercase font-semibold text-gray-500 tracking-wider">
                         <tr>
-                            <th className="px-6 py-4">Socio / Factura</th>
+                            <th className="px-6 py-4">Socio / CUIT</th>
                             <th className="px-6 py-4">Emisión / Vto.</th>
+                            <th className="px-6 py-4">Banco / Cheque</th>
                             <th className="px-6 py-4">Estado / Salud</th>
-                            <th className="px-6 py-4 text-right">Monto Original</th>
-                            <th className="px-6 py-4 text-right">Monto Actualizado</th>
+                            <th className="px-6 py-4 text-right">Monto</th>
                             <th className="px-6 py-4"></th>
                         </tr>
                     </thead>
@@ -84,8 +84,8 @@ export function InvoicePanel({ invoices, loading }: InvoicePanelProps) {
                             return (
                                 <tr key={inv.id} className="hover:bg-gray-800/30 transition-colors group">
                                     <td className="px-6 py-4">
-                                        <div className="font-medium text-white">{inv.razon_social_socio}</div>
-                                        <div className="text-xs text-gray-500">{inv.numero}</div>
+                                        <div className="font-medium text-white">{inv.nombre_entidad || inv.razon_social_socio}</div>
+                                        <div className="text-xs text-gray-500">{inv.cuit_socio || '00-00000000-0'}</div>
                                     </td>
                                     <td className="px-6 py-4 text-gray-400">
                                         <div>{new Date(inv.fecha_emision).toLocaleDateString('es-AR')}</div>
@@ -93,11 +93,15 @@ export function InvoicePanel({ invoices, loading }: InvoicePanelProps) {
                                             Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}
                                         </div>
                                     </td>
+                                    <td className="px-6 py-4 text-gray-400">
+                                        <div className="text-white font-medium">{inv.banco || 'S/B'}</div>
+                                        <div className="text-[10px]">{inv.numero_cheque ? `CH: ${inv.numero_cheque}` : 'S/CH'}</div>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col gap-1.5">
                                             <Badge variant="outline" className={`${inv.estado === 'pagado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                    inv.estado === 'pendiente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                        'bg-gray-500/10 text-gray-400'
+                                                inv.estado === 'pendiente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                                    'bg-gray-500/10 text-gray-400'
                                                 } text-[10px] w-fit font-bold uppercase`}>
                                                 {inv.estado}
                                             </Badge>
@@ -111,19 +115,6 @@ export function InvoicePanel({ invoices, loading }: InvoicePanelProps) {
                                     </td>
                                     <td className="px-6 py-4 text-right font-medium text-white">
                                         {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_total)}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex flex-col items-end">
-                                            <span className="font-bold text-gray-400">
-                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(adjustedMonto)}
-                                            </span>
-                                            {inv.estado !== 'pagado' && view === 'AR' && (
-                                                <span className="text-[10px] text-red-400 flex items-center gap-1">
-                                                    <TrendingDown className="w-3 h-3" />
-                                                    -${new Intl.NumberFormat('es-AR').format(inflationLoss)} (Pérdida real)
-                                                </span>
-                                            )}
-                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors text-gray-500 hover:text-white">

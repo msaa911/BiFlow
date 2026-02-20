@@ -60,6 +60,20 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
                 <Card className="p-6 bg-gray-900 border-gray-800">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                                <Wallet className="w-6 h-6 text-emerald-400" />
+                                Treasury Hub
+                            </h1>
+                            <p className="text-gray-400 text-sm mt-1">
+                                Gestión profesional de Cuentas por Cobrar (AR) y Pagar (AP).
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="p-6 bg-gray-900 border-gray-800">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-emerald-500/10 rounded-xl">
                             <TrendingUp className="w-6 h-6 text-emerald-500" />

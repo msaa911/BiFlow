@@ -4,12 +4,15 @@ export interface Transaction {
     fecha: string;
     concepto: string;
     monto: number;
-    cuit: string;
-    razon_social?: string;
-    vencimiento?: string;
+    cuit?: string;
     numero?: string;
-    tipo: 'DEBITO' | 'CREDITO';
+    razon_social?: string;
+    banco?: string;
+    numero_cheque?: string;
+    vencimiento?: string | null;
+    tipo: 'ingreso' | 'egreso' | 'factura_venta' | 'factura_compra' | 'DEBITO' | 'CREDITO';
     tags?: string[];
+    raw?: any[];
 }
 
 export interface TranslationResult {
@@ -130,7 +133,7 @@ export class UniversalTranslator {
         };
 
         let headerIdx = -1;
-        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'concepto', 'descripcion', 'detalle', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto', 'banco', 'bank'];
+        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'concepto', 'descripcion', 'detalle', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'cuil', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto', 'banco', 'bank', 'cheque', 'nro ch', 'nº cheque'];
 
         for (let i = 0; i < Math.min(lines.length, 30); i++) {
             const row = lines[i].toLowerCase();
@@ -157,6 +160,7 @@ export class UniversalTranslator {
             tipo: headers.findIndex(h => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado'].some(k => h.includes(k))),
             vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
             numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta'].some(k => h.includes(k))),
+            cheque: headers.findIndex(h => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque'].some(k => h.includes(k))),
             debito: headers.findIndex(h => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo'].some(k => h.includes(k))),
             credito: headers.findIndex(h => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono'].some(k => h.includes(k)))
         };
@@ -220,12 +224,15 @@ export class UniversalTranslator {
                     fecha,
                     concepto,
                     monto,
-                    cuit,
-                    razon_social: idx.razon_social !== -1 ? row[idx.razon_social] : undefined,
-                    vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) || undefined : undefined,
+                    cuit: idx.cuit !== -1 ? row[idx.cuit] : '',
+                    razon_social: idx.razon_social !== -1 ? row[idx.razon_social] : '',
+                    banco: idx.banco !== -1 ? row[idx.banco] : '',
+                    numero_cheque: idx.cheque !== -1 ? row[idx.cheque] : '',
+                    vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
                     numero: idx.numero !== -1 ? row[idx.numero] : undefined,
-                    tipo,
-                    tags: []
+                    tipo: tipo,
+                    tags: [],
+                    raw: row
                 });
             }
         }
@@ -261,7 +268,7 @@ export class UniversalTranslator {
                     concepto: this.normalizeConcept(line.substring(0, 50), thesaurus),
                     monto,
                     cuit: '',
-                    tipo: monto < 0 ? 'DEBITO' : 'CREDITO'
+                    tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any
                 });
             }
         }
@@ -289,7 +296,7 @@ export class UniversalTranslator {
                 if (fecha && monto !== 0) {
                     transactions.push({
                         fecha, concepto, monto, cuit: '',
-                        tipo: monto < 0 ? 'DEBITO' : 'CREDITO'
+                        tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any
                     });
                 }
             }
