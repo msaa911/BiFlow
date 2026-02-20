@@ -54,51 +54,55 @@ export async function POST(request: Request) {
         let exampleRow: any = null
 
         const formatId = formData.get('formatId') as string
+        const manualMapping = formData.get('mapping') as string
         const invertSigns = formData.get('invertSigns') === 'true'
         const hasConfirmedSign = formData.has('invertSigns')
         const uploadContext = (formData.get('context') || 'bank') as 'bank' | 'income' | 'expense'
 
-        if (formatId) {
-            console.log(`9. Using Custom Format: ${formatId}`)
-            const { data: format } = await currentSupabase
-                .from('formato_archivos')
-                .select('reglas')
-                .eq('id', formatId)
-                .single()
+        if (formatId || manualMapping) {
+            console.log(`9. Using ${formatId ? 'Custom Format' : 'Manual Mapping'}`)
+            let rules: any = null
+            let tipo = 'delimited'
 
-            if (format) {
-                const { parseFixed } = require('@/lib/parsers/fixed-width')
-                const text = buffer.toString('utf-8')
-                console.log(`DEBUG: Custom Parser Input Length: ${text.length}`)
-                // Fetch Thesaurus for normalization
-                const { data: thesaurusRows } = await currentSupabase.from('financial_thesaurus').select('raw_pattern, normalized_concept')
-                const thesaurusMap = new Map<string, string>(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || [])
+            if (formatId) {
+                const { data: format } = await currentSupabase
+                    .from('formato_archivos')
+                    .select('reglas, tipo')
+                    .eq('id', formatId)
+                    .single()
+                if (format) {
+                    rules = format.reglas
+                    tipo = format.tipo || 'fixed_width'
+                }
+            } else if (manualMapping) {
+                try {
+                    rules = JSON.parse(manualMapping)
+                    tipo = 'delimited' // Visual Mapper defaults to delimited for now
+                } catch (e) {
+                    console.error('Failed to parse manual mapping:', e)
+                }
+            }
 
-                const res = parseFixed(text, format.reglas, { thesaurus: thesaurusMap })
-                console.log(`DEBUG: Custom Parser Result - Trans: ${res.transactions?.length}, Review: ${res.reviewItems?.length}`)
+            if (rules) {
+                const text = buffer.toString('utf-8');
+                const { data: thesaurusRows } = await currentSupabase.from('financial_thesaurus').select('raw_pattern, normalized_concept');
+                const thesaurusMap = new Map<string, string>(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || []);
 
-                // --- FIX: Map and Enrich Custom Format Results ---
-                transactions = res.transactions.map((t: any) => {
-                    const concepto = t.concepto || 'Sin concepto'
-                    const tags = [...(t.tags || [])]
+                const res = UniversalTranslator.translate(text, {
+                    invertSigns,
+                    thesaurus: thesaurusMap,
+                    template: { tipo, reglas: rules }
+                });
 
-                    return {
-                        ...t,
-                        organization_id: orgId,
-                        descripcion: concepto,
-                        tags,
-                        estado: 'pendiente'
-                    }
-                })
+                transactions = res.transactions.map((t: any) => ({
+                    ...t,
+                    organization_id: orgId,
+                    descripcion: t.concepto || 'Sin concepto',
+                    estado: 'pendiente'
+                }));
 
-                reviewItems = res.reviewItems.map((r: any) => ({
-                    ...r,
-                    organization_id: orgId
-                }))
-
-                warnings = res.warnings || []
-            } else {
-                console.log('Format not found, falling back to auto-detect')
+                hasExplicitTipo = res.hasExplicitTipo;
+                exampleRow = res.exampleRow;
             }
         }
 
@@ -147,12 +151,14 @@ export async function POST(request: Request) {
                         warnings.push(`Advertencia de Saldo: El total de movimientos no coincide con los saldos detectados (Dif: $${uniTransactions.metadata.diferencia?.toFixed(2)})`)
                     }
                 } else if (uniTransactions.transactions.length === 0 && !hasConfirmedSign) {
-                    console.log('Universal Translator yielded 0 results, requiring manual training')
+                    console.log('Universal Translator yielded 0 results, requiring visual mapping')
+                    const sampleRows = UniversalTranslator.getSampleRows(text);
                     return NextResponse.json({
-                        status: 'requires_confirmation',
-                        message: 'No logramos detectar el formato automáticamente. Por favor entrena el modelo.',
-                        requiresTraining: true
-                    }, { status: 409 })
+                        status: 'requires_mapping',
+                        message: 'No logramos detectar el formato automáticamente. Por favor mapea las columnas.',
+                        sampleRows,
+                        requiresMapping: true
+                    }, { status: 422 })
                 }
 
             } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {

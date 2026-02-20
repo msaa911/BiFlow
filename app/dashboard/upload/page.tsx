@@ -267,6 +267,13 @@ export default function UploadPage() {
                     // Requires Confirmation or Training
                     try {
                         const res = JSON.parse(xhr.responseText)
+                        if (res.status === 'requires_mapping') {
+                            setMappingFile(file)
+                            setUploading(false)
+                            resolve({ count: 0, skipped: 0, warnings: [] })
+                            return
+                        }
+
                         if (res.status === 'requires_confirmation') {
                             if (res.requiresTraining) {
                                 setShowFormatBuilder(true)
@@ -332,24 +339,45 @@ export default function UploadPage() {
                 <ColumnMapper
                     file={mappingFile}
                     onCancel={() => setMappingFile(null)}
-                    onMappingComplete={async (mapping) => {
-                        console.log('Mapping:', mapping)
+                    onMappingComplete={async (mapping, shouldSave, name) => {
+                        console.log('Mapping received:', mapping)
                         setUploading(true)
                         setError(null)
+
                         try {
+                            // 1. If user wants to save this as a permanent template
+                            if (shouldSave && name) {
+                                console.log('Saving template:', name)
+                                await fetch('/api/formats', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        nombre: name,
+                                        tipo: 'delimited',
+                                        reglas: mapping,
+                                        descripcion: `Creado manualmente desde mapping para ${mappingFile.name}`
+                                    })
+                                })
+                                await fetchFormats()
+                            }
+
+                            // 2. Process the file with the mapping (ephemeral or just saved)
                             const result = await uploadSingleFile(mappingFile, (p) => setProgress(p), mapping)
                             setMappingFile(null)
-                            // Show success state
+
+                            // 3. Show success state
                             setSuccess(true)
                             setUploadResult({
                                 count: result.count,
                                 skipped: result.skipped,
                                 warnings: result.warnings,
-                                reviewCount: result.reviewCount || 0
+                                reviewCount: result.reviewCount || 0,
+                                findingsCount: result.findingsCount || 0
                             })
                             setRefreshHistory(prev => prev + 1)
                         } catch (e: any) {
-                            alert('Error al procesar con mapeo: ' + e.message)
+                            console.error('Mapping process error:', e)
+                            setError('Error al procesar con mapeo: ' + e.message)
                         } finally {
                             setUploading(false)
                         }

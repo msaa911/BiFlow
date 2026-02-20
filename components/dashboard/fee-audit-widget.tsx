@@ -35,7 +35,7 @@ export function FeeAuditWidget() {
             .from('hallazgos_auditoria')
             .select(`
                 *,
-                transaccion:transaccion_id (
+                transaccion:transacciones (
                     fecha,
                     descripcion
                 )

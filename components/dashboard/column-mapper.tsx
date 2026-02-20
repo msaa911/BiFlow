@@ -6,7 +6,8 @@ import { Check, ArrowRight, Table as TableIcon } from 'lucide-react'
 
 type ColumnMapperProps = {
     file: File
-    onMappingComplete: (mapping: any) => void
+    context?: 'bank' | 'income' | 'expense'
+    onMappingComplete: (mapping: any, saveTemplate: boolean, templateName?: string) => void
     onCancel: () => void
 }
 
@@ -20,8 +21,13 @@ export function ColumnMapper({ file, onMappingComplete, onCancel }: ColumnMapper
     const [mapping, setMapping] = useState<{ [key: string]: number | null }>({
         fecha: null,
         descripcion: null,
-        monto: null
+        monto: null,
+        cuit: null,
+        cbu: null
     })
+
+    const [saveTemplate, setSaveTemplate] = useState(false)
+    const [templateName, setTemplateName] = useState('')
 
     // Fetch preview on mount
     useState(() => {
@@ -51,10 +57,10 @@ export function ColumnMapper({ file, onMappingComplete, onCancel }: ColumnMapper
         setMapping(prev => ({ ...prev, [field]: parseInt(index) }))
     }
 
-    const isValid = mapping.fecha !== null && mapping.monto !== null
+    const isValid = mapping.fecha !== null && mapping.monto !== null && (!saveTemplate || templateName.trim().length > 0)
 
     const handleSubmit = () => {
-        onMappingComplete(mapping)
+        onMappingComplete(mapping, saveTemplate, templateName)
     }
 
     if (loading) return <div className="p-8 text-center text-gray-400">Analizando archivo...</div>
@@ -68,22 +74,28 @@ export function ColumnMapper({ file, onMappingComplete, onCancel }: ColumnMapper
                     Asistente de Importación
                 </h3>
                 <p className="text-gray-400 text-sm">
-                    No reconocimos el formato de <strong>{file.name}</strong>. Ayúdanos a identificar las columnas para procesarlo.
+                    No reconocimos el formato de <strong>{file.name}</strong>. Ayúdanos a identificar las columnas para procesarlo de forma segura.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {['fecha', 'descripcion', 'monto'].map((field) => (
-                    <div key={field} className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                        <label className="block text-xs font-bold uppercase text-gray-400 mb-2">
-                            Columna {field} <span className="text-red-500">*</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                {[
+                    { id: 'fecha', label: 'Fecha', required: true },
+                    { id: 'descripcion', label: 'Concepto/Desc.', required: true },
+                    { id: 'monto', label: 'Monto', required: true },
+                    { id: 'cuit', label: 'CUIT/CUIL', required: false },
+                    { id: 'cbu', label: 'CBU/CVU', required: false },
+                ].map((field) => (
+                    <div key={field.id} className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                        <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5 px-1">
+                            {field.label} {field.required && <span className="text-emerald-500">*</span>}
                         </label>
                         <select
-                            className="w-full bg-gray-900 border border-gray-700 text-white rounded p-2 text-sm focus:border-emerald-500 outline-none"
-                            onChange={(e) => handleSelect(field, e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 text-white rounded p-1.5 text-xs focus:border-emerald-500 outline-none transition-colors"
+                            onChange={(e) => handleSelect(field.id, e.target.value)}
                             defaultValue=""
                         >
-                            <option value="" disabled>Seleccionar columna...</option>
+                            <option value="">Ignorar</option>
                             {headers.map((h, i) => (
                                 <option key={i} value={i}>{h || `Columna ${i + 1}`}</option>
                             ))}
@@ -116,6 +128,36 @@ export function ColumnMapper({ file, onMappingComplete, onCancel }: ColumnMapper
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            <div className="bg-gray-800/50 border border-gray-800 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <input
+                        type="checkbox"
+                        id="saveTemplate"
+                        className="w-4 h-4 rounded border-gray-700 bg-gray-900 text-emerald-600 focus:ring-emerald-500"
+                        checked={saveTemplate}
+                        onChange={(e) => setSaveTemplate(e.target.checked)}
+                    />
+                    <label htmlFor="saveTemplate" className="text-sm font-medium text-gray-300 cursor-pointer">
+                        Recordar este formato para futuros archivos similares
+                    </label>
+                </div>
+
+                {saveTemplate && (
+                    <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                        <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5 px-1">
+                            Nombre del Formato (ej: Banco Galicia CSV)
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="Escribe un nombre..."
+                            className="w-full md:w-1/2 bg-gray-900 border border-gray-700 text-white rounded p-2 text-sm focus:border-emerald-500 outline-none"
+                            value={templateName}
+                            onChange={(e) => setTemplateName(e.target.value)}
+                        />
+                    </div>
+                )}
             </div>
 
             <div className="flex justify-end gap-3">

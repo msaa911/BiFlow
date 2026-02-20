@@ -94,11 +94,14 @@ export class TreasuryEngine {
      * Assigns a credit rating based on soci name or payment history (simulated for now).
      */
     static getClientRating(cuit: string, razonSocial: string): { rating: string; color: string } {
+        // Safe check for null/undefined
+        const name = razonSocial || '';
+
         // Mock logic: Some clients are more reliable
-        if (razonSocial.includes('Lopez') || razonSocial.includes('Martinez')) {
+        if (name.includes('Lopez') || name.includes('Martinez')) {
             return { rating: 'A+', color: 'text-emerald-400' };
         }
-        if (razonSocial.includes('Quantum') || razonSocial.includes('Sosa')) {
+        if (name.includes('Quantum') || name.includes('Sosa')) {
             return { rating: 'B-', color: 'text-yellow-400' };
         }
         return { rating: 'A', color: 'text-emerald-400' };

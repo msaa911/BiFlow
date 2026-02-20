@@ -38,28 +38,40 @@ export class UniversalTranslator {
     };
 
     /**
-     * Identifica el formato y procesa el archivo (Versión 5.2 - Smart Split & Accents)
+     * Identifica el formato y procesa el archivo (Versión 6.1 - Sample for Mapping)
      */
-    static translate(rawText: string, options?: { invertSigns?: boolean, thesaurus?: Map<string, string> }): TranslationResult {
+    static translate(rawText: string, options?: {
+        invertSigns?: boolean,
+        thesaurus?: Map<string, string>,
+        template?: { tipo: string, reglas: Record<string, any> }
+    }): TranslationResult {
         const lines = rawText.split(/\r?\n/).filter(l => l.trim().length > 0);
         if (lines.length === 0) return { transactions: [], hasExplicitTipo: false, metadata: {} };
-
-        // Escanear las primeras líneas para detectar el formato de forma robusta
-        const sampleText = lines.slice(0, 10).join('\n');
-        const detectedDelimiter = this.detectDelimiter(sampleText);
 
         let transactions: Transaction[] = [];
         let hasExplicitTipo = false;
 
-        if (detectedDelimiter) {
-            // ESTRATEGIA 1: ARCHIVO DELIMITADO (CSV, Pipes, etc)
-            const result = this.parseDelimited(lines, detectedDelimiter, options?.thesaurus);
+        // ESTRATEGIA 0: TEMPLATE PERSONALIZADO (Visual Mapper)
+        if (options?.template) {
+            console.log(`[TRANSLATOR] Using custom template: ${options.template.tipo}`);
+            const result = this.parseWithTemplate(lines, options.template);
             transactions = result.transactions;
             hasExplicitTipo = result.hasExplicitTipo;
         } else {
-            // ESTRATEGIA 2: ANCHO FIJO / INTERBANKING
-            transactions = this.parseFixedWith(lines, options?.thesaurus);
-            hasExplicitTipo = false;
+            // Escanear las primeras líneas para detectar el formato de forma robusta
+            const sampleText = lines.slice(0, 10).join('\n');
+            const detectedDelimiter = this.detectDelimiter(sampleText);
+
+            if (detectedDelimiter) {
+                // ESTRATEGIA 1: ARCHIVO DELIMITADO (CSV, Pipes, etc)
+                const result = this.parseDelimited(lines, detectedDelimiter, options?.thesaurus);
+                transactions = result.transactions;
+                hasExplicitTipo = result.hasExplicitTipo;
+            } else {
+                // ESTRATEGIA 2: ANCHO FIJO / INTERBANKING
+                transactions = this.parseFixedWith(lines, options?.thesaurus);
+                hasExplicitTipo = false;
+            }
         }
 
         // Inversión manual de signos si se solicita
@@ -400,6 +412,81 @@ export class UniversalTranslator {
         const upper = concepto.toUpperCase();
         const taxKeywords = ['SIRCREB', 'IIBB', 'RETENCION', 'IMPUESTO', 'AFIP', 'ARBA', 'PERCEPCION'];
         return taxKeywords.some(k => upper.includes(k)) && !upper.includes('IVA');
+    }
+
+    /**
+     * Procesa el archivo usando reglas guardadas del Visual Mapper
+     */
+    private static parseWithTemplate(lines: string[], template: { tipo: string, reglas: Record<string, any> }): { transactions: Transaction[], hasExplicitTipo: boolean } {
+        const transactions: Transaction[] = [];
+        const { reglas } = template;
+
+        for (const line of lines) {
+            if (template.tipo === 'csv' || template.tipo === 'delimited') {
+                const delimiter = template.reglas.delimiter || ',';
+                const row = line.split(delimiter);
+
+                // Mapeo por índice (ej: { fecha: 0, monto: 2 })
+                const fecha = this.normalizeDate(row[reglas.fecha]);
+                if (!fecha) continue;
+
+                const monto = this.parseCurrency(row[reglas.monto]);
+                // Allow both 'concepto' and 'descripcion' in rules
+                const conceptoIdx = reglas.concepto !== undefined ? reglas.concepto : reglas.descripcion;
+                const concepto = this.normalizeConcept(row[conceptoIdx]);
+
+                if (monto !== 0) {
+                    transactions.push({
+                        fecha,
+                        concepto,
+                        monto,
+                        tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any,
+                        cbu: row[reglas.cbu] || undefined,
+                        cuit: row[reglas.cuit] || undefined
+                    });
+                }
+            } else if (template.tipo === 'fixed_width') {
+                // Mapeo por rangos (ej: { fecha: [0, 8], monto: [30, 42] })
+                const fechaRaw = line.substring(reglas.fecha[0], reglas.fecha[1]).trim();
+                const montoRaw = line.substring(reglas.monto[0], reglas.monto[1]).trim();
+                const descRaw = line.substring(reglas.concepto[0], reglas.concepto[1]).trim();
+
+                const fecha = this.normalizeDate(fechaRaw);
+                const monto = this.parseCurrency(montoRaw);
+
+                if (fecha && monto !== 0) {
+                    transactions.push({
+                        fecha,
+                        concepto: this.normalizeConcept(descRaw),
+                        monto,
+                        tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any
+                    });
+                }
+            }
+        }
+
+        return { transactions, hasExplicitTipo: true };
+    }
+
+    /**
+     * Retorna las primeras filas de un archivo para que el usuario pueda mapearlas visualmente.
+     */
+    static getSampleRows(rawText: string, maxRows: number = 5): any[][] {
+        const lines = rawText.split(/\r?\n/).filter(l => l.trim().length > 0).slice(0, maxRows);
+        const sampleText = lines.join('\n');
+        const delimiter = this.detectDelimiter(sampleText);
+
+        if (delimiter) {
+            return lines.map(line => {
+                if (delimiter === 'SPACE_MULTI') return line.trim().split(/\s{2,}/);
+                // Use a more robust split for CSV-like formats that handles quoted commas
+                const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                return matches ? matches.map(m => m.replace(/^"|"$/g, '').trim()) : line.split(delimiter);
+            });
+        }
+
+        // Si no hay delimitador claro, enviamos la línea completa (para fixed-width)
+        return lines.map(line => [line]);
     }
 
     private static extractMetadata(lines: string[], transactions: Transaction[]) {

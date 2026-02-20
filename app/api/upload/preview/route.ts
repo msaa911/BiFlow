@@ -1,13 +1,9 @@
-
-import { createClient } from '@/lib/supabase/server'
+import { UniversalTranslator } from '@/lib/universal-translator'
 import { NextResponse } from 'next/server'
-import * as xlsx from 'xlsx'
-// const pdf = require('pdf-parse')
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
-    const pdf = require('pdf-parse')
     try {
         const formData = await request.formData()
         const file = formData.get('file') as File
@@ -17,37 +13,19 @@ export async function POST(request: Request) {
         }
 
         const buffer = Buffer.from(await file.arrayBuffer())
-        const fileName = file.name.toLowerCase()
+        const text = buffer.toString('utf-8')
 
-        let headers: string[] = []
-        let previewData: any[][] = []
+        const sampleRows = UniversalTranslator.getSampleRows(text, 10)
 
-        if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileName.endsWith('.dat')) {
-            const text = buffer.toString('utf-8')
-            const lines = text.split('\n').slice(0, 6) // Read first 6 lines
+        // If it's a fixed-width-like list (only 1 column in sample), headers are dummy
+        // If it has multiple columns, first row could be headers
+        const headers = sampleRows.length > 0 ? sampleRows[0].map((_: any, i: number) => `Columna ${i + 1}`) : []
 
-            // Detect delimiter (simplified)
-            const firstLine = lines[0] || ''
-            const delimiter = firstLine.includes(',') ? ',' : (firstLine.includes(';') ? ';' : '\t')
-
-            headers = firstLine.split(delimiter).map(h => h.trim())
-            previewData = lines.slice(1).map(line => line.split(delimiter).map(c => c.trim()))
-
-        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-            const workbook = xlsx.read(buffer, { type: 'buffer' })
-            const sheetName = workbook.SheetNames[0]
-            const sheet = workbook.Sheets[sheetName]
-            const rows: any[][] = xlsx.utils.sheet_to_json(sheet, { header: 1, range: 0, defval: '' })
-
-            if (rows.length > 0) {
-                headers = rows[0].map((c: any) => String(c))
-                previewData = rows.slice(1, 6)
-            }
-        } else {
-            return NextResponse.json({ error: 'Preview not supported for this format yet' }, { status: 400 })
-        }
-
-        return NextResponse.json({ headers, previewData })
+        return NextResponse.json({
+            headers,
+            previewData: sampleRows,
+            message: 'Muestra generada correctamente'
+        })
 
     } catch (error: any) {
         console.error('Preview error:', error)
