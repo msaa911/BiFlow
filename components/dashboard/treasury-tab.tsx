@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Wallet, TrendingUp, TrendingDown, Calculator, Briefcase } from 'lucide-react'
 import { TreasuryEngine } from '@/lib/treasury-engine'
 import { CashFlowHub } from './cash-flow-hub'
-import { Shield } from 'lucide-react'
+import { SuppliersTab } from './suppliers-tab'
+import { Shield, BookUser } from 'lucide-react'
 
 interface TreasuryTabProps {
     orgId: string
@@ -120,6 +121,10 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                 <TabsList className="bg-gray-900 border border-gray-800 p-1 rounded-xl mb-6">
                     <TabsTrigger value="invoices" className="rounded-lg">Panel de Comprobantes</TabsTrigger>
                     <TabsTrigger value="cashflow" className="rounded-lg">Cash Flow Proyectado</TabsTrigger>
+                    <TabsTrigger value="suppliers" className="rounded-lg text-emerald-400">
+                        <BookUser className="w-3.5 h-3.5 mr-2" />
+                        Directorio de Proveedores
+                    </TabsTrigger>
                     <TabsTrigger value="advisor" className="rounded-lg">AI Strategy Advisor</TabsTrigger>
                 </TabsList>
 
@@ -129,6 +134,10 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
 
                 <TabsContent value="cashflow">
                     <CashFlowHub invoices={invoices} currentBalance={initialBalancesSum} />
+                </TabsContent>
+
+                <TabsContent value="suppliers">
+                    <SuppliersTab orgId={orgId} />
                 </TabsContent>
 
                 <TabsContent value="advisor">

@@ -9,6 +9,7 @@ export interface Transaction {
     razon_social?: string;
     banco?: string;
     numero_cheque?: string;
+    cbu?: string;
     vencimiento?: string | null;
     tipo: 'ingreso' | 'egreso' | 'factura_venta' | 'factura_compra' | 'DEBITO' | 'CREDITO';
     tags?: string[];
@@ -161,6 +162,7 @@ export class UniversalTranslator {
             vencimiento: headers.findIndex(h => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
             numero: headers.findIndex(h => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta'].some(k => h.includes(k))),
             cheque: headers.findIndex(h => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque'].some(k => h.includes(k))),
+            cbu: headers.findIndex(h => ['cbu', 'cta destino', 'cvu', 'cuenta destino', 'coordenada'].some(k => h.includes(k))),
             debito: headers.findIndex(h => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo'].some(k => h.includes(k))),
             credito: headers.findIndex(h => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono'].some(k => h.includes(k)))
         };
@@ -205,6 +207,13 @@ export class UniversalTranslator {
             const concepto = this.normalizeConcept(conceptoRaw, thesaurus);
             const cuit = (idx.cuit !== -1 ? row[idx.cuit] : '').replace(/[^0-9]/g, '');
 
+            // Smart CBU Extraction (Search for 22 digits if not in explicit column)
+            let cbu = idx.cbu !== -1 ? row[idx.cbu].replace(/[^0-9]/g, '') : '';
+            if (cbu.length !== 22) {
+                const cbuMatch = line.match(/\b\d{22}\b/);
+                if (cbuMatch) cbu = cbuMatch[0];
+            }
+
             // Lógica de Signos si viene en columna Tipo
             let tipo: 'DEBITO' | 'CREDITO' = monto < 0 ? 'DEBITO' : 'CREDITO';
             if (monto !== 0 && idx.tipo !== -1 && row[idx.tipo]) {
@@ -228,6 +237,7 @@ export class UniversalTranslator {
                     razon_social: idx.razon_social !== -1 ? row[idx.razon_social] : '',
                     banco: idx.banco !== -1 ? row[idx.banco] : '',
                     numero_cheque: idx.cheque !== -1 ? row[idx.cheque] : '',
+                    cbu: cbu || undefined,
                     vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
                     numero: idx.numero !== -1 ? row[idx.numero] : undefined,
                     tipo: tipo,
@@ -293,9 +303,13 @@ export class UniversalTranslator {
                 const descArea = trimmed.replace(fechaRaw, '').replace(amountRaw, '').trim();
                 const concepto = this.normalizeConcept(descArea, thesaurus);
 
+                const cbuMatch = trimmed.match(/\b\d{22}\b/);
+                const cbu = cbuMatch ? cbuMatch[0] : undefined;
+
                 if (fecha && monto !== 0) {
                     transactions.push({
                         fecha, concepto, monto, cuit: '',
+                        cbu,
                         tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any
                     });
                 }

@@ -49,7 +49,7 @@ export class TrustLedger {
     }
 
     /**
-     * Registra nuevos pares CUIT-CBU como confiables.
+     * Registra nuevos pares CUIT-CBU como confiables y actualiza la lista de proveedores.
      */
     static async learn(transactions: any[], orgId: string) {
         const supabase = createClient()
@@ -64,8 +64,24 @@ export class TrustLedger {
             }))
 
         if (newPairs.length > 0) {
+            // 1. Update Trust Ledger
             await supabase.from('trust_ledger').upsert(newPairs, {
                 onConflict: 'organization_id,cuit,cbu'
+            })
+
+            // 2. Build/Update Supplier List (entidades)
+            const entities = transactions
+                .filter(t => t.cuit && t.metadata?.cbu)
+                .map(t => ({
+                    organization_id: orgId,
+                    cuit: t.cuit,
+                    razon_social: t.razon_social || t.descripcion || 'Proveedor Autodetectado',
+                    categoria: 'proveedor',
+                    metadata: { cbu_habitual: t.metadata.cbu }
+                }))
+
+            await supabase.from('entidades').upsert(entities, {
+                onConflict: 'organization_id,cuit'
             })
         }
     }

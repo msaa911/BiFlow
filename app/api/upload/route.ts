@@ -139,7 +139,8 @@ export async function POST(request: Request) {
                         tags: t.tags || [],
                         moneda: 'ARS',
                         origen_dato: 'universal_translator',
-                        estado: 'pendiente'
+                        estado: 'pendiente',
+                        metadata: { cbu: t.cbu }
                     }))
                     // Add balance check warnings if any (only for bank statements)
                     if (uploadContext === 'bank' && uniTransactions.metadata?.isBalanced === false) {
