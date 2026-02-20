@@ -1,0 +1,26 @@
+0000000000000000000000000000000000000000 03378861a815e2692409b230be7841cb61a78071 Miguel Saa <miguelhsaa@gmail.com> 1771117493 -0300	commit (initial): Initial commit for BiFlow project
+03378861a815e2692409b230be7841cb61a78071 0000000000000000000000000000000000000000 Miguel Saa <miguelhsaa@gmail.com> 1771117578 -0300	Branch: renamed refs/heads/master to refs/heads/main
+0000000000000000000000000000000000000000 03378861a815e2692409b230be7841cb61a78071 Miguel Saa <miguelhsaa@gmail.com> 1771117578 -0300	Branch: renamed refs/heads/master to refs/heads/main
+03378861a815e2692409b230be7841cb61a78071 f70d61c5dd8951d8b50fe25cb0f8bf5646ad56cf Miguel Saa <miguelhsaa@gmail.com> 1771117825 -0300	commit: Add README.md with project details
+f70d61c5dd8951d8b50fe25cb0f8bf5646ad56cf 1f4a2651df75a167f55a1dc11f8cf6adededde7d Miguel Saa <miguelhsaa@gmail.com> 1771119406 -0300	commit: Fix: Add type module to package.json for Vercel API routes
+1f4a2651df75a167f55a1dc11f8cf6adededde7d 48eb5d947d6cf433023ca3cc9eb937362a02bca1 Miguel Saa <miguelhsaa@gmail.com> 1771120007 -0300	commit: Fix: Connect landing page form to app registration with pre-filling
+48eb5d947d6cf433023ca3cc9eb937362a02bca1 6c11180e57b522ee057c65c2d1724432bc7cca1f Miguel Saa <miguelhsaa@gmail.com> 1771120676 -0300	commit: UX: Improve error reporting in Login UI to help debug Auth issues
+6c11180e57b522ee057c65c2d1724432bc7cca1f e2ab4320a0e5b9590f633d5202b433cc05c971c8 Miguel Saa <miguelhsaa@gmail.com> 1771122613 -0300	commit: Fix: Update Supabase Anon Key with the correct value
+e2ab4320a0e5b9590f633d5202b433cc05c971c8 b8eb20500f85b1284f6b4eb1ed13783c66032de8 Miguel Saa <miguelhsaa@gmail.com> 1771124016 -0300	commit: Fix: Resolve Supabase variable name conflict causing login to break
+b8eb20500f85b1284f6b4eb1ed13783c66032de8 81eb08b31cad0c2b79be223296a13545d4e3f994 Miguel Saa <miguelhsaa@gmail.com> 1771126056 -0300	commit: Fix: Use window.SUPABASE_URL in dashboard.html to prevent variable conflict
+81eb08b31cad0c2b79be223296a13545d4e3f994 453d347b9e8d6fd5ae348b93b47dc68716a4847a Miguel Saa <miguelhsaa@gmail.com> 1771128077 -0300	commit: UX: Add multi-step progress bar for file uploads
+453d347b9e8d6fd5ae348b93b47dc68716a4847a 712d97aa8be1def97951710cffe1318a08f3a765 Miguel Saa <miguelhsaa@gmail.com> 1771128322 -0300	commit: Debug: Add detailed logging and show specific AI errors in upload progress
+712d97aa8be1def97951710cffe1318a08f3a765 9959b0fd212be791e8982e6f43eb810a10393a84 Miguel Saa <miguelhsaa@gmail.com> 1771128774 -0300	commit: Branding: Replace DeepSeek mention with BiFlow IA in upload UI
+9959b0fd212be791e8982e6f43eb810a10393a84 e32465f4a10dabc932561309ab4980620f17fd31 Miguel Saa <miguelhsaa@gmail.com> 1771128854 -0300	commit: Fix: Reuse single Supabase client and add env var validation in API
+e32465f4a10dabc932561309ab4980620f17fd31 a2507bd91a48da7f37c05f95c3dbcf6ed523d24a Miguel Saa <miguelhsaa@gmail.com> 1771129321 -0300	commit: Fix: Move all API client init inside handlers to prevent module-level crashes
+a2507bd91a48da7f37c05f95c3dbcf6ed523d24a 0c189e820affb233f92388277d11fbebb6ac8301 Miguel Saa <miguelhsaa@gmail.com> 1771129452 -0300	commit: UX: Show errors for 10s instead of 3s, handle non-JSON API responses
+0c189e820affb233f92388277d11fbebb6ac8301 fd0f8604b9a2e3ebb0b8edaf5308613887e67fa1 Miguel Saa <miguelhsaa@gmail.com> 1771129658 -0300	commit: Feature: Add delete button to file history with confirmation dialog
+fd0f8604b9a2e3ebb0b8edaf5308613887e67fa1 fc1abf30d88f790d2f6a5eaa3f3316f163690b9b Miguel Saa <miguelhsaa@gmail.com> 1771130069 -0300	commit: Add health check endpoint to diagnose env var issues
+fc1abf30d88f790d2f6a5eaa3f3316f163690b9b bf2910effbee9b74fde51089055a0f5d729db3ff Miguel Saa <miguelhsaa@gmail.com> 1771130298 -0300	commit: Fix: Rewrite process_statement with inline AI call and guaranteed JSON responses
+bf2910effbee9b74fde51089055a0f5d729db3ff 77df1a6db7a8953964e61a0bec3a6a38e43a24e3 Miguel Saa <miguelhsaa@gmail.com> 1771130808 -0300	commit: Fix: Map AI 'categoria' to DB 'categoria_ia' column
+77df1a6db7a8953964e61a0bec3a6a38e43a24e3 51eda547bccd73170ca1c907d3bffddfcf83d06b Miguel Saa <miguelhsaa@gmail.com> 1771132340 -0300	commit: Feature: Enhance dashboard visualizations with leak breakdown, charts, and flow analysis
+51eda547bccd73170ca1c907d3bffddfcf83d06b a3aa19cd5c48b121a9a0534f868edd3151f73821 Miguel Saa <miguelhsaa@gmail.com> 1771138260 -0300	pull --ff --recurse-submodules --progress origin: Fast-forward
+a3aa19cd5c48b121a9a0534f868edd3151f73821 334ccbede4c9da33a63db6b8ad0ebd12aa7a7945 Miguel Saa <miguelhsaa@gmail.com> 1771205550 -0300	commit: feat: initial commit of BiFlow
+334ccbede4c9da33a63db6b8ad0ebd12aa7a7945 0000000000000000000000000000000000000000 Miguel Saa <miguelhsaa@gmail.com> 1771205551 -0300	Branch: renamed refs/heads/main to refs/heads/main
+334ccbede4c9da33a63db6b8ad0ebd12aa7a7945 334ccbede4c9da33a63db6b8ad0ebd12aa7a7945 Miguel Saa <miguelhsaa@gmail.com> 1771205551 -0300	Branch: renamed refs/heads/main to refs/heads/main
+334ccbede4c9da33a63db6b8ad0ebd12aa7a7945 792754cb876430a971a1d8cb1b72765aa67b21a5 Miguel Saa <miguelhsaa@gmail.com> 1771205635 -0300	pull origin main --rebase (start): checkout 792754cb876430a971a1d8cb1b72765aa67b21a5
