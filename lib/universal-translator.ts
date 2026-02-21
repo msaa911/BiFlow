@@ -490,12 +490,20 @@ export class UniversalTranslator {
                 const fecha = this.normalizeDate(row[reglas.fecha]);
                 if (!fecha) continue;
 
-                const monto = this.parseCurrency(row[reglas.monto]);
+                let monto = 0;
+                if (reglas.debito !== undefined && reglas.credito !== undefined) {
+                    const deb = this.parseCurrency(row[reglas.debito]);
+                    const cre = this.parseCurrency(row[reglas.credito]);
+                    monto = Math.abs(cre) - Math.abs(deb);
+                } else {
+                    monto = this.parseCurrency(row[reglas.monto]);
+                }
+
                 // Allow both 'concepto' and 'descripcion' in rules
                 const conceptoIdx = reglas.concepto !== undefined ? reglas.concepto : reglas.descripcion;
                 const concepto = this.normalizeConcept(row[conceptoIdx]);
 
-                if (monto !== 0) {
+                if (monto !== 0 || true) { // Permitimos 0 si es una fila de cabecera que pasó el date check (raro)
                     transactions.push({
                         fecha,
                         concepto,

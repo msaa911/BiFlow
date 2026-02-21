@@ -24,6 +24,8 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
         fecha: null,
         descripcion: null,
         monto: null,
+        debito: null,
+        credito: null,
         cuit: null,
         cbu: null
     })
@@ -77,7 +79,10 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
         setMapping(prev => ({ ...prev, [field]: parseInt(index) }))
     }
 
-    const isValid = mapping.fecha !== null && mapping.monto !== null && (!saveTemplate || templateName.trim().length > 0)
+    const isValid = mapping.fecha !== null &&
+        mapping.descripcion !== null &&
+        (mapping.monto !== null || (mapping.debito !== null && mapping.credito !== null)) &&
+        (!saveTemplate || templateName.trim().length > 0)
 
     const handleSubmit = async () => {
         if (importId) {
@@ -124,7 +129,9 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
                     {[
                         { id: 'fecha', label: 'Fecha', required: true },
                         { id: 'descripcion', label: 'Concepto/Desc.', required: true },
-                        { id: 'monto', label: 'Monto', required: true },
+                        { id: 'monto', label: 'Monto Único', required: false },
+                        { id: 'debito', label: 'Débito (-)', required: false },
+                        { id: 'credito', label: 'Crédito (+)', required: false },
                         { id: 'cuit', label: 'CUIT/CUIL', required: false },
                         { id: 'cbu', label: 'CBU/CVU', required: false },
                     ].map((field) => (
