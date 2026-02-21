@@ -130,14 +130,14 @@ export class UniversalTranslator {
                 if (cand.char === 'SPACE_MULTI') {
                     parts = l.trim().split(/\s{2,}/).length;
                 } else if (cand.char === ',') {
-                    // Count commas outside quotes
                     const re = /,((?=(?:(?:[^"]*"){2})*[^"]*$))/g;
                     parts = (l.match(re) || []).length + 1;
                 } else {
                     parts = l.split(cand.char).length;
                 }
 
-                if (parts > 1) {
+                // Any separator that repeatedly produces more than 2 columns is extremely significant
+                if (parts >= 2) {
                     appearances++;
                     lineCounts.push(parts);
                 }

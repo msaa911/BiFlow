@@ -15,11 +15,11 @@ export async function POST(request: Request) {
         const buffer = Buffer.from(await file.arrayBuffer())
         const text = buffer.toString('utf-8')
 
-        const sampleRows = UniversalTranslator.getSampleRows(text, 10)
+        const sampleRows = UniversalTranslator.getSampleRows(text, 50)
 
-        // If it's a fixed-width-like list (only 1 column in sample), headers are dummy
-        // If it has multiple columns, first row could be headers
-        const headers = sampleRows.length > 0 ? sampleRows[0].map((_: any, i: number) => `Columna ${i + 1}`) : []
+        // Find the widest row to determine column count
+        const maxCols = sampleRows.reduce((max, row) => Math.max(max, row.length), 0)
+        const headers = Array.from({ length: maxCols }, (_, i) => `Columna ${i + 1}`)
 
         return NextResponse.json({
             headers,
