@@ -14,6 +14,7 @@ export interface Transaction {
     tipo: 'ingreso' | 'egreso' | 'factura_venta' | 'factura_compra' | 'DEBITO' | 'CREDITO';
     tags?: string[];
     raw?: any[];
+    metadata?: any;
 }
 
 export interface TranslationResult {
@@ -299,6 +300,7 @@ export class UniversalTranslator {
             }
 
             if (monto !== 0) {
+                const category = this.categorizeTransaction(conceptoRaw, monto, numero_cheque || undefined);
                 transactions.push({
                     fecha,
                     concepto,
@@ -312,7 +314,8 @@ export class UniversalTranslator {
                     numero: idx.numero !== -1 ? row[idx.numero] : undefined,
                     tipo: tipo,
                     tags: [],
-                    raw: row
+                    raw: row,
+                    metadata: { categoria: category }
                 });
             }
         }
@@ -554,6 +557,8 @@ export class UniversalTranslator {
                     if (chMatch) numero_cheque = chMatch[1];
                 }
 
+                const category = this.categorizeTransaction(conceptoRaw, monto, numero_cheque || undefined);
+
                 if (monto !== 0 || true) {
                     transactions.push({
                         fecha,
@@ -562,7 +567,8 @@ export class UniversalTranslator {
                         tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any,
                         cbu: cbu || undefined,
                         cuit: cuit || undefined,
-                        numero_cheque: numero_cheque || undefined
+                        numero_cheque: numero_cheque || undefined,
+                        metadata: { categoria: category }
                     });
                 }
             } else if (template.tipo === 'fixed_width') {
@@ -631,6 +637,22 @@ export class UniversalTranslator {
         }
 
         return text.split(delim).map(c => c.trim());
+    }
+
+    private static categorizeTransaction(concepto: string, monto: number, numeroCheque?: string): string {
+        const c = concepto.toUpperCase();
+
+        if (numeroCheque || c.includes('CHEQUE') || c.includes('CH ') || c.includes('VALOR')) return 'CHEQUE';
+
+        if (c.includes('TRANSFERENCIA') || c.includes('TRANSF') || c.includes('TRF') || c.includes('EMITIDA') || c.includes('RECIBIDA') || c.includes('INMEDIATA')) return 'TRANSFERENCIA';
+
+        if (c.includes('EFECTIVO') || c.includes('DEPOSITO CAJA') || c.includes('EXTRACCION') || c.includes('ATM') || c.includes('CAJERO')) return 'EFECTIVO';
+
+        if (c.includes('DEBITO') || c.includes('AUTOMATICO') || c.includes('DB.AUTO') || c.includes('SERV.') || c.includes('SUSCRIPCION') || c.includes('SEGURO') || c.includes('CUOTA')) return 'TARJETA/DEBITO';
+
+        if (c.includes('COMISION') || c.includes('CARGO') || c.includes('IMPUESTO') || c.includes('IVA') || c.includes('MANTENIMIENTO') || c.includes('INTERES') || c.includes('PERCEPCION')) return 'GASTOS/COMISIONES';
+
+        return 'OTROS';
     }
 
     private static extractMetadata(lines: string[], transactions: Transaction[]) {

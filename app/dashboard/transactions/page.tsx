@@ -64,8 +64,8 @@ export default async function TransactionsPage() {
                             <tr>
                                 <th className="px-6 py-4">Fecha</th>
                                 <th className="px-6 py-4">Descripción</th>
-                                <th className="px-6 py-4">CUIT Destino</th>
-                                <th className="px-6 py-4">Origen</th>
+                                <th className="px-6 py-4">Tipo / Categoría</th>
+                                <th className="px-6 py-4">Nº Cheque</th>
                                 <th className="px-6 py-4">Hallazgos</th>
                                 <th className="px-6 py-4 text-right">Monto</th>
                             </tr>
@@ -79,13 +79,21 @@ export default async function TransactionsPage() {
                                     <td className="px-6 py-4 text-white font-medium max-w-[300px] truncate">
                                         {t.descripcion}
                                     </td>
-                                    <td className="px-6 py-4 font-mono text-xs">
-                                        {t.cuit_destino || '---'}
-                                    </td>
                                     <td className="px-6 py-4">
-                                        <span className="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-[10px] uppercase font-bold">
-                                            {t.origen_dato}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${t.metadata?.categoria === 'CHEQUE' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                    t.metadata?.categoria === 'TRANSFERENCIA' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                        t.metadata?.categoria === 'EFECTIVO' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                            t.metadata?.categoria === 'TARJETA/DEBITO' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                                                t.metadata?.categoria === 'GASTOS/COMISIONES' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                                                    'bg-gray-800 text-gray-400 border-gray-700'
+                                                }`}>
+                                                {t.metadata?.categoria || 'OTROS'}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 font-mono text-xs text-blue-400 font-bold">
+                                        {t.numero_cheque || '---'}
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-wrap gap-1">
@@ -93,8 +101,8 @@ export default async function TransactionsPage() {
                                                 <span
                                                     key={tag}
                                                     className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter shadow-sm border ${tag === 'impuesto_recuperable'
-                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                            : 'bg-red-500/10 text-red-500 border-red-500/20 animate-pulse'
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                        : 'bg-red-500/10 text-red-500 border-red-500/20 animate-pulse'
                                                         }`}
                                                 >
                                                     {tag === 'posible_duplicado' ? 'Duplicado' : tag === 'alerta_precio' ? 'Sobreprecio' : 'Crédito Fiscal'}

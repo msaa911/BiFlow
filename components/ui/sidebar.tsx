@@ -9,7 +9,7 @@ const navigation = [
     { name: 'Tesorería', href: '/dashboard/treasury', icon: Wallet },
     { name: 'Cargar Archivos', href: '/dashboard/upload', icon: FileText },
     { name: 'Historial', href: '/dashboard/history', icon: Clock },
-    { name: 'Transacciones', href: '/dashboard/transactions', icon: List },
+    { name: 'Transacciones Bancarias', href: '/dashboard/transactions', icon: List },
     { name: 'Auditoría AI', href: '/dashboard/analysis', icon: Shield },
     { name: 'Reportes', href: '/dashboard/reports', icon: FileText },
     { name: 'Configuración', href: '/dashboard/settings', icon: Settings },
