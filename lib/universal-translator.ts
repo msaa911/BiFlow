@@ -642,15 +642,28 @@ export class UniversalTranslator {
     private static categorizeTransaction(concepto: string, monto: number, numeroCheque?: string): string {
         const c = concepto.toUpperCase();
 
-        if (numeroCheque || c.includes('CHEQUE') || c.includes('CH ') || c.includes('VALOR')) return 'CHEQUE';
+        // 1. CHEQUE (Prioridad Máxima)
+        if (numeroCheque || c.includes('CHEQUE') || c.includes('CH ') || c.includes('VALOR') || c.includes('PAGO CH')) return 'CHEQUE';
 
-        if (c.includes('TRANSFERENCIA') || c.includes('TRANSF') || c.includes('TRF') || c.includes('EMITIDA') || c.includes('RECIBIDA') || c.includes('INMEDIATA')) return 'TRANSFERENCIA';
+        // 2. INTERESES
+        if (c.includes('INTERES') || c.includes('GANAD') || c.includes('PAGAD') || c.includes('MORA')) return 'INTERESES';
 
-        if (c.includes('EFECTIVO') || c.includes('DEPOSITO CAJA') || c.includes('EXTRACCION') || c.includes('ATM') || c.includes('CAJERO')) return 'EFECTIVO';
+        // 3. TRANSFERENCIA (Incluye compras y pagos AFIP manuales)
+        if (c.includes('TRANSFERENCIA') || c.includes('TRANSF') || c.includes('TRF') ||
+            c.includes('EMITIDA') || c.includes('RECIBIDA') || c.includes('INMEDIATA') ||
+            c.includes('HABERES') || c.includes('PAGO AFIP') || c.includes('COMPRA')) return 'TRANSFERENCIA';
 
-        if (c.includes('DEBITO') || c.includes('AUTOMATICO') || c.includes('DB.AUTO') || c.includes('SERV.') || c.includes('SUSCRIPCION') || c.includes('SEGURO') || c.includes('CUOTA')) return 'TARJETA/DEBITO';
+        // 4. EFECTIVO
+        if (c.includes('EFECTIVO') || c.includes('DEPOSITO CAJA') || c.includes('EXTRACCION') ||
+            c.includes('ATM') || c.includes('CAJERO') || c.includes('RETIRO') || c.includes('VENTANILLA')) return 'EFECTIVO';
 
-        if (c.includes('COMISION') || c.includes('CARGO') || c.includes('IMPUESTO') || c.includes('IVA') || c.includes('MANTENIMIENTO') || c.includes('INTERES') || c.includes('PERCEPCION')) return 'GASTOS/COMISIONES';
+        // 5. TARJETA/DEBITO (Débitos automáticos)
+        if (c.includes('DEBITO AUTO') || c.includes('SERV.') || c.includes('SUSCRIPCION') ||
+            c.includes('SEGURO') || c.includes('CUOTA')) return 'TARJETA/DEBITO';
+
+        // 6. GASTOS/COMISIONES
+        if (c.includes('COMISION') || c.includes('CARGO') || c.includes('IMPUESTO') ||
+            c.includes('IVA') || c.includes('MANTENIMIENTO') || c.includes('PERCEPCION')) return 'GASTOS/COMISIONES';
 
         return 'OTROS';
     }
