@@ -106,56 +106,62 @@ export class UniversalTranslator {
      * Detección Inteligente de Delimitadores (Ignora comas dentro de comillas)
      */
     private static detectDelimiter(textSample: string): string | null {
-        const lines = textSample.split('\n').filter(l => l.trim().length > 0).slice(0, 20);
+        // Sample up to 50 lines to handle large headers
+        const lines = textSample.split(/\r?\n/).filter(l => l.trim().length > 0).slice(0, 50);
         if (lines.length === 0) return null;
 
-        // Función auxiliar para contar separadores ignorando los que están entre comillas
-        const countOutsideQuotes = (line: string, char: string) => {
-            if (char !== ',') return line.split(char).length - 1;
-            // Regex para contar comas fuera de comillas: ,(?=(?:(?:[^"]*"){2})*[^"]*$)
-            try {
-                const re = new RegExp(`\\${char}(?=(?:(?:[^"]*"){2})*[^"]*$)`, 'g');
-                return (line.match(re) || []).length;
-            } catch { return 0; }
-        };
-
         const candidates = [
-            { char: '|', threshold: 0.3 },
-            { char: ';', threshold: 0.5 },
-            { char: '\t', threshold: 0.5 },
-            { char: ',', threshold: 0.5 },
-            { char: 'SPACE_MULTI', threshold: 0.4 } // Nueva opción para archivos alineados
+            { char: ';', name: 'Semicolon' },
+            { char: '|', name: 'Pipe' },
+            { char: '\t', name: 'Tab' },
+            { char: ',', name: 'Comma' },
+            { char: 'SPACE_MULTI', name: 'Multi-Space' }
         ];
 
+        let bestDelim: string | null = null;
+        let maxScore = 0;
+
         for (const cand of candidates) {
-            let consistentLines = 0;
-            const delimiterChar = cand.char;
+            let lineCounts: number[] = [];
+            let appearances = 0;
 
             lines.forEach(l => {
-                let parts: string[] = [];
-                if (delimiterChar === 'SPACE_MULTI') {
-                    parts = l.trim().split(/\s{2,}/);
+                let parts = 0;
+                if (cand.char === 'SPACE_MULTI') {
+                    parts = l.trim().split(/\s{2,}/).length;
+                } else if (cand.char === ',') {
+                    // Count commas outside quotes
+                    const re = /,((?=(?:(?:[^"]*"){2})*[^"]*$))/g;
+                    parts = (l.match(re) || []).length + 1;
                 } else {
-                    // Count Occurrences simple if not comma to avoid regex complexity
-                    if (delimiterChar !== ',') {
-                        parts = l.split(delimiterChar);
-                    } else {
-                        // For comma, count outside quotes
-                        const count = countOutsideQuotes(l, ',');
-                        if (count > 0) parts = new Array(count + 1);
-                    }
+                    parts = l.split(cand.char).length;
                 }
 
-                if (parts.length > 2) {
-                    consistentLines++;
+                if (parts > 2) {
+                    appearances++;
+                    lineCounts.push(parts);
                 }
             });
 
-            if (consistentLines >= lines.length * 0.4) {
-                return cand.char;
+            // Scoring: appearances weight + consistency weight
+            // A delim that appears in at least 15% of lines is a candidate
+            if (appearances >= Math.max(2, lines.length * 0.15)) {
+                // Consistency: do most lines have the same number of columns?
+                const counts = new Map<number, number>();
+                lineCounts.forEach(c => counts.set(c, (counts.get(c) || 0) + 1));
+                const maxFreq = Math.max(...Array.from(counts.values()));
+
+                // Score = number of appearances + bonus for consistency
+                const score = appearances + (maxFreq * 1.5);
+
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestDelim = cand.char;
+                }
             }
         }
-        return null;
+
+        return bestDelim;
     }
 
 
