@@ -58,6 +58,7 @@ export async function POST(request: Request) {
         const invertSigns = formData.get('invertSigns') === 'true'
         const hasConfirmedSign = formData.has('invertSigns')
         const uploadContext = (formData.get('context') || 'bank') as 'bank' | 'income' | 'expense'
+        let uniTransactions: any = null
 
         if (formatId || manualMapping) {
             console.log(`9. Using ${formatId ? 'Custom Format' : 'Manual Mapping'}`)
@@ -88,21 +89,21 @@ export async function POST(request: Request) {
                 const { data: thesaurusRows } = await currentSupabase.from('financial_thesaurus').select('raw_pattern, normalized_concept');
                 const thesaurusMap = new Map<string, string>(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || []);
 
-                const res = UniversalTranslator.translate(text, {
+                uniTransactions = UniversalTranslator.translate(text, {
                     invertSigns,
                     thesaurus: thesaurusMap,
                     template: { tipo, reglas: rules }
                 });
 
-                transactions = res.transactions.map((t: any) => ({
+                transactions = uniTransactions.transactions.map((t: any) => ({
                     ...t,
                     organization_id: orgId,
                     descripcion: t.concepto || 'Sin concepto',
                     estado: 'pendiente'
                 }));
 
-                hasExplicitTipo = res.hasExplicitTipo;
-                exampleRow = res.exampleRow;
+                hasExplicitTipo = uniTransactions.hasExplicitTipo;
+                exampleRow = uniTransactions.exampleRow;
             }
         }
 
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
                 const thesaurusMap = new Map<string, string>(thesaurusRows?.map((r: any) => [r.raw_pattern, r.normalized_concept]) || [])
 
                 // Use Universal Translator
-                const uniTransactions = UniversalTranslator.translate(text, { invertSigns, thesaurus: thesaurusMap })
+                uniTransactions = UniversalTranslator.translate(text, { invertSigns, thesaurus: thesaurusMap })
 
                 hasExplicitTipo = uniTransactions.hasExplicitTipo
                 exampleRow = uniTransactions.exampleRow
