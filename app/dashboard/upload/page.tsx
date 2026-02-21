@@ -275,8 +275,8 @@ export default function UploadPage() {
                     } catch (e) {
                         resolve({ count: 0, skipped: 0, warnings: [] })
                     }
-                } else if (xhr.status === 409) {
-                    // Requires Confirmation or Training
+                } else if (xhr.status === 409 || xhr.status === 422) {
+                    // Requires Confirmation (409) or Visual Mapping (422)
                     try {
                         const res = JSON.parse(xhr.responseText)
                         if (res.status === 'requires_mapping') {
