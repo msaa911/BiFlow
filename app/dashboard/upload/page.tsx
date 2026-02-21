@@ -91,7 +91,7 @@ export default function UploadPage() {
         e.stopPropagation()
         setDragActive(false)
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            validateAndAddFiles(Array.from(e.dataTransfer.files))
+            onFileSelect(Array.from(e.dataTransfer.files))
         }
     }
 
