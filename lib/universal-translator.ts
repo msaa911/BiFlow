@@ -56,6 +56,16 @@ export class UniversalTranslator {
         // ESTRATEGIA 0: TEMPLATE PERSONALIZADO (Visual Mapper)
         if (options?.template) {
             console.log(`[TRANSLATOR] Using custom template: ${options.template.tipo}`);
+
+            // Si el template no tiene delimitador, intentamos detectarlo
+            if (options.template.tipo === 'delimited' && !options.template.reglas.delimiter) {
+                const sampleText = lines.slice(0, 10).join('\n');
+                const detectedDelimiter = this.detectDelimiter(sampleText);
+                if (detectedDelimiter) {
+                    options.template.reglas.delimiter = detectedDelimiter;
+                }
+            }
+
             const result = this.parseWithTemplate(lines, options.template);
             transactions = result.transactions;
             hasExplicitTipo = result.hasExplicitTipo;
@@ -487,14 +497,15 @@ export class UniversalTranslator {
                 const row = line.split(delimiter);
 
                 // Mapeo por índice (ej: { fecha: 0, monto: 2 })
-                const fecha = this.normalizeDate(row[reglas.fecha]);
+                const fechaIndex = reglas.fecha;
+                if (fechaIndex === null || fechaIndex === undefined) continue;
+
+                const fecha = this.normalizeDate(row[fechaIndex]);
                 if (!fecha) continue;
 
                 let monto = 0;
                 // LÓGICA DE MONTO CONSOLIDADA:
-                // Si están en la misma columna, es monto único con signo.
-                // Si están en columnas distintas, es Crédito - Débito (absolutos).
-                if (reglas.debito !== undefined && reglas.credito !== undefined) {
+                if (reglas.debito !== undefined && reglas.debito !== null && reglas.credito !== undefined && reglas.credito !== null) {
                     if (reglas.debito === reglas.credito) {
                         monto = this.parseCurrency(row[reglas.debito]);
                     } else {
@@ -502,34 +513,42 @@ export class UniversalTranslator {
                         const cre = Math.abs(this.parseCurrency(row[reglas.credito]));
                         monto = cre - deb;
                     }
-                } else if (reglas.debito !== undefined) {
+                } else if (reglas.debito !== undefined && reglas.debito !== null) {
                     monto = -Math.abs(this.parseCurrency(row[reglas.debito]));
-                } else if (reglas.credito !== undefined) {
+                } else if (reglas.credito !== undefined && reglas.credito !== null) {
                     monto = Math.abs(this.parseCurrency(row[reglas.credito]));
-                } else if (reglas.monto !== undefined) {
+                } else if (reglas.monto !== undefined && reglas.monto !== null) {
                     monto = this.parseCurrency(row[reglas.monto]);
                 }
 
                 // Allow both 'concepto' and 'descripcion' in rules
-                const conceptoIdx = reglas.concepto !== undefined ? reglas.concepto : reglas.descripcion;
-                const conceptoRaw = row[conceptoIdx] || '';
+                const conceptoIdx = (reglas.concepto !== undefined && reglas.concepto !== null)
+                    ? reglas.concepto
+                    : reglas.descripcion;
+
+                if (conceptoIdx === null || conceptoIdx === undefined) {
+                    // Si no hay concepto mapeado, podríamos intentar buscar una columna de texto, 
+                    // pero por ahora saltamos o usamos un default.
+                }
+
+                const conceptoRaw = (conceptoIdx !== null && conceptoIdx !== undefined) ? (row[conceptoIdx] || '') : '';
                 const concepto = this.normalizeConcept(conceptoRaw);
 
                 // SMART EXTRACTION: Si CUIT/CBU/Cheque están en la misma columna que el concepto (o no están mapeados),
                 // intentar extraerlos del texto del concepto.
-                let cuit = row[reglas.cuit] || '';
+                let cuit = (reglas.cuit !== null && reglas.cuit !== undefined) ? (row[reglas.cuit] || '') : '';
                 if (!cuit || reglas.cuit === conceptoIdx) {
                     const cuitMatch = String(conceptoRaw).match(/\b(20|23|24|27|30|33|34)-?\d{8}-?\d\b/);
                     if (cuitMatch) cuit = cuitMatch[0].replace(/-/g, '');
                 }
 
-                let cbu = row[reglas.cbu] || '';
+                let cbu = (reglas.cbu !== null && reglas.cbu !== undefined) ? (row[reglas.cbu] || '') : '';
                 if (!cbu || reglas.cbu === conceptoIdx) {
                     const cbuMatch = String(conceptoRaw).match(/\b\d{22}\b/);
                     if (cbuMatch) cbu = cbuMatch[0];
                 }
 
-                let numero_cheque = row[reglas.cheque] || '';
+                let numero_cheque = (reglas.cheque !== null && reglas.cheque !== undefined) ? (row[reglas.cheque] || '') : '';
                 if (!numero_cheque || reglas.cheque === conceptoIdx) {
                     const chMatch = String(conceptoRaw).match(/\b(?:CH|CHEQUE|PAGO CH|VALOR)\s?(\d{6,10})\b/i);
                     if (chMatch) numero_cheque = chMatch[1];
