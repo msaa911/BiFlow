@@ -149,7 +149,7 @@ export async function POST(request: Request) {
                         moneda: 'ARS',
                         origen_dato: 'universal_translator',
                         estado: 'pendiente',
-                        metadata: { cbu: t.cbu }
+                        metadata: { ...t.metadata, cbu: t.cbu }
                     }))
                     // Add balance check warnings if any (only for bank statements)
                     if (uploadContext === 'bank' && uniTransactions.metadata?.isBalanced === false) {
@@ -307,8 +307,18 @@ export async function POST(request: Request) {
                     .lte('fecha', maxDate)
 
                 const normalize = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
-                const existingSet = new Set(existing?.map((e: any) => `${e.fecha}-${normalize(e.descripcion)}-${e.monto}`))
-                const uniqueTransactions = transactionsWithLink.filter((t: any) => !existingSet.has(`${t.fecha}-${normalize(t.descripcion)}-${t.monto}`))
+                const getHash = (t: any) => `${t.fecha}-${normalize(t.descripcion || t.concepto)}-${t.monto}-${t.numero_cheque || ''}`;
+
+                const existingSet = new Set(existing?.map((e: any) => getHash(e)));
+                const seenInFile = new Set<string>();
+
+                const uniqueTransactions = transactionsWithLink.filter((t: any) => {
+                    const hash = getHash(t);
+                    if (existingSet.has(hash)) return false;
+                    if (seenInFile.has(hash)) return false;
+                    seenInFile.add(hash);
+                    return true;
+                });
                 uniqueCount = uniqueTransactions.length
 
                 if (uniqueTransactions.length > 0) {

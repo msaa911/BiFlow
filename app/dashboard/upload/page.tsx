@@ -681,6 +681,32 @@ export default function UploadPage() {
                             </div>
                         )}
 
+                        {!uploading && !success && (
+                            <div className="mt-8 pt-8 border-t border-gray-800">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2 text-red-500/70">
+                                        <AlertTriangle className="w-4 h-4" />
+                                        <span className="text-xs font-bold uppercase tracking-wider">Herramientas de Emergencia</span>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('Esto eliminará todas las transacciones sin archivo asociado (huérfanas) que pueden estar causando duplicados. ¿Continuar?')) return
+                                        try {
+                                            const res = await fetch('/api/data/purge', { method: 'POST' })
+                                            if (res.ok) alert('Limpieza completada.')
+                                            else alert('Error en la limpieza.')
+                                        } catch (e) { alert('Error de red.') }
+                                    }}
+                                    className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Limpiar Registros Huérfanos y Duplicados Fantasma
+                                </button>
+                                <p className="text-[10px] text-gray-500 mt-2 text-center italic">Usa esto si ves transacciones repetidas que no se borran al eliminar una importación.</p>
+                            </div>
+                        )}
+
                     </>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-6 animate-in fade-in zoom-in duration-300">
@@ -783,10 +809,16 @@ export default function UploadPage() {
                                 </p>
                                 <div className="flex gap-3 w-full">
                                     <button
-                                        onClick={() => setSuccess(false)}
+                                        onClick={() => {
+                                            if (files.length > 0) {
+                                                setMappingFile(files[0])
+                                            } else {
+                                                setSuccess(false)
+                                            }
+                                        }}
                                         className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-medium transition-colors"
                                     >
-                                        Reintentar
+                                        Mapeo Manual
                                     </button>
                                     <button
                                         onClick={() => {
