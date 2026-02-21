@@ -26,9 +26,9 @@ export interface TranslationResult {
         saldoCalculado?: number;
         diferencia?: number;
         isBalanced?: boolean;
+        lowQuality?: boolean;
+        sinConceptoCount?: number;
     }
-    lowQuality?: boolean;
-    sinConceptoCount?: number;
 }
 
 export class UniversalTranslator {

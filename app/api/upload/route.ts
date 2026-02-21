@@ -209,7 +209,7 @@ export async function POST(request: Request) {
                 organization_id: orgId,
                 nombre_archivo: fileName,
                 storage_path: storagePath,
-                estado: (transactions[0]?.origen_dato === 'universal_translator' && (transactions as any).metadata?.lowQuality)
+                estado: (transactions[0]?.origen_dato === 'universal_translator' && uniTransactions?.metadata?.lowQuality)
                     ? 'requiere_ajuste'
                     : 'procesando',
                 metadata: {
