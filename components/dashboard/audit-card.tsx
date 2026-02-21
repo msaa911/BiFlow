@@ -131,10 +131,30 @@ export function AuditCard({ finding: initialFinding }: AuditCardProps) {
                         </div>
                     )}
 
-                    <div className="mt-4 p-4 bg-gray-800/30 rounded-xl border border-gray-800/50">
-                        <p className="text-sm text-gray-300 italic">
+                    <div className="mt-4 p-4 bg-gray-800/30 rounded-xl border border-gray-800/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <p className="text-sm text-gray-300 italic flex-1">
                             "Hallazgo: {finding.detalle.razon}. {finding.detalle.duplicate_of ? `Este movimiento es idéntico a uno detectado el ${new Date(finding.detalle.duplicate_of.fecha).toLocaleDateString('es-AR')}.` : ''} {finding.detalle.historical_avg ? `El gasto histórico promedio es ${formatCurrency(finding.detalle.historical_avg)}.` : ''}"
                         </p>
+                        {finding.transaccion.archivo_importacion_id && (
+                            <button
+                                onClick={() => {
+                                    // Navigate to upload and open remap
+                                    // For now, just trigger the event assuming the user is in Dashboard
+                                    window.dispatchEvent(new CustomEvent('open-remap', {
+                                        detail: {
+                                            id: finding.transaccion.archivo_importacion_id,
+                                            nombre_archivo: finding.transaccion.nombre_archivo || 'Archivo de Origen'
+                                        }
+                                    }))
+                                    // Small UX hint: the user might need to go to Uploads tab
+                                    alert('Se abrió el Asistente en la pestaña "Cargar Archivos"');
+                                }}
+                                className="text-[10px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold transition-all"
+                            >
+                                <RefreshCcw className="w-3 h-3" />
+                                CORREGIR MAPEO DE ORIGEN
+                            </button>
+                        )}
                     </div>
                 </div>
 
