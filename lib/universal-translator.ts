@@ -137,7 +137,7 @@ export class UniversalTranslator {
                     parts = l.split(cand.char).length;
                 }
 
-                if (parts > 2) {
+                if (parts > 1) {
                     appearances++;
                     lineCounts.push(parts);
                 }
