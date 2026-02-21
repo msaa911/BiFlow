@@ -9,7 +9,7 @@ type ImportRecord = {
     id: string
     nombre_archivo: string
     fecha_carga: string
-    estado: 'procesando' | 'completado' | 'error' | 'revertido'
+    estado: 'procesando' | 'completado' | 'error' | 'revertido' | 'requiere_ajuste'
     metadata: Record<string, any>
     quarantine_count: number
 }
@@ -95,12 +95,18 @@ export function ImportHistory() {
                                     </td>
                                     <td className="px-4 py-3">
                                         {item.estado === 'completado' && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Completado</Badge>}
+                                        {item.estado === 'requiere_ajuste' && <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20">Ajuste Pendiente</Badge>}
                                         {item.estado === 'error' && <Badge variant="destructive" className="bg-red-500/10 text-red-500 border-red-500/20">Error</Badge>}
                                         {item.estado === 'procesando' && <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/20 animate-pulse">Procesando</Badge>}
                                         {item.estado === 'revertido' && <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-gray-500/20 line-through">Revertido</Badge>}
                                     </td>
                                     <td className="px-4 py-3 text-gray-400 text-xs">
-                                        {item.metadata?.inserted > 0 ? (
+                                        {item.estado === 'requiere_ajuste' ? (
+                                            <span className="text-orange-400 font-medium flex items-center gap-1 cursor-help" title="Mapeo incompleto o dudoso">
+                                                <AlertTriangle className="w-3 h-3" />
+                                                Formato Dudoso
+                                            </span>
+                                        ) : item.metadata?.inserted > 0 ? (
                                             <span className="text-emerald-400 font-medium">+{item.metadata.inserted} registros</span>
                                         ) : item.quarantine_count > 0 ? (
                                             <span className="text-yellow-500 flex items-center gap-1 font-medium">
@@ -111,7 +117,16 @@ export function ImportHistory() {
                                             <span>{item.metadata?.note || '-'}</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
+                                    <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
+                                        {item.estado === 'requiere_ajuste' && (
+                                            <button
+                                                onClick={() => window.dispatchEvent(new CustomEvent('open-remap', { detail: item }))}
+                                                className="text-xs bg-orange-600 hover:bg-orange-500 text-white px-3 py-1 rounded-md font-bold transition-all flex items-center gap-1 shadow-lg shadow-orange-500/20 scale-95 hover:scale-100"
+                                            >
+                                                <RefreshCw className="w-3 h-3" />
+                                                Corregir
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => handleDelete(item.id, item.metadata?.inserted || 0)}
                                             disabled={!!deleting}

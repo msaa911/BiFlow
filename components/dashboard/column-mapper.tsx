@@ -9,9 +9,11 @@ type ColumnMapperProps = {
     context?: 'bank' | 'income' | 'expense'
     onMappingComplete: (mapping: any, saveTemplate: boolean, templateName?: string) => void
     onCancel: () => void
+    importId?: string
+    initialData?: { headers: string[], previewRows: any[][] }
 }
 
-export function ColumnMapper({ file, onMappingComplete, onCancel }: ColumnMapperProps) {
+export function ColumnMapper({ file, onMappingComplete, onCancel, importId, initialData }: ColumnMapperProps) {
     const [loading, setLoading] = useState(true)
     const [headers, setHeaders] = useState<string[]>([])
     const [previewRows, setPreviewRows] = useState<any[][]>([])
@@ -31,6 +33,13 @@ export function ColumnMapper({ file, onMappingComplete, onCancel }: ColumnMapper
 
     // Fetch preview on mount
     useState(() => {
+        if (initialData) {
+            setHeaders(initialData.headers)
+            setPreviewRows(initialData.previewRows)
+            setLoading(false)
+            return
+        }
+
         const fetchPreview = async () => {
             const formData = new FormData()
             formData.append('file', file)
@@ -59,8 +68,28 @@ export function ColumnMapper({ file, onMappingComplete, onCancel }: ColumnMapper
 
     const isValid = mapping.fecha !== null && mapping.monto !== null && (!saveTemplate || templateName.trim().length > 0)
 
-    const handleSubmit = () => {
-        onMappingComplete(mapping, saveTemplate, templateName)
+    const handleSubmit = async () => {
+        if (importId) {
+            setLoading(true)
+            try {
+                const res = await fetch('/api/imports/re-process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        importId,
+                        mapping,
+                        invertSigns: false // Optional: could be a toggle
+                    })
+                })
+                if (!res.ok) throw new Error('Error al reprocesar')
+                onMappingComplete(mapping, saveTemplate, templateName)
+            } catch (e: any) {
+                setError(e.message)
+                setLoading(false)
+            }
+        } else {
+            onMappingComplete(mapping, saveTemplate, templateName)
+        }
     }
 
     if (loading) return <div className="p-8 text-center text-gray-400">Analizando archivo...</div>

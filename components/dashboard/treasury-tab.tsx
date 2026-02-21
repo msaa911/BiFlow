@@ -19,30 +19,50 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
     const [invoices, setInvoices] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [reconciling, setReconciling] = useState(false)
     const supabase = createClient()
 
+    async function fetchData() {
+        setLoading(true)
+        const [invRes, bankRes] = await Promise.all([
+            supabase
+                .from('comprobantes')
+                .select('*')
+                .eq('organization_id', orgId)
+                .order('fecha_vencimiento', { ascending: true }),
+            supabase
+                .from('cuentas_bancarias')
+                .select('saldo_inicial')
+                .eq('organization_id', orgId)
+        ])
+
+        if (invRes.data) setInvoices(invRes.data)
+        if (bankRes.data) setBankAccounts(bankRes.data)
+        setLoading(false)
+    }
+
     useEffect(() => {
-        async function fetchData() {
-            setLoading(true)
-            const [invRes, bankRes] = await Promise.all([
-                supabase
-                    .from('comprobantes')
-                    .select('*')
-                    .eq('organization_id', orgId)
-                    .order('fecha_vencimiento', { ascending: true }),
-                supabase
-                    .from('cuentas_bancarias')
-                    .select('saldo_inicial')
-                    .eq('organization_id', orgId)
-            ])
-
-            if (invRes.data) setInvoices(invRes.data)
-            if (bankRes.data) setBankAccounts(bankRes.data)
-            setLoading(false)
-        }
-
         fetchData()
     }, [orgId])
+
+    const handleReconcile = async () => {
+        setReconciling(true)
+        try {
+            const res = await fetch('/api/reconcile/auto', { method: 'POST' })
+            const data = await res.json()
+            if (data.matched > 0) {
+                alert(`¡Éxito! Se conciliaron ${data.matched} comprobantes automáticamente.`)
+                await fetchData()
+            } else {
+                alert('No se encontraron nuevos matches para conciliar.')
+            }
+        } catch (error) {
+            console.error('Reconciliation failed:', error)
+            alert('Error al ejecutar la conciliación.')
+        } finally {
+            setReconciling(false)
+        }
+    }
 
     const initialBalancesSum = bankAccounts.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0)
 
@@ -68,9 +88,20 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                                 Treasury Hub
                             </h1>
                             <p className="text-gray-400 text-sm mt-1">
-                                Gestión profesional de Cuentas por Cobrar (AR) y Pagar (AP).
+                                Gestión profesional de Ventas (A Cobrar) y Compras (A Pagar).
                             </p>
                         </div>
+                        <button
+                            onClick={handleReconcile}
+                            disabled={reconciling}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg ${reconciling
+                                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
+                                }`}
+                        >
+                            <TrendingUp className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
+                            {reconciling ? 'Conciliando...' : 'Conciliación Automática'}
+                        </button>
                     </div>
                 </Card>
 
@@ -80,7 +111,7 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                             <TrendingUp className="w-6 h-6 text-emerald-500" />
                         </div>
                         <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total por Cobrar (AR)</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Ventas (A Cobrar)</p>
                             <h3 className="text-2xl font-bold text-white">
                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(totalAR)}
                             </h3>
@@ -94,7 +125,7 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                             <TrendingDown className="w-6 h-6 text-red-500" />
                         </div>
                         <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total por Pagar (AP)</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Compras (A Pagar)</p>
                             <h3 className="text-2xl font-bold text-white">
                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(totalAP)}
                             </h3>

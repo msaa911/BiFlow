@@ -72,6 +72,14 @@ export async function DELETE(request: Request) {
 
     if (quarantineError) console.error('Error deleting quarantine:', quarantineError)
 
+    // 2b. Delete associated invoices (Safeguard)
+    const { error: compError } = await supabase
+        .from('comprobantes')
+        .delete()
+        .eq('archivo_importacion_id', id)
+
+    if (compError) console.error('Error deleting comprobantes:', compError)
+
     // 3. Clear Cache for this organization (Optional but good practice)
     // await supabase.from('daily_cashflow_cache').delete().eq('organization_id', organization_id)
 

@@ -97,11 +97,23 @@ export default function UploadPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            validateAndAddFiles(Array.from(e.target.files))
+            onFileSelect(Array.from(e.target.files))
         }
     }
 
-    const validateAndAddFiles = (newFiles: File[]) => {
+    const [reprocessingId, setReprocessingId] = useState<string | null>(null)
+
+    useEffect(() => {
+        const handleOpenRemap = (e: any) => {
+            const item = e.detail
+            setMappingFile({ name: item.nombre_archivo } as File)
+            setReprocessingId(item.id)
+        }
+        window.addEventListener('open-remap', handleOpenRemap)
+        return () => window.removeEventListener('open-remap', handleOpenRemap)
+    }, [])
+
+    const onFileSelect = (newFiles: File[]) => {
         const validExtensions = ['.csv', '.xls', '.xlsx', '.txt', '.dat']
         const validFiles = newFiles.filter(file => {
             const extension = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -335,52 +347,63 @@ export default function UploadPage() {
 
     if (mappingFile) {
         return (
-            <div className="py-8">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <ColumnMapper
                     file={mappingFile}
-                    onCancel={() => setMappingFile(null)}
-                    onMappingComplete={async (mapping, shouldSave, name) => {
-                        console.log('Mapping received:', mapping)
-                        setUploading(true)
-                        setError(null)
-
-                        try {
-                            // 1. If user wants to save this as a permanent template
-                            if (shouldSave && name) {
-                                console.log('Saving template:', name)
-                                await fetch('/api/formats', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        nombre: name,
-                                        tipo: 'delimited',
-                                        reglas: mapping,
-                                        descripcion: `Creado manualmente desde mapping para ${mappingFile.name}`
-                                    })
-                                })
-                                await fetchFormats()
-                            }
-
-                            // 2. Process the file with the mapping (ephemeral or just saved)
-                            const result = await uploadSingleFile(mappingFile, (p) => setProgress(p), mapping)
+                    importId={reprocessingId || undefined}
+                    onMappingComplete={async (mapping, save, name) => {
+                        if (reprocessingId) {
                             setMappingFile(null)
+                            setReprocessingId(null)
+                            // Refresh current view
+                            window.location.reload()
+                        } else {
+                            // Assuming handleUpload is a function that takes files, mapping, save, and name
+                            // This part of the instruction seems to imply a function that doesn't exist in the provided code.
+                            // I will adapt it to call uploadSingleFile directly for the single mappingFile.
+                            setUploading(true)
+                            setError(null)
+                            try {
+                                // 1. If user wants to save this as a permanent template
+                                if (save && name) {
+                                    await fetch('/api/formats', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            nombre: name,
+                                            tipo: 'delimited',
+                                            reglas: mapping,
+                                            descripcion: `Creado manualmente desde mapping para ${mappingFile.name}`
+                                        })
+                                    })
+                                    await fetchFormats()
+                                }
 
-                            // 3. Show success state
-                            setSuccess(true)
-                            setUploadResult({
-                                count: result.count,
-                                skipped: result.skipped,
-                                warnings: result.warnings,
-                                reviewCount: result.reviewCount || 0,
-                                findingsCount: result.findingsCount || 0
-                            })
-                            setRefreshHistory(prev => prev + 1)
-                        } catch (e: any) {
-                            console.error('Mapping process error:', e)
-                            setError('Error al procesar con mapeo: ' + e.message)
-                        } finally {
-                            setUploading(false)
+                                // 2. Process the file with the mapping (ephemeral or just saved)
+                                const result = await uploadSingleFile(mappingFile, (p) => setProgress(p), mapping)
+
+                                // 3. Show success state
+                                setSuccess(true)
+                                setUploadResult({
+                                    count: result.count,
+                                    skipped: result.skipped,
+                                    warnings: result.warnings,
+                                    reviewCount: result.reviewCount || 0,
+                                    findingsCount: result.findingsCount || 0
+                                })
+                                setRefreshHistory(prev => prev + 1)
+                            } catch (e: any) {
+                                console.error('Mapping process error:', e)
+                                setError('Error al procesar con mapeo: ' + e.message)
+                            } finally {
+                                setUploading(false)
+                            }
+                            setMappingFile(null)
                         }
+                    }}
+                    onCancel={() => {
+                        setMappingFile(null)
+                        setReprocessingId(null)
                     }}
                 />
             </div>
@@ -446,10 +469,10 @@ export default function UploadPage() {
                 )}
 
                 {/* Format Selector */}
-                {formats.length > 0 && !success && (
-                    <div className="mb-8">
+                {formats.length > 0 && (
+                    <div className="mb-8 p-4 bg-gray-800/20 border border-gray-800 rounded-2xl">
                         <div className="flex items-center justify-between mb-4">
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Modelos Entrenados</label>
+                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Formatos Personalizados</label>
                             <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-medium">{formats.length} Guardado{formats.length !== 1 ? 's' : ''}</span>
                         </div>
 
@@ -609,13 +632,16 @@ export default function UploadPage() {
                         </button>
 
                         {files.length === 1 && !uploading && !success && (
-                            <div className="text-center mt-3">
+                            <div className="text-center mt-4 p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl animate-in fade-in slide-in-from-top-2">
+                                <p className="text-[10px] text-gray-400 mb-2 uppercase font-bold tracking-widest">¿El formato no es el correcto?</p>
                                 <button
                                     onClick={() => setMappingFile(files[0])}
-                                    className="text-xs text-blue-400 hover:text-blue-300 underline"
+                                    className="flex items-center gap-2 mx-auto px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold transition-all border border-blue-500/20"
                                 >
-                                    ¿Problemas con el formato? Usar Asistente de Importación
+                                    <Settings className="w-3.5 h-3.5" />
+                                    Usar Asistente de Mapeo Visual
                                 </button>
+                                <p className="text-[10px] text-gray-500 mt-2 italic">Esto te permite elegir qué columna es la fecha, monto y concepto manualmente.</p>
                             </div>
                         )}
 

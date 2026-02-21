@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Search, Filter, TrendingDown, ArrowRight, AlertCircle, Info } from 'lucide-react'
+import { Search, Filter, TrendingDown, TrendingUp, ArrowRight, AlertCircle, Info } from 'lucide-react'
 import { TreasuryEngine } from '@/lib/treasury-engine'
 
 interface InvoicePanelProps {
@@ -102,9 +102,16 @@ export function InvoicePanel({ invoices, loading }: InvoicePanelProps) {
                                             <Badge variant="outline" className={`${inv.estado === 'pagado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                                 inv.estado === 'pendiente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
                                                     'bg-gray-500/10 text-gray-400'
-                                                } text-[10px] w-fit font-bold uppercase`}>
+                                                } text-[10px] w-fit font-bold uppercase flex items-center gap-1`}>
+                                                {inv.estado === 'pagado' && <TrendingUp className="w-3 h-3" />}
                                                 {inv.estado}
                                             </Badge>
+                                            {inv.estado === 'pagado' && (
+                                                <div className="text-[9px] text-emerald-500/70 flex items-center gap-1">
+                                                    <Info className="w-2.5 h-2.5" />
+                                                    Conciliado automáticamente
+                                                </div>
+                                            )}
                                             {inv.estado !== 'pagado' && (
                                                 <div className={`flex items-center gap-1 text-[10px] ${ratingInfo.color}`}>
                                                     <span className={`h-1.5 w-1.5 rounded-full bg-current ${inv.monto_pendiente > 500000 ? 'animate-pulse' : ''}`}></span>

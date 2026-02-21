@@ -14,6 +14,7 @@ async function applyFix() {
         ALTER TABLE public.comprobantes ADD COLUMN IF NOT EXISTS banco text;
         ALTER TABLE public.comprobantes ADD COLUMN IF NOT EXISTS numero_cheque text;
         ALTER TABLE public.comprobantes ADD COLUMN IF NOT EXISTS nombre_entidad text;
+        ALTER TABLE public.comprobantes ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
         ALTER TABLE public.transacciones ADD COLUMN IF NOT EXISTS numero_cheque text;
         ALTER TABLE public.transacciones ADD COLUMN IF NOT EXISTS comprobante_id UUID REFERENCES public.comprobantes(id) ON DELETE SET NULL;
     `;

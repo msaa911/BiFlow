@@ -137,9 +137,10 @@ export async function POST(request: Request) {
                         descripcion: t.concepto || 'Sin concepto', // Map concepto -> descripcion
                         monto: t.monto,
                         cuit: t.cuit,
-                        razon_social: t.razon_social,
+                        razon_social: t.razon_social || t.concepto, // Capture full concept if razon_social is empty
                         vencimiento: t.vencimiento,
                         numero: t.numero,
+                        numero_cheque: t.numero_cheque,
                         tags: t.tags || [],
                         moneda: 'ARS',
                         origen_dato: 'universal_translator',
@@ -208,7 +209,9 @@ export async function POST(request: Request) {
                 organization_id: orgId,
                 nombre_archivo: fileName,
                 storage_path: storagePath,
-                estado: 'procesando',
+                estado: (transactions[0]?.origen_dato === 'universal_translator' && (transactions as any).metadata?.lowQuality)
+                    ? 'requiere_ajuste'
+                    : 'procesando',
                 metadata: {
                     size: buffer.length,
                     type: file.type,
@@ -255,11 +258,12 @@ export async function POST(request: Request) {
 
                 const sanitizedComprobantes = transactionsWithLink.map((t: any) => ({
                     organization_id: t.organization_id || orgId,
+                    archivo_importacion_id: importId,
                     tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
                     numero: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
                     cuit_socio: t.cuit || '00-00000000-0',
                     razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
-                    nombre_entidad: t.razon_social || t.concepto || 'Sin Razón Social',
+                    nombre_entidad: t.razon_social || t.descripcion || 'Sin Razón Social',
                     banco: t.banco || null,
                     numero_cheque: t.numero_cheque || null,
                     fecha_emision: t.fecha,
@@ -298,7 +302,7 @@ export async function POST(request: Request) {
                     .gte('fecha', minDate)
                     .lte('fecha', maxDate)
 
-                const normalize = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+                const normalize = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
                 const existingSet = new Set(existing?.map((e: any) => `${e.fecha}-${normalize(e.descripcion)}-${e.monto}`))
                 const uniqueTransactions = transactionsWithLink.filter((t: any) => !existingSet.has(`${t.fecha}-${normalize(t.descripcion)}-${t.monto}`))
                 uniqueCount = uniqueTransactions.length
@@ -378,11 +382,32 @@ export async function POST(request: Request) {
     } catch (error: any) {
         console.error('FATAL ERROR:', error)
         try {
-            if (currentSupabase) {
+            if (currentSupabase && fileName !== 'unknown_file') {
+                // Determine importId if possible (it might not have been created yet)
+                // We'll try to find the latest "procesando" record for this file/org if importId is missing
+                // But safer to just look at the variable.
+                const { data: latest } = await currentSupabase
+                    .from('archivos_importados')
+                    .select('id')
+                    .eq('nombre_archivo', fileName)
+                    .eq('estado', 'procesando')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single()
+
+                const targetId = latest?.id
+
+                if (targetId) {
+                    await currentSupabase.from('archivos_importados').update({
+                        estado: 'error',
+                        metadata: { fatal_error: error.message }
+                    }).eq('id', targetId)
+                }
+
                 await logError(currentSupabase, 'Unhandled Exception', error.message, fileName)
             }
         } catch (e) {
-            console.error('Logging failed in catch:', e)
+            console.error('Logging/State fix failed in catch:', e)
         }
 
         return NextResponse.json({
