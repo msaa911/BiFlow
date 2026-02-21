@@ -144,15 +144,15 @@ export class UniversalTranslator {
             });
 
             // Scoring: appearances weight + consistency weight
-            // A delim that appears in at least 15% of lines is a candidate
-            if (appearances >= Math.max(2, lines.length * 0.15)) {
+            // A delim that appears in at least 2 lines is a candidate
+            if (appearances >= 2) {
                 // Consistency: do most lines have the same number of columns?
                 const counts = new Map<number, number>();
                 lineCounts.forEach(c => counts.set(c, (counts.get(c) || 0) + 1));
                 const maxFreq = Math.max(...Array.from(counts.values()));
 
-                // Score = number of appearances + bonus for consistency
-                const score = appearances + (maxFreq * 1.5);
+                // Score = number of appearances + bonus for consistency (Heavy weight on consistency)
+                const score = appearances + (maxFreq * 3.0);
 
                 if (score > maxScore) {
                     maxScore = score;
