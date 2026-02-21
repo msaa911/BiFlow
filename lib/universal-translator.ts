@@ -491,26 +491,59 @@ export class UniversalTranslator {
                 if (!fecha) continue;
 
                 let monto = 0;
+                // LÓGICA DE MONTO CONSOLIDADA:
+                // Si están en la misma columna, es monto único con signo.
+                // Si están en columnas distintas, es Crédito - Débito (absolutos).
                 if (reglas.debito !== undefined && reglas.credito !== undefined) {
-                    const deb = this.parseCurrency(row[reglas.debito]);
-                    const cre = this.parseCurrency(row[reglas.credito]);
-                    monto = Math.abs(cre) - Math.abs(deb);
-                } else {
+                    if (reglas.debito === reglas.credito) {
+                        monto = this.parseCurrency(row[reglas.debito]);
+                    } else {
+                        const deb = Math.abs(this.parseCurrency(row[reglas.debito]));
+                        const cre = Math.abs(this.parseCurrency(row[reglas.credito]));
+                        monto = cre - deb;
+                    }
+                } else if (reglas.debito !== undefined) {
+                    monto = -Math.abs(this.parseCurrency(row[reglas.debito]));
+                } else if (reglas.credito !== undefined) {
+                    monto = Math.abs(this.parseCurrency(row[reglas.credito]));
+                } else if (reglas.monto !== undefined) {
                     monto = this.parseCurrency(row[reglas.monto]);
                 }
 
                 // Allow both 'concepto' and 'descripcion' in rules
                 const conceptoIdx = reglas.concepto !== undefined ? reglas.concepto : reglas.descripcion;
-                const concepto = this.normalizeConcept(row[conceptoIdx]);
+                const conceptoRaw = row[conceptoIdx] || '';
+                const concepto = this.normalizeConcept(conceptoRaw);
 
-                if (monto !== 0 || true) { // Permitimos 0 si es una fila de cabecera que pasó el date check (raro)
+                // SMART EXTRACTION: Si CUIT/CBU/Cheque están en la misma columna que el concepto (o no están mapeados),
+                // intentar extraerlos del texto del concepto.
+                let cuit = row[reglas.cuit] || '';
+                if (!cuit || reglas.cuit === conceptoIdx) {
+                    const cuitMatch = String(conceptoRaw).match(/\b(20|23|24|27|30|33|34)-?\d{8}-?\d\b/);
+                    if (cuitMatch) cuit = cuitMatch[0].replace(/-/g, '');
+                }
+
+                let cbu = row[reglas.cbu] || '';
+                if (!cbu || reglas.cbu === conceptoIdx) {
+                    const cbuMatch = String(conceptoRaw).match(/\b\d{22}\b/);
+                    if (cbuMatch) cbu = cbuMatch[0];
+                }
+
+                let numero_cheque = row[reglas.cheque] || '';
+                if (!numero_cheque || reglas.cheque === conceptoIdx) {
+                    const chMatch = String(conceptoRaw).match(/\b(?:CH|CHEQUE|PAGO CH|VALOR)\s?(\d{6,10})\b/i);
+                    if (chMatch) numero_cheque = chMatch[1];
+                }
+
+                if (monto !== 0 || true) {
                     transactions.push({
                         fecha,
                         concepto,
                         monto,
                         tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any,
-                        cbu: row[reglas.cbu] || undefined,
-                        cuit: row[reglas.cuit] || undefined
+                        cbu: cbu || undefined,
+                        cuit: cuit || undefined,
+                        numero_cheque: numero_cheque || undefined
                     });
                 }
             } else if (template.tipo === 'fixed_width') {

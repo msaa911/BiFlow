@@ -70,6 +70,7 @@ export async function POST(request: Request) {
             descripcion: t.concepto || 'Sin concepto',
             monto: t.monto,
             cuit: t.cuit || null,
+            numero_cheque: t.numero_cheque || null,
             moneda: 'ARS',
             origen_dato: 'reprocessed',
             estado: 'pendiente',

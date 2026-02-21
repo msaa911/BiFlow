@@ -23,11 +23,11 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
     const [mapping, setMapping] = useState<{ [key: string]: number | null }>({
         fecha: null,
         descripcion: null,
-        monto: null,
         debito: null,
         credito: null,
         cuit: null,
-        cbu: null
+        cbu: null,
+        cheque: null
     })
 
     const [saveTemplate, setSaveTemplate] = useState(false)
@@ -81,7 +81,7 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
 
     const isValid = mapping.fecha !== null &&
         mapping.descripcion !== null &&
-        (mapping.monto !== null || (mapping.debito !== null && mapping.credito !== null)) &&
+        (mapping.debito !== null || mapping.credito !== null) &&
         (!saveTemplate || templateName.trim().length > 0)
 
     const handleSubmit = async () => {
@@ -112,7 +112,7 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
     if (error) return <div className="p-8 text-center text-red-400">Error: {error}</div>
 
     return (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-4xl mx-auto flex flex-col max-h-[90vh] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-6xl mx-auto flex flex-col max-h-[90vh] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Scrollable Content Area */}
             <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                 <div className="mb-6">
@@ -125,28 +125,28 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 mb-6">
                     {[
                         { id: 'fecha', label: 'Fecha', required: true },
-                        { id: 'descripcion', label: 'Concepto/Desc.', required: true },
-                        { id: 'monto', label: 'Monto Único', required: false },
+                        { id: 'descripcion', label: 'Concepto', required: true },
                         { id: 'debito', label: 'Débito (-)', required: false },
                         { id: 'credito', label: 'Crédito (+)', required: false },
+                        { id: 'cheque', label: 'Nº Cheque', required: false },
                         { id: 'cuit', label: 'CUIT/CUIL', required: false },
                         { id: 'cbu', label: 'CBU/CVU', required: false },
                     ].map((field) => (
-                        <div key={field.id} className="bg-gray-800 p-3 rounded-lg border border-gray-700">
-                            <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5 px-1">
+                        <div key={field.id} className="bg-gray-800/50 p-1.5 rounded-lg border border-gray-700/50 flex flex-col justify-between">
+                            <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1 px-1 whitespace-nowrap overflow-hidden text-ellipsis">
                                 {field.label} {field.required && <span className="text-emerald-500">*</span>}
                             </label>
                             <select
-                                className="w-full bg-gray-900 border border-gray-700 text-white rounded p-1.5 text-xs focus:border-emerald-500 outline-none transition-colors"
+                                className="w-full bg-gray-900 border border-gray-700 text-white rounded p-1 text-[10px] focus:border-emerald-500 outline-none transition-colors"
                                 onChange={(e) => handleSelect(field.id, e.target.value)}
                                 defaultValue=""
                             >
                                 <option value="">Ignorar</option>
                                 {headers.map((h, i) => (
-                                    <option key={i} value={i}>{h || `Columna ${i + 1}`}</option>
+                                    <option key={i} value={i}>{h || `Col ${i + 1}`}</option>
                                 ))}
                             </select>
                         </div>

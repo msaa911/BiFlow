@@ -97,6 +97,9 @@ export async function POST(request: Request) {
 
                 transactions = uniTransactions.transactions.map((t: any) => ({
                     ...t,
+                    monto: t.monto,
+                    cuit: t.cuit,
+                    numero_cheque: t.numero_cheque,
                     organization_id: orgId,
                     descripcion: t.concepto || 'Sin concepto',
                     estado: 'pendiente'
