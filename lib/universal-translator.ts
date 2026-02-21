@@ -106,7 +106,7 @@ export class UniversalTranslator {
      * Detección Inteligente de Delimitadores (Ignora comas dentro de comillas)
      */
     private static detectDelimiter(textSample: string): string | null {
-        const lines = textSample.split('\n').filter(l => l.trim().length > 0).slice(0, 10);
+        const lines = textSample.split('\n').filter(l => l.trim().length > 0).slice(0, 20);
         if (lines.length === 0) return null;
 
         // Función auxiliar para contar separadores ignorando los que están entre comillas
@@ -525,7 +525,7 @@ export class UniversalTranslator {
     /**
      * Retorna las primeras filas de un archivo para que el usuario pueda mapearlas visualmente.
      */
-    static getSampleRows(rawText: string, maxRows: number = 5): any[][] {
+    static getSampleRows(rawText: string, maxRows: number = 20): any[][] {
         const lines = rawText.split(/\r?\n/).filter(l => l.trim().length > 0).slice(0, maxRows);
         const sampleText = lines.join('\n');
         const delimiter = this.detectDelimiter(sampleText);
