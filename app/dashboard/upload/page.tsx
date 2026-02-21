@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle, Trash2, ArrowRight, Download, FileSpreadsheet } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ImportHistory } from '@/components/dashboard/import-history'
 import { ColumnMapper } from '@/components/dashboard/column-mapper'
@@ -31,6 +31,7 @@ export default function UploadPage() {
         warnings: string[];
         reviewCount: number;
         findingsCount?: number;
+        isUpdate?: boolean;
     } | null>(null)
     const [showDetails, setShowDetails] = useState(false)
     const [refreshHistory, setRefreshHistory] = useState(0)
@@ -45,6 +46,17 @@ export default function UploadPage() {
     const [showSignModal, setShowSignModal] = useState(false)
 
     const router = useRouter()
+
+    const searchParams = useSearchParams()
+
+    useEffect(() => {
+        const remapId = searchParams.get('remap')
+        const name = searchParams.get('name')
+        if (remapId) {
+            setMappingFile({ name: name || 'Archivo' } as File)
+            setReprocessingId(remapId)
+        }
+    }, [searchParams])
 
     useEffect(() => {
         fetchFormats()
@@ -353,10 +365,34 @@ export default function UploadPage() {
                     importId={reprocessingId || undefined}
                     onMappingComplete={async (mapping, save, name) => {
                         if (reprocessingId) {
-                            setMappingFile(null)
-                            setReprocessingId(null)
-                            // Refresh current view
-                            window.location.reload()
+                            setUploading(true)
+                            try {
+                                const res = await fetch('/api/imports/re-process', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        importId: reprocessingId,
+                                        mapping
+                                    })
+                                })
+
+                                if (!res.ok) throw new Error('Error al re-procesar')
+
+                                setMappingFile(null)
+                                setReprocessingId(null)
+                                setSuccess(true)
+                                setUploadResult({
+                                    count: 0,
+                                    skipped: 0,
+                                    warnings: [],
+                                    reviewCount: 0,
+                                    isUpdate: true
+                                })
+                            } catch (e: any) {
+                                setError(e.message)
+                            } finally {
+                                setUploading(false)
+                            }
                         } else {
                             // Assuming handleUpload is a function that takes files, mapping, save, and name
                             // This part of the instruction seems to imply a function that doesn't exist in the provided code.
@@ -766,8 +802,14 @@ export default function UploadPage() {
                         ) : (
                             <div className="flex flex-col items-center">
                                 <CheckCircle className="w-20 h-20 text-emerald-500 mb-6" />
-                                <h3 className="text-2xl font-bold text-white mb-2">¡Carga Completada!</h3>
-                                <p className="text-gray-400">Se han procesado {uploadResult?.count} registros correctamente.</p>
+                                <h3 className="text-2xl font-bold text-white mb-2">
+                                    {uploadResult?.isUpdate ? '¡Re-procesamiento Exitoso!' : '¡Carga Completada!'}
+                                </h3>
+                                <p className="text-gray-400">
+                                    {uploadResult?.isUpdate
+                                        ? 'Se han actualizado las reglas de mapeo y re-generado los registros.'
+                                        : `Se han procesado ${uploadResult?.count} registros correctamente.`}
+                                </p>
 
                                 {isFirstUpload && (
                                     <div className="mt-6 mb-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3 text-blue-300 animate-in fade-in slide-in-from-bottom-2 duration-700">

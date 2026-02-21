@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { FileText, Clock, RotateCcw, RefreshCw, Trash2, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { useRouter } from 'next/navigation'
 
 type ImportRecord = {
     id: string
@@ -15,6 +16,7 @@ type ImportRecord = {
 }
 
 export function ImportHistory() {
+    const router = useRouter()
     const [imports, setImports] = useState<ImportRecord[]>([])
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState<string | null>(null)
@@ -120,10 +122,10 @@ export function ImportHistory() {
                                     <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
                                         {(item.estado === 'requiere_ajuste' || item.estado === 'completado') && (
                                             <button
-                                                onClick={() => window.dispatchEvent(new CustomEvent('open-remap', { detail: item }))}
+                                                onClick={() => router.push(`/dashboard/upload?remap=${item.id}&name=${encodeURIComponent(item.nombre_archivo)}`)}
                                                 className={`text-xs px-3 py-1 rounded-md font-bold transition-all flex items-center gap-1 shadow-lg scale-95 hover:scale-100 ${item.estado === 'requiere_ajuste'
-                                                        ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-500/20'
-                                                        : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 shadow-black'
+                                                    ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-500/20'
+                                                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 shadow-black'
                                                     }`}
                                                 title="Cambiar mapeo de columnas y re-procesar"
                                             >

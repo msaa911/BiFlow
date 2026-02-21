@@ -41,16 +41,27 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
         }
 
         const fetchPreview = async () => {
-            const formData = new FormData()
-            formData.append('file', file)
-
             try {
-                const res = await fetch('/api/upload/preview', {
-                    method: 'POST',
-                    body: formData
-                })
-                if (!res.ok) throw new Error('Error al leer el archivo')
-                const data = await res.json()
+                let data;
+                if (importId) {
+                    // Fetch for existing import from storage
+                    const res = await fetch(`/api/imports/preview?id=${importId}`)
+                    if (!res.ok) throw new Error('Error al leer el archivo desde el historial')
+                    data = await res.json()
+                } else if (file && file.size > 0) {
+                    // Normal upload flow path
+                    const formData = new FormData()
+                    formData.append('file', file)
+                    const res = await fetch('/api/upload/preview', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    if (!res.ok) throw new Error('Error al leer el archivo')
+                    data = await res.json()
+                } else {
+                    return; // No file and no importId
+                }
+
                 setHeaders(data.headers)
                 setPreviewRows(data.previewData)
                 setLoading(false)
