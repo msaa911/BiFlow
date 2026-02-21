@@ -163,7 +163,11 @@ export class UniversalTranslator {
                 const maxFreq = Math.max(...Array.from(counts.values()));
 
                 // Score = number of appearances + bonus for consistency (Heavy weight on consistency)
-                const score = appearances + (maxFreq * 3.0);
+                // If it's the only delim with appearances, give it a baseline boost
+                let score = appearances + (maxFreq * 3.0);
+                if (candidates.filter(c => c.char !== cand.char).every(c => !textSample.includes(c.char))) {
+                    score += 10;
+                }
 
                 if (score > maxScore) {
                     maxScore = score;
@@ -183,7 +187,7 @@ export class UniversalTranslator {
         let headerIdx = -1;
         const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'movimiento', 'concepto', 'descripcion', 'detalle', 'detalle movimiento', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'cuil', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto', 'banco', 'bank', 'cheque', 'nro ch', 'nº cheque', 'iva', 'neto', 'bruto', 'subtotal', 'total', 'remito', 'orden de pago', 'op', 'orden de compra', 'oc', 'comision', 'cargo'];
 
-        for (let i = 0; i < Math.min(lines.length, 100); i++) {
+        for (let i = 0; i < Math.min(lines.length, 200); i++) {
             const row = lines[i].toLowerCase();
             // Check if at least 2 keys are present in the row
             if (keys.filter(k => row.includes(k)).length >= 2) {
@@ -329,7 +333,11 @@ export class UniversalTranslator {
             const row = delimiter === 'SPACE_MULTI' ? line.trim().split(/\s{2,}/) : line.split(delimiter);
             if (row.length < 2) continue;
 
-            const dateMatch = line.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})/);
+            // Regex para capturar fechas en varios formatos (Separadores o YYYYMMDD)
+            const dateMatch = line.match(/\b(\d{2}[/-]\d{2}[/-]\d{2,4})\b/) ||
+                line.match(/\b(\d{8})\b/) ||
+                line.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+
             if (!dateMatch) continue;
 
             const fecha = this.normalizeDate(dateMatch[1]);
@@ -339,7 +347,8 @@ export class UniversalTranslator {
             let monto = 0;
             for (const cell of row) {
                 const val = this.parseCurrency(cell);
-                if (val !== 0 && Math.abs(val) < 10000000) { // Evitar CUITs
+                // Evitar CUITs y números que parezcan la fecha recién capturada
+                if (val !== 0 && Math.abs(val) < 10000000 && !dateMatch[0].includes(String(Math.abs(val)))) {
                     monto = val;
                     break;
                 }
