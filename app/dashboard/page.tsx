@@ -139,7 +139,7 @@ export default async function DashboardPage() {
     }
     healthScore = Math.max(15, healthScore) // Floor at 15
 
-    // 3. Fetch Company Config (TNA & Overdraft) (orgId already fetched above)
+    // 3. Fetch Company Config (TNA & Overdraft & Cushion)
     const { data: orgConfig } = await supabase
         .from('configuracion_empresa')
         .select('*')
@@ -149,20 +149,49 @@ export default async function DashboardPage() {
     const tnaManual = orgConfig?.tna || 0.70
     const modoTasa = orgConfig?.modo_tasa || 'AUTOMATICO'
     const overdraftLimit = orgConfig?.limite_descubierto || 0
+    const liquidityCushion = orgConfig?.colchon_liquidez || 0
 
     let tnaEfectiva = tnaManual
+    let lastTnaUpdate: string | null = null
+
     if (modoTasa === 'AUTOMATICO') {
         const { data: marketData } = await supabase
             .from('indices_mercado')
-            .select('tasa_plazo_fijo_30d, tasa_plazo_fijo')
+            .select('tasa_plazo_fijo_30d, tasa_plazo_fijo, fecha')
             .order('fecha', { ascending: false })
             .limit(1)
             .maybeSingle()
 
         if (marketData) {
             tnaEfectiva = marketData.tasa_plazo_fijo_30d || marketData.tasa_plazo_fijo || tnaManual
+            lastTnaUpdate = marketData.fecha
         }
     }
+
+    // 4. Fetch Last Global Activity
+    // Check latest archive import
+    const { data: lastImport } = await supabase
+        .from('archivos_importados')
+        .select('created_at')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+    // Check latest transaction
+    const { data: lastTx } = await supabase
+        .from('transacciones')
+        .select('created_at')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+    const lastActivityDate = [
+        lastImport?.created_at,
+        lastTx?.created_at,
+        orgConfig?.updated_at
+    ].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]
 
     // Total spent in last 30 days including taxes
     const totalVolume = allTransactions
@@ -172,7 +201,7 @@ export default async function DashboardPage() {
     const recoveryPotential = Math.min(100, Math.round((totalRecoverable / totalVolume) * 100))
 
     // Liquidity Logic
-    const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tnaEfectiva)
+    const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tnaEfectiva, liquidityCushion)
     const daysOfRunway = dailyBurn > 100 ? Math.min(365, Math.floor((totalBalance + overdraftLimit) / dailyBurn)) : 'stable'
 
     // Triple View Calculations
@@ -182,12 +211,30 @@ export default async function DashboardPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <Suspense fallback={null}>
-                    <ScrollToFocus />
-                </Suspense>
-                <h2 className="text-2xl font-bold tracking-tight">Panel de Control</h2>
-                <p className="text-gray-400">Bienvenido a tu centro de inteligencia financiera.</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <Suspense fallback={null}>
+                        <ScrollToFocus />
+                    </Suspense>
+                    <h2 className="text-2xl font-bold tracking-tight">Panel de Control</h2>
+                    <p className="text-gray-400">Bienvenido a tu centro de inteligencia financiera.</p>
+                </div>
+                {lastActivityDate && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-full shadow-inner animate-in fade-in slide-in-from-right-4 duration-700">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                            Última Actividad: <span className="text-gray-300 ml-1">
+                                {new Date(lastActivityDate).toLocaleString('es-AR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })} hs
+                            </span>
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Quarantine Alert */}
