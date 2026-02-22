@@ -65,7 +65,7 @@ export function DashboardCFO({
             </div>
 
             <div className="grid gap-6 md:grid-cols-3 items-stretch">
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 h-full">
                     <CashHealthScore
                         score={healthScore}
                         anomalyCount={anomalyCount}

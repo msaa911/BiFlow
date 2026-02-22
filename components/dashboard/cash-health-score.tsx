@@ -33,7 +33,7 @@ export function CashHealthScore({
     const strokeDashoffset = strokeDasharray - (strokeDasharray * (score / 100))
 
     return (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative overflow-hidden group hover:border-gray-700 transition-all duration-500 shadow-2xl">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative overflow-hidden group hover:border-gray-700 transition-all duration-500 shadow-2xl h-full flex flex-col justify-center">
             {/* Background Glow */}
             <div className={`absolute -top-24 -right-24 w-64 h-64 opacity-20 blur-[100px] rounded-full transition-colors duration-1000 ${status.bg}`} />
 
