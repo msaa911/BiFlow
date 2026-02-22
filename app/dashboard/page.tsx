@@ -56,21 +56,7 @@ export default async function DashboardPage() {
         .order('fecha', { ascending: false })
 
     // 1. Calculate OPERATIVE BALANCE
-    // Find the latest transaction that has a 'saldo' in its metadata
-    const latestWithSaldo = allTransactions?.find(t => t.metadata?.saldo !== undefined)
-
-    let totalBalance = 0
-    if (latestWithSaldo) {
-        // Current Balance = Latest reported Balance + any NEWER transactions (if not included in the latest report)
-        // Since we ordered by date DESC, if we found it, it's the most recent state.
-        totalBalance = Number(latestWithSaldo.metadata.saldo)
-    } else {
-        // Fallback: Simple sum (less accurate if history is partial)
-        const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
-        totalBalance = transactionsSum
-    }
-
-    // Fetch Initial Bank Balances (Only used as additional cushion if no saldo in metadata)
+    // Fetch Initial Bank Balances from Configuration
     const { data: bankAccounts } = await supabase
         .from('cuentas_bancarias')
         .select('saldo_inicial')
@@ -78,9 +64,14 @@ export default async function DashboardPage() {
 
     const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
 
-    if (!latestWithSaldo) {
-        totalBalance += initialBalancesSum
-    }
+    // Sum of all transaction amounts
+    const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
+
+    // Final Balance = Manual Start + Incremental Changes
+    const totalBalance = initialBalancesSum + transactionsSum
+
+    // For auditing/reference: find the latest transaction that has a 'saldo' in its metadata
+    const latestWithSaldo = allTransactions?.find(t => t.metadata?.saldo !== undefined)
 
     // 2. Calculate BURN RATE (Expenses in last 30 days)
     const thirtyDaysAgo = new Date()
