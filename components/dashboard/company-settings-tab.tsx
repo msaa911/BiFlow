@@ -148,15 +148,19 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         }
     }
 
-    const handlePurge = async () => {
-        if (!confirm('¿Estás seguro de que deseas REINICIAR todo el entorno? Se borrarán transacciones, facturas y reglas de aprendizaje. Esta acción NO se puede deshacer.')) return
-        if (!confirm('ÚLTIMA ADVERTENCIA: Se perderán todos los datos cargados. ¿Confirmar reinicio total?')) return
+    const handleFullReset = async () => {
+        if (!confirm('¡PELIGRO! Esto eliminará TODAS las transacciones, comprobantes e historial de importaciones de tu organización. Esta acción NO se puede deshacer. ¿Estás seguro?')) return
+        if (!confirm('Confirmación final: ¿Realmente quieres BORRAR TODO?')) return
 
         setSaving(true)
         try {
-            const res = await fetch('/api/data/purge', { method: 'DELETE' })
+            const res = await fetch('/api/data/purge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'full_reset' })
+            })
             if (res.ok) {
-                alert('Entorno reiniciado con éxito. La página se recargará.')
+                alert('Reinicio completo exitoso. La página se recargará.')
                 window.location.reload()
             } else {
                 const err = await res.json()
@@ -164,6 +168,25 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             }
         } catch (err) {
             alert('Error de conexión al purgar datos.')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleCleanOrphans = async () => {
+        if (!confirm('Esto eliminará todas las transacciones sin archivo asociado (huérfanas) que pueden estar causando duplicados. ¿Continuar?')) return
+
+        setSaving(true)
+        try {
+            const res = await fetch('/api/data/purge', { method: 'POST' })
+            if (res.ok) {
+                alert('Limpieza de huérfanos completada.')
+            } else {
+                const err = await res.json()
+                alert('Error en la limpieza: ' + (err.details || err.error))
+            }
+        } catch (err) {
+            alert('Error de conexión.')
         } finally {
             setSaving(false)
         }
@@ -513,31 +536,47 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 </Card>
             </div>
 
-            {/* ZONA DE PELIGRO / REINICIO */}
-            <Card className="bg-red-500/5 border-red-500/20 md:col-span-2">
-                <CardHeader>
-                    <CardTitle className="text-red-500 font-black italic tracking-tighter uppercase flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5" />
-                        Zona de Peligro
+            {/* SECCIÓN DE MANTENIMIENTO & EMERGENCIA */}
+            <Card className="bg-gray-900 border-gray-800 md:col-span-2 border-l-4 border-l-red-500/50">
+                <CardHeader className="bg-red-500/5">
+                    <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter uppercase">
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                        Mantenimiento y Emergencia
                     </CardTitle>
-                    <CardDescription className="text-red-400/70">
-                        Acciones destructivas para mantenimiento y pruebas.
+                    <CardDescription className="text-gray-400">
+                        Herramientas avanzadas para resolver inconsistencias o reiniciar datos.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6 space-y-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-gray-950/50 rounded-xl border border-gray-800">
+                        <div className="space-y-1">
+                            <p className="text-white font-bold text-sm">Limpiar Registros Huérfanos</p>
+                            <p className="text-[10px] text-gray-500">Elimina transacciones duplicadas que no tienen un archivo de importación asociado.</p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            onClick={handleCleanOrphans}
+                            disabled={saving}
+                            className="border-red-500/20 hover:bg-red-500/10 text-red-400 font-bold text-xs"
+                        >
+                            {saving ? <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" /> : <Trash2 className="mr-2 h-3.5 w-3.5" />}
+                            Limpiar Huérfanos
+                        </Button>
+                    </div>
+
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-red-500/10 rounded-xl border border-red-500/20">
                         <div className="space-y-1">
-                            <p className="text-white font-bold">Reiniciar Entorno de Prueba</p>
-                            <p className="text-xs text-red-400/80">Borra todos los extractos, facturas, hallazgos y el aprendizaje de la IA para esta organización.</p>
+                            <p className="text-white font-bold text-sm uppercase">Reinicio Total del Sistema</p>
+                            <p className="text-[10px] text-red-400/80 italic">¡PELIGRO! Borra TODA la información: transacciones, facturas, reglas y archivos de esta organización.</p>
                         </div>
                         <Button
                             variant="destructive"
-                            onClick={handlePurge}
+                            onClick={handleFullReset}
                             disabled={saving}
-                            className="bg-red-600 hover:bg-red-500 font-black uppercase tracking-tighter"
+                            className="bg-red-600 hover:bg-red-500 font-black uppercase tracking-tighter shadow-lg shadow-red-500/20"
                         >
                             {saving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <RotateCcw className="mr-2 h-4 w-4" />}
-                            Reiniciar Todo
+                            REINICIAR TODO
                         </Button>
                     </div>
                 </CardContent>

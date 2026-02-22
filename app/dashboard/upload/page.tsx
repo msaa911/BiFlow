@@ -451,7 +451,7 @@ export default function UploadPage() {
         <div className="max-w-2xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-white">Carga de Documentos v4 (FORCE RELOAD)</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-white">Carga de Documentos</h2>
                     <p className="text-gray-400 text-sm">Sube extractos, listas de clientes, facturas o cualquier documento financiero para análisis.</p>
                     <a
                         href="/templates/biflow_formato_recomendado.xlsx"
@@ -682,149 +682,11 @@ export default function UploadPage() {
                             </div>
                         )}
 
-                        {!uploading && !success && (
-                            <div className="mt-8 pt-8 border-t border-gray-800">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2 text-red-500/70">
-                                        <AlertTriangle className="w-4 h-4" />
-                                        <span className="text-xs font-bold uppercase tracking-wider">Herramientas de Emergencia</span>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 gap-3">
-                                    <button
-                                        onClick={async () => {
-                                            if (!confirm('Esto eliminará todas las transacciones sin archivo asociado (huérfanas) que pueden estar causando duplicados. ¿Continuar?')) return
-                                            try {
-                                                const res = await fetch('/api/data/purge', { method: 'POST' })
-                                                if (res.ok) alert('Limpieza de huérfanos completada.')
-                                                else alert('Error en la limpieza.')
-                                            } catch (e) { alert('Error de red.') }
-                                        }}
-                                        className="w-full py-3 bg-red-500/5 hover:bg-red-500/10 text-red-400 border border-red-500/10 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                        Limpiar Registros Huérfanos
-                                    </button>
-
-                                    <button
-                                        onClick={async () => {
-                                            if (!confirm('¡PELIGRO! Esto eliminará TODAS las transacciones, comprobantes e historial de importaciones de tu organización. Esta acción NO se puede deshacer. ¿Estás seguro?')) return
-                                            if (!confirm('Confirmación final: ¿Realmente quieres BORRAR TODO?')) return
-
-                                            try {
-                                                const res = await fetch('/api/data/purge', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ mode: 'full_reset' })
-                                                })
-                                                if (res.ok) {
-                                                    alert('Reinicio completo exitoso. La página se recargará.')
-                                                    window.location.reload()
-                                                }
-                                                else alert('Error en el reinicio.')
-                                            } catch (e) { alert('Error de red.') }
-                                        }}
-                                        className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
-                                    >
-                                        <AlertTriangle className="w-3.5 h-3.5" />
-                                        REINICIO TOTAL (BORRAR TODO)
-                                    </button>
-                                </div>
-                                <p className="text-[10px] text-gray-500 mt-2 text-center italic">Usa estas herramientas con precaución para resolver problemas graves de duplicados o inconsistencias.</p>
-                            </div>
-                        )}
 
                     </>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-6 animate-in fade-in zoom-in duration-300">
-                        {uploadResult && (uploadResult.warnings.length > 0 || uploadResult.skipped > 0 || uploadResult.reviewCount > 0) ? (
-                            <div className="w-full">
-                                <div className="flex flex-col items-center mb-6">
-                                    <div className="p-3 bg-yellow-500/10 rounded-full mb-3">
-                                        <AlertTriangle className="w-10 h-10 text-yellow-500" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-white mb-1">Carga Parcial</h3>
-                                    <p className="text-gray-400 text-center text-sm">
-                                        Se procesaron {uploadResult.count} registros. <br />
-                                        <span className="text-yellow-500">{uploadResult.skipped} omitidos</span>,
-                                        <span className="text-purple-400"> {uploadResult.reviewCount} en revisión</span>.
-                                    </p>
-                                </div>
-
-                                <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 mb-6">
-                                    <button
-                                        onClick={() => setShowDetails(!showDetails)}
-                                        className="w-full flex items-center justify-between p-4 bg-gray-800 hover:bg-gray-750 transition-colors"
-                                    >
-                                        <span className="text-sm font-medium text-gray-300">Ver detalles de exclusion</span>
-                                        {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                    </button>
-
-                                    {showDetails && (
-                                        <div className="p-4 bg-black/20 max-h-60 overflow-y-auto border-t border-gray-700">
-                                            {uploadResult.warnings.length > 0 ? (
-                                                <ul className="space-y-2">
-                                                    {uploadResult.warnings.map((w, i) => (
-                                                        <li key={i} className="text-xs text-gray-400 flex gap-2">
-                                                            <span className="text-yellow-500 flex-shrink-0">•</span>
-                                                            {w}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : (
-                                                <p className="text-xs text-gray-500">Registros duplicados o vacíos.</p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {uploadResult.reviewCount > 0 && (
-                                    <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-between gap-3 text-purple-300">
-                                        <div className="flex items-center gap-3">
-                                            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                                            <div>
-                                                <p className="text-sm font-bold text-white">{uploadResult.reviewCount} items en cuarentena</p>
-                                                <p className="text-xs text-purple-300/80">Requieren tu revisión manual para ser aprobados.</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => router.push('/dashboard/quarantine')}
-                                            className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 rounded-lg text-xs font-medium text-white transition-colors"
-                                        >
-                                            Revisar Ahora
-                                        </button>
-                                    </div>
-                                )}
-
-                                {uploadResult.reviewCount > 0 && (
-                                    <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-between gap-3 text-purple-300">
-                                        <div className="flex items-center gap-3">
-                                            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                                            <div>
-                                                <p className="text-sm font-bold text-white">{uploadResult.reviewCount} items en cuarentena</p>
-                                                <p className="text-xs text-purple-300/80">Requieren tu revisión manual para ser aprobados.</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => router.push('/dashboard/quarantine')}
-                                            className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 rounded-lg text-xs font-medium text-white transition-colors"
-                                        >
-                                            Revisar Ahora
-                                        </button>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={() => {
-                                        router.refresh()
-                                        router.push('/dashboard')
-                                    }}
-                                    className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors"
-                                >
-                                    Continuar al Dashboard
-                                </button>
-                            </div>
-                        ) : uploadResult && uploadResult.count === 0 ? (
+                        {uploadResult && uploadResult.count === 0 ? (
                             <div className="flex flex-col items-center">
                                 <div className="p-3 bg-blue-500/10 rounded-full mb-3">
                                     <Settings className="w-10 h-10 text-blue-400" />
@@ -859,41 +721,93 @@ export default function UploadPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center">
-                                <CheckCircle className="w-20 h-20 text-emerald-500 mb-6" />
+                            <div className="flex flex-col items-center w-full max-w-xl">
+                                <div className="p-3 bg-emerald-500/10 rounded-full mb-4">
+                                    <CheckCircle className="w-16 h-16 text-emerald-500" />
+                                </div>
                                 <h3 className="text-2xl font-bold text-white mb-2">
                                     {uploadResult?.isUpdate ? '¡Re-procesamiento Exitoso!' : '¡Carga Completada!'}
                                 </h3>
-                                <p className="text-gray-400">
+                                <p className="text-gray-400 text-center text-sm leading-relaxed mb-6">
                                     {uploadResult?.isUpdate
                                         ? 'Se han actualizado las reglas de mapeo y re-generado los registros.'
                                         : `Se han procesado ${uploadResult?.count} registros correctamente.`}
                                 </p>
 
+                                {/* Warnings & Exclusions Dropdown */}
+                                {uploadResult && (uploadResult.skipped > 0 || uploadResult.warnings.length > 0) && (
+                                    <div className="w-full mt-2 bg-gray-900/40 rounded-xl overflow-hidden border border-gray-800">
+                                        <button
+                                            onClick={() => setShowDetails(!showDetails)}
+                                            className="w-full flex items-center justify-between p-3 hover:bg-gray-800/40 transition-colors"
+                                        >
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-1">
+                                                Registros Omitidos ({uploadResult.skipped})
+                                            </span>
+                                            {showDetails ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                                        </button>
+                                        {showDetails && (
+                                            <div className="p-3 bg-black/20 max-h-40 overflow-y-auto border-t border-gray-800">
+                                                {uploadResult.warnings.length > 0 ? (
+                                                    <ul className="space-y-1.5">
+                                                        {uploadResult.warnings.map((w, i) => (
+                                                            <li key={i} className="text-[10px] text-gray-500 flex gap-2">
+                                                                <span className="text-yellow-600/50 flex-shrink-0">•</span>
+                                                                {w}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="text-[10px] text-gray-600 italic">Registros duplicados o vacíos detectados.</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Quarantine Alert Card */}
+                                {uploadResult && uploadResult.reviewCount > 0 && (
+                                    <div className="mt-6 w-full p-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex items-center justify-between gap-3 text-purple-300">
+                                        <div className="flex items-center gap-3">
+                                            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                                            <div>
+                                                <p className="text-sm font-bold text-white">{uploadResult.reviewCount} en revisión</p>
+                                                <p className="text-[10px] text-purple-300/80">Necesitan aprobación manual.</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => router.push('/dashboard/quarantine')}
+                                            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-purple-500/20"
+                                        >
+                                            Revisar
+                                        </button>
+                                    </div>
+                                )}
+
                                 {isFirstUpload && (
-                                    <div className="mt-6 mb-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3 text-blue-300 animate-in fade-in slide-in-from-bottom-2 duration-700">
+                                    <div className="mt-8 p-4 bg-blue-500/10 border border-blue-500/30 rounded-2xl flex items-start gap-3 text-blue-300">
                                         <Settings className="w-5 h-5 mt-0.5 text-blue-400 flex-shrink-0" />
-                                        <p className="text-sm leading-relaxed">
-                                            <span className="font-bold text-white block mb-1">💡 Tip de Configuración</span>
-                                            No te olvides de ir a <span className="font-bold text-blue-400">Configuración</span> y colocar tu <span className="font-bold text-blue-400">Saldo Inicial</span> si tienes saldo disponible en cuenta. Esto es clave para que la IA calcule tu salud financiera correctamente.
+                                        <p className="text-xs leading-relaxed text-left">
+                                            <span className="font-bold text-white block mb-0.5">💡 Tip de Configuración</span>
+                                            Configura tu <span className="font-bold text-blue-400">Saldo Inicial</span> para que la IA calcule correctamente tu salud financiera.
                                         </p>
                                     </div>
                                 )}
 
-                                <div className="flex flex-col md:flex-row gap-4 mt-8 w-full max-w-xl">
-                                    <Link href="/dashboard" className="flex-1 px-6 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-2xl transition-all flex flex-col items-center gap-1 group border border-gray-700">
+                                {/* Primary CTAs */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-10 w-full mb-8">
+                                    <Link href="/dashboard" className="w-full px-6 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-2xl transition-all flex flex-col items-center gap-1 group border border-gray-700">
                                         <span className="font-bold text-sm">Ver Panel General</span>
-                                        <span className="text-[10px] text-gray-400">Resumen de liquidez y saldos</span>
+                                        <span className="text-[10px] text-gray-400 text-center">Liquidez y saldos</span>
                                     </Link>
-
-                                    <Link href="/dashboard/audit" className="flex-1 px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl transition-all flex flex-col items-center gap-1 group shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                                    <Link href="/dashboard/audit" className="w-full px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl transition-all flex flex-col items-center gap-1 group shadow-xl shadow-emerald-500/10 border border-emerald-500/20">
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-sm">Analizar Hallazgos</span>
                                             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                         </div>
                                         {uploadResult?.findingsCount && uploadResult.findingsCount > 0 ? (
                                             <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
-                                                {uploadResult.findingsCount} hallazgos detectados
+                                                {uploadResult.findingsCount} hallazgos
                                             </span>
                                         ) : (
                                             <span className="text-[10px] text-emerald-100/70 italic">Impuestos y anomalías</span>
@@ -901,12 +815,12 @@ export default function UploadPage() {
                                     </Link>
                                 </div>
 
-                                <div className="mt-8 p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl max-w-sm">
-                                    <p className="text-[11px] text-blue-300 text-center leading-relaxed">
-                                        <span className="font-bold block mb-1">💡 ¿Cuál elegir?</span>
-                                        Usa el <b>Panel</b> para ver tu dinero hoy. Usa <b>Audit Center</b> si la IA detectó nuevos impuestos que necesitan tu clasificación.
-                                    </p>
-                                </div>
+                                <button
+                                    onClick={() => setSuccess(false)}
+                                    className="text-xs text-gray-600 hover:text-white transition-colors"
+                                >
+                                    Cargar otro archivo
+                                </button>
                             </div>
                         )}
                     </div>

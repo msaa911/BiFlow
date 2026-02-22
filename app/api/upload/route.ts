@@ -307,16 +307,29 @@ export async function POST(request: Request) {
                     .lte('fecha', maxDate)
 
                 const normalize = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
-                const getHash = (t: any) => `${t.fecha}-${normalize(t.descripcion || t.concepto)}-${t.monto}-${t.numero_cheque || ''}`;
+                const getHash = (t: any) => `${t.fecha}-${normalize(t.descripcion || t.concepto)}-${t.monto}-${t.numero_cheque || ''}-${t.metadata?.saldo || ''}`;
 
-                const existingSet = new Set(existing?.map((e: any) => getHash(e)));
-                const seenInFile = new Set<string>();
+                // Occurrence-aware de-duplication:
+                // We count how many times a transaction (same date, desc, amount, partial hash) exists in DB
+                // and we only insert the "delta" from the current file.
+                const dbCounts = new Map<string, number>();
+                existing?.forEach((e: any) => {
+                    const h = getHash(e);
+                    dbCounts.set(h, (dbCounts.get(h) || 0) + 1);
+                });
 
+                const fileCounts = new Map<string, number>();
                 const uniqueTransactions = transactionsWithLink.filter((t: any) => {
                     const hash = getHash(t);
-                    if (existingSet.has(hash)) return false;
-                    if (seenInFile.has(hash)) return false;
-                    seenInFile.add(hash);
+                    const currentFileCount = (fileCounts.get(hash) || 0) + 1;
+                    fileCounts.set(hash, currentFileCount);
+
+                    const currentDbCount = dbCounts.get(hash) || 0;
+
+                    // If this is the N-th time we see this hash in the file, 
+                    // and we already have at least N in the DB, skip it.
+                    if (currentFileCount <= currentDbCount) return false;
+
                     return true;
                 });
                 uniqueCount = uniqueTransactions.length

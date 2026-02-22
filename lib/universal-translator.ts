@@ -204,7 +204,7 @@ export class UniversalTranslator {
         // DICCIONARIO EXTENDIDO (Soporte de Tildes y Variantes)
         const idx = {
             fecha: headers.findIndex((h: string) => ['fecha', 'fec', 'date', 'emision', 'emisión', 'emiti'].some(k => h.includes(k))),
-            monto: headers.findIndex((h: string) => ['monto', 'importe', 'valor', 'mto', 'total', 'saldo', 'precio', 'neto', 'bruto', 'subtotal', 'pagado'].some(k => h.includes(k))),
+            monto: headers.findIndex((h: string) => ['monto', 'importe', 'valor', 'mto', 'total', 'precio', 'neto', 'bruto', 'subtotal', 'pagado'].some(k => h.includes(k))),
             desc: headers.findIndex((h: string) => ['movimiento', 'detalle movimiento', 'concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio', 'nota', 'obs', 'observacion', 'glosa'].some(k => h.includes(k))),
             razon_social: headers.findIndex((h: string) => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'denominacion', 'denominación', 'emisor', 'receptor', 'empresa', 'ente'].some(k => h.includes(k))),
             cuit: headers.findIndex((h: string) => ['cuit', 'cuil', 'documento', 'id', 'taxid', 'tipo/nro'].some(k => h.includes(k))),
@@ -215,7 +215,8 @@ export class UniversalTranslator {
             cheque: headers.findIndex((h: string) => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque', 'nro_valor'].some(k => h.includes(k))),
             cbu: headers.findIndex((h: string) => ['cbu', 'cta destino', 'cvu', 'cuenta destino', 'coordenada', 'cbu/alias'].some(k => h.includes(k))),
             debito: headers.findIndex((h: string) => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo', 'retiro'].some(k => h.includes(k))),
-            credito: headers.findIndex((h: string) => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono', 'deposito'].some(k => h.includes(k)))
+            credito: headers.findIndex((h: string) => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono', 'deposito'].some(k => h.includes(k))),
+            saldo: headers.findIndex((h: string) => ['saldo', 'acumulado', 'balance'].some(k => h.includes(k)))
         };
 
         const transactions: Transaction[] = [];
@@ -319,7 +320,10 @@ export class UniversalTranslator {
                     tipo: tipo,
                     tags: [],
                     raw: row,
-                    metadata: { categoria: category }
+                    metadata: {
+                        categoria: category,
+                        saldo: idx.saldo !== -1 ? this.parseCurrency(row[idx.saldo]) : undefined
+                    }
                 });
             }
         }
@@ -355,12 +359,14 @@ export class UniversalTranslator {
             }
 
             if (monto !== 0) {
+                const category = this.categorizeTransaction(line, monto);
                 transactions.push({
                     fecha,
                     concepto: this.normalizeConcept(line.substring(0, 50), thesaurus),
                     monto,
                     cuit: '',
-                    tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any
+                    tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any,
+                    metadata: { categoria: category }
                 });
             }
         }
@@ -392,11 +398,13 @@ export class UniversalTranslator {
                 const cheque = chequeMatch ? chequeMatch[1] : undefined;
 
                 if (fecha && monto !== 0) {
+                    const category = this.categorizeTransaction(descArea, monto, cheque);
                     transactions.push({
                         fecha, concepto, monto, cuit: '',
                         cbu,
                         numero_cheque: cheque,
-                        tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any
+                        tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any,
+                        metadata: { categoria: category }
                     });
                 }
             }
@@ -407,21 +415,20 @@ export class UniversalTranslator {
     public static normalizeConcept(raw: string, thesaurus?: Map<string, string>): string {
         if (!raw) return 'Sin concepto';
         let clean = String(raw).trim().toUpperCase()
-            .replace(/[1-9]{10,}/g, '')
+            .replace(/[1-9]{11,}/g, '') // Less aggressive cleaning of numbers (avoid 10 digit check numbers)
             .replace(/\s{2,}/g, ' ')
             .trim();
         if (thesaurus) {
             if (thesaurus.has(clean)) return thesaurus.get(clean)!;
             for (const [key, value] of thesaurus.entries()) {
                 const upperKey = key.toUpperCase();
-                // Match exacto de palabra para evitar truncar "DISTRIBUIDORA NORTE" si el tesauro tiene "NORTE"
                 const wordPattern = new RegExp(`\\b${upperKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
                 if (wordPattern.test(clean)) return value;
             }
         }
 
         // Si después de limpiar el CUIT/CBU queda algo, lo devolvemos
-        const finalClean = clean.replace(/[0-9]{10,}/g, '').trim();
+        const finalClean = clean.replace(/[0-9]{11,}/g, '').trim();
         if (finalClean.length > 2) return finalClean;
 
         return clean || 'Sin concepto';
@@ -655,24 +662,27 @@ export class UniversalTranslator {
         if (numeroCheque || c.includes('CHEQUE') || c.includes('CH ') || c.includes('VALOR') || c.includes('PAGO CH')) return 'CHEQUE';
 
         // 2. INTERESES
-        if (c.includes('INTERES') || c.includes('GANAD') || c.includes('PAGAD') || c.includes('MORA')) return 'INTERESES';
+        if (c.includes('INTERES') || c.includes('GANAD') || c.includes('PAGAD') || c.includes('MORA') || c.includes('RENDIMIENTO')) return 'INTERESES';
 
-        // 3. TRANSFERENCIA (Incluye compras y pagos AFIP manuales)
+        // 3. TRANSFERENCIA (Incluye haberes y pagos manuales)
         if (c.includes('TRANSFERENCIA') || c.includes('TRANSF') || c.includes('TRF') ||
             c.includes('EMITIDA') || c.includes('RECIBIDA') || c.includes('INMEDIATA') ||
-            c.includes('HABERES') || c.includes('PAGO AFIP') || c.includes('COMPRA')) return 'TRANSFERENCIA';
+            c.includes('HABERES') || c.includes('DEBITO OTRAS ENTIDADES') || c.includes('CREDITO OTRAS ENTIDADES') ||
+            c.includes('PAGO AFIP') || c.includes('PAGO') || c.includes('COMPRA')) return 'TRANSFERENCIA';
 
         // 4. EFECTIVO
         if (c.includes('EFECTIVO') || c.includes('DEPOSITO CAJA') || c.includes('EXTRACCION') ||
             c.includes('ATM') || c.includes('CAJERO') || c.includes('RETIRO') || c.includes('VENTANILLA')) return 'EFECTIVO';
 
-        // 5. TARJETA/DEBITO (Débitos automáticos)
+        // 5. TARJETA/DEBITO (Débitos automáticos de servicios)
         if (c.includes('DEBITO AUTO') || c.includes('SERV.') || c.includes('SUSCRIPCION') ||
-            c.includes('SEGURO') || c.includes('CUOTA')) return 'TARJETA/DEBITO';
+            c.includes('SEGURO') || c.includes('CUOTA') || c.includes('PRÉSTAMO') || c.includes('CUOTA PRESTAMO')) return 'TARJETA/DEBITO';
 
-        // 6. GASTOS/COMISIONES
+        // 6. GASTOS/COMISIONES (Impuestos y Cargos bancarios)
         if (c.includes('COMISION') || c.includes('CARGO') || c.includes('IMPUESTO') ||
-            c.includes('IVA') || c.includes('MANTENIMIENTO') || c.includes('PERCEPCION')) return 'GASTOS/COMISIONES';
+            c.includes('IVA') || c.includes('MANTENIMIENTO') || c.includes('PERCEPCION') ||
+            c.includes('AFIP') || c.includes('ARBA') || c.includes('SIRCREB') || c.includes('RETENCION') ||
+            c.includes('DEB.IMP.') || c.includes('SELLOS') || c.includes('RECAUDACION')) return 'GASTOS/COMISIONES';
 
         return 'OTROS';
     }

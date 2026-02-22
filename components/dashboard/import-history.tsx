@@ -120,17 +120,14 @@ export function ImportHistory() {
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
-                                        {(item.estado === 'requiere_ajuste' || item.estado === 'completado') && (
+                                        {item.estado === 'requiere_ajuste' && (
                                             <button
                                                 onClick={() => router.push(`/dashboard/upload?remap=${item.id}&name=${encodeURIComponent(item.nombre_archivo)}`)}
-                                                className={`text-xs px-3 py-1 rounded-md font-bold transition-all flex items-center gap-1 shadow-lg scale-95 hover:scale-100 ${item.estado === 'requiere_ajuste'
-                                                    ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-500/20'
-                                                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 shadow-black'
-                                                    }`}
-                                                title="Cambiar mapeo de columnas y re-procesar"
+                                                className="text-xs px-3 py-1 rounded-md font-bold transition-all flex items-center gap-1 shadow-lg scale-95 hover:scale-100 bg-orange-600 hover:bg-orange-500 text-white shadow-orange-500/20"
+                                                title="Corregir mapeo de columnas y re-procesar"
                                             >
                                                 <RefreshCw className="w-3 h-3" />
-                                                {item.estado === 'requiere_ajuste' ? 'Corregir' : 'Re-mapear'}
+                                                Corregir
                                             </button>
                                         )}
                                         <button
