@@ -249,16 +249,16 @@ export default async function DashboardPage() {
             </div>
 
             {/* Transactions Refactor: Triple View */}
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 items-stretch">
                 {/* Left: Global Bank Transactions */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[600px] flex flex-col">
                     <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/20">
                         <h3 className="font-bold text-white uppercase tracking-tighter text-sm flex items-center gap-2">
                             <List className="w-4 h-4 text-emerald-500" /> Transacciones Bancarias
                         </h3>
                         <Link href="/dashboard/transactions" className="text-[10px] text-emerald-500 hover:text-emerald-400 font-black uppercase tracking-widest transition-colors">Ver todas</Link>
                     </div>
-                    <div className="overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                    <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
                         <table className="w-full text-left text-xs text-gray-400">
                             <thead className="bg-black/20 text-[10px] uppercase font-bold text-gray-500 sticky top-0 z-10 backdrop-blur-md">
                                 <tr>
@@ -268,7 +268,7 @@ export default async function DashboardPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                {bankTransactions.map((t) => (
+                                {bankTransactions.map((t: any) => (
                                     <tr key={t.id} className="hover:bg-gray-800/30 transition-colors group">
                                         <td className="px-6 py-4 whitespace-nowrap font-mono text-gray-500 group-hover:text-gray-300">
                                             {new Date(t.fecha).toLocaleDateString('es-AR')}
@@ -287,9 +287,9 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Right: Income & Expenses Split */}
-                <div className="space-y-6">
+                <div className="flex flex-col gap-6 h-[600px]">
                     {/* Top: Incomes */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[288px] flex flex-col">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex-1 flex flex-col">
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-emerald-500/5">
                             <h3 className="font-bold text-white uppercase tracking-tighter text-xs flex items-center gap-2">
                                 <TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos Recientes
@@ -299,7 +299,7 @@ export default async function DashboardPage() {
                         <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
                             <table className="w-full text-left text-[11px] text-gray-400">
                                 <tbody className="divide-y divide-gray-800">
-                                    {incomes.map((t) => (
+                                    {incomes.map((t: any) => (
                                         <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
                                             <td className="px-4 py-3 whitespace-nowrap font-mono text-gray-500">
                                                 {new Date(t.fecha).toLocaleDateString('es-AR')}
@@ -318,7 +318,7 @@ export default async function DashboardPage() {
                     </div>
 
                     {/* Bottom: Expenses */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[288px] flex flex-col">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex-1 flex flex-col">
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-red-500/5">
                             <h3 className="font-bold text-white uppercase tracking-tighter text-xs flex items-center gap-2">
                                 <TrendingDown className="w-3 h-3 text-red-500" /> Egresos Recientes
@@ -328,7 +328,7 @@ export default async function DashboardPage() {
                         <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
                             <table className="w-full text-left text-[11px] text-gray-400">
                                 <tbody className="divide-y divide-gray-800">
-                                    {expenses.map((t) => (
+                                    {expenses.map((t: any) => (
                                         <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
                                             <td className="px-4 py-3 whitespace-nowrap font-mono text-gray-500">
                                                 {new Date(t.fecha).toLocaleDateString('es-AR')}

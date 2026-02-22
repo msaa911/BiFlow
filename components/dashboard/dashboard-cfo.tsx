@@ -64,7 +64,7 @@ export function DashboardCFO({
                 />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-3 items-stretch">
                 <div className="md:col-span-2">
                     <CashHealthScore
                         score={healthScore}
@@ -74,11 +74,13 @@ export function DashboardCFO({
                         onOpenStressTest={() => setIsStressTestOpen(true)}
                     />
                 </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 group hover:border-gray-700 transition-all duration-500 shadow-2xl">
-                    <h3 className="font-semibold text-white mb-4 uppercase tracking-tighter text-sm flex items-center gap-2">
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 group hover:border-gray-700 transition-all duration-500 shadow-2xl flex flex-col h-full">
+                    <h3 className="font-bold text-white mb-6 uppercase tracking-tighter text-sm flex items-center gap-2">
                         <Activity className="w-4 h-4 text-emerald-500" /> Acciones Rápidas
                     </h3>
-                    <DashboardActions />
+                    <div className="flex-1 flex flex-col justify-center">
+                        <DashboardActions />
+                    </div>
                 </div>
             </div>
 
