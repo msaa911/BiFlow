@@ -26,10 +26,13 @@ export default async function DashboardPage() {
         redirect('/login')
     }
 
+    const orgId = await getOrgId(supabase, user.id)
+
     // Fetch Transactions
     const { data: transactions, error } = await supabase
         .from('transacciones')
         .select('*')
+        .eq('organization_id', orgId)
         .order('fecha', { ascending: false })
         .limit(5)
 
@@ -44,15 +47,29 @@ export default async function DashboardPage() {
 
     const thesaurusMap = new Map(thesaurusEntries?.map(e => [e.raw_pattern, e.normalized_concept]) || [])
 
-    // Calculate Metrics
+    // Fetch All Transactions for Metrics
     const { data: allTransactions } = await supabase
         .from('transacciones')
-        .select('monto')
+        .select('monto, metadata, fecha')
+        .eq('organization_id', orgId)
+        .order('fecha', { ascending: false })
 
-    const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
+    // 1. Calculate OPERATIVE BALANCE
+    // Find the latest transaction that has a 'saldo' in its metadata
+    const latestWithSaldo = allTransactions?.find(t => t.metadata?.saldo !== undefined)
 
-    // Fetch Initial Bank Balances
-    const orgId = await getOrgId(supabase, user.id)
+    let totalBalance = 0
+    if (latestWithSaldo) {
+        // Current Balance = Latest reported Balance + any NEWER transactions (if not included in the latest report)
+        // Since we ordered by date DESC, if we found it, it's the most recent state.
+        totalBalance = Number(latestWithSaldo.metadata.saldo)
+    } else {
+        // Fallback: Simple sum (less accurate if history is partial)
+        const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
+        totalBalance = transactionsSum
+    }
+
+    // Fetch Initial Bank Balances (Only used as additional cushion if no saldo in metadata)
     const { data: bankAccounts } = await supabase
         .from('cuentas_bancarias')
         .select('saldo_inicial')
@@ -60,15 +77,25 @@ export default async function DashboardPage() {
 
     const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
 
-    // If there are no transactions at all, we show 0 balance (Reset state)
-    const totalBalance = (allTransactions && allTransactions.length > 0)
-        ? (transactionsSum + initialBalancesSum)
-        : 0
+    if (!latestWithSaldo) {
+        totalBalance += initialBalancesSum
+    }
+
+    // 2. Calculate BURN RATE (Expenses in last 30 days)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const monthlyExpenses = allTransactions
+        ?.filter(t => t.monto < 0 && new Date(t.fecha) >= thirtyDaysAgo)
+        ?.reduce((acc, t) => acc + Math.abs(t.monto), 0) || 0
+
+    const dailyBurn = monthlyExpenses / 30
 
     // Fetch Tax Recovery Items
     const { data: taxItems } = await supabase
         .from('transacciones')
         .select('*')
+        .eq('organization_id', orgId)
         .contains('tags', ['impuesto_recuperable'])
         .order('fecha', { ascending: false })
 
@@ -78,6 +105,7 @@ export default async function DashboardPage() {
     const { data: anomalies } = await supabase
         .from('transacciones')
         .select('*')
+        .eq('organization_id', orgId)
         .contains('tags', ['alerta_precio'])
         .order('fecha', { ascending: false })
 
@@ -87,6 +115,7 @@ export default async function DashboardPage() {
     const { count: quarantineCount } = await supabase
         .from('transacciones_revision')
         .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
         .eq('estado', 'pendiente')
 
     // Fetch Pending Tax Rules for Alert
@@ -100,6 +129,7 @@ export default async function DashboardPage() {
     const { data: findings } = await supabase
         .from('hallazgos')
         .select('tipo, severidad')
+        .eq('organization_id', orgId)
         .eq('estado', 'detectado')
 
     // Calculate Score (Base 100)
@@ -142,7 +172,7 @@ export default async function DashboardPage() {
 
     // Liquidity Logic
     const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tnaEfectiva)
-    const daysOfRunway = LiquidityEngine.calculateHealthScore(totalBalance, Math.abs(totalBalance / 2) || 1000, overdraftLimit)
+    const daysOfRunway = dailyBurn > 100 ? Math.min(365, Math.floor((totalBalance + overdraftLimit) / dailyBurn)) : 'stable'
 
     return (
         <div className="space-y-8">
@@ -234,10 +264,10 @@ export default async function DashboardPage() {
                                                     <span
                                                         key={tag}
                                                         className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border ${tag === 'impuesto_recuperable' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                                tag === 'pendiente_clasificacion' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                                    tag === 'servicio_detectado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                                        tag === 'costo_impositivo' ? 'bg-gray-800 text-gray-500 border-gray-700' :
-                                                                            'bg-red-500/10 text-red-500 border-red-500/20'
+                                                            tag === 'pendiente_clasificacion' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                                tag === 'servicio_detectado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                                                    tag === 'costo_impositivo' ? 'bg-gray-800 text-gray-500 border-gray-700' :
+                                                                        'bg-red-500/10 text-red-500 border-red-500/20'
                                                             }`}
                                                     >
                                                         {tag === 'posible_duplicado' ? 'Duplicado' :
