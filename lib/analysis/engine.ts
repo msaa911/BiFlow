@@ -226,6 +226,8 @@ export async function runAnalysis(organizationId: string) {
                     ...t.metadata
                 }
             })
+            // Persist tags (e.g. 'posible_duplicado', 'alerta_precio') to the transacciones table
+            transactionsToUpdate.push({ id: t.id, tags: t.tags })
         }
     }
 
