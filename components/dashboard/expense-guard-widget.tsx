@@ -58,7 +58,7 @@ export function ExpenseGuardWidget({ anomalies }: ExpenseGuardWidgetProps) {
                         href="/dashboard/audit"
                         className="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 text-[10px] font-bold rounded-lg border border-gray-700 transition-colors flex items-center justify-center gap-2 uppercase tracking-widest group"
                     >
-                        Ver Centro de Auditoría <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                        Ver Auditoría AI <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                     </Link>
                 </div>
             </CardContent>

@@ -280,7 +280,7 @@ REGLAS CRÍTICAS DE SEGURIDAD:
         } else if (msgLower.includes('fuga')) {
             reply = "La **Fuga de Capital** es una estimación de toda la plata que estás perdiendo por ineficiencias (impuestos no recuperados + costo de oportunidad)."
         } else {
-            reply = "Puedo explicarte cualquier indicador: Saldo Operativo, Score, Costo de Oportunidad, Supervivencia, Recupero Impositivo, A Cobrar/Pagar, Valuación, Auditoría de Comisiones, Guardián de Gastos o Duplicados. ¿De cuál querés un ejemplo?"
+            reply = "Puedo explicarte cualquier indicador: Saldo Operativo, Score, Costo de Oportunidad, Supervivencia, Recupero Impositivo, A Cobrar/Pagar, Valuación, Auditoría de Comisiones, Guardián de Gastos o Duplicados (en tu sección de **Auditoría AI**). ¿De cuál querés un ejemplo?"
         }
     }
     else {

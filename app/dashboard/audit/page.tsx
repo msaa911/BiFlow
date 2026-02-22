@@ -236,7 +236,7 @@ export default function AuditCenterPage() {
                         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Volver al Dashboard
                     </Link>
                     <h1 className="text-4xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
-                        Centro de Auditoría <Gavel className="w-8 h-8 text-emerald-500" />
+                        Auditoría AI <ShieldAlert className="w-8 h-8 text-emerald-500" />
                     </h1>
                     <p className="text-gray-400 mt-2 max-w-xl">
                         Explorá y gestioná las anomalías detectadas por el Algorithmic CFO. Descargá informes para reclamos bancarios.
