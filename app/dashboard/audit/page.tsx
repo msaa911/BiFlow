@@ -21,6 +21,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TaxLearningWidget } from '@/components/dashboard/tax-learning-widget'
 import * as XLSX from 'xlsx'
 import Link from 'next/link'
+import { ClaimGenerator, ClaimTemplate } from '@/lib/claim-generator'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from "@/components/ui/dialog"
+import { Copy, Check } from 'lucide-react'
 
 interface AuditFinding {
     id: string
@@ -50,6 +60,8 @@ export default function AuditCenterPage() {
     const [filter, setFilter] = useState('all')
     const [searchTerm, setSearchTerm] = useState('')
     const [organizationId, setOrganizationId] = useState<string | null>(null)
+    const [activeClaim, setActiveClaim] = useState<ClaimTemplate | null>(null)
+    const [copied, setCopied] = useState(false)
     const supabase = createClient()
 
     useEffect(() => {
@@ -152,6 +164,19 @@ export default function AuditCenterPage() {
         setFindings(merged as any)
         setFilteredFindings(merged as any)
         setLoading(false)
+    }
+
+    const handleGenerateClaim = (finding: AuditFinding) => {
+        const claim = ClaimGenerator.generate(finding.tipo, finding.detalle, finding.transaccion)
+        setActiveClaim(claim)
+    }
+
+    const copyClaimToClipboard = () => {
+        if (activeClaim) {
+            navigator.clipboard.writeText(activeClaim.body)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        }
     }
 
     const exportToExcel = () => {
@@ -353,7 +378,10 @@ export default function AuditCenterPage() {
                                                         <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg transition-colors border border-gray-700">
                                                             Ignorar
                                                         </button>
-                                                        <button className="px-4 py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 text-xs font-bold rounded-lg transition-colors border border-emerald-500/30 flex items-center gap-2 group/btn">
+                                                        <button
+                                                            onClick={() => handleGenerateClaim(finding)}
+                                                            className="px-4 py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 text-xs font-bold rounded-lg transition-colors border border-emerald-500/30 flex items-center gap-2 group/btn"
+                                                        >
                                                             Generar Reclamo <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
                                                         </button>
                                                     </>
@@ -377,6 +405,44 @@ export default function AuditCenterPage() {
                     </div>
                 )}
             </div>
+
+            {/* Claim Modal */}
+            <Dialog open={!!activeClaim} onOpenChange={(open) => !open && setActiveClaim(null)}>
+                <DialogContent className="bg-gray-950 border-gray-800 text-white max-w-2xl rounded-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tighter flex items-center gap-2 text-emerald-400">
+                            <CheckCircle2 className="w-5 h-5" /> Borrador de Reclamo
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400 font-medium">
+                            Copia este texto y envíalo por email o chat a tu proveedor o banco.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-4 bg-black/40 border border-gray-800 rounded-2xl p-6 relative group">
+                        <div className="absolute top-4 right-4 z-10">
+                            <button
+                                onClick={copyClaimToClipboard}
+                                className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg transition-all border border-gray-700"
+                            >
+                                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        <h4 className="font-bold text-emerald-400 text-sm mb-3 pr-10">{activeClaim?.title}</h4>
+                        <pre className="text-sm text-gray-300 font-sans whitespace-pre-wrap leading-relaxed">
+                            {activeClaim?.body}
+                        </pre>
+                    </div>
+
+                    <DialogFooter className="mt-6">
+                        <button
+                            onClick={() => setActiveClaim(null)}
+                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                        >
+                            Listo, ya lo copié
+                        </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
