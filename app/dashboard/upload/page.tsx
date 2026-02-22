@@ -205,15 +205,8 @@ export default function UploadPage() {
         })
         setRefreshHistory(prev => prev + 1)
 
-        // Remove auto-redirect to give user time to read and choose path
-        /*
-        if (allWarnings.length === 0 && totalSkipped === 0 && totalReview === 0 && totalCount > 0) {
-            setTimeout(() => {
-                router.refresh()
-                router.push('/dashboard')
-            }, 2000)
-        }
-        */
+        // Refresh Next.js data cache so other pages show new data immediately
+        router.refresh()
     }
 
     const handleSignConfirmation = async (invert: boolean) => {
@@ -389,6 +382,7 @@ export default function UploadPage() {
                                     reviewCount: 0,
                                     isUpdate: true
                                 })
+                                router.refresh()
                             } catch (e: any) {
                                 setError(e.message)
                             } finally {
@@ -429,6 +423,7 @@ export default function UploadPage() {
                                     findingsCount: result.findingsCount || 0
                                 })
                                 setRefreshHistory(prev => prev + 1)
+                                router.refresh()
                             } catch (e: any) {
                                 console.error('Mapping process error:', e)
                                 setError('Error al procesar con mapeo: ' + e.message)
