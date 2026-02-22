@@ -63,23 +63,51 @@ export async function POST(request: Request) {
 
         const orgId = importLog.organization_id
 
-        // 5. Insert New Transactions
-        const sanitizedTransactions = res.transactions.map((t: any) => ({
-            organization_id: orgId,
-            fecha: t.fecha,
-            descripcion: t.concepto || 'Sin concepto',
-            monto: t.monto,
-            cuit: t.cuit || null,
-            numero_cheque: t.numero_cheque || null,
-            moneda: 'ARS',
-            origen_dato: 'reprocessed',
-            estado: 'pendiente',
-            archivo_importacion_id: importId,
-            metadata: { ...t.metadata, reprocessed: true }
-        }))
+        // 5. Insert New Transactions (With De-duplication)
+        const normalize = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+        const getHash = (t: any) => `${t.fecha}-${normalize(t.descripcion || t.concepto)}-${t.monto}-${t.numero_cheque || ''}`;
 
-        const { error: insErr } = await supabase.from('transacciones').insert(sanitizedTransactions)
-        if (insErr) throw insErr
+        // Get existing transactions in the same time window to avoid cross-upload duplicates
+        const dates = res.transactions.map(t => t.fecha).sort();
+        const minDate = dates[0];
+        const maxDate = dates[dates.length - 1];
+
+        const { data: existing } = await supabase
+            .from('transacciones')
+            .select('fecha, descripcion, monto, numero_cheque')
+            .eq('organization_id', orgId)
+            .gte('fecha', minDate)
+            .lte('fecha', maxDate);
+
+        const existingSet = new Set(existing?.map((e: any) => getHash(e)));
+        const seenInFile = new Set<string>();
+
+        const sanitizedTransactions = res.transactions
+            .map((t: any) => ({
+                organization_id: orgId,
+                fecha: t.fecha,
+                descripcion: t.concepto || 'Sin concepto',
+                monto: t.monto,
+                cuit: t.cuit || null,
+                numero_cheque: t.numero_cheque || null,
+                moneda: 'ARS',
+                origen_dato: 'reprocessed',
+                estado: 'pendiente',
+                archivo_importacion_id: importId,
+                metadata: { ...t.metadata, reprocessed: true }
+            }))
+            .filter((t: any) => {
+                const hash = getHash(t);
+                if (existingSet.has(hash)) return false;
+                if (seenInFile.has(hash)) return false;
+                seenInFile.add(hash);
+                return true;
+            });
+
+        if (sanitizedTransactions.length > 0) {
+            const { error: insErr } = await supabase.from('transacciones').insert(sanitizedTransactions)
+            if (insErr) throw insErr
+        }
 
         // 6. Update Status
         await supabase.from('archivos_importados').update({

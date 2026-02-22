@@ -301,7 +301,7 @@ export async function POST(request: Request) {
 
                 const { data: existing } = await currentSupabase
                     .from('transacciones')
-                    .select('fecha, descripcion, monto')
+                    .select('fecha, descripcion, monto, numero_cheque')
                     .eq('organization_id', orgId)
                     .gte('fecha', minDate)
                     .lte('fecha', maxDate)

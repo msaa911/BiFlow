@@ -377,12 +377,13 @@ export default function UploadPage() {
                                 })
 
                                 if (!res.ok) throw new Error('Error al re-procesar')
+                                const data = await res.json()
 
                                 setMappingFile(null)
                                 setReprocessingId(null)
                                 setSuccess(true)
                                 setUploadResult({
-                                    count: 0,
+                                    count: data.count || 0,
                                     skipped: 0,
                                     warnings: [],
                                     reviewCount: 0,
@@ -689,21 +690,47 @@ export default function UploadPage() {
                                         <span className="text-xs font-bold uppercase tracking-wider">Herramientas de Emergencia</span>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={async () => {
-                                        if (!confirm('Esto eliminará todas las transacciones sin archivo asociado (huérfanas) que pueden estar causando duplicados. ¿Continuar?')) return
-                                        try {
-                                            const res = await fetch('/api/data/purge', { method: 'POST' })
-                                            if (res.ok) alert('Limpieza completada.')
-                                            else alert('Error en la limpieza.')
-                                        } catch (e) { alert('Error de red.') }
-                                    }}
-                                    className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    Limpiar Registros Huérfanos y Duplicados Fantasma
-                                </button>
-                                <p className="text-[10px] text-gray-500 mt-2 text-center italic">Usa esto si ves transacciones repetidas que no se borran al eliminar una importación.</p>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm('Esto eliminará todas las transacciones sin archivo asociado (huérfanas) que pueden estar causando duplicados. ¿Continuar?')) return
+                                            try {
+                                                const res = await fetch('/api/data/purge', { method: 'POST' })
+                                                if (res.ok) alert('Limpieza de huérfanos completada.')
+                                                else alert('Error en la limpieza.')
+                                            } catch (e) { alert('Error de red.') }
+                                        }}
+                                        className="w-full py-3 bg-red-500/5 hover:bg-red-500/10 text-red-400 border border-red-500/10 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        Limpiar Registros Huérfanos
+                                    </button>
+
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm('¡PELIGRO! Esto eliminará TODAS las transacciones, comprobantes e historial de importaciones de tu organización. Esta acción NO se puede deshacer. ¿Estás seguro?')) return
+                                            if (!confirm('Confirmación final: ¿Realmente quieres BORRAR TODO?')) return
+
+                                            try {
+                                                const res = await fetch('/api/data/purge', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ mode: 'full_reset' })
+                                                })
+                                                if (res.ok) {
+                                                    alert('Reinicio completo exitoso. La página se recargará.')
+                                                    window.location.reload()
+                                                }
+                                                else alert('Error en el reinicio.')
+                                            } catch (e) { alert('Error de red.') }
+                                        }}
+                                        className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+                                    >
+                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                        REINICIO TOTAL (BORRAR TODO)
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-2 text-center italic">Usa estas herramientas con precaución para resolver problemas graves de duplicados o inconsistencias.</p>
                             </div>
                         )}
 

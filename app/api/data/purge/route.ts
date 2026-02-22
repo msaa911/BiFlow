@@ -16,7 +16,17 @@ export async function POST(request: Request) {
 
     const orgId = member.organization_id
 
+    const { mode } = await request.json().catch(() => ({}));
+
     try {
+        if (mode === 'full_reset') {
+            // Dangerous: Wipe all transactions and imports for this org
+            await supabase.from('transacciones').delete().eq('organization_id', orgId)
+            await supabase.from('comprobantes').delete().eq('organization_id', orgId)
+            await supabase.from('archivos_importados').delete().eq('organization_id', orgId)
+            return NextResponse.json({ success: true, message: 'Todos los datos han sido eliminados.' })
+        }
+
         // 1. Delete transactions with null archivo_importacion_id (orphans that cause duplicates)
         const { error: transErr } = await supabase
             .from('transacciones')
@@ -25,9 +35,6 @@ export async function POST(request: Request) {
             .is('archivo_importacion_id', null)
 
         if (transErr) throw transErr
-
-        // 2. Optional: If user wants a full reset (caution!)
-        // For now we only clean orphans to prevent "ghost" duplicates.
 
         return NextResponse.json({ success: true, message: 'Registros huérfanos eliminados.' })
     } catch (e: any) {
