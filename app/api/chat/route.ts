@@ -65,10 +65,17 @@ Tu objetivo es ayudar al usuario a entender su salud financiera, explicar indica
 
 INDICADORES QUE DEBES EXPLICAR:
 - Saldo Operativo: El dinero real en cuentas bancarias según el último extracto.
-- Score (80/100): Calificación de salud de caja (100 = Ideal). Baja por anomalías.
-- Costo de Oportunidad: Plata perdida por tener dinero ocioso en el banco sin invertir (ej. a plazo fijo).
-- Supervivencia (Runway): Cuántos días puede operar la empresa con el saldo actual y su ritmo de gasto (Burn Rate).
-- Recupero Pendiente: % de impuestos (IVA, Percepciones) que se pueden recuperar respecto al gasto total.
+- Score (Health): Calificación de salud de caja (100 = Ideal). Baja por riesgos.
+- Costo de Oportunidad (Dinero Ocioso): Plata perdida por no invertir el saldo excedente.
+- Supervivencia (Runway): Días que la empresa puede operar con su saldo actual.
+- Recupero Impositivo / Crédito Fiscal: % de impuestos que se pueden recuperar (IVA, retenciones).
+- A Cobrar (AR): Facturas de venta pendientes de cobro.
+- A Pagar (AP): Facturas de compra y gastos pendientes de pago.
+- Valuación Real: El valor teórico de la empresa (Caja + A Cobrar - A Pagar).
+- Auditoría de Comisiones: Desvíos entre lo cobrado por el banco y lo pactado por convenio.
+- Guardián de Gastos: Alertas de sobreprecios en gastos recurrentes (>15%).
+- Control de Duplicados: Detección de pagos repetidos por error.
+- Fuga de Capital: Estimación de dinero perdido por ineficiencias financieras.
 
 REGLAS CRÍTICAS DE SEGURIDAD:
 - NO hables de código, programación, bases de datos (postgreSQL/Supabase), React, Next.js ni APIs.
@@ -247,19 +254,33 @@ REGLAS CRÍTICAS DE SEGURIDAD:
     else if (msgLower.includes('codigo') || msgLower.includes('programacion') || msgLower.includes('script') || msgLower.includes('base de datos') || msgLower.includes('react') || msgLower.includes('typescript')) {
         reply = "No he sido entrenado con esa información técnica. Mi especialidad es el análisis financiero de tu empresa."
     }
-    else if (msgLower.includes('explicame') || msgLower.includes('que es') || msgLower.includes('ejemplo') || msgLower.includes('como se calcula')) {
+    else if (msgLower.includes('explicame') || msgLower.includes('que es') || msgLower.includes('ejemplo') || msgLower.includes('como se calcula') || msgLower.includes('tarjeta') || msgLower.includes('indicador')) {
         if (msgLower.includes('saldo')) {
-            reply = "El **Saldo Operativo** es la plata líquida real que tenés en el banco. Se calcula tomando el último saldo informado en tus extractos bancarios. **Ejemplo:** Si tu extracto del lunes dice que tenés $1.000.000, ese es tu saldo operativo, sin importar los movimientos viejos."
+            reply = "El **Saldo Operativo** es la plata líquida real que tenés en el banco según el último extracto. **Ejemplo:** Si tu extracto dice $500.000, ese es tu saldo para operar hoy."
         } else if (msgLower.includes('score')) {
-            reply = `Tu **Score de Salud ($score)** mide el riesgo de tu caja. Empieza en 100 y baja cuando detecto problemas. **Ejemplo:** Un pago duplicado o un CBU sospechoso de un proveedor restan puntos. Un score de 80 como el tuyo indica que hay temas por revisar.`
-        } else if (msgLower.includes('costo') || msgLower.includes('oportunidad') || msgLower.includes('ocioso') || msgLower.includes('perdi')) {
-            reply = "El **Costo de Oportunidad** es plata que perdés por tener dinero 'quieto' en el banco en lugar de estar rindiendo. **Ejemplo:** Si tenés $400.000 parados y la tasa de plazo fijo es del 70%, cada mes que no lo invertís estás perdiendo unos $23.000. Eso es lo que te muestra esa tarjeta."
+            reply = `Tu **Score de Salud ($score)** mide el riesgo de tu caja. Baja cuando detecto anomalías. **Ejemplo:** Si tenés muchos duplicados o alertas de seguridad, el score bajará de 100 acercándose a niveles críticos.`
+        } else if (msgLower.includes('costo') || msgLower.includes('oportunidad') || msgLower.includes('ocioso')) {
+            reply = "El **Costo de Oportunidad** es dinero que dejás de ganar por tener saldo 'muerto' en el banco. **Ejemplo:** Si tenés $500.000 sin invertir, estás perdiendo unos $30.000 por mes que podrías ganar con un simple plazo fijo."
         } else if (msgLower.includes('supervivencia') || msgLower.includes('runway') || msgLower.includes('dias')) {
-            reply = "La **Supervivencia** indica cuántos días te alcanza la plata. Se calcula dividiendo tu saldo por tu gasto diario promedio del último mes. **Ejemplo:** Si gastás $10.000 por día y tenés $100.000, tu supervivencia es de 10 días."
-        } else if (msgLower.includes('recupero')) {
-            reply = "El **Recupero Pendiente** es el % de tus gastos que podrías volver a tener en la mano gestionando impuestos. **Ejemplo:** Si gastaste $1.000.000 y $100.000 fueron percepciones de AFIP, tu recupero es del 10%."
+            reply = "La **Supervivencia** indica cuántos días aguanta tu caja antes de quedarse en cero si no entra más plata. Se calcula dividiendo tu saldo por tu gasto promedio diario. **Ejemplo:** Si gastás $20.000 al día y tenés $100.000, te quedan 5 días."
+        } else if (msgLower.includes('recupero') || msgLower.includes('credito fiscal')) {
+            reply = "El **Recupero Impositivo** es el ahorro que podés generar gestionando saldos a favor (IVA, Percepciones ARBA/AFIP). **Ejemplo:** Si tu factura de luz tiene $2.000 de percepciones que el contador puede usar, eso es dinero que podés recuperar."
+        } else if (msgLower.includes('cobrar') || msgLower.includes('ar')) {
+            reply = "Las **Cuentas a Cobrar (Ventas)** son facturas que emitiste y que aún no te pagaron. Es dinero que pertenece a tu empresa pero que todavía no está en el banco."
+        } else if (msgLower.includes('pagar') || msgLower.includes('ap')) {
+            reply = "Las **Cuentas a Pagar (Compras)** son deudas con proveedores o servicios que ya recibiste pero que todavía no salieron de tu caja. Es tu compromiso de pago futuro."
+        } else if (msgLower.includes('valuacion')) {
+            reply = "La **Valuación Real BiFlow** estima cuánto vale hoy tu operación sumando lo que tenés en el banco más lo que te deben, y restando lo que debés pagar pronto."
+        } else if (msgLower.includes('comision') || msgLower.includes('banco')) {
+            reply = "La **Auditoría de Comisiones** compara lo que el banco te cobra realmente contra lo que pactaste en tu convenio. Detecta si te están cobrando comisiones de más."
+        } else if (msgLower.includes('guardian') || msgLower.includes('precio') || msgLower.includes('aumento')) {
+            reply = "El **Guardián de Gastos** detecta cuando un proveedor recurrente (luz, abono, alquiler) te cobra más de un 15% por encima de lo normal sin explicación."
+        } else if (msgLower.includes('duplicado')) {
+            reply = "El **Control de Duplicados** busca pagos idénticos (mismo monto y misma fecha) que se hayan realizado dos veces por error, algo común con terminales de tarjeta."
+        } else if (msgLower.includes('fuga')) {
+            reply = "La **Fuga de Capital** es una estimación de toda la plata que estás perdiendo por ineficiencias (impuestos no recuperados + costo de oportunidad)."
         } else {
-            reply = "Puedo explicarte qué es el Saldo Operativo, el Score de Salud, el Runway (supervivencia) o el % de Recupero de impuestos. ¿Sobre cuál te gustaría un ejemplo?"
+            reply = "Puedo explicarte cualquier indicador: Saldo Operativo, Score, Costo de Oportunidad, Supervivencia, Recupero Impositivo, A Cobrar/Pagar, Valuación, Auditoría de Comisiones, Guardián de Gastos o Duplicados. ¿De cuál querés un ejemplo?"
         }
     }
     else {
