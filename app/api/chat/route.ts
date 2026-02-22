@@ -66,6 +66,7 @@ Tu objetivo es ayudar al usuario a entender su salud financiera, explicar indica
 INDICADORES QUE DEBES EXPLICAR:
 - Saldo Operativo: El dinero real en cuentas bancarias según el último extracto.
 - Score (80/100): Calificación de salud de caja (100 = Ideal). Baja por anomalías.
+- Costo de Oportunidad: Plata perdida por tener dinero ocioso en el banco sin invertir (ej. a plazo fijo).
 - Supervivencia (Runway): Cuántos días puede operar la empresa con el saldo actual y su ritmo de gasto (Burn Rate).
 - Recupero Pendiente: % de impuestos (IVA, Percepciones) que se pueden recuperar respecto al gasto total.
 
@@ -251,6 +252,8 @@ REGLAS CRÍTICAS DE SEGURIDAD:
             reply = "El **Saldo Operativo** es la plata líquida real que tenés en el banco. Se calcula tomando el último saldo informado en tus extractos bancarios. **Ejemplo:** Si tu extracto del lunes dice que tenés $1.000.000, ese es tu saldo operativo, sin importar los movimientos viejos."
         } else if (msgLower.includes('score')) {
             reply = `Tu **Score de Salud ($score)** mide el riesgo de tu caja. Empieza en 100 y baja cuando detecto problemas. **Ejemplo:** Un pago duplicado o un CBU sospechoso de un proveedor restan puntos. Un score de 80 como el tuyo indica que hay temas por revisar.`
+        } else if (msgLower.includes('costo') || msgLower.includes('oportunidad') || msgLower.includes('ocioso') || msgLower.includes('perdi')) {
+            reply = "El **Costo de Oportunidad** es plata que perdés por tener dinero 'quieto' en el banco en lugar de estar rindiendo. **Ejemplo:** Si tenés $400.000 parados y la tasa de plazo fijo es del 70%, cada mes que no lo invertís estás perdiendo unos $23.000. Eso es lo que te muestra esa tarjeta."
         } else if (msgLower.includes('supervivencia') || msgLower.includes('runway') || msgLower.includes('dias')) {
             reply = "La **Supervivencia** indica cuántos días te alcanza la plata. Se calcula dividiendo tu saldo por tu gasto diario promedio del último mes. **Ejemplo:** Si gastás $10.000 por día y tenés $100.000, tu supervivencia es de 10 días."
         } else if (msgLower.includes('recupero')) {
