@@ -101,12 +101,12 @@ export default async function DashboardPage() {
 
     const totalRecoverable = taxItems?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
 
-    // Fetch Expense Guard Anomalies
+    // Fetch Expense Guard Anomalies (Include duplicates and trust ledger alerts)
     const { data: anomalies } = await supabase
         .from('transacciones')
         .select('*')
         .eq('organization_id', orgId)
-        .contains('tags', ['alerta_precio'])
+        .or('tags.cs.{"alerta_precio"},tags.cs.{"posible_duplicado"},tags.cs.{"riesgo_bec"}')
         .order('fecha', { ascending: false })
 
     const anomalyCount = anomalies?.length || 0
@@ -168,7 +168,12 @@ export default async function DashboardPage() {
         }
     }
 
-    const recoveryPotential = totalBalance > 0 ? Math.round((totalRecoverable / Math.abs(totalBalance)) * 100) : 0
+    // Total spent in last 30 days including taxes
+    const totalVolume = allTransactions
+        ?.filter(t => new Date(t.fecha) >= thirtyDaysAgo)
+        ?.reduce((acc, t) => acc + Math.abs(t.monto), 0) || 1 // Avoid divide by zero
+
+    const recoveryPotential = Math.min(100, Math.round((totalRecoverable / totalVolume) * 100))
 
     // Liquidity Logic
     const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tnaEfectiva)
