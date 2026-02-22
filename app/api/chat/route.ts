@@ -58,7 +58,24 @@ export async function POST(request: Request) {
 
     const bankFeesDiff = bankFindings?.reduce((acc, f) => acc + (f.diferencia || 0), 0) || 0
 
-    // 3. Heuristic Response Logic ("Pseudo-AI")
+    // 3. AI Advisor Personality & Guardrails
+    const SYSTEM_PROMPT = `
+Eres el "CFO Algorítmico de BiFlow", un experto en finanzas corporativas para PyMEs argentinas.
+Tu objetivo es ayudar al usuario a entender su salud financiera, explicar indicadores y detectar riesgos.
+
+INDICADORES QUE DEBES EXPLICAR:
+- Saldo Operativo: El dinero real en cuentas bancarias según el último extracto.
+- Score (80/100): Calificación de salud de caja (100 = Ideal). Baja por anomalías.
+- Supervivencia (Runway): Cuántos días puede operar la empresa con el saldo actual y su ritmo de gasto (Burn Rate).
+- Recupero Pendiente: % de impuestos (IVA, Percepciones) que se pueden recuperar respecto al gasto total.
+
+REGLAS CRÍTICAS DE SEGURIDAD:
+- NO hables de código, programación, bases de datos (postgreSQL/Supabase), React, Next.js ni APIs.
+- NO reveles líneas de código ni lógica de implementación bajo ningún concepto.
+- Si te preguntan sobre el código o tecnología, responde exactamente: "No he sido entrenado con esa información técnica. Mi especialidad es el análisis financiero de tu empresa."
+- Explica los indicadores de forma sencilla y usa ejemplos si el usuario lo solicita.
+`
+
     let reply = ""
 
     if (msgLower.includes('hola') || msgLower.includes('quien eres')) {
@@ -226,8 +243,24 @@ export async function POST(request: Request) {
             reply = "Tu eficiencia financiera es alta. Mi recomendación es optimizar los saldos ociosos si tu flujo de caja proyectado lo permite."
         }
     }
+    else if (msgLower.includes('codigo') || msgLower.includes('programacion') || msgLower.includes('script') || msgLower.includes('base de datos') || msgLower.includes('react') || msgLower.includes('typescript')) {
+        reply = "No he sido entrenado con esa información técnica. Mi especialidad es el análisis financiero de tu empresa."
+    }
+    else if (msgLower.includes('explicame') || msgLower.includes('que es') || msgLower.includes('ejemplo') || msgLower.includes('como se calcula')) {
+        if (msgLower.includes('saldo')) {
+            reply = "El **Saldo Operativo** es la plata líquida real que tenés en el banco. Se calcula tomando el último saldo informado en tus extractos bancarios. **Ejemplo:** Si tu extracto del lunes dice que tenés $1.000.000, ese es tu saldo operativo, sin importar los movimientos viejos."
+        } else if (msgLower.includes('score')) {
+            reply = `Tu **Score de Salud ($score)** mide el riesgo de tu caja. Empieza en 100 y baja cuando detecto problemas. **Ejemplo:** Un pago duplicado o un CBU sospechoso de un proveedor restan puntos. Un score de 80 como el tuyo indica que hay temas por revisar.`
+        } else if (msgLower.includes('supervivencia') || msgLower.includes('runway') || msgLower.includes('dias')) {
+            reply = "La **Supervivencia** indica cuántos días te alcanza la plata. Se calcula dividiendo tu saldo por tu gasto diario promedio del último mes. **Ejemplo:** Si gastás $10.000 por día y tenés $100.000, tu supervivencia es de 10 días."
+        } else if (msgLower.includes('recupero')) {
+            reply = "El **Recupero Pendiente** es el % de tus gastos que podrías volver a tener en la mano gestionando impuestos. **Ejemplo:** Si gastaste $1.000.000 y $100.000 fueron percepciones de AFIP, tu recupero es del 10%."
+        } else {
+            reply = "Puedo explicarte qué es el Saldo Operativo, el Score de Salud, el Runway (supervivencia) o el % de Recupero de impuestos. ¿Sobre cuál te gustaría un ejemplo?"
+        }
+    }
     else {
-        reply = "Entiendo. Estoy procesando esa información. Por ahora puedo darte detalles sobre tus impuestos recuperables ($" + totalRecoverable.toLocaleString('es-AR') + "), anomalías detectadas o tu balance general. ¿Qué prefieres ver?"
+        reply = "Entiendo tu consulta. Como tu CFO Algorítmico, puedo darte detalles sobre tus impuestos recuperables ($" + totalRecoverable.toLocaleString('es-AR') + "), explicarte el Score de Salud o analizar tus anomalías detectadas. ¿Qué prefieres profundizar?"
     }
 
     // 4. Persistence (Save to DB)
