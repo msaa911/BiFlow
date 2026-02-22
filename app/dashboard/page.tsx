@@ -7,6 +7,7 @@ import { KPICard } from '@/components/ui/kpi-card'
 import { DashboardActions } from '@/components/dashboard/actions'
 import { TaxRecoveryWidget } from '@/components/dashboard/tax-recovery-widget'
 import { ExpenseGuardWidget } from '@/components/dashboard/expense-guard-widget'
+import { DuplicateGuardWidget } from '@/components/dashboard/duplicate-guard-widget'
 import { FeeAuditWidget } from '@/components/dashboard/fee-audit-widget'
 import { DashboardCFO } from '@/components/dashboard/dashboard-cfo'
 import { TaxLearningWidget } from '@/components/dashboard/tax-learning-widget'
@@ -110,6 +111,10 @@ export default async function DashboardPage() {
         .order('fecha', { ascending: false })
 
     const anomalyCount = anomalies?.length || 0
+
+    // Separate anomalies for widgets
+    const priceSpikes = anomalies?.filter(a => a.tags?.includes('alerta_precio')) || []
+    const duplicates = anomalies?.filter(a => a.tags?.includes('posible_duplicado')) || []
 
     // Fetch Quarantine Count
     const { count: quarantineCount } = await supabase
@@ -231,9 +236,10 @@ export default async function DashboardPage() {
                 overdraftLimit={overdraftLimit}
             />
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <TaxRecoveryWidget totalRecoverable={totalRecoverable} taxItems={taxItems || []} />
-                <ExpenseGuardWidget anomalies={anomalies || []} />
+                <ExpenseGuardWidget anomalies={priceSpikes} />
+                <DuplicateGuardWidget duplicates={duplicates} />
                 <FeeAuditWidget />
             </div>
 
