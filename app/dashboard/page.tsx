@@ -229,7 +229,8 @@ export default async function DashboardPage() {
                                     month: '2-digit',
                                     year: '2-digit',
                                     hour: '2-digit',
-                                    minute: '2-digit'
+                                    minute: '2-digit',
+                                    timeZone: 'America/Argentina/Buenos_Aires'
                                 })} hs
                             </span>
                         </span>
