@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ArrowUpRight, AlertTriangle, Activity, DollarSign, Brain, Link as LinkIcon, ArrowRight } from 'lucide-react'
+import { ArrowUpRight, AlertTriangle, Activity, DollarSign, Brain, Link as LinkIcon, ArrowRight, List, TrendingUp, TrendingDown } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { KPICard } from '@/components/ui/kpi-card'
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
     // Fetch All Transactions for Metrics
     const { data: allTransactions } = await supabase
         .from('transacciones')
-        .select('monto, metadata, fecha')
+        .select('id, monto, metadata, fecha, descripcion')
         .eq('organization_id', orgId)
         .order('fecha', { ascending: false })
 
@@ -184,6 +184,11 @@ export default async function DashboardPage() {
     const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tnaEfectiva)
     const daysOfRunway = dailyBurn > 100 ? Math.min(365, Math.floor((totalBalance + overdraftLimit) / dailyBurn)) : 'stable'
 
+    // Triple View Calculations
+    const incomes = allTransactions?.filter(t => t.monto > 0).slice(0, 20) || []
+    const expenses = allTransactions?.filter(t => t.monto < 0).slice(0, 20) || []
+    const bankTransactions = allTransactions?.slice(0, 20) || []
+
     return (
         <div className="space-y-8">
             <div>
@@ -243,93 +248,101 @@ export default async function DashboardPage() {
                 <FeeAuditWidget />
             </div>
 
-            {/* Recent Transactions & Actions */}
-            <div className="grid gap-6 md:grid-cols-3">
-                <div className="md:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-                    <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-                        <h3 className="font-semibold text-white">Transacciones Recientes</h3>
-                        <button className="text-xs text-emerald-500 hover:text-emerald-400 font-medium transition-colors">Ver todas</button>
+            {/* Transactions Refactor: Triple View */}
+            <div className="grid gap-6 md:grid-cols-2">
+                {/* Left: Global Bank Transactions */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                    <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/20">
+                        <h3 className="font-bold text-white uppercase tracking-tighter text-sm flex items-center gap-2">
+                            <List className="w-4 h-4 text-emerald-500" /> Transacciones Bancarias
+                        </h3>
+                        <Link href="/dashboard/transactions" className="text-[10px] text-emerald-500 hover:text-emerald-400 font-black uppercase tracking-widest transition-colors">Ver todas</Link>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-400">
-                            <thead className="bg-gray-800/50 text-xs uppercase font-medium text-gray-500">
+                    <div className="overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                        <table className="w-full text-left text-xs text-gray-400">
+                            <thead className="bg-black/20 text-[10px] uppercase font-bold text-gray-500 sticky top-0 z-10 backdrop-blur-md">
                                 <tr>
                                     <th className="px-6 py-3">Fecha</th>
                                     <th className="px-6 py-3">Descripción</th>
-                                    <th className="px-6 py-3">Hallazgos</th>
                                     <th className="px-6 py-3 text-right">Monto</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                {transactions?.map((t) => (
-                                    <tr key={t.id} className="hover:bg-gray-800/50 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                {bankTransactions.map((t) => (
+                                    <tr key={t.id} className="hover:bg-gray-800/30 transition-colors group">
+                                        <td className="px-6 py-4 whitespace-nowrap font-mono text-gray-500 group-hover:text-gray-300">
                                             {new Date(t.fecha).toLocaleDateString('es-AR')}
                                         </td>
-                                        <td className="px-6 py-4 text-white truncate max-w-[200px]">
+                                        <td className="px-6 py-4 text-white font-medium truncate max-w-[200px]">
                                             {t.descripcion}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {t.tags && t.tags.filter((tag: string) => ['posible_duplicado', 'alerta_precio', 'impuesto_recuperable', 'pendiente_clasificacion', 'servicio_detectado', 'costo_impositivo'].includes(tag)).map((tag: string) => (
-                                                    <span
-                                                        key={tag}
-                                                        className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border ${tag === 'impuesto_recuperable' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                            tag === 'pendiente_clasificacion' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                                tag === 'servicio_detectado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                                    tag === 'costo_impositivo' ? 'bg-gray-800 text-gray-500 border-gray-700' :
-                                                                        'bg-red-500/10 text-red-500 border-red-500/20'
-                                                            }`}
-                                                    >
-                                                        {tag === 'posible_duplicado' ? 'Duplicado' :
-                                                            tag === 'alerta_precio' ? 'Sobreprecio' :
-                                                                tag === 'pendiente_clasificacion' ? 'Impuesto' :
-                                                                    tag === 'servicio_detectado' ? 'Servicio' :
-                                                                        tag === 'costo_impositivo' ? 'Costo Fiscal' :
-                                                                            'Crédito Fiscal'}
-                                                    </span>
-                                                ))}
-                                                {(!t.tags || t.tags.length === 0) && <span className="text-gray-600 text-[10px]">---</span>}
-                                            </div>
-                                        </td>
-                                        <td className={`px-6 py-4 text-right font-medium ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                        <td className={`px-6 py-4 text-right font-black ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {formatCurrency(t.monto)}
                                         </td>
                                     </tr>
                                 ))}
-                                {(!transactions || transactions.length === 0) && (
-                                    <tr>
-                                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                                            No hay movimientos recientes.
-                                        </td>
-                                    </tr>
-                                )}
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-                    <h3 className="font-semibold text-white mb-4">Acciones Rápidas</h3>
-                    <DashboardActions />
+                {/* Right: Income & Expenses Split */}
+                <div className="space-y-6">
+                    {/* Top: Incomes */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[288px] flex flex-col">
+                        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-emerald-500/5">
+                            <h3 className="font-bold text-white uppercase tracking-tighter text-xs flex items-center gap-2">
+                                <TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos Recientes
+                            </h3>
+                            <span className="text-[9px] font-black bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded uppercase">Últimos 20</span>
+                        </div>
+                        <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                            <table className="w-full text-left text-[11px] text-gray-400">
+                                <tbody className="divide-y divide-gray-800">
+                                    {incomes.map((t) => (
+                                        <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
+                                            <td className="px-4 py-3 whitespace-nowrap font-mono text-gray-500">
+                                                {new Date(t.fecha).toLocaleDateString('es-AR')}
+                                            </td>
+                                            <td className="px-4 py-3 text-white font-medium truncate max-w-[150px]">
+                                                {t.descripcion}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-black text-emerald-400">
+                                                {formatCurrency(t.monto)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                    <div className="mt-6">
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Estado del Sistema</h4>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-400">Base de Datos</span>
-                                <span className="flex items-center gap-1.5 text-emerald-400">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                                    Conectado
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-400">Motor AI</span>
-                                <span className="flex items-center gap-1.5 text-emerald-400">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                                    Listo
-                                </span>
-                            </div>
+                    {/* Bottom: Expenses */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[288px] flex flex-col">
+                        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-red-500/5">
+                            <h3 className="font-bold text-white uppercase tracking-tighter text-xs flex items-center gap-2">
+                                <TrendingDown className="w-3 h-3 text-red-500" /> Egresos Recientes
+                            </h3>
+                            <span className="text-[9px] font-black bg-red-500/10 text-red-500 px-2 py-0.5 rounded uppercase">Últimos 20</span>
+                        </div>
+                        <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                            <table className="w-full text-left text-[11px] text-gray-400">
+                                <tbody className="divide-y divide-gray-800">
+                                    {expenses.map((t) => (
+                                        <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
+                                            <td className="px-4 py-3 whitespace-nowrap font-mono text-gray-500">
+                                                {new Date(t.fecha).toLocaleDateString('es-AR')}
+                                            </td>
+                                            <td className="px-4 py-3 text-white font-medium truncate max-w-[150px]">
+                                                {t.descripcion}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-black text-red-400">
+                                                {formatCurrency(t.monto)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

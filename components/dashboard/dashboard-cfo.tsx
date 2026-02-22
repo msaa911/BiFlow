@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CashHealthScore } from './cash-health-score'
 import { StressTestModal } from './stress-test-modal'
+import { DashboardActions } from './actions'
 import { KPICard } from '@/components/ui/kpi-card'
 import { Activity, DollarSign } from 'lucide-react'
 
@@ -63,14 +64,22 @@ export function DashboardCFO({
                 />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-1">
-                <CashHealthScore
-                    score={healthScore}
-                    anomalyCount={anomalyCount}
-                    recoveryPotential={recoveryPotential}
-                    opportunityCost={opportunityCost}
-                    onOpenStressTest={() => setIsStressTestOpen(true)}
-                />
+            <div className="grid gap-6 md:grid-cols-3">
+                <div className="md:col-span-2">
+                    <CashHealthScore
+                        score={healthScore}
+                        anomalyCount={anomalyCount}
+                        recoveryPotential={recoveryPotential}
+                        opportunityCost={opportunityCost}
+                        onOpenStressTest={() => setIsStressTestOpen(true)}
+                    />
+                </div>
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 group hover:border-gray-700 transition-all duration-500 shadow-2xl">
+                    <h3 className="font-semibold text-white mb-4 uppercase tracking-tighter text-sm flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-emerald-500" /> Acciones Rápidas
+                    </h3>
+                    <DashboardActions />
+                </div>
             </div>
 
             <StressTestModal
