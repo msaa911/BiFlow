@@ -134,20 +134,28 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     }
 
     const onConfirmImport = async (validData: any[]) => {
+        console.log('[ConfirmImport] Starting process for', validData.length, 'records')
         const loadingToast = toast.loading(`Normalizando y cargando ${validData.length} registros...`)
+
         try {
+            if (!orgId) throw new Error('No se detectó el ID de la organización')
+
+            console.log('[ConfirmImport] Normalizing locations...')
             // Normalize locations first
             const normalizedData = await Promise.all(validData.map(async (ent) => {
                 // Skip if already normalized (has geo_lat/lon) or missing data
                 if (ent.geo_lat || !ent.localidad || !ent.provincia) return ent
 
                 try {
-                    const { data: geoMatches } = await supabase
+                    // Timeout-like check: avoid hanging on one row
+                    const { data: geoMatches, error: geoError } = await supabase
                         .from('geo_argentina')
                         .select('localidad, departamento, provincia, latitud, longitud')
                         .ilike('localidad', ent.localidad.trim())
                         .ilike('provincia', ent.provincia.trim())
                         .limit(1)
+
+                    if (geoError) throw geoError
 
                     if (geoMatches && geoMatches.length > 0) {
                         const geoMatch = geoMatches[0]
@@ -161,12 +169,14 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                         }
                     }
                 } catch (e) {
-                    console.warn('Normalization skip for row:', ent.razon_social, e)
+                    console.warn('[ConfirmImport] Error normalizando fila:', ent.razon_social, e)
                 }
                 return ent
             }))
 
-            const { error } = await supabase
+            console.log('[ConfirmImport] Logic normalization done. Rows to upsert:', normalizedData.length)
+
+            const { data: upsertResult, error: upsertError } = await supabase
                 .from('entidades')
                 .upsert(
                     normalizedData.map(ent => ({
@@ -192,15 +202,22 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     { onConflict: 'organization_id, cuit' }
                 )
 
-            if (error) throw error
+            if (upsertError) {
+                console.error('[ConfirmImport] Upsert ERROR:', upsertError)
+                throw upsertError
+            }
+
+            console.log('[ConfirmImport] SUCCESS. Upsert result:', upsertResult)
             toast.success(`${validData.length} registros procesados e importados correctamente`)
             fetchSocios()
         } catch (err: any) {
-            console.error('Error confirming import:', err)
-            toast.error('Error al guardar los datos: ' + err.message)
+            console.error('[ConfirmImport] CRITICAL ERROR:', err)
+            toast.error('Error al guardar los datos: ' + (err.message || 'Desconocido'))
+            // We throw again so the modal doesn't close on error
             throw err
         } finally {
             toast.dismiss(loadingToast)
+            console.log('[ConfirmImport] Process finished')
         }
     }
 
