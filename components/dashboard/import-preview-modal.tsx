@@ -25,12 +25,13 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm 
     const [isProcessing, setIsProcessing] = useState(false)
 
     const validCount = data.filter(d => d.isValid).length
-    const errorCount = data.length - validCount
+    const errorCount = data.filter(d => d.errors?.length > 0).length
+    const warningCount = data.filter(d => d.isValid && d.warnings?.length > 0).length
 
     const handleConfirm = async () => {
         setIsProcessing(true)
         try {
-            const validData = data.filter(d => d.isValid)
+            const validData = data.filter(d => !d.errors || d.errors.length === 0)
             await onConfirm(validData)
             onClose()
         } catch (error) {
@@ -53,16 +54,25 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm 
                     <div className="flex-1 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-3">
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                         <div>
-                            <p className="text-sm font-bold text-emerald-400">{validCount} Registros Válidos</p>
-                            <p className="text-xs text-emerald-500/70 text-balance opacity-50 whitespace-nowrap overflow-hidden text-ellipsis">Listos para importar</p>
+                            <p className="text-sm font-bold text-emerald-400">{validCount} Listos</p>
+                            <p className="text-xs text-emerald-500/70">Para importar ahora</p>
                         </div>
                     </div>
+                    {warningCount > 0 && (
+                        <div className="flex-1 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-3">
+                            <Info className="h-5 w-5 text-amber-500" />
+                            <div>
+                                <p className="text-sm font-bold text-amber-400">{warningCount} Advertencias</p>
+                                <p className="text-xs text-amber-500/70">Ubicación no oficial</p>
+                            </div>
+                        </div>
+                    )}
                     {errorCount > 0 && (
                         <div className="flex-1 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
                             <AlertCircle className="h-5 w-5 text-red-500" />
                             <div>
-                                <p className="text-sm font-bold text-red-400">{errorCount} Registros con Error</p>
-                                <p className="text-xs text-red-500/70 text-balance opacity-50 whitespace-nowrap overflow-hidden text-ellipsis">Se omitirán en la carga</p>
+                                <p className="text-sm font-bold text-red-400">{errorCount} Errores</p>
+                                <p className="text-xs text-red-500/70">Se omitirán</p>
                             </div>
                         </div>
                     )}
@@ -77,7 +87,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm 
                                     <th className="px-4 py-3 font-medium">Razón Social</th>
                                     <th className="px-4 py-3 font-medium">CUIT</th>
                                     <th className="px-4 py-3 font-medium">Localidad / Provincia</th>
-                                    <th className="px-4 py-3 font-medium">Estado</th>
+                                    <th className="px-4 py-3 font-medium text-center">Estado</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
@@ -92,19 +102,26 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm 
                                             {row.localidad} {row.provincia && `(${row.provincia})`}
                                         </td>
                                         <td className="px-4 py-3">
-                                            {row.isValid ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                                                    Válido
-                                                </Badge>
-                                            ) : (
-                                                <div className="flex flex-col gap-1">
-                                                    {row.errors.map((err: string, i: number) => (
+                                            <div className="flex flex-col items-center gap-1">
+                                                {row.isValid ? (
+                                                    <>
+                                                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                                            OK
+                                                        </Badge>
+                                                        {row.warnings?.map((w: string, i: number) => (
+                                                            <span key={i} className="text-[9px] text-amber-500 flex items-center gap-1 font-bold">
+                                                                <Info className="h-2.5 w-2.5" /> NO OFICIAL
+                                                            </span>
+                                                        ))}
+                                                    </>
+                                                ) : (
+                                                    row.errors.map((err: string, i: number) => (
                                                         <span key={i} className="text-[10px] text-red-400 font-bold whitespace-nowrap">
                                                             {err}
                                                         </span>
-                                                    ))}
-                                                </div>
-                                            )}
+                                                    ))
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

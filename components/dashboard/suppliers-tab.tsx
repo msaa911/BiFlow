@@ -95,7 +95,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         const file = e.target.files?.[0]
         if (!file) return
 
-        const loadingToast = toast.loading('Procesando archivo...')
+        const loadingToast = toast.loading('Procesando y validando ubicaciones...')
         try {
             const { data: parsedData } = await parseEntityExcel(file)
             if (parsedData.length === 0) {
@@ -103,7 +103,29 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 return
             }
 
-            setImportData(parsedData)
+            // Preliminary check for location matches (Warnings)
+            const dataWithWarnings = await Promise.all(parsedData.map(async (ent) => {
+                if (!ent.isValid) return ent
+                if (ent.localidad && ent.provincia) {
+                    const { data: geoMatch } = await supabase
+                        .from('geo_argentina')
+                        .select('id')
+                        .ilike('localidad', ent.localidad)
+                        .ilike('provincia', ent.provincia)
+                        .limit(1)
+                        .single()
+
+                    if (!geoMatch) {
+                        return {
+                            ...ent,
+                            warnings: ['Ubicación no encontrada en base oficial. Se guardará como texto plano.']
+                        }
+                    }
+                }
+                return ent
+            }))
+
+            setImportData(dataWithWarnings)
             setIsImportPreviewOpen(true)
         } catch (err: any) {
             console.error('Error importing entities:', err)
