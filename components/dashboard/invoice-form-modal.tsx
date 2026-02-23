@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Loader2, Calendar, Landmark, Hash, Search } from 'lucide-react'
@@ -38,11 +39,14 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             setSearchingSocio(true)
             const supabase = createClient()
 
-            // Si estamos editando, queremos asegurarnos de traer ESE socio específico primero
+            // Filtrado estricto por categoría
+            const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
+
             const { data } = await supabase
                 .from('entidades')
                 .select('id, razon_social, cuit, categoria')
                 .eq('organization_id', orgId)
+                .in('categoria', [targetCat, 'ambos']) // Filtrado PROACTIVO
                 .order('razon_social')
                 .limit(20)
 
@@ -96,7 +100,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
         const selectedSocio = socios.find(s => s.id === formData.socio_id)
         if (!selectedSocio) {
-            toast.error('Debe seleccionar un socio (Cliente/Proveedor)')
+            toast.error(`Debe seleccionar un ${type === 'factura_venta' ? 'Cliente' : 'Proveedor'}`)
             setLoading(false)
             return
         }
@@ -164,7 +168,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2 space-y-2">
                             <div className="flex justify-between items-center">
-                                <Label className="text-xs uppercase text-gray-400 font-bold">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">
                                     {type === 'factura_venta' ? 'Cliente' : 'Proveedor'}
                                 </Label>
                                 {formData.socio_id && (
@@ -183,12 +187,15 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                         if (term.length < 2) return
                                         setSearchingSocio(true)
                                         const supabase = createClient()
+                                        const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
+
                                         const { data } = await supabase
                                             .from('entidades')
                                             .select('id, razon_social, cuit, categoria')
                                             .eq('organization_id', orgId)
+                                            .in('categoria', [targetCat, 'ambos']) // Filtrado estricto en búsqueda
                                             .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
-                                            .limit(5)
+                                            .limit(10)
                                         if (data) setSocios(data)
                                         setSearchingSocio(false)
                                     }}
@@ -219,11 +226,11 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                     {searchingSocio ? (
                                         <div className="p-2 text-center text-xs text-gray-500">Buscando...</div>
                                     ) : socios.length === 0 ? (
-                                        <div className="p-2 text-center text-xs text-gray-500 font-bold">No se encontraron socios.</div>
+                                        <div className="p-2 text-center text-xs text-gray-500 font-medium">No se encontraron resultados.</div>
                                     ) : (
                                         socios.map(s => (
                                             <SelectItem key={s.id} value={s.id}>
-                                                {s.razon_social} ({s.cuit}) - <span className="text-[10px] opacity-50 uppercase">{s.categoria}</span>
+                                                {s.razon_social} <span className="text-[10px] opacity-40">({s.cuit})</span>
                                             </SelectItem>
                                         ))
                                     )}
