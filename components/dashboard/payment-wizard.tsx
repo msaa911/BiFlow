@@ -123,6 +123,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
             const instrumentsPayload = instruments
                 .filter(i => i.monto > 0)
                 .map(i => ({
+                    organization_id: orgId,
                     movimiento_id: mov.id,
                     metodo: i.metodo,
                     monto: i.monto,
@@ -150,6 +151,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                 const amountToApply = Math.min(remainingPayment, inv.monto_pendiente)
 
                 const { error: appErr } = await supabase.from('aplicaciones_pago').insert({
+                    organization_id: orgId,
                     movimiento_id: mov.id,
                     comprobante_id: invoiceId,
                     monto_aplicado: amountToApply
