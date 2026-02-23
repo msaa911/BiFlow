@@ -111,7 +111,12 @@ export function CashHealthScore({
                                 <div>
                                     <div className="text-[10px] text-amber-500/70 font-bold uppercase">Fuga de Capital (Est.)</div>
                                     <div className="text-sm font-bold text-white">
-                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(opportunityCost)}
+                                        {new Intl.NumberFormat('es-AR', {
+                                            style: 'currency',
+                                            currency: 'ARS',
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        }).format(opportunityCost)}
                                     </div>
                                 </div>
                             </div>
@@ -125,8 +130,11 @@ export function CashHealthScore({
                         <div className={`text-[10px] font-bold px-3 py-1.5 rounded-full inline-flex ${status.bg} ${status.color} border border-current/20`}>
                             Nivel {status.label}
                         </div>
-                        <div className="text-[10px] font-bold px-3 py-1.5 rounded-full inline-flex bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                            Algoritmo v2.2 Active
+                        <div className={`text-[10px] font-bold px-3 py-1.5 rounded-full inline-flex border ${anomalyCount > 0 || recoveryPotential > 0
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            : 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                            }`}>
+                            {anomalyCount > 0 || recoveryPotential > 0 ? 'Auditoría Activa' : 'Auditoría Inactiva'}
                         </div>
                     </div>
 

@@ -4,47 +4,56 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, ShieldCheck, Landmark, Search } from 'lucide-react'
+import { Users, ShieldCheck, Landmark, Search, Plus, Edit2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { EntityModal } from './entity-modal'
 
 interface SuppliersTabProps {
     orgId: string
+    category?: 'cliente' | 'proveedor' | 'ambos'
 }
 
-export function SuppliersTab({ orgId }: SuppliersTabProps) {
+export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProps) {
     const [suppliers, setSuppliers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
+    const [isEntityModalOpen, setIsEntityModalOpen] = useState(false)
+    const [selectedEntity, setSelectedEntity] = useState<any>(null)
     const supabase = createClient()
 
-    useEffect(() => {
-        async function fetchSuppliers() {
-            setLoading(true)
-            // Fetch suppliers (entidades) and their trusted CBUs
-            const { data: entitiesData, error: entitiesError } = await supabase
-                .from('entidades')
-                .select('*')
-                .eq('organization_id', orgId)
-                .eq('categoria', 'proveedor')
-                .order('razon_social', { ascending: true })
+    const fetchSocios = async () => {
+        setLoading(true)
+        // Fetch entities (entidades) and their trusted CBUs
+        let query = supabase
+            .from('entidades')
+            .select('*')
+            .eq('organization_id', orgId)
 
-            const { data: trustData } = await supabase
-                .from('trust_ledger')
-                .select('cuit, cbu, is_trusted')
-                .eq('organization_id', orgId)
-
-            if (entitiesData) {
-                const combined = entitiesData.map(ent => ({
-                    ...ent,
-                    trusted_cbus: trustData?.filter(t => t.cuit === ent.cuit) || []
-                }))
-                setSuppliers(combined)
-            }
-            setLoading(false)
+        if (category !== 'ambos') {
+            query = query.eq('categoria', category)
         }
 
-        fetchSuppliers()
-    }, [orgId])
+        const { data: entitiesData } = await query.order('razon_social', { ascending: true })
+
+        const { data: trustData } = await supabase
+            .from('trust_ledger')
+            .select('cuit, cbu, is_trusted')
+            .eq('organization_id', orgId)
+
+        if (entitiesData) {
+            const combined = entitiesData.map(ent => ({
+                ...ent,
+                trusted_cbus: trustData?.filter(t => t.cuit === ent.cuit) || []
+            }))
+            setSuppliers(combined)
+        }
+        setLoading(false)
+    }
+
+    useEffect(() => {
+        fetchSocios()
+    }, [orgId, category])
 
     const filteredSuppliers = suppliers.filter(s =>
         s.razon_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -57,15 +66,27 @@ export function SuppliersTab({ orgId }: SuppliersTabProps) {
                 <div className="relative w-full md:w-96">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <Input
-                        placeholder="Buscar por nombre o CUIT..."
+                        placeholder={`Buscar ${category === 'cliente' ? 'cliente' : 'proveedor'}...`}
                         className="pl-10 bg-gray-900 border-gray-800 text-white"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <Users className="h-4 w-4" />
-                    <span>{suppliers.length} Proveedores detectados</span>
+                <div className="flex items-center gap-3">
+                    <Button
+                        onClick={() => {
+                            setSelectedEntity(null)
+                            setIsEntityModalOpen(true)
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nuevo {category === 'cliente' ? 'Cliente' : 'Proveedor'}
+                    </Button>
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <Users className="h-4 w-4" />
+                        <span>{suppliers.length} Registrados</span>
+                    </div>
                 </div>
             </div>
 
@@ -75,23 +96,34 @@ export function SuppliersTab({ orgId }: SuppliersTabProps) {
                 ) : filteredSuppliers.length === 0 ? (
                     <Card className="p-12 text-center bg-gray-900 border-gray-800">
                         <Users className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-white mb-2">No se encontraron proveedores</h3>
+                        <h3 className="text-lg font-semibold text-white mb-2">No se encontraron {category === 'cliente' ? 'clientes' : 'proveedores'}</h3>
                         <p className="text-gray-500 max-w-md mx-auto">
-                            Sube extractos bancarios o facturas para que BiFlow autodetecte y valide a tus proveedores.
+                            Agrega un nuevo socio manualmente para comenzar a gestionar sus comprobantes.
                         </p>
                     </Card>
                 ) : (
                     filteredSuppliers.map(supplier => (
                         <Card key={supplier.id} className="p-6 bg-gray-900 border-gray-800 hover:border-emerald-500/30 transition-colors">
                             <div className="flex flex-col md:flex-row justify-between gap-4">
-                                <div className="space-y-1">
+                                <div className="space-y-1 flex-1">
                                     <div className="flex items-center gap-3">
                                         <h3 className="text-lg font-bold text-white">{supplier.razon_social}</h3>
-                                        <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                                            Proveedor
+                                        <Badge className={`${category === 'cliente' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                                            {supplier.categoria?.toUpperCase()}
                                         </Badge>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-gray-500 hover:text-white"
+                                            onClick={() => {
+                                                setSelectedEntity(supplier)
+                                                setIsEntityModalOpen(true)
+                                            }}
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </Button>
                                     </div>
-                                    <p className="text-sm text-gray-400">CUIT: {supplier.cuit}</p>
+                                    <p className="text-sm text-gray-400 font-mono">CUIT: {supplier.cuit}</p>
                                 </div>
 
                                 <div className="space-y-3">
@@ -120,6 +152,13 @@ export function SuppliersTab({ orgId }: SuppliersTabProps) {
                     ))
                 )}
             </div>
+            <EntityModal
+                isOpen={isEntityModalOpen}
+                onClose={() => setIsEntityModalOpen(false)}
+                orgId={orgId}
+                entity={selectedEntity}
+                onSuccess={fetchSocios}
+            />
         </div>
     )
 }

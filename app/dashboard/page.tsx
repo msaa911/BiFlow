@@ -139,6 +139,21 @@ export default async function DashboardPage() {
     }
     healthScore = Math.max(15, healthScore) // Floor at 15
 
+    // 2.2 Fetch Pending AP Invoices for Stress Test
+    const { data: pendingInvoices } = await supabase
+        .from('comprobantes')
+        .select('descripcion, monto_pendiente, fecha_vencimiento')
+        .eq('organization_id', orgId)
+        .eq('tipo', 'factura_compra')
+        .neq('estado', 'pagado')
+        .order('fecha_vencimiento', { ascending: true })
+
+    const apBatch = pendingInvoices?.map(inv => ({
+        descripcion: inv.descripcion || 'Factura de Compra',
+        monto: Number(inv.monto_pendiente) || 0,
+        fecha: inv.fecha_vencimiento
+    })) || []
+
     // 3. Fetch Company Config (TNA & Overdraft & Cushion)
     const { data: orgConfig } = await supabase
         .from('configuracion_empresa')
@@ -278,6 +293,7 @@ export default async function DashboardPage() {
                 opportunityCost={opportunityCost}
                 daysOfRunway={daysOfRunway}
                 overdraftLimit={overdraftLimit}
+                apBatch={apBatch}
             />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -394,5 +410,7 @@ function formatCurrency(amount: number) {
     return new Intl.NumberFormat('es-AR', {
         style: 'currency',
         currency: 'ARS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
     }).format(amount)
 }

@@ -16,6 +16,7 @@ interface DashboardCFOProps {
     opportunityCost: number
     daysOfRunway: number | 'stable'
     overdraftLimit: number
+    apBatch?: { descripcion: string, monto: number, fecha: string }[]
 }
 
 export function DashboardCFO({
@@ -26,7 +27,8 @@ export function DashboardCFO({
     totalRecoverable,
     opportunityCost,
     daysOfRunway,
-    overdraftLimit
+    overdraftLimit,
+    apBatch = []
 }: DashboardCFOProps) {
     const [isStressTestOpen, setIsStressTestOpen] = useState(false)
 
@@ -88,7 +90,7 @@ export function DashboardCFO({
                 isOpen={isStressTestOpen}
                 onClose={() => setIsStressTestOpen(false)}
                 currentBalance={totalBalance}
-                initialBatch={[]} // Can be populated from recent uploads if needed
+                initialBatch={apBatch}
             />
         </>
     )

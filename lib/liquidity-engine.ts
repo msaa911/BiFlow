@@ -58,15 +58,18 @@ export class LiquidityEngine {
             const inflationMultiplier = Math.pow(1 + monthlyInflation, monthsDiff)
             const amount = (Number(payment.amount) || 0) * inflationMultiplier;
 
-            runningBalance += amount;
+            // FIX: Subtract payments instead of adding them (Stress test is for outflows)
+            runningBalance -= amount;
+            runningBalance = Math.round(runningBalance * 100) / 100; // Round to 2 decimals
 
             if (runningBalance < lowestBalance) lowestBalance = runningBalance
 
             let alert: 'low' | 'medium' | 'high' | undefined = undefined
+            // High alert if balance goes below zero (overdraft handled later)
             if (runningBalance < 0) {
                 alert = 'high'
                 if (!failureDate) failureDate = payment.date
-            } else if (runningBalance < currentBalance * 0.1) {
+            } else if (runningBalance < currentBalance * 0.2) { // 20% cushion instead of 10%
                 alert = 'medium'
             }
 
@@ -77,6 +80,7 @@ export class LiquidityEngine {
             })
         })
 
+        // Check against actual overdraft limit
         if (lowestBalance < -overdraftLimit) alertLevel = 'high'
         else if (lowestBalance < 0) alertLevel = 'medium'
 

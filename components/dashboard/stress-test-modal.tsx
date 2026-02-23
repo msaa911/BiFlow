@@ -15,6 +15,15 @@ import { Label } from '@/components/ui/label'
 import { Plus, Trash2, TrendingDown, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { LiquidityEngine, StressTestResponse } from '@/lib/liquidity-engine'
 
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount)
+}
+
 interface StressTestModalProps {
     isOpen: boolean
     onClose: () => void
@@ -54,8 +63,10 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
         setPayments(payments.map(p => p.id === id ? { ...p, [field]: value } : p))
     }
 
+    const normalizedPayments = payments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
     const runSimulation = () => {
-        const res = LiquidityEngine.simulateStressTest(currentBalance, payments, overdraftLimit, inflation / 100)
+        const res = LiquidityEngine.simulateStressTest(currentBalance, normalizedPayments, overdraftLimit, inflation / 100)
         setResult(res)
     }
 
@@ -91,13 +102,16 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                                         />
                                     </div>
                                     <div className="w-24 space-y-1">
-                                        <Input
-                                            type="number"
-                                            placeholder="Monto"
-                                            value={p.amount || ''}
-                                            onChange={(e) => updatePayment(p.id, 'amount', Number(e.target.value) || 0)}
-                                            className="bg-gray-900 border-gray-800 h-9 text-sm text-right"
-                                        />
+                                        <div className="relative">
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-red-500 font-bold">-</span>
+                                            <Input
+                                                type="number"
+                                                placeholder="Monto"
+                                                value={p.amount || ''}
+                                                onChange={(e) => updatePayment(p.id, 'amount', Number(e.target.value) || 0)}
+                                                className="bg-gray-900 border-gray-800 h-9 text-sm text-right pl-5"
+                                            />
+                                        </div>
                                     </div>
                                     <div className="w-32 space-y-1">
                                         <Input
@@ -165,8 +179,8 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                                     </h4>
                                     <p className="text-sm opacity-80 mb-3">
                                         {result.alertLevel === 'high'
-                                            ? `Tu saldo caería a $${result.lowestBalance.toLocaleString()} superando tu límite de descubierto.`
-                                            : `Tu saldo mínimo proyectado es de $${result.lowestBalance.toLocaleString()}.`}
+                                            ? `Tu saldo caería a ${formatCurrency(result.lowestBalance)} superando tu límite de descubierto.`
+                                            : `Tu saldo mínimo proyectado es de ${formatCurrency(result.lowestBalance)}.`}
                                     </p>
 
                                     <div className="grid grid-cols-2 gap-2">
@@ -179,7 +193,7 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                                         <div className="bg-black/20 rounded-lg p-2 text-center">
                                             <div className="text-[10px] uppercase font-bold text-gray-400">Saldo Final</div>
                                             <div className="text-xl font-black">
-                                                ${result.projection[result.projection.length - 1]?.balance?.toLocaleString() || '0'}
+                                                {formatCurrency(result.projection[result.projection.length - 1]?.balance || 0)}
                                             </div>
                                         </div>
                                     </div>
@@ -188,10 +202,11 @@ export function StressTestModal({ isOpen, onClose, currentBalance, initialBatch 
                                             onClick={() => {
                                                 window.dispatchEvent(new CustomEvent('biflow-add-multiple-projections', {
                                                     detail: result.projection.map((p, i) => {
-                                                        const original = result.projection[i - 1]?.balance || currentBalance
+                                                        const prevBalance = i === 0 ? currentBalance : result.projection[i - 1].balance
+                                                        const diff = p.balance - prevBalance
                                                         return {
-                                                            descripcion: `Simulación Stress: ${payments[i]?.description || 'Pago'}`,
-                                                            monto: p.balance - original,
+                                                            descripcion: `Simulación Stress: ${normalizedPayments[i]?.description || 'Pago'}`,
+                                                            monto: diff, // This will be negative as it's an outflow
                                                             fecha: p.date
                                                         }
                                                     })

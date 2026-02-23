@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { InvoicePanel } from './invoice-panel'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Wallet, TrendingUp, TrendingDown, Calculator, Briefcase } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, Calculator, Briefcase, Users } from 'lucide-react'
 import { TreasuryEngine } from '@/lib/treasury-engine'
 import { CashFlowHub } from './cash-flow-hub'
 import { SuppliersTab } from './suppliers-tab'
@@ -148,27 +148,48 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                 </Card>
             </div>
 
-            <Tabs defaultValue="invoices" className="w-full">
+            <Tabs defaultValue="cashflow" className="w-full">
                 <TabsList className="bg-gray-900 border border-gray-800 p-1 rounded-xl mb-6">
-                    <TabsTrigger value="invoices" className="rounded-lg">Panel de Comprobantes</TabsTrigger>
-                    <TabsTrigger value="cashflow" className="rounded-lg">Cash Flow Proyectado</TabsTrigger>
-                    <TabsTrigger value="suppliers" className="rounded-lg text-emerald-400">
-                        <BookUser className="w-3.5 h-3.5 mr-2" />
-                        Directorio de Proveedores
+                    <TabsTrigger value="cashflow" className="rounded-lg">
+                        <Calculator className="w-3.5 h-3.5 mr-2" />
+                        Tesorería
                     </TabsTrigger>
-                    <TabsTrigger value="advisor" className="rounded-lg">AI Strategy Advisor</TabsTrigger>
+                    <TabsTrigger value="ingresos" className="rounded-lg">
+                        <TrendingUp className="w-3.5 h-3.5 mr-2 text-emerald-400" />
+                        Ingresos
+                    </TabsTrigger>
+                    <TabsTrigger value="egresos" className="rounded-lg">
+                        <TrendingDown className="w-3.5 h-3.5 mr-2 text-red-400" />
+                        Egresos
+                    </TabsTrigger>
+                    <TabsTrigger value="clientes" className="rounded-lg">
+                        <Users className="w-3.5 h-3.5 mr-2 text-blue-400" />
+                        Clientes
+                    </TabsTrigger>
+                    <TabsTrigger value="proveedores" className="rounded-lg text-emerald-400">
+                        <BookUser className="w-3.5 h-3.5 mr-2" />
+                        Proveedores
+                    </TabsTrigger>
                 </TabsList>
-
-                <TabsContent value="invoices" className="space-y-6">
-                    <InvoicePanel invoices={invoices} loading={loading} />
-                </TabsContent>
 
                 <TabsContent value="cashflow">
                     <CashFlowHub invoices={invoices} currentBalance={initialBalancesSum} />
                 </TabsContent>
 
-                <TabsContent value="suppliers">
-                    <SuppliersTab orgId={orgId} />
+                <TabsContent value="ingresos" className="space-y-6">
+                    <InvoicePanel orgId={orgId} invoices={invoices} loading={loading} defaultView="AR" onRefresh={fetchData} />
+                </TabsContent>
+
+                <TabsContent value="egresos" className="space-y-6">
+                    <InvoicePanel orgId={orgId} invoices={invoices} loading={loading} defaultView="AP" onRefresh={fetchData} />
+                </TabsContent>
+
+                <TabsContent value="clientes">
+                    <SuppliersTab orgId={orgId} category="cliente" />
+                </TabsContent>
+
+                <TabsContent value="proveedores">
+                    <SuppliersTab orgId={orgId} category="proveedor" />
                 </TabsContent>
 
                 <TabsContent value="advisor">
