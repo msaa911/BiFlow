@@ -23,6 +23,73 @@ export function HierarchicalLocationSelector({ formData, onChange }: Hierarchica
 
     const supabase = createClient()
 
+    // Fetch provinces on mount
+    useEffect(() => {
+        const fetchProvinces = async () => {
+            setLoading(prev => ({ ...prev, p: true }))
+            const { data } = await supabase
+                .from('geo_argentina')
+                .select('provincia')
+
+            if (data) {
+                const unique = Array.from(new Set(data.map(d => d.provincia))).sort()
+                setProvinces(unique)
+            }
+            setLoading(prev => ({ ...prev, p: false }))
+        }
+        fetchProvinces()
+    }, [])
+
+    // Fetch departments when province changes
+    useEffect(() => {
+        const prov = (formData.provincia || '').trim()
+        if (!prov) {
+            setDepartments([])
+            return
+        }
+
+        const fetchDepartments = async () => {
+            setLoading(prev => ({ ...prev, d: true }))
+            const { data } = await supabase
+                .from('geo_argentina')
+                .select('departamento')
+                .eq('provincia', prov)
+
+            if (data) {
+                const unique = Array.from(new Set(data.map(d => d.departamento))).sort()
+                setDepartments(unique)
+            }
+            setLoading(prev => ({ ...prev, d: false }))
+        }
+        fetchDepartments()
+    }, [formData.provincia])
+
+    // Fetch localities when department changes
+    useEffect(() => {
+        const prov = (formData.provincia || '').trim()
+        const dept = (formData.departamento || '').trim()
+
+        if (!dept || !prov) {
+            setLocalities([])
+            return
+        }
+
+        const fetchLocalities = async () => {
+            setLoading(prev => ({ ...prev, l: true }))
+            const { data } = await supabase
+                .from('geo_argentina')
+                .select('localidad')
+                .eq('provincia', prov)
+                .eq('departamento', dept)
+
+            if (data) {
+                const unique = Array.from(new Set(data.map(d => d.localidad))).sort()
+                setLocalities(unique)
+            }
+            setLoading(prev => ({ ...prev, l: false }))
+        }
+        fetchLocalities()
+    }, [formData.departamento, formData.provincia])
 
     return (
         <div className="space-y-4">
