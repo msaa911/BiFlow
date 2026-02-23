@@ -108,16 +108,44 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 return
             }
 
-            // We skip the per-row DB check here to avoid hanging the browser.
-            // We only tag rows that are obviously missing info.
-            const dataWithContext = parsedData.map(ent => ({
-                ...ent,
-                warnings: (!ent.localidad || !ent.provincia) ? ['Falta información de ubicación'] : []
-            }))
+            // NEW: Proactive Batch Check for Locations
+            console.log('[Import] Step 2: Proactive Location Validation...')
+            const uniqueLocs = Array.from(new Set(
+                parsedData
+                    .filter(ent => ent.localidad && ent.provincia)
+                    .map(ent => `${ent.localidad.trim().toLowerCase()}|${ent.provincia.trim().toLowerCase()}`)
+            ))
+
+            const validLocMap = new Set<string>()
+            if (uniqueLocs.length > 0) {
+                const { data: geoData } = await supabase
+                    .from('geo_argentina')
+                    .select('localidad, provincia')
+
+                geoData?.forEach(g => {
+                    validLocMap.add(`${g.localidad.trim().toLowerCase()}|${g.provincia.trim().toLowerCase()}`)
+                })
+            }
+
+            const dataWithContext = parsedData.map(ent => {
+                const warnings: string[] = []
+                const locKey = `${(ent.localidad || '').trim().toLowerCase()}|${(ent.provincia || '').trim().toLowerCase()}`
+
+                if (!ent.localidad || !ent.provincia) {
+                    warnings.push('Falta información de ubicación')
+                } else if (!validLocMap.has(locKey)) {
+                    warnings.push('Ubicación no reconocida (posible error ortográfico)')
+                }
+
+                return {
+                    ...ent,
+                    warnings
+                }
+            })
 
             setImportData(dataWithContext)
             setIsImportPreviewOpen(true)
-            console.log('[Import] Preview modal opened.')
+            console.log('[Import] Preview modal opened with validation.')
         } catch (err: any) {
             console.error('[Import] FATAL ERROR:', err)
             toast.error('Error crítico en el procesador: ' + (err.message || 'Desconocido'))

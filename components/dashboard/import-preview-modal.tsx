@@ -181,7 +181,16 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                 </div>
                                             ) : (
                                                 <div className="flex flex-col">
-                                                    <span className="text-gray-300">{row.localidad || <span className="text-gray-600 italic">No especificado</span>}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`font-medium ${!row.localidad ? 'text-gray-600 italic' : 'text-gray-300'}`}>
+                                                            {row.localidad || 'No especificado'}
+                                                        </span>
+                                                        {row.warnings?.some(w => w.includes('Ubicación no reconocida')) && (
+                                                            <Badge variant="outline" className="text-[9px] h-4 bg-amber-500/10 text-amber-500 border-amber-500/20 px-1 py-0 leading-none">
+                                                                ERROR ORTOGRÁFICO?
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                     {row.provincia && (
                                                         <span className="text-[10px] text-gray-500 uppercase tracking-tighter">
                                                             {row.departamento && `${row.departamento}, `}{row.provincia}
