@@ -119,14 +119,14 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                 json.forEach((row: any, index: number) => {
                     const rowNum = index + 2
 
-                    const getVal = (opts: string[]) => {
-                        const k = opts.find(o => row[o] !== undefined)
-                        return k ? String(row[k]).trim() : ''
+                    const getVal = (dataRow: any, opts: string[]) => {
+                        const k = opts.find(o => dataRow[o] !== undefined)
+                        return k ? String(dataRow[k]).trim() : ''
                     }
 
-                    const rawCuit = getVal(['CUIT', 'Cuit', 'cuit', 'CUIL'])
+                    const rawCuit = getVal(row, ['CUIT', 'Cuit', 'cuit', 'CUIL', 'Identificación'])
                     const cleanCuit = rawCuit.replace(/[^\d]/g, '')
-                    const razonSocial = getVal(['Razón Social / Nombre', 'Nombre', 'Razon Social', 'Empresa'])
+                    const razonSocial = getVal(row, ['Razón Social / Nombre', 'Nombre', 'Razon Social', 'Empresa', 'Proveedor', 'Denominación', 'Cliente'])
 
                     const itemErrors: string[] = []
                     if (!razonSocial) itemErrors.push('Falta Razón Social')
@@ -137,15 +137,15 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                         id: `row-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
                         razon_social: razonSocial,
                         cuit: cleanCuit,
-                        cbu_habitual: getVal(['CBU / CVU Habitual', 'CBU', 'CVU']),
-                        direccion: getVal(['Dirección', 'Direccion', 'Calle']),
-                        localidad: getVal(['Localidad', 'Ciudad']),
-                        departamento: getVal(['Departamento', 'Partido']),
-                        provincia: getVal(['Provincia', 'Estado']),
-                        codigo_postal: getVal(['Código Postal', 'CP']),
-                        email: getVal(['Email', 'Mail']),
-                        telefono_1: getVal(['Teléfono', 'Telefono']),
-                        contacto: getVal(['Contacto']),
+                        cbu_habitual: getVal(row, ['CBU / CVU Habitual', 'CBU', 'CVU']),
+                        direccion: getVal(row, ['Dirección', 'Direccion', 'Calle']),
+                        localidad: getVal(row, ['Localidad', 'Ciudad']),
+                        departamento: getVal(row, ['Departamento', 'Partido']),
+                        provincia: getVal(row, ['Provincia', 'Estado']),
+                        codigo_postal: getVal(row, ['Código Postal', 'CP']),
+                        email: getVal(row, ['Email', 'Mail']),
+                        telefono_1: getVal(row, ['Teléfono', 'Telefono', 'Celular']),
+                        contacto: getVal(row, ['Contacto', 'Responsable']),
                         rowNum,
                         errors: itemErrors,
                         isValid: itemErrors.length === 0
