@@ -30,6 +30,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
         direccion: '',
         localidad: '',
         codigo_postal: '',
+        departamento: '',
         provincia: '',
         pais: 'Argentina',
         telefono_1: '',
@@ -48,6 +49,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                 direccion: entity.metadata?.direccion || '',
                 localidad: entity.metadata?.localidad || '',
                 codigo_postal: entity.metadata?.codigo_postal || '',
+                departamento: entity.metadata?.departamento || '',
                 provincia: entity.metadata?.provincia || '',
                 pais: entity.metadata?.pais || 'Argentina',
                 telefono_1: entity.metadata?.telefono_1 || '',
@@ -59,6 +61,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
             const hasOptional = !!(
                 entity.metadata?.direccion ||
                 entity.metadata?.localidad ||
+                entity.metadata?.departamento ||
                 entity.metadata?.telefono_1 ||
                 entity.metadata?.email
             )
@@ -72,6 +75,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                 direccion: '',
                 localidad: '',
                 codigo_postal: '',
+                departamento: '',
                 provincia: '',
                 pais: 'Argentina',
                 telefono_1: '',
@@ -113,6 +117,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                         direccion: formData.direccion,
                         localidad: formData.localidad,
                         codigo_postal: formData.codigo_postal,
+                        departamento: formData.departamento,
                         provincia: formData.provincia,
                         pais: formData.pais,
                         telefono_1: formData.telefono_1,
@@ -250,56 +255,6 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
 
                     {showOptional && (
                         <div className="space-y-6 pt-2 border-t border-gray-800 animate-in fade-in slide-in-from-top-2">
-                            {/* SECCIÓN: CONTACTO */}
-                            <div className="space-y-4">
-                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Contacto</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="contacto" className="text-xs text-gray-400">Persona de Contacto</Label>
-                                        <Input
-                                            id="contacto"
-                                            placeholder="Nombre del contacto"
-                                            value={formData.contacto}
-                                            onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
-                                            className="bg-gray-900 border-gray-800"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="email" className="text-xs text-gray-400">Email</Label>
-                                        <Input
-                                            id="email"
-                                            type="email"
-                                            placeholder="ejemplo@correo.com"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            className="bg-gray-900 border-gray-800"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="telefono_1" className="text-xs text-gray-400">Teléfono Principal</Label>
-                                        <Input
-                                            id="telefono_1"
-                                            placeholder="+54 11 ..."
-                                            value={formData.telefono_1}
-                                            onChange={(e) => setFormData({ ...formData, telefono_1: e.target.value })}
-                                            className="bg-gray-900 border-gray-800"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="telefono_2" className="text-xs text-gray-400">Teléfono Secundario</Label>
-                                        <Input
-                                            id="telefono_2"
-                                            placeholder="+54 11 ..."
-                                            value={formData.telefono_2}
-                                            onChange={(e) => setFormData({ ...formData, telefono_2: e.target.value })}
-                                            className="bg-gray-900 border-gray-800"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* SECCIÓN: UBICACIÓN */}
                             <div className="space-y-4">
                                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Ubicación</h4>
@@ -313,7 +268,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                                         className="bg-gray-900 border-gray-800"
                                     />
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="localidad" className="text-xs text-gray-400">Localidad</Label>
                                         <Input
@@ -325,12 +280,24 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="codigo_postal" className="text-xs text-gray-400">CP</Label>
+                                        <Label htmlFor="codigo_postal" className="text-xs text-gray-400">Código Postal</Label>
                                         <Input
                                             id="codigo_postal"
                                             placeholder="1425"
                                             value={formData.codigo_postal}
                                             onChange={(e) => setFormData({ ...formData, codigo_postal: e.target.value })}
+                                            className="bg-gray-900 border-gray-800"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="departamento" className="text-xs text-gray-400">Departamento</Label>
+                                        <Input
+                                            id="departamento"
+                                            placeholder="Piso / Depto"
+                                            value={formData.departamento}
+                                            onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
                                             className="bg-gray-900 border-gray-800"
                                         />
                                     </div>
@@ -354,6 +321,56 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                                         onChange={(e) => setFormData({ ...formData, pais: e.target.value })}
                                         className="bg-gray-900 border-gray-800"
                                     />
+                                </div>
+                            </div>
+
+                            {/* SECCIÓN: CONTACTO */}
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Contacto</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="telefono_1" className="text-xs text-gray-400">Teléfono 1</Label>
+                                        <Input
+                                            id="telefono_1"
+                                            placeholder="+54 11 ..."
+                                            value={formData.telefono_1}
+                                            onChange={(e) => setFormData({ ...formData, telefono_1: e.target.value })}
+                                            className="bg-gray-900 border-gray-800"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="telefono_2" className="text-xs text-gray-400">Teléfono 2</Label>
+                                        <Input
+                                            id="telefono_2"
+                                            placeholder="+54 11 ..."
+                                            value={formData.telefono_2}
+                                            onChange={(e) => setFormData({ ...formData, telefono_2: e.target.value })}
+                                            className="bg-gray-900 border-gray-800"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email" className="text-xs text-gray-400">Email</Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            placeholder="ejemplo@correo.com"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                            className="bg-gray-900 border-gray-800"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="contacto" className="text-xs text-gray-400">Contacto</Label>
+                                        <Input
+                                            id="contacto"
+                                            placeholder="Nombre del contacto"
+                                            value={formData.contacto}
+                                            onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
+                                            className="bg-gray-900 border-gray-800"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
