@@ -10,9 +10,11 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Info, Loader2, Edit2, Check, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { AlertCircle, CheckCircle2, Info, Loader2, Edit2, Check, X, MapPin } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { HierarchicalLocationSelector } from './location-selector'
+import { isValidCUIT } from '@/lib/excel-utils'
 
 interface ImportPreviewModalProps {
     isOpen: boolean
@@ -34,7 +36,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
     const handleConfirm = async () => {
         setIsProcessing(true)
         try {
-            const validData = data.filter(d => !d.errors || d.errors.length === 0)
+            const validData = data.filter(d => d.isValid)
             await onConfirm(validData)
             onClose()
         } catch (error) {
@@ -44,13 +46,29 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
         }
     }
 
+    const validateFieldChange = (row: any, field: string, value: string) => {
+        const updatedRow = { ...row, [field]: value }
+
+        // Re-validate row
+        const newErrors: string[] = []
+        if (!updatedRow.razon_social?.trim()) newErrors.push('Falta Razón Social')
+
+        const cleanCuit = (updatedRow.cuit || '').replace(/[^\d]/g, '')
+        if (!cleanCuit) newErrors.push('Falta CUIT')
+        else if (cleanCuit.length !== 11) newErrors.push('CUIT debe tener 11 dígitos')
+
+        updatedRow.errors = newErrors
+        updatedRow.isValid = newErrors.length === 0
+
+        onRowUpdate(updatedRow)
+    }
+
     const handleLocationChange = (row: any, updates: any) => {
         const updatedRow = {
             ...row,
             ...updates,
-            // Clear warnings if we are manually setting the location
             warnings: [],
-            isValid: true // Assume valid if they manually choose from the list
+            isValid: row.errors?.length === 0 // Still valid if no errors
         }
         onRowUpdate(updatedRow)
     }
@@ -59,7 +77,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-6xl bg-gray-900 border-gray-800 text-white max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle className="text-xl flex items-center gap-2">
+                    <DialogTitle className="text-xl flex items-center gap-2 font-bold">
                         Previsualización de Importación ({category === 'cliente' ? 'Clientes' : 'Proveedores'})
                     </DialogTitle>
                 </DialogHeader>
@@ -77,7 +95,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                             <Info className="h-5 w-5 text-amber-500" />
                             <div>
                                 <p className="text-sm font-bold text-amber-400">{warningCount} Advertencias</p>
-                                <p className="text-xs text-amber-500/70">Ubicación no oficial o por corregir</p>
+                                <p className="text-xs text-amber-500/70">Ubicación a normalizar</p>
                             </div>
                         </div>
                     )}
@@ -86,35 +104,68 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                             <AlertCircle className="h-5 w-5 text-red-500" />
                             <div>
                                 <p className="text-sm font-bold text-red-400">{errorCount} Errores</p>
-                                <p className="text-xs text-red-500/70">Se omitirán</p>
+                                <p className="text-xs text-red-500/70">Requieren corrección</p>
                             </div>
                         </div>
                     )}
                 </div>
 
-                <div className="border border-gray-800 rounded-lg overflow-hidden flex-1">
-                    <ScrollArea className="h-[400px]">
+                <div className="border border-gray-800 rounded-xl overflow-hidden flex-1 bg-gray-950/50">
+                    <ScrollArea className="h-[450px]">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-800 text-gray-400 sticky top-0 z-10">
+                            <thead className="bg-gray-900 text-gray-500 sticky top-0 z-20 border-b border-gray-800">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Fila</th>
-                                    <th className="px-4 py-3 font-medium">Razón Social</th>
-                                    <th className="px-4 py-3 font-medium">CUIT</th>
-                                    <th className="px-4 py-3 font-medium">Localidad / Provincia</th>
-                                    <th className="px-4 py-3 font-medium text-center">Estado / Acción</th>
+                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider w-16">Fila</th>
+                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider">Razón Social</th>
+                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider w-40">CUIT</th>
+                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider">Ubicación</th>
+                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider text-center w-40">Estado / Acción</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
                                 {data.map((row) => (
-                                    <tr key={row.id} className={`${row.isValid ? 'hover:bg-gray-800/50' : 'bg-red-500/5 hover:bg-red-500/10'} ${editingRowId === row.id ? 'bg-emerald-500/5' : ''}`}>
-                                        <td className="px-4 py-3 text-gray-500 tabular-nums">#{row.rowNum}</td>
-                                        <td className="px-4 py-3 font-medium">
-                                            {row.razon_social || <span className="text-red-400 italic">Sin nombre</span>}
-                                        </td>
-                                        <td className="px-4 py-3 font-mono text-gray-400">{row.cuit}</td>
-                                        <td className="px-4 py-3 text-gray-400">
+                                    <tr key={row.id} className={`
+                                        transition-colors
+                                        ${row.isValid ? 'hover:bg-emerald-500/[0.02]' : 'bg-red-500/[0.03] hover:bg-red-500/[0.05]'} 
+                                        ${editingRowId === row.id ? 'bg-blue-500/[0.05]' : ''}
+                                    `}>
+                                        <td className="px-4 py-4 text-gray-500 tabular-nums font-mono">#{row.rowNum}</td>
+
+                                        <td className="px-4 py-4">
                                             {editingRowId === row.id ? (
-                                                <div className="bg-gray-950 p-4 rounded-lg border border-emerald-500/30 w-80">
+                                                <Input
+                                                    value={row.razon_social}
+                                                    placeholder="Ej: ACME S.A."
+                                                    onChange={(e) => validateFieldChange(row, 'razon_social', e.target.value)}
+                                                    className="bg-gray-900 border-gray-700 h-8 text-sm focus:border-emerald-500"
+                                                />
+                                            ) : (
+                                                <span className={`font-medium ${!row.razon_social ? 'text-red-400 italic' : 'text-white'}`}>
+                                                    {row.razon_social || 'Sin nombre'}
+                                                </span>
+                                            )}
+                                        </td>
+
+                                        <td className="px-4 py-4">
+                                            {editingRowId === row.id ? (
+                                                <Input
+                                                    value={row.cuit}
+                                                    placeholder="20123456789"
+                                                    onChange={(e) => validateFieldChange(row, 'cuit', e.target.value)}
+                                                    className="bg-gray-900 border-gray-700 h-8 text-sm font-mono focus:border-emerald-500"
+                                                />
+                                            ) : (
+                                                <span className="font-mono text-gray-400">{row.cuit}</span>
+                                            )}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-gray-400">
+                                            {editingRowId === row.id ? (
+                                                <div className="bg-gray-900 p-4 rounded-xl border border-blue-500/30 w-80 shadow-2xl relative z-30">
+                                                    <div className="flex items-center gap-2 mb-3 text-blue-400">
+                                                        <MapPin className="h-4 w-4" />
+                                                        <span className="text-xs font-bold uppercase">Corregir Ubicación</span>
+                                                    </div>
                                                     <HierarchicalLocationSelector
                                                         formData={{
                                                             provincia: row.provincia,
@@ -123,51 +174,60 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                         }}
                                                         onChange={(updates) => handleLocationChange(row, updates)}
                                                     />
-                                                    <Button
-                                                        size="sm"
-                                                        className="w-full mt-3 bg-emerald-600 h-8"
-                                                        onClick={() => setEditingRowId(null)}
-                                                    >
-                                                        Listo
-                                                    </Button>
                                                 </div>
                                             ) : (
                                                 <div className="flex flex-col">
-                                                    <span>{row.localidad}</span>
-                                                    <span className="text-[10px] text-gray-500 uppercase">{row.departamento && `${row.departamento}, `}{row.provincia}</span>
+                                                    <span className="text-gray-300">{row.localidad || <span className="text-gray-600 italic">No especificado</span>}</span>
+                                                    {row.provincia && (
+                                                        <span className="text-[10px] text-gray-500 uppercase tracking-tighter">
+                                                            {row.departamento && `${row.departamento}, `}{row.provincia}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex flex-col items-center gap-1">
-                                                {row.isValid ? (
+
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col items-center gap-1.5">
+                                                {editingRowId === row.id ? (
+                                                    <Button
+                                                        size="sm"
+                                                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-8 text-xs"
+                                                        onClick={() => setEditingRowId(null)}
+                                                    >
+                                                        <Check className="h-3.5 w-3.5 mr-1" /> FINALIZAR
+                                                    </Button>
+                                                ) : row.isValid ? (
                                                     <>
-                                                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-bold px-2 py-0.5">
                                                             OK
                                                         </Badge>
-                                                        {row.warnings?.length > 0 && (
-                                                            <div className="flex flex-col items-center">
-                                                                <span className="text-[9px] text-amber-500 flex items-center gap-1 font-bold">
-                                                                    <Info className="h-2.5 w-2.5" /> NO OFICIAL
-                                                                </span>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-6 text-[10px] text-blue-400 hover:text-blue-300 px-1 mt-1"
-                                                                    onClick={() => setEditingRowId(row.id)}
-                                                                >
-                                                                    <Edit2 className="h-3 w-3 mr-1" /> CORREGIR
-                                                                </Button>
-                                                            </div>
+                                                        {(row.warnings?.length > 0 || !row.localidad) && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 text-[10px] text-amber-500 hover:text-amber-400 px-2 mt-1 font-bold group"
+                                                                onClick={() => setEditingRowId(row.id)}
+                                                            >
+                                                                <Edit2 className="h-3 w-3 mr-1 transition-transform group-hover:scale-110" /> EDITAR
+                                                            </Button>
                                                         )}
                                                     </>
                                                 ) : (
                                                     <div className="flex flex-col items-center gap-1">
                                                         {row.errors.map((err: string, i: number) => (
-                                                            <span key={i} className="text-[10px] text-red-400 font-bold whitespace-nowrap">
+                                                            <span key={i} className="text-[10px] text-red-400 font-bold leading-none bg-red-400/5 px-1.5 py-0.5 rounded">
                                                                 {err}
                                                             </span>
                                                         ))}
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            className="h-7 text-[10px] bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 mt-1 font-bold rounded-lg border border-red-400/20"
+                                                            onClick={() => setEditingRowId(row.id)}
+                                                        >
+                                                            <Edit2 className="h-3 w-3 mr-1" /> CORREGIR
+                                                        </Button>
                                                     </div>
                                                 )}
                                             </div>
@@ -179,14 +239,16 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                     </ScrollArea>
                 </div>
 
-                <DialogFooter className="mt-4 gap-2">
-                    <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-white">
-                        Cancelar
-                    </Button>
+                <DialogFooter className="mt-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" onClick={onClose} className="text-gray-500 hover:text-white hover:bg-white/5 px-6">
+                            Cancelar
+                        </Button>
+                    </div>
                     <Button
                         onClick={handleConfirm}
                         disabled={validCount === 0 || isProcessing}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 h-10 shadow-lg shadow-emerald-500/10"
                     >
                         {isProcessing ? (
                             <>
