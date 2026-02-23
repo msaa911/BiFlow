@@ -169,237 +169,241 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-gray-950 border-gray-800 text-white sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle className="text-xl font-bold">
-                        {invoice ? 'Editar Comprobante' : `Nuevo ${type === 'factura_venta' ? 'Ingreso' : 'Egreso'}`}
-                    </DialogTitle>
-                </DialogHeader>
+            <DialogContent className="bg-gray-950 border-gray-800 text-white sm:max-w-[500px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                <div className="p-6 pb-2">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">
+                            {invoice ? 'Editar Comprobante' : `Nuevo ${type === 'factura_venta' ? 'Ingreso' : 'Egreso'}`}
+                        </DialogTitle>
+                    </DialogHeader>
+                </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2 space-y-2">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-xs uppercase text-gray-500 font-bold">
-                                    {type === 'factura_venta' ? 'Cliente' : 'Proveedor'}
-                                </Label>
-                                {formData.socio_id && (
-                                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                                        Vinculado
-                                    </Badge>
-                                )}
-                            </div>
-                            <div className="space-y-2 relative">
-                                <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 focus-within:border-emerald-500/50 transition-colors">
-                                    <Search className="w-4 h-4 text-gray-500" />
-                                    <Input
-                                        placeholder={`Buscar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`}
-                                        className="bg-transparent border-none focus-visible:ring-0 h-11 px-0"
-                                        onChange={async (e) => {
-                                            const term = e.target.value
-                                            const supabase = createClient()
-                                            const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
-
-                                            setSearchingSocio(true)
-                                            const { data } = await supabase
-                                                .from('entidades')
-                                                .select('id, razon_social, cuit, categoria')
-                                                .eq('organization_id', orgId)
-                                                .in('categoria', [targetCat, 'ambos'])
-                                                .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
-                                                .limit(10)
-
-                                            if (data) setSocios(data)
-                                            setSearchingSocio(false)
-                                        }}
-                                    />
+                <div className="max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar">
+                    <form onSubmit={handleSubmit} className="space-y-4 py-4 focus:outline-none">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="col-span-2 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-xs uppercase text-gray-500 font-bold">
+                                        {type === 'factura_venta' ? 'Cliente' : 'Proveedor'}
+                                    </Label>
+                                    {formData.socio_id && (
+                                        <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                                            Vinculado
+                                        </Badge>
+                                    )}
                                 </div>
+                                <div className="space-y-2 relative">
+                                    <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 focus-within:border-emerald-500/50 transition-colors">
+                                        <Search className="w-4 h-4 text-gray-500" />
+                                        <Input
+                                            placeholder={`Buscar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`}
+                                            className="bg-transparent border-none focus-visible:ring-0 h-11 px-0"
+                                            onChange={async (e) => {
+                                                const term = e.target.value
+                                                const supabase = createClient()
+                                                const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
 
-                                {/* Lista de resultados */}
-                                <div className="mt-1 bg-gray-900 border border-gray-800 rounded-lg overflow-hidden max-h-[200px] overflow-y-auto">
-                                    {searchingSocio ? (
-                                        <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                            Buscando...
-                                        </div>
-                                    ) : socios.length === 0 ? (
-                                        <div className="p-4 text-center text-xs text-gray-500">No se encontraron resultados.</div>
-                                    ) : (
-                                        socios.map(s => (
-                                            <div
-                                                key={s.id}
-                                                onClick={() => setFormData({ ...formData, socio_id: s.id })}
-                                                className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.socio_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
-                                            >
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-white leading-none mb-1">{s.razon_social}</span>
-                                                    <span className="text-[10px] text-gray-500 font-mono tracking-tight">{s.cuit}</span>
-                                                </div>
-                                                {formData.socio_id === s.id && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
+                                                setSearchingSocio(true)
+                                                const { data } = await supabase
+                                                    .from('entidades')
+                                                    .select('id, razon_social, cuit, categoria')
+                                                    .eq('organization_id', orgId)
+                                                    .in('categoria', [targetCat, 'ambos'])
+                                                    .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
+                                                    .limit(10)
+
+                                                if (data) setSocios(data)
+                                                setSearchingSocio(false)
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Lista de resultados */}
+                                    <div className="mt-1 bg-gray-900 border border-gray-800 rounded-lg overflow-hidden max-h-[200px] overflow-y-auto">
+                                        {searchingSocio ? (
+                                            <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                Buscando...
                                             </div>
-                                        ))
-                                    )}
+                                        ) : socios.length === 0 ? (
+                                            <div className="p-4 text-center text-xs text-gray-500">No se encontraron resultados.</div>
+                                        ) : (
+                                            socios.map(s => (
+                                                <div
+                                                    key={s.id}
+                                                    onClick={() => setFormData({ ...formData, socio_id: s.id })}
+                                                    className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.socio_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
+                                                >
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold text-white leading-none mb-1">{s.razon_social}</span>
+                                                        <span className="text-[10px] text-gray-500 font-mono tracking-tight">{s.cuit}</span>
+                                                    </div>
+                                                    {formData.socio_id === s.id && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="col-span-2 space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Concepto / Operación Personalizada</Label>
-                            <Input
-                                placeholder={type === 'factura_venta' ? 'Ej: Venta de servicios de consultoría' : 'Ej: Compra de insumos de oficina'}
-                                value={formData.concepto}
-                                onChange={(e) => setFormData({ ...formData, concepto: e.target.value })}
-                                className="bg-gray-900 border-gray-800"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Condición</Label>
-                            <Select
-                                value={formData.condicion}
-                                onValueChange={(v: any) => {
-                                    setFormData({
-                                        ...formData,
-                                        condicion: v,
-                                        fecha_vencimiento: v === 'contado' ? formData.fecha_emision : formData.fecha_vencimiento
-                                    })
-                                }}
-                            >
-                                <SelectTrigger className="bg-gray-900 border-gray-800">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                    <SelectItem value="contado">Contado</SelectItem>
-                                    <SelectItem value="cuenta_corriente">Cuenta Corriente</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Medio de Pago</Label>
-                            <Select
-                                value={formData.metodo_pago}
-                                onValueChange={(v) => setFormData({ ...formData, metodo_pago: v })}
-                            >
-                                <SelectTrigger className="bg-gray-900 border-gray-800 px-3">
-                                    <SelectValue placeholder="Seleccionar..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                    <SelectItem value="efectivo">Efectivo</SelectItem>
-                                    <SelectItem value="transferencia">Transferencia</SelectItem>
-                                    <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
-                                    <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
-                                    {type === 'factura_compra' ? (
-                                        <>
-                                            <SelectItem value="cheque_propio">Cheque Propio</SelectItem>
-                                            <SelectItem value="cheque_terceros">Cheque de Terceros (Endosado)</SelectItem>
-                                            <SelectItem value="retenciones">Retenciones Impositivas</SelectItem>
-                                        </>
-                                    ) : (
-                                        <SelectItem value="cheque">Cheque</SelectItem>
-                                    )}
-                                    <SelectItem value="a_convenir">A convenir</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Número de Factura</Label>
-                            <Input
-                                placeholder="0001-00001234"
-                                value={formData.numero}
-                                onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                                className="bg-gray-900 border-gray-800"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Monto Total</Label>
-                            <Input
-                                type="number"
-                                placeholder="0.00"
-                                value={formData.monto_total || ''}
-                                onChange={(e) => setFormData({ ...formData, monto_total: Number(e.target.value) })}
-                                className="bg-gray-900 border-gray-800 text-right font-bold"
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Fecha Emisión</Label>
-                            <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                            <div className="col-span-2 space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Concepto / Operación Personalizada</Label>
                                 <Input
-                                    type="date"
-                                    value={formData.fecha_emision}
-                                    onChange={(e) => {
-                                        const newDate = e.target.value
+                                    placeholder={type === 'factura_venta' ? 'Ej: Venta de servicios de consultoría' : 'Ej: Compra de insumos de oficina'}
+                                    value={formData.concepto}
+                                    onChange={(e) => setFormData({ ...formData, concepto: e.target.value })}
+                                    className="bg-gray-900 border-gray-800"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Condición</Label>
+                                <Select
+                                    value={formData.condicion}
+                                    onValueChange={(v: any) => {
                                         setFormData({
                                             ...formData,
-                                            fecha_emision: newDate,
-                                            fecha_vencimiento: formData.condicion === 'contado' ? newDate : formData.fecha_vencimiento
+                                            condicion: v,
+                                            fecha_vencimiento: v === 'contado' ? formData.fecha_emision : formData.fecha_vencimiento
                                         })
                                     }}
-                                    className="bg-gray-900 border-gray-800 pl-10 block w-full"
+                                >
+                                    <SelectTrigger className="bg-gray-900 border-gray-800">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                        <SelectItem value="contado">Contado</SelectItem>
+                                        <SelectItem value="cuenta_corriente">Cuenta Corriente</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Medio de Pago</Label>
+                                <Select
+                                    value={formData.metodo_pago}
+                                    onValueChange={(v) => setFormData({ ...formData, metodo_pago: v })}
+                                >
+                                    <SelectTrigger className="bg-gray-900 border-gray-800 px-3">
+                                        <SelectValue placeholder="Seleccionar..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-900 border-gray-800 text-white border-gray-800">
+                                        <SelectItem value="efectivo">Efectivo</SelectItem>
+                                        <SelectItem value="transferencia">Transferencia</SelectItem>
+                                        <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
+                                        <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
+                                        {type === 'factura_compra' ? (
+                                            <>
+                                                <SelectItem value="cheque_propio">Cheque Propio</SelectItem>
+                                                <SelectItem value="cheque_terceros">Cheque de Terceros (Endosado)</SelectItem>
+                                                <SelectItem value="retenciones">Retenciones Impositivas</SelectItem>
+                                            </>
+                                        ) : (
+                                            <SelectItem value="cheque">Cheque</SelectItem>
+                                        )}
+                                        <SelectItem value="a_convenir">A convenir</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Número de Factura</Label>
+                                <Input
+                                    placeholder="0001-00001234"
+                                    value={formData.numero}
+                                    onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                                    className="bg-gray-900 border-gray-800"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Monto Total</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={formData.monto_total || ''}
+                                    onChange={(e) => setFormData({ ...formData, monto_total: Number(e.target.value) })}
+                                    className="bg-gray-900 border-gray-800 text-right font-bold"
                                     required
                                 />
                             </div>
-                        </div>
 
-                        <div className="space-y-2">
-                            <Label className={`text-xs uppercase text-gray-500 font-bold ${formData.condicion === 'contado' ? 'opacity-50' : 'text-emerald-400'}`}>
-                                Fecha Vencimiento
-                            </Label>
-                            <div className="relative">
-                                <Calendar className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${formData.condicion === 'contado' ? 'text-gray-600' : 'text-emerald-500'}`} />
-                                <Input
-                                    type="date"
-                                    value={formData.fecha_vencimiento}
-                                    disabled={formData.condicion === 'contado'}
-                                    onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
-                                    className={`bg-gray-900 pl-10 ${formData.condicion === 'contado' ? 'border-gray-800 text-gray-500 opacity-50 cursor-not-allowed' : 'border-emerald-500/30 text-emerald-400'}`}
-                                    required
-                                />
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Fecha Emisión</Label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                    <Input
+                                        type="date"
+                                        value={formData.fecha_emision}
+                                        onChange={(e) => {
+                                            const newDate = e.target.value
+                                            setFormData({
+                                                ...formData,
+                                                fecha_emision: newDate,
+                                                fecha_vencimiento: formData.condicion === 'contado' ? newDate : formData.fecha_vencimiento
+                                            })
+                                        }}
+                                        className="bg-gray-900 border-gray-800 pl-10 block w-full"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className={`text-xs uppercase text-gray-500 font-bold ${formData.condicion === 'contado' ? 'opacity-50' : 'text-emerald-400'}`}>
+                                    Fecha Vencimiento
+                                </Label>
+                                <div className="relative">
+                                    <Calendar className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${formData.condicion === 'contado' ? 'text-gray-600' : 'text-emerald-500'}`} />
+                                    <Input
+                                        type="date"
+                                        value={formData.fecha_vencimiento}
+                                        disabled={formData.condicion === 'contado'}
+                                        onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
+                                        className={`bg-gray-900 pl-10 ${formData.condicion === 'contado' ? 'border-gray-800 text-gray-500 opacity-50 cursor-not-allowed' : 'border-emerald-500/30 text-emerald-400'}`}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Banco (Si aplica)</Label>
+                                <div className="relative">
+                                    <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                    <Input
+                                        placeholder="Ej: Banco Galicia"
+                                        value={formData.banco}
+                                        onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
+                                        className="bg-gray-900 border-gray-800 pl-10"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Número de Instrumento</Label>
+                                <div className="relative">
+                                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                    <Input
+                                        placeholder="8 dígitos / Nº Transf."
+                                        value={formData.numero_cheque}
+                                        onChange={(e) => setFormData({ ...formData, numero_cheque: e.target.value })}
+                                        className="bg-gray-900 border-gray-800 pl-10 font-mono"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Banco (Si aplica)</Label>
-                            <div className="relative">
-                                <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                <Input
-                                    placeholder="Ej: Banco Galicia"
-                                    value={formData.banco}
-                                    onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
-                                    className="bg-gray-900 border-gray-800 pl-10"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Número de Instrumento</Label>
-                            <div className="relative">
-                                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                <Input
-                                    placeholder="8 dígitos / Nº Transf."
-                                    value={formData.numero_cheque}
-                                    onChange={(e) => setFormData({ ...formData, numero_cheque: e.target.value })}
-                                    className="bg-gray-900 border-gray-800 pl-10 font-mono"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="pt-4">
-                        <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
-                            Cancelar
-                        </Button>
-                        <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white" disabled={loading}>
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                            {invoice ? 'Guardar Cambios' : 'Registrar'}
-                        </Button>
-                    </DialogFooter>
-                </form>
+                        <DialogFooter className="pt-4 px-0">
+                            <Button type="button" variant="ghost" onClick={onClose} disabled={loading} className="text-gray-400">
+                                Cancelar
+                            </Button>
+                            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white" disabled={loading}>
+                                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                {invoice ? 'Guardar Cambios' : 'Registrar'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </div>
             </DialogContent>
         </Dialog>
     )
