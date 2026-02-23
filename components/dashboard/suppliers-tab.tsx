@@ -134,92 +134,60 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     }
 
     const onConfirmImport = async (validData: any[]) => {
-        console.log('[ConfirmImport] Starting process for', validData.length, 'records')
-        const loadingToast = toast.loading(`Normalizando y cargando ${validData.length} registros...`)
+        console.log('[ConfirmImport] Persist entry. Records:', validData.length)
+        const loadingToast = toast.loading(`Guardando ${validData.length} registros...`)
 
         try {
-            if (!orgId) throw new Error('No se detectó el ID de la organización')
+            if (!orgId) {
+                console.error('[ConfirmImport] Error: orgId is missing')
+                throw new Error('No se detectó el ID de la organización')
+            }
 
-            console.log('[ConfirmImport] Normalizing locations...')
-            // Normalize locations first
-            const normalizedData = await Promise.all(validData.map(async (ent) => {
-                // Skip if already normalized (has geo_lat/lon) or missing data
-                if (ent.geo_lat || !ent.localidad || !ent.provincia) return ent
-
-                try {
-                    // Timeout-like check: avoid hanging on one row
-                    const { data: geoMatches, error: geoError } = await supabase
-                        .from('geo_argentina')
-                        .select('localidad, departamento, provincia, latitud, longitud')
-                        .ilike('localidad', ent.localidad.trim())
-                        .ilike('provincia', ent.provincia.trim())
-                        .limit(1)
-
-                    if (geoError) throw geoError
-
-                    if (geoMatches && geoMatches.length > 0) {
-                        const geoMatch = geoMatches[0]
-                        return {
-                            ...ent,
-                            localidad: geoMatch.localidad,
-                            departamento: geoMatch.departamento,
-                            provincia: geoMatch.provincia,
-                            geo_lat: geoMatch.latitud,
-                            geo_lon: geoMatch.longitud
-                        }
-                    }
-                } catch (e) {
-                    console.warn('[ConfirmImport] Error normalizando fila:', ent.razon_social, e)
-                }
-                return ent
+            console.log('[ConfirmImport] Upserting to entidades...')
+            const dataToUpsert = validData.map(ent => ({
+                organization_id: orgId,
+                cuit: ent.cuit,
+                razon_social: ent.razon_social,
+                categoria: category === 'ambos' ? 'proveedor' : category,
+                metadata: {
+                    cbu_habitual: ent.cbu_habitual,
+                    direccion: ent.direccion,
+                    localidad: ent.localidad,
+                    departamento: ent.departamento,
+                    provincia: ent.provincia,
+                    codigo_postal: ent.codigo_postal,
+                    email: ent.email,
+                    telefono_1: ent.telefono_1,
+                    contacto: ent.contacto,
+                    geo_lat: ent.geo_lat,
+                    geo_lon: ent.geo_lon
+                },
+                updated_at: new Date().toISOString()
             }))
 
-            console.log('[ConfirmImport] Logic normalization done. Rows to upsert:', normalizedData.length)
-
-            const { data: upsertResult, error: upsertError } = await supabase
+            const { data: result, error: upsertError } = await supabase
                 .from('entidades')
-                .upsert(
-                    normalizedData.map(ent => ({
-                        organization_id: orgId,
-                        cuit: ent.cuit,
-                        razon_social: ent.razon_social,
-                        categoria: category === 'ambos' ? 'proveedor' : category,
-                        metadata: {
-                            cbu_habitual: ent.cbu_habitual,
-                            direccion: ent.direccion,
-                            localidad: ent.localidad,
-                            departamento: ent.departamento,
-                            provincia: ent.provincia,
-                            codigo_postal: ent.codigo_postal,
-                            email: ent.email,
-                            telefono_1: ent.telefono_1,
-                            contacto: ent.contacto,
-                            geo_lat: ent.geo_lat,
-                            geo_lon: ent.geo_lon
-                        },
-                        updated_at: new Date().toISOString()
-                    })),
-                    { onConflict: 'organization_id, cuit' }
-                )
+                .upsert(dataToUpsert, { onConflict: 'organization_id, cuit' })
+                .select()
 
             if (upsertError) {
-                console.error('[ConfirmImport] Upsert ERROR:', upsertError)
+                console.error('[ConfirmImport] Persistence Error:', upsertError)
                 throw upsertError
             }
 
-            console.log('[ConfirmImport] SUCCESS. Upsert result:', upsertResult)
-            toast.success(`${validData.length} registros procesados e importados correctamente`)
+            console.log('[ConfirmImport] SUCCESS. Persistence complete.')
+            toast.success(`${validData.length} registros importados correctamente`)
             fetchSocios()
         } catch (err: any) {
             console.error('[ConfirmImport] CRITICAL ERROR:', err)
-            toast.error('Error al guardar los datos: ' + (err.message || 'Desconocido'))
-            // We throw again so the modal doesn't close on error
+            toast.error('Error al guardar datos: ' + (err.message || 'Error desconocido'))
             throw err
         } finally {
             toast.dismiss(loadingToast)
-            console.log('[ConfirmImport] Process finished')
+            console.log('[ConfirmImport] Flow finished.')
         }
     }
+
 
     const handleExportExcel = () => {
         exportEntitiesToExcel(suppliers, category)
