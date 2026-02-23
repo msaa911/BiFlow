@@ -37,13 +37,28 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
         async function fetchInitialSocios() {
             setSearchingSocio(true)
             const supabase = createClient()
+
+            // Si estamos editando, queremos asegurarnos de traer ESE socio específico primero
             const { data } = await supabase
                 .from('entidades')
-                .select('id, razon_social, cuit')
+                .select('id, razon_social, cuit, categoria')
                 .eq('organization_id', orgId)
                 .order('razon_social')
-                .limit(10)
-            if (data) setSocios(data)
+                .limit(20)
+
+            if (data) {
+                let finalSocios = [...data]
+                // Si el socio de la factura no está en los 20 primeros, lo buscamos específicamente
+                if (invoice?.entidad_id && !data.find(s => s.id === invoice.entidad_id)) {
+                    const { data: specificSocio } = await supabase
+                        .from('entidades')
+                        .select('id, razon_social, cuit, categoria')
+                        .eq('id', invoice.entidad_id)
+                        .single()
+                    if (specificSocio) finalSocios = [specificSocio, ...finalSocios]
+                }
+                setSocios(finalSocios)
+            }
             setSearchingSocio(false)
         }
 
@@ -61,6 +76,17 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 banco: invoice.banco || '',
                 numero_cheque: invoice.numero_cheque || ''
             })
+        } else {
+            // Reset for new invoice
+            setFormData({
+                socio_id: '',
+                numero: '',
+                monto_total: 0,
+                fecha_emision: new Date().toISOString().split('T')[0],
+                fecha_vencimiento: new Date().toISOString().split('T')[0],
+                banco: '',
+                numero_cheque: ''
+            })
         }
     }, [invoice, isOpen, orgId])
 
@@ -77,6 +103,22 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
         const supabase = createClient()
         try {
+            // Lógica de Categoría Dual Dinámica
+            const isVenta = type === 'factura_venta'
+            const currentCat = selectedSocio.categoria
+            let newCat = currentCat
+
+            if (isVenta && currentCat === 'proveedor') newCat = 'ambos'
+            if (!isVenta && currentCat === 'cliente') newCat = 'ambos'
+
+            if (newCat !== currentCat) {
+                console.log(`[Categoría] Actualizando socio ${selectedSocio.razon_social} a: ${newCat}`)
+                await supabase
+                    .from('entidades')
+                    .update({ categoria: newCat })
+                    .eq('id', selectedSocio.id)
+            }
+
             const { error } = await supabase
                 .from('comprobantes')
                 .upsert({
@@ -121,23 +163,67 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2 space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Socio (Cliente/Proveedor)</Label>
+                            <div className="flex justify-between items-center">
+                                <Label className="text-xs uppercase text-gray-400 font-bold">
+                                    {type === 'factura_venta' ? 'Cliente' : 'Proveedor'}
+                                </Label>
+                                {formData.socio_id && (
+                                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                                        Vinculado
+                                    </Badge>
+                                )}
+                            </div>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                <Input
+                                    placeholder="Buscar por Nombre o CUIT..."
+                                    className="bg-gray-900 border-gray-800 pl-10"
+                                    onChange={async (e) => {
+                                        const term = e.target.value
+                                        if (term.length < 2) return
+                                        setSearchingSocio(true)
+                                        const supabase = createClient()
+                                        const { data } = await supabase
+                                            .from('entidades')
+                                            .select('id, razon_social, cuit, categoria')
+                                            .eq('organization_id', orgId)
+                                            .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
+                                            .limit(5)
+                                        if (data) setSocios(data)
+                                        setSearchingSocio(false)
+                                    }}
+                                />
+                            </div>
                             <Select
                                 value={formData.socio_id}
-                                onValueChange={(v) => setFormData({ ...formData, socio_id: v })}
+                                onValueChange={(v) => {
+                                    const selected = socios.find(s => s.id === v)
+                                    if (selected) {
+                                        // Validación cruzada de categoría
+                                        const isVenta = type === 'factura_venta'
+                                        const needsUpdate = isVenta
+                                            ? selected.categoria === 'proveedor'
+                                            : selected.categoria === 'cliente'
+
+                                        if (needsUpdate) {
+                                            toast.info(`El socio pasará a ser categoría 'Ambos'`)
+                                        }
+                                    }
+                                    setFormData({ ...formData, socio_id: v })
+                                }}
                             >
-                                <SelectTrigger className="bg-gray-900 border-gray-800">
-                                    <SelectValue placeholder="Seleccionar socio..." />
+                                <SelectTrigger className="bg-gray-950 border-gray-800 mt-2 hover:border-emerald-500/50 transition-colors">
+                                    <SelectValue placeholder={`Seleccionar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`} />
                                 </SelectTrigger>
                                 <SelectContent className="bg-gray-900 border-gray-800 text-white">
                                     {searchingSocio ? (
                                         <div className="p-2 text-center text-xs text-gray-500">Buscando...</div>
                                     ) : socios.length === 0 ? (
-                                        <div className="p-2 text-center text-xs text-gray-500 font-bold">No hay socios registrados. Créalos primero.</div>
+                                        <div className="p-2 text-center text-xs text-gray-500 font-bold">No se encontraron socios.</div>
                                     ) : (
                                         socios.map(s => (
                                             <SelectItem key={s.id} value={s.id}>
-                                                {s.razon_social} ({s.cuit})
+                                                {s.razon_social} ({s.cuit}) - <span className="text-[10px] opacity-50 uppercase">{s.categoria}</span>
                                             </SelectItem>
                                         ))
                                     )}
@@ -171,12 +257,12 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                         <div className="space-y-2">
                             <Label className="text-xs uppercase text-gray-500 font-bold">Fecha Emisión</Label>
                             <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                                 <Input
                                     type="date"
                                     value={formData.fecha_emision}
                                     onChange={(e) => setFormData({ ...formData, fecha_emision: e.target.value })}
-                                    className="bg-gray-900 border-gray-800 pl-10"
+                                    className="bg-gray-900 border-gray-800 pl-10 block w-full"
                                     required
                                 />
                             </div>

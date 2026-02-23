@@ -166,3 +166,95 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
         reader.readAsArrayBuffer(file)
     })
 }
+export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra') {
+    const ws = XLSX.utils.json_to_sheet([
+        {
+            'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
+            'Fecha Vencimiento': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
+            'Socio (Nombre o CUIT)': 'ACME S.A.',
+            'CUIT Socio': '30-12345678-9',
+            'Número Comprobante': '0001-00000001',
+            'Monto Total': 150000.50,
+            'Banco (Opcional)': 'Banco Galicia',
+            'Número Cheque (Opcional)': '12345678'
+        }
+    ])
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Facturas')
+
+    const prefix = type === 'factura_venta' ? 'ingresos' : 'egresos'
+    const filename = `plantilla_biflow_${prefix}.xlsx`
+    XLSX.writeFile(wb, filename)
+}
+
+export async function parseInvoiceExcel(file: File): Promise<{ data: any[], errors: any[] }> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            try {
+                const data = e.target?.result
+                const workbook = XLSX.read(data, { type: 'array' })
+                const targetSheetName = workbook.SheetNames.find(n =>
+                    /facturas|comprobantes|ingresos|egresos|ventas|compras|plantilla/i.test(n)
+                ) || workbook.SheetNames[0]
+
+                if (!targetSheetName) throw new Error('No hay hojas válidas.')
+
+                const sheet = workbook.Sheets[targetSheetName]
+                const json = XLSX.utils.sheet_to_json(sheet)
+
+                if (json.length === 0) {
+                    resolve({ data: [], errors: ['Archivo vacío'] })
+                    return
+                }
+
+                const results: any[] = []
+                json.forEach((row: any, index: number) => {
+                    const rowNum = index + 2
+                    const keys = Object.keys(row)
+
+                    const getValByRegex = (pattern: RegExp) => {
+                        const foundKey = keys.find(k => {
+                            const nk = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                            return pattern.test(nk)
+                        })
+                        return foundKey ? String(row[foundKey]).trim() : ''
+                    }
+
+                    const fechaEmision = getValByRegex(/fecha.*emision|fecha.*factura|emision/i)
+                    const fechaVencimiento = getValByRegex(/fecha.*vencimiento|vencimiento|vence/i)
+                    const cuit = getValByRegex(/cuit|cuil|id|identificacion/i).replace(/[^\d]/g, '')
+                    const razonSocial = getValByRegex(/socio|razon|social|nombre|cliente|proveedor/i)
+                    const numero = getValByRegex(/numero|nro|n°|factura|comprobante/i)
+                    const monto = parseFloat(getValByRegex(/monto|total|importe|valor/i).replace(/[^\d.,]/g, '').replace(',', '.'))
+
+                    const itemErrors: string[] = []
+                    if (!fechaEmision) itemErrors.push('Falta Fecha de Emisión')
+                    if (!cuit && !razonSocial) itemErrors.push('Falta Socio (Nombre o CUIT)')
+                    if (!numero) itemErrors.push('Falta Número de Comprobante')
+                    if (isNaN(monto)) itemErrors.push('Monto inválido')
+
+                    results.push({
+                        id: `inv-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
+                        fecha_emision: fechaEmision,
+                        fecha_vencimiento: fechaVencimiento || fechaEmision,
+                        cuit_socio: cuit,
+                        razon_social_socio: razonSocial,
+                        numero,
+                        monto_total: monto,
+                        banco: getValByRegex(/banco|entidad/i),
+                        numero_cheque: getValByRegex(/cheque|nro.*cheque/i),
+                        rowNum,
+                        errors: itemErrors,
+                        isValid: itemErrors.length === 0
+                    })
+                })
+                resolve({ data: results, errors: [] })
+            } catch (err) {
+                reject(err)
+            }
+        }
+        reader.readAsArrayBuffer(file)
+    })
+}

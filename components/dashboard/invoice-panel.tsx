@@ -4,12 +4,15 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Search, Filter, TrendingDown, TrendingUp, ArrowRight, AlertCircle, Info, Plus, Edit2, Trash2 } from 'lucide-react'
+import { Search, Filter, TrendingDown, TrendingUp, ArrowRight, AlertCircle, Info, Plus, Edit2, Trash2, FileDown, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TreasuryEngine } from '@/lib/treasury-engine'
 import { InvoiceFormModal } from './invoice-form-modal'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { useRef } from 'react'
+import { downloadInvoiceTemplate, parseInvoiceExcel } from '@/lib/excel-utils'
+import { InvoiceImportPreviewModal } from './invoice-import-preview-modal'
 
 interface InvoicePanelProps {
     orgId: string
@@ -24,6 +27,10 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     const [searchTerm, setSearchTerm] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
+    const [importData, setImportData] = useState<any[]>([])
+    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const supabase = createClient()
 
     const handleDelete = async (id: string) => {
         if (!confirm('¿Seguro que desea eliminar este comprobante?')) return
@@ -65,6 +72,68 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-gray-800 border-gray-700 text-gray-400 hover:text-white"
+                        onClick={() => downloadInvoiceTemplate(view === 'AR' ? 'factura_venta' : 'factura_compra')}
+                    >
+                        <FileDown className="w-4 h-4 mr-2" />
+                        Plantilla
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-gray-800 border-gray-700 text-gray-400 hover:text-white"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Importar
+                    </Button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".xlsx,.csv"
+                        onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const loadingToast = toast.loading('Analizando comprobantes...')
+                            try {
+                                const { data: parsed, errors } = await parseInvoiceExcel(file)
+                                if (errors.length > 0) throw new Error(errors[0])
+
+                                // Match with existing entities
+                                const { data: entities } = await supabase
+                                    .from('entidades')
+                                    .select('id, razon_social, cuit')
+                                    .eq('organization_id', orgId)
+
+                                const enriched = parsed.map(inv => {
+                                    const match = entities?.find(e =>
+                                        e.cuit === inv.cuit_socio ||
+                                        e.razon_social.toLowerCase() === inv.razon_social_socio.toLowerCase()
+                                    )
+                                    return {
+                                        ...inv,
+                                        entidad_id: match?.id,
+                                        razon_social_socio: match?.razon_social || inv.razon_social_socio,
+                                        cuit_socio: match?.cuit || inv.cuit_socio,
+                                        isValid: inv.isValid && !!match,
+                                        errors: !match ? [...(inv.errors || []), 'Socio no registrado'] : inv.errors
+                                    }
+                                })
+
+                                setImportData(enriched)
+                                setIsImportPreviewOpen(true)
+                            } catch (err: any) {
+                                toast.error('Error: ' + err.message)
+                            } finally {
+                                toast.dismiss(loadingToast)
+                                e.target.value = ''
+                            }
+                        }}
+                    />
                     <Button
                         size="sm"
                         className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
@@ -184,6 +253,43 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 type={view === 'AR' ? 'factura_venta' : 'factura_compra'}
                 invoice={selectedInvoice}
                 onSuccess={onRefresh}
+            />
+            <InvoiceImportPreviewModal
+                isOpen={isImportPreviewOpen}
+                onClose={() => setIsImportPreviewOpen(false)}
+                data={importData}
+                orgId={orgId}
+                type={view === 'AR' ? 'factura_venta' : 'factura_compra'}
+                onRowUpdate={(upd) => setImportData(prev => prev.map(r => r.id === upd.id ? upd : r))}
+                onConfirm={async (validData) => {
+                    const loadingToast = toast.loading(`Importando ${validData.length} comprobantes...`)
+                    try {
+                        const payload = validData.map(v => ({
+                            organization_id: orgId,
+                            entidad_id: v.entidad_id,
+                            tipo: view === 'AR' ? 'factura_venta' : 'factura_compra',
+                            numero: v.numero,
+                            monto_total: v.monto_total,
+                            monto_pendiente: v.monto_total,
+                            fecha_emision: v.fecha_emision,
+                            fecha_vencimiento: v.fecha_vencimiento,
+                            banco: v.banco,
+                            numero_cheque: v.numero_cheque,
+                            razon_social_socio: v.razon_social_socio,
+                            cuit_socio: v.cuit_socio,
+                            estado: 'pendiente'
+                        }))
+                        const { error } = await supabase.from('comprobantes').insert(payload)
+                        if (error) throw error
+                        toast.success('Comprobantes importados con éxito')
+                        onRefresh()
+                    } catch (err: any) {
+                        toast.error('Error: ' + err.message)
+                        throw err
+                    } finally {
+                        toast.dismiss(loadingToast)
+                    }
+                }}
             />
         </Card>
     )

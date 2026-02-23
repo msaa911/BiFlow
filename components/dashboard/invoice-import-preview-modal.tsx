@@ -1,0 +1,243 @@
+'use client'
+
+import { useState } from 'react'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { AlertCircle, CheckCircle2, Loader2, Edit2, Calendar, Hash, Landmark, Search } from 'lucide-react'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { createClient } from '@/lib/supabase/client'
+
+interface InvoiceImportPreviewModalProps {
+    isOpen: boolean
+    onClose: () => void
+    data: any[]
+    orgId: string
+    type: 'factura_venta' | 'factura_compra'
+    onConfirm: (validData: any[]) => Promise<void>
+    onRowUpdate: (updatedRow: any) => void
+}
+
+export function InvoiceImportPreviewModal({
+    isOpen,
+    onClose,
+    data,
+    orgId,
+    type,
+    onConfirm,
+    onRowUpdate
+}: InvoiceImportPreviewModalProps) {
+    const [isProcessing, setIsProcessing] = useState(false)
+    const [editingRowId, setEditingRowId] = useState<string | null>(null)
+    const [socios, setSocios] = useState<any[]>([])
+    const [searchingSocio, setSearchingSocio] = useState(false)
+
+    const validCount = data.filter((d: any) => d.isValid).length
+    const errorCount = data.filter((d: any) => d.errors?.length > 0).length
+
+    const handleConfirm = async () => {
+        setIsProcessing(true)
+        try {
+            const validData = data.filter((d: any) => d.isValid)
+            await onConfirm(validData)
+            onClose()
+        } catch (error) {
+            console.error('[InvoicePreview] Confirm Error:', error)
+        } finally {
+            setIsProcessing(false)
+        }
+    }
+
+    const validateRow = (row: any) => {
+        const errors: string[] = []
+        if (!row.fecha_emision) errors.push('Falta Fecha')
+        if (!row.numero) errors.push('Falta Número')
+        if (isNaN(row.monto_total) || row.monto_total <= 0) errors.push('Monto Inválido')
+        if (!row.entidad_id && !row.cuit_socio && !row.razon_social_socio) errors.push('Falta Socio')
+
+        row.errors = errors
+        row.isValid = errors.length === 0
+        return row
+    }
+
+    const handleFieldChange = (row: any, field: string, value: any) => {
+        const updatedRow = { ...row, [field]: value }
+        onRowUpdate(validateRow(updatedRow))
+    }
+
+    const searchSocios = async (term: string) => {
+        if (term.length < 2) return
+        setSearchingSocio(true)
+        const supabase = createClient()
+        const { data } = await supabase
+            .from('entidades')
+            .select('id, razon_social, cuit, categoria')
+            .eq('organization_id', orgId)
+            .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
+            .limit(5)
+        if (data) setSocios(data)
+        setSearchingSocio(false)
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-7xl bg-gray-900 border-gray-800 text-white max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle className="text-xl flex items-center gap-2 font-bold uppercase tracking-tight">
+                        {type === 'factura_venta' ? 'Pre-visualizar Ingresos' : 'Pre-visualizar Egresos'} ({data.length})
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className={`p-4 rounded-xl border-2 ${errorCount === 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
+                        <div className="flex items-center gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                            <div>
+                                <h3 className="text-sm font-bold text-emerald-400">{validCount} Filas Válidas</h3>
+                                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Listas para importar</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className={`p-4 rounded-xl border-2 ${errorCount > 0 ? 'bg-red-500/10 border-red-500/50' : 'bg-gray-800/50 border-gray-700'}`}>
+                        <div className="flex items-center gap-3">
+                            <AlertCircle className="h-5 w-5 text-red-400" />
+                            <div>
+                                <h3 className="text-sm font-bold text-red-400">{errorCount} Con Errores</h3>
+                                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Requieren atención</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border border-gray-800 rounded-xl overflow-hidden flex-1 bg-gray-950/50">
+                    <ScrollArea className="h-[400px]">
+                        <table className="w-full text-xs text-left">
+                            <thead className="bg-gray-900 border-b border-gray-800 sticky top-0 z-20">
+                                <tr>
+                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest w-12">#</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest w-40">Fecha</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest">
+                                        {type === 'factura_venta' ? 'Cliente' : 'Proveedor'} / CUIT
+                                    </th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest w-40">Número</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest text-right w-32">Monto</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest text-center w-32">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-800">
+                                {data.map((row, idx) => (
+                                    <tr key={row.id} className={`hover:bg-white/[0.02] transition-colors ${!row.isValid ? 'bg-red-500/5' : ''}`}>
+                                        <td className="px-4 py-4 text-gray-600 font-mono">#{row.rowNum}</td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="relative">
+                                                    <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+                                                    <Input
+                                                        type="text"
+                                                        value={row.fecha_emision}
+                                                        onChange={(e) => handleFieldChange(row, 'fecha_emision', e.target.value)}
+                                                        className="h-7 bg-gray-900 border-gray-800 pl-7 text-[10px]"
+                                                    />
+                                                </div>
+                                                <span className="text-[9px] text-gray-600 uppercase font-bold">Vence: {row.fecha_vencimiento}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className="space-y-2">
+                                                <div className="relative group">
+                                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+                                                    <Input
+                                                        placeholder={`Buscar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`}
+                                                        className="h-7 bg-gray-900 border-gray-800 pl-7 text-[10px]"
+                                                        onChange={(e) => searchSocios(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Select
+                                                    value={row.entidad_id}
+                                                    onValueChange={(v) => {
+                                                        const s = socios.find(socio => socio.id === v)
+                                                        if (s) {
+                                                            const updated = {
+                                                                ...row,
+                                                                entidad_id: s.id,
+                                                                razon_social_socio: s.razon_social,
+                                                                cuit_socio: s.cuit
+                                                            }
+                                                            onRowUpdate(validateRow(updated))
+                                                        }
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="h-7 bg-gray-950 border-gray-800 text-[10px]">
+                                                        <SelectValue placeholder={row.razon_social_socio || "Seleccionar..."} />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                                        {socios.map(s => (
+                                                            <SelectItem key={s.id} value={s.id} className="text-[10px]">
+                                                                {s.razon_social} ({s.cuit})
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className="relative">
+                                                <Hash className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+                                                <Input
+                                                    value={row.numero}
+                                                    onChange={(e) => handleFieldChange(row, 'numero', e.target.value)}
+                                                    className="h-7 bg-gray-900 border-gray-800 pl-7 font-mono text-[10px]"
+                                                />
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4 text-right">
+                                            <Input
+                                                type="number"
+                                                value={row.monto_total}
+                                                onChange={(e) => handleFieldChange(row, 'monto_total', parseFloat(e.target.value))}
+                                                className="h-7 bg-gray-900 border-gray-800 text-right font-bold text-emerald-400 text-[10px]"
+                                            />
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            {row.isValid ? (
+                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] uppercase font-bold tracking-widest px-2">Válido</Badge>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    {row.errors?.map((err: string, i: number) => (
+                                                        <span key={i} className="text-[8px] bg-red-500/10 text-red-500 font-bold px-1 rounded border border-red-500/10">{err}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </ScrollArea>
+                </div>
+
+                <DialogFooter className="mt-4 flex items-center justify-between">
+                    <Button variant="ghost" onClick={onClose} disabled={isProcessing} className="text-gray-500">
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={handleConfirm}
+                        disabled={validCount === 0 || isProcessing}
+                        className="bg-emerald-600 hover:bg-emerald-500 font-bold px-10"
+                    >
+                        {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Importar {validCount} Comprobantes
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
