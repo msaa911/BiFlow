@@ -139,10 +139,6 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     }
 
     const handleExportExcel = () => {
-        if (suppliers.length === 0) {
-            toast.error('No hay datos para exportar')
-            return
-        }
         exportEntitiesToExcel(suppliers, category)
         toast.success('Datos exportados')
     }

@@ -39,6 +39,12 @@ export function downloadEntityTemplate(category: string) {
 }
 
 export function exportEntitiesToExcel(entities: any[], category: string) {
+    const headers = [
+        'Razón Social / Nombre', 'CUIT', 'Categoría', 'CBU Habitual',
+        'Dirección', 'Localidad', 'Departamento', 'Provincia',
+        'CP', 'Email', 'Teléfono', 'Contacto'
+    ]
+
     const data = entities.map(ent => ({
         'Razón Social / Nombre': ent.razon_social,
         'CUIT': ent.cuit,
@@ -54,7 +60,7 @@ export function exportEntitiesToExcel(entities: any[], category: string) {
         'Contacto': ent.metadata?.contacto || ''
     }))
 
-    const ws = XLSX.utils.json_to_sheet(data)
+    const ws = XLSX.utils.json_to_sheet(data, { header: headers })
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Entidades')
 
