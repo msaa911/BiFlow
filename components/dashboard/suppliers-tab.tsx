@@ -136,6 +136,12 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         }
     }
 
+    const onRowUpdate = (updatedRow: any) => {
+        setImportData(prev => prev.map(row =>
+            row.id === updatedRow.id ? updatedRow : row
+        ))
+    }
+
     const onConfirmImport = async (validData: any[]) => {
         const loadingToast = toast.loading(`Normalizando y cargando ${validData.length} registros...`)
         try {
@@ -373,6 +379,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 data={importData}
                 category={category}
                 onConfirm={onConfirmImport}
+                onRowUpdate={onRowUpdate}
             />
         </div>
     )

@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Info, Loader2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Info, Loader2, Edit2, Check, X } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { HierarchicalLocationSelector } from './location-selector'
 
 interface ImportPreviewModalProps {
     isOpen: boolean
@@ -19,10 +20,12 @@ interface ImportPreviewModalProps {
     data: any[]
     category: 'cliente' | 'proveedor' | 'ambos'
     onConfirm: (validData: any[]) => Promise<void>
+    onRowUpdate: (updatedRow: any) => void
 }
 
-export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm }: ImportPreviewModalProps) {
+export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm, onRowUpdate }: ImportPreviewModalProps) {
     const [isProcessing, setIsProcessing] = useState(false)
+    const [editingRowId, setEditingRowId] = useState<string | null>(null)
 
     const validCount = data.filter(d => d.isValid).length
     const errorCount = data.filter(d => d.errors?.length > 0).length
@@ -41,9 +44,20 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm 
         }
     }
 
+    const handleLocationChange = (row: any, updates: any) => {
+        const updatedRow = {
+            ...row,
+            ...updates,
+            // Clear warnings if we are manually setting the location
+            warnings: [],
+            isValid: true // Assume valid if they manually choose from the list
+        }
+        onRowUpdate(updatedRow)
+    }
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-5xl bg-gray-900 border-gray-800 text-white max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-6xl bg-gray-900 border-gray-800 text-white max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="text-xl flex items-center gap-2">
                         Previsualización de Importación ({category === 'cliente' ? 'Clientes' : 'Proveedores'})
@@ -63,7 +77,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm 
                             <Info className="h-5 w-5 text-amber-500" />
                             <div>
                                 <p className="text-sm font-bold text-amber-400">{warningCount} Advertencias</p>
-                                <p className="text-xs text-amber-500/70">Ubicación no oficial</p>
+                                <p className="text-xs text-amber-500/70">Ubicación no oficial o por corregir</p>
                             </div>
                         </div>
                     )}
@@ -87,19 +101,42 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm 
                                     <th className="px-4 py-3 font-medium">Razón Social</th>
                                     <th className="px-4 py-3 font-medium">CUIT</th>
                                     <th className="px-4 py-3 font-medium">Localidad / Provincia</th>
-                                    <th className="px-4 py-3 font-medium text-center">Estado</th>
+                                    <th className="px-4 py-3 font-medium text-center">Estado / Acción</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
                                 {data.map((row) => (
-                                    <tr key={row.id} className={`${row.isValid ? 'hover:bg-gray-800/50' : 'bg-red-500/5 hover:bg-red-500/10'}`}>
+                                    <tr key={row.id} className={`${row.isValid ? 'hover:bg-gray-800/50' : 'bg-red-500/5 hover:bg-red-500/10'} ${editingRowId === row.id ? 'bg-emerald-500/5' : ''}`}>
                                         <td className="px-4 py-3 text-gray-500 tabular-nums">#{row.rowNum}</td>
                                         <td className="px-4 py-3 font-medium">
                                             {row.razon_social || <span className="text-red-400 italic">Sin nombre</span>}
                                         </td>
                                         <td className="px-4 py-3 font-mono text-gray-400">{row.cuit}</td>
                                         <td className="px-4 py-3 text-gray-400">
-                                            {row.localidad} {row.provincia && `(${row.provincia})`}
+                                            {editingRowId === row.id ? (
+                                                <div className="bg-gray-950 p-4 rounded-lg border border-emerald-500/30 w-80">
+                                                    <HierarchicalLocationSelector
+                                                        formData={{
+                                                            provincia: row.provincia,
+                                                            departamento: row.departamento,
+                                                            localidad: row.localidad
+                                                        }}
+                                                        onChange={(updates) => handleLocationChange(row, updates)}
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        className="w-full mt-3 bg-emerald-600 h-8"
+                                                        onClick={() => setEditingRowId(null)}
+                                                    >
+                                                        Listo
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col">
+                                                    <span>{row.localidad}</span>
+                                                    <span className="text-[10px] text-gray-500 uppercase">{row.departamento && `${row.departamento}, `}{row.provincia}</span>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex flex-col items-center gap-1">
@@ -108,18 +145,30 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm 
                                                         <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                                                             OK
                                                         </Badge>
-                                                        {row.warnings?.map((w: string, i: number) => (
-                                                            <span key={i} className="text-[9px] text-amber-500 flex items-center gap-1 font-bold">
-                                                                <Info className="h-2.5 w-2.5" /> NO OFICIAL
-                                                            </span>
-                                                        ))}
+                                                        {row.warnings?.length > 0 && (
+                                                            <div className="flex flex-col items-center">
+                                                                <span className="text-[9px] text-amber-500 flex items-center gap-1 font-bold">
+                                                                    <Info className="h-2.5 w-2.5" /> NO OFICIAL
+                                                                </span>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-6 text-[10px] text-blue-400 hover:text-blue-300 px-1 mt-1"
+                                                                    onClick={() => setEditingRowId(row.id)}
+                                                                >
+                                                                    <Edit2 className="h-3 w-3 mr-1" /> CORREGIR
+                                                                </Button>
+                                                            </div>
+                                                        )}
                                                     </>
                                                 ) : (
-                                                    row.errors.map((err: string, i: number) => (
-                                                        <span key={i} className="text-[10px] text-red-400 font-bold whitespace-nowrap">
-                                                            {err}
-                                                        </span>
-                                                    ))
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        {row.errors.map((err: string, i: number) => (
+                                                            <span key={i} className="text-[10px] text-red-400 font-bold whitespace-nowrap">
+                                                                {err}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </div>
                                         </td>
