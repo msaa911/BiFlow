@@ -109,8 +109,8 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
             }
 
             // Dictionary of common geographical aliases to avoid false positives
-            const GEO_ALIASES: Record<string, { localidad?: string, provincia?: string }> = {
-                'caba': { localidad: 'comuna 1', provincia: 'ciudad autónoma de buenos aires' },
+            const GEO_ALIASES: Record<string, { localidad?: string, provincia?: string, departamento?: string }> = {
+                'caba': { localidad: 'ciudad autónoma de buenos aires', provincia: 'ciudad autónoma de buenos aires', departamento: 'comuna 1' },
                 'mza': { provincia: 'mendoza' },
                 'mendoza': { provincia: 'mendoza' },
                 'cba': { provincia: 'córdoba' },
@@ -125,10 +125,14 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 'er': { provincia: 'entre ríos' },
                 'rn': { provincia: 'río negro' },
                 'chubut': { provincia: 'chubut' },
-                'lpa': { provincia: 'la pampa' }
+                'lpa': { provincia: 'la pampa' },
+                'mis': { provincia: 'misiones' },
+                'corr': { provincia: 'corrientes' },
+                'sgo': { provincia: 'santiago del estero' },
+                'tdf': { provincia: 'tierra del fuego' }
             }
 
-            const resolveAlias = (val: string, type: 'provincia' | 'localidad') => {
+            const resolveAlias = (val: string, type: 'provincia' | 'localidad' | 'departamento') => {
                 const clean = val.trim().toLowerCase()
                 const match = GEO_ALIASES[clean]
                 if (match) return match[type] || clean
@@ -147,14 +151,14 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     })
             ))
 
-            const validLocMap = new Set<string>()
+            const validLocMap = new Map<string, any>()
             if (uniqueLocs.length > 0) {
                 const { data: geoData } = await supabase
                     .from('geo_argentina')
-                    .select('localidad, provincia')
+                    .select('localidad, provincia, departamento')
 
                 geoData?.forEach((g: any) => {
-                    validLocMap.add(`${g.localidad.trim().toLowerCase()}|${g.provincia.trim().toLowerCase()}`)
+                    validLocMap.set(`${g.localidad.trim().toLowerCase()}|${g.provincia.trim().toLowerCase()}`, g)
                 })
             }
             const dataWithContext = parsedData.map((ent: any) => {
@@ -173,14 +177,20 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     errors.push('CUIT incompleto (necesita 11 dígitos)')
                 }
 
-                // 2. Location Validation (Warnings)
-                const p = resolveAlias(ent.provincia || '', 'provincia')
-                const l = resolveAlias(ent.localidad || '', 'localidad')
-                const locKey = `${l}|${p}`
+                // 2. Location SILENT Normalization
+                let normalizedProv = resolveAlias(ent.provincia || '', 'provincia')
+                let normalizedLoc = resolveAlias(ent.localidad || '', 'localidad')
+                const locKey = `${normalizedLoc}|${normalizedProv}`
+                const geoMatch = validLocMap.get(locKey)
 
-                if (!ent.localidad || !ent.provincia) {
+                // If we found a match, update the entity data with official names
+                if (geoMatch) {
+                    ent.provincia = geoMatch.provincia
+                    ent.localidad = geoMatch.localidad
+                    ent.departamento = geoMatch.departamento
+                } else if (!ent.localidad || !ent.provincia) {
                     warnings.push('Falta información de ubicación')
-                } else if (!validLocMap.has(locKey)) {
+                } else {
                     warnings.push('Ubicación no reconocida (posible error ortográfico)')
                 }
 
