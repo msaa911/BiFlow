@@ -93,10 +93,13 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
     }
 
     const handleConfirm = async () => {
+        if (loading) return
         setLoading(true)
         const supabase = createClient()
 
         try {
+            console.log('[PaymentWizard] Iniciando registro:', { orgId, entidadId, tipo, totalInstruments })
+
             // 1. Create Treasury Movement
             const { data: mov, error: movErr } = await supabase
                 .from('movimientos_tesoreria')
@@ -105,47 +108,62 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                     entidad_id: entidadId,
                     tipo: tipo,
                     monto_total: totalInstruments,
-                    fecha: new Date().toISOString().split('T')[0]
+                    fecha: new Date().toISOString().split('T')[0],
+                    observaciones: `Generado desde el asistente de ${tipo}`
                 })
                 .select()
                 .single()
 
-            if (movErr) throw movErr
+            if (movErr) {
+                console.error('[PaymentWizard] Error al crear movimiento:', movErr)
+                throw new Error(`Error al crear movimiento: ${movErr.message}`)
+            }
 
             // 2. Create Instruments
-            const instrumentsPayload = instruments.map(i => ({
-                movimiento_id: mov.id,
-                metodo: i.metodo,
-                monto: i.monto,
-                fecha_disponibilidad: i.fecha_disponibilidad,
-                banco: i.banco,
-                referencia: i.referencia
-            }))
-            const { error: insErr } = await supabase.from('instrumentos_pago').insert(instrumentsPayload)
-            if (insErr) throw insErr
+            const instrumentsPayload = instruments
+                .filter(i => i.monto > 0)
+                .map(i => ({
+                    movimiento_id: mov.id,
+                    metodo: i.metodo,
+                    monto: i.monto,
+                    fecha_disponibilidad: i.fecha_disponibilidad,
+                    banco: i.banco || null,
+                    referencia: i.referencia || null
+                }))
+
+            if (instrumentsPayload.length > 0) {
+                const { error: insErr } = await supabase.from('instrumentos_pago').insert(instrumentsPayload)
+                if (insErr) {
+                    console.error('[PaymentWizard] Error al crear instrumentos:', insErr)
+                    throw new Error(`Error al crear instrumentos: ${insErr.message}`)
+                }
+            }
 
             // 3. Create Applications and update Invoices
-            // Note: This is a simplified logic. In a real system, you apply payment to invoices one by one.
             let remainingPayment = totalInstruments
             for (const invoiceId of selectedInvoices) {
-                if (remainingPayment <= 0) break
+                if (remainingPayment <= 0.01) break // Precision handling
 
                 const inv = pendingInvoices.find(i => i.id === invoiceId)
+                if (!inv) continue
+
                 const amountToApply = Math.min(remainingPayment, inv.monto_pendiente)
 
-                await supabase.from('aplicaciones_pago').insert({
+                const { error: appErr } = await supabase.from('aplicaciones_pago').insert({
                     movimiento_id: mov.id,
                     comprobante_id: invoiceId,
                     monto_aplicado: amountToApply
                 })
+                if (appErr) throw appErr
 
-                const newMontoPendiente = inv.monto_pendiente - amountToApply
-                await supabase.from('comprobantes')
+                const newMontoPendiente = Math.max(0, inv.monto_pendiente - amountToApply)
+                const { error: updErr } = await supabase.from('comprobantes')
                     .update({
                         monto_pendiente: newMontoPendiente,
-                        estado: newMontoPendiente <= 0 ? 'pagado' : 'parcial'
+                        estado: newMontoPendiente <= 0.01 ? 'pagado' : 'parcial'
                     })
                     .eq('id', invoiceId)
+                if (updErr) throw updErr
 
                 remainingPayment -= amountToApply
             }
@@ -154,7 +172,8 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
             onSuccess()
             onClose()
         } catch (err: any) {
-            toast.error('Error al procesar pago: ' + err.message)
+            console.error('[PaymentWizard] Error fatal:', err)
+            toast.error('Error al procesar: ' + (err.message || 'Error desconocido'))
         } finally {
             setLoading(false)
         }
@@ -187,43 +206,45 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                 <span className="text-xs text-gray-500 uppercase font-bold tracking-widest">Saldo Total: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(pendingInvoices.reduce((a, b) => a + b.monto_pendiente, 0))}</span>
                             </div>
 
-                            <div className="space-y-3">
-                                {pendingInvoices.length === 0 ? (
-                                    <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-2xl text-gray-500">
-                                        No hay comprobantes pendientes para esta entidad.
-                                    </div>
-                                ) : pendingInvoices.map(inv => (
-                                    <div
-                                        key={inv.id}
-                                        onClick={() => {
-                                            if (selectedInvoices.includes(inv.id)) {
-                                                setSelectedInvoices(prev => prev.filter(id => id !== inv.id))
-                                            } else {
-                                                setSelectedInvoices(prev => [...prev, inv.id])
-                                            }
-                                        }}
-                                        className={`group relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${selectedInvoices.includes(inv.id) ? 'bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
-                                    >
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex gap-4 items-center">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${selectedInvoices.includes(inv.id) ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-500'}`}>
-                                                    {selectedInvoices.includes(inv.id) ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-3 h-3 rounded-full border-2 border-gray-700" />}
+                            <ScrollArea className="max-h-[400px] pr-4">
+                                <div className="space-y-3">
+                                    {pendingInvoices.length === 0 ? (
+                                        <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-2xl text-gray-500">
+                                            No hay comprobantes pendientes para esta entidad.
+                                        </div>
+                                    ) : pendingInvoices.map(inv => (
+                                        <div
+                                            key={inv.id}
+                                            onClick={() => {
+                                                if (selectedInvoices.includes(inv.id)) {
+                                                    setSelectedInvoices(prev => prev.filter(id => id !== inv.id))
+                                                } else {
+                                                    setSelectedInvoices(prev => [...prev, inv.id])
+                                                }
+                                            }}
+                                            className={`group relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${selectedInvoices.includes(inv.id) ? 'bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
+                                        >
+                                            <div className="flex justify-between items-center">
+                                                <div className="flex gap-4 items-center">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${selectedInvoices.includes(inv.id) ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-500'}`}>
+                                                        {selectedInvoices.includes(inv.id) ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-3 h-3 rounded-full border-2 border-gray-700" />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-white">{inv.numero || 'Sin Número'}</p>
+                                                        <p className="text-xs text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-white">{inv.numero || 'Sin Número'}</p>
-                                                    <p className="text-xs text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
+                                                <div className="text-right">
+                                                    <p className="font-mono font-bold text-emerald-400">
+                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Saldo Pendiente</p>
                                                 </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-mono font-bold text-emerald-400">
-                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
-                                                </p>
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Saldo Pendiente</p>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
                         </div>
                     ) : (
                         <div className="space-y-6">
@@ -234,71 +255,73 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                 </Button>
                             </div>
 
-                            <div className="space-y-4">
-                                {instruments.map((ins, idx) => (
-                                    <div key={ins.id} className="p-5 bg-gray-900 border border-gray-800 rounded-2xl relative animate-in fade-in slide-in-from-left-4 duration-300">
-                                        {instruments.length > 1 && (
-                                            <button
-                                                onClick={() => handleRemoveInstrument(ins.id)}
-                                                className="absolute top-4 right-4 text-gray-600 hover:text-red-500 transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase text-gray-500 font-bold">Medio</Label>
-                                                <select
-                                                    value={ins.metodo}
-                                                    onChange={(e) => updateInstrument(ins.id, { metodo: e.target.value })}
-                                                    className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-xs focus:border-emerald-500/50 outline-none"
+                            <ScrollArea className="max-h-[400px] pr-4">
+                                <div className="space-y-4">
+                                    {instruments.map((ins, idx) => (
+                                        <div key={ins.id} className="p-5 bg-gray-900 border border-gray-800 rounded-2xl relative animate-in fade-in slide-in-from-left-4 duration-300">
+                                            {instruments.length > 1 && (
+                                                <button
+                                                    onClick={() => handleRemoveInstrument(ins.id)}
+                                                    className="absolute top-4 right-4 text-gray-600 hover:text-red-500 transition-colors"
                                                 >
-                                                    <option value="efectivo">Efectivo</option>
-                                                    <option value="transferencia">Transferencia</option>
-                                                    <option value="cheque_terceros">Cheque (Terceros)</option>
-                                                    <option value="cheque_propio">Cheque (Propio)</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase text-gray-500 font-bold">Monto</Label>
-                                                <div className="relative">
-                                                    <Banknote className="absolute left-3 top-2.5 w-3 h-3 text-gray-600" />
-                                                    <Input
-                                                        type="number"
-                                                        value={ins.monto}
-                                                        onChange={(e) => updateInstrument(ins.id, { monto: Number(e.target.value) })}
-                                                        className="bg-gray-950 border-gray-800 pl-8 h-9 text-sm font-bold text-emerald-400"
-                                                    />
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase text-gray-500 font-bold">Medio</Label>
+                                                    <select
+                                                        value={ins.metodo}
+                                                        onChange={(e) => updateInstrument(ins.id, { metodo: e.target.value })}
+                                                        className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-xs focus:border-emerald-500/50 outline-none"
+                                                    >
+                                                        <option value="efectivo">Efectivo</option>
+                                                        <option value="transferencia">Transferencia</option>
+                                                        <option value="cheque_terceros">Cheque (Terceros)</option>
+                                                        <option value="cheque_propio">Cheque (Propio)</option>
+                                                    </select>
                                                 </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase text-gray-500 font-bold">Disponibilidad / Cobro</Label>
-                                                <div className="relative">
-                                                    <Calendar className="absolute left-3 top-2.5 w-3 h-3 text-gray-600" />
-                                                    <Input
-                                                        type="date"
-                                                        value={ins.fecha_disponibilidad}
-                                                        onChange={(e) => updateInstrument(ins.id, { fecha_disponibilidad: e.target.value })}
-                                                        className="bg-gray-950 border-gray-800 pl-8 h-9 text-xs"
-                                                    />
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase text-gray-500 font-bold">Monto</Label>
+                                                    <div className="relative">
+                                                        <Banknote className="absolute left-3 top-2.5 w-3 h-3 text-gray-600" />
+                                                        <Input
+                                                            type="number"
+                                                            value={ins.monto}
+                                                            onChange={(e) => updateInstrument(ins.id, { monto: Number(e.target.value) })}
+                                                            className="bg-gray-950 border-gray-800 pl-8 h-9 text-sm font-bold text-emerald-400"
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase text-gray-500 font-bold">Banco / Nº Ref</Label>
-                                                <div className="relative">
-                                                    <Hash className="absolute left-3 top-2.5 w-3 h-3 text-gray-600" />
-                                                    <Input
-                                                        placeholder="Varios / 00000000"
-                                                        value={ins.referencia || ''}
-                                                        onChange={(e) => updateInstrument(ins.id, { referencia: e.target.value })}
-                                                        className="bg-gray-950 border-gray-800 pl-8 h-9 text-xs font-mono"
-                                                    />
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase text-gray-500 font-bold">Disponibilidad</Label>
+                                                    <div className="relative">
+                                                        <Calendar className="absolute left-3 top-2.5 w-3 h-3 text-gray-600" />
+                                                        <Input
+                                                            type="date"
+                                                            value={ins.fecha_disponibilidad}
+                                                            onChange={(e) => updateInstrument(ins.id, { fecha_disponibilidad: e.target.value })}
+                                                            className="bg-gray-950 border-gray-800 pl-8 h-9 text-xs"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase text-gray-500 font-bold">Banco / Nº Ref</Label>
+                                                    <div className="relative">
+                                                        <Hash className="absolute left-3 top-2.5 w-3 h-3 text-gray-600" />
+                                                        <Input
+                                                            placeholder="Varios / 00000000"
+                                                            value={ins.referencia || ''}
+                                                            onChange={(e) => updateInstrument(ins.id, { referencia: e.target.value })}
+                                                            className="bg-gray-950 border-gray-800 pl-8 h-9 text-xs font-mono"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
                         </div>
                     )}
                 </div>
@@ -324,8 +347,11 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <Button variant="ghost" onClick={onClose} disabled={loading} className="text-gray-500 hover:text-white">
+                                Cancelar
+                            </Button>
                             {step === 2 && (
-                                <Button variant="ghost" onClick={() => setStep(1)} className="text-gray-400">
+                                <Button variant="outline" onClick={() => setStep(1)} disabled={loading} className="border-gray-800 text-gray-400">
                                     <ChevronLeft className="w-4 h-4 mr-2" /> Atrás
                                 </Button>
                             )}
@@ -340,7 +366,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                             ) : (
                                 <Button
                                     onClick={handleConfirm}
-                                    disabled={totalInstruments === 0 || loading}
+                                    disabled={totalInstruments === 0 || loading || Math.abs(difference) > 0.01}
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 shadow-xl shadow-emerald-500/20"
                                 >
                                     {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
