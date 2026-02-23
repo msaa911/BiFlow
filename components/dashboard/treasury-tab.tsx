@@ -171,6 +171,10 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                         <BookUser className="w-3.5 h-3.5 mr-2" />
                         Proveedores
                     </TabsTrigger>
+                    <TabsTrigger value="historial" className="rounded-lg">
+                        <History className="w-3.5 h-3.5 mr-2" />
+                        Historial
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="cashflow">
@@ -178,11 +182,11 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                 </TabsContent>
 
                 <TabsContent value="ingresos" className="space-y-6">
-                    <InvoicePanel orgId={orgId} invoices={invoices} loading={loading} defaultView="AR" onRefresh={fetchData} />
+                    <InvoicePanel orgId={orgId} invoices={invoices} loading={loading} defaultView="AR" onRefresh={fetchData} hideViewSelector={true} />
                 </TabsContent>
 
                 <TabsContent value="egresos" className="space-y-6">
-                    <InvoicePanel orgId={orgId} invoices={invoices} loading={loading} defaultView="AP" onRefresh={fetchData} />
+                    <InvoicePanel orgId={orgId} invoices={invoices} loading={loading} defaultView="AP" onRefresh={fetchData} hideViewSelector={true} />
                 </TabsContent>
 
                 <TabsContent value="clientes">
