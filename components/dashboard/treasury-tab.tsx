@@ -9,7 +9,8 @@ import { Wallet, TrendingUp, TrendingDown, Calculator, Briefcase, Users } from '
 import { TreasuryEngine } from '@/lib/treasury-engine'
 import { CashFlowHub } from './cash-flow-hub'
 import { SuppliersTab } from './suppliers-tab'
-import { Shield, BookUser } from 'lucide-react'
+import { TreasuryHistory } from './treasury-history'
+import { Shield, BookUser, History } from 'lucide-react'
 
 interface TreasuryTabProps {
     orgId: string
@@ -190,6 +191,10 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
 
                 <TabsContent value="proveedores">
                     <SuppliersTab orgId={orgId} category="proveedor" />
+                </TabsContent>
+
+                <TabsContent value="historial">
+                    <TreasuryHistory orgId={orgId} />
                 </TabsContent>
 
                 <TabsContent value="advisor">
