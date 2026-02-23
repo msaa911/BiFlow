@@ -177,30 +177,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                     </Badge>
                                 )}
                             </div>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                <Input
-                                    placeholder="Buscar por Nombre o CUIT..."
-                                    className="bg-gray-900 border-gray-800 pl-10"
-                                    onChange={async (e) => {
-                                        const term = e.target.value
-                                        if (term.length < 2) return
-                                        setSearchingSocio(true)
-                                        const supabase = createClient()
-                                        const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
-
-                                        const { data } = await supabase
-                                            .from('entidades')
-                                            .select('id, razon_social, cuit, categoria')
-                                            .eq('organization_id', orgId)
-                                            .in('categoria', [targetCat, 'ambos']) // Filtrado estricto en búsqueda
-                                            .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
-                                            .limit(10)
-                                        if (data) setSocios(data)
-                                        setSearchingSocio(false)
-                                    }}
-                                />
-                            </div>
                             <Select
                                 value={formData.socio_id}
                                 onValueChange={(v) => {
@@ -219,18 +195,24 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                     setFormData({ ...formData, socio_id: v })
                                 }}
                             >
-                                <SelectTrigger className="bg-gray-950 border-gray-800 mt-2 hover:border-emerald-500/50 transition-colors">
+                                <SelectTrigger className="bg-gray-900 border-gray-800 hover:border-emerald-500/50 transition-colors h-11">
                                     <SelectValue placeholder={`Seleccionar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`} />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-[300px]">
                                     {searchingSocio ? (
-                                        <div className="p-2 text-center text-xs text-gray-500">Buscando...</div>
+                                        <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                            Buscando...
+                                        </div>
                                     ) : socios.length === 0 ? (
-                                        <div className="p-2 text-center text-xs text-gray-500 font-medium">No se encontraron resultados.</div>
+                                        <div className="p-4 text-center text-xs text-gray-500 font-medium">No se encontraron resultados.</div>
                                     ) : (
                                         socios.map(s => (
-                                            <SelectItem key={s.id} value={s.id}>
-                                                {s.razon_social} <span className="text-[10px] opacity-40">({s.cuit})</span>
+                                            <SelectItem key={s.id} value={s.id} className="focus:bg-emerald-600 focus:text-white cursor-pointer">
+                                                <div className="flex flex-col py-1">
+                                                    <span className="font-semibold">{s.razon_social}</span>
+                                                    <span className="text-[10px] opacity-50 font-mono">{s.cuit}</span>
+                                                </div>
                                             </SelectItem>
                                         ))
                                     )}
