@@ -149,42 +149,49 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             console.log('[Submit] Enviando datos a Supabase...', {
                 entidad_id: formData.socio_id,
                 tipo: type,
-                monto: formData.monto_total
+                monto: formData.monto_total,
+                condicion: formData.condicion
             })
+
+            const upsertData = {
+                id: invoice?.id,
+                organization_id: orgId,
+                entidad_id: formData.socio_id,
+                cuit_socio: selectedSocio.cuit,
+                razon_social_socio: selectedSocio.razon_social,
+                nombre_entidad: selectedSocio.razon_social, // Redundancia para compatibilidad
+                tipo: type,
+                numero: formData.numero,
+                monto_total: formData.monto_total,
+                monto_pendiente: (invoice?.estado === 'pagado' || formData.condicion === 'contado') ? 0 : formData.monto_total,
+                fecha_emision: formData.fecha_emision,
+                fecha_vencimiento: formData.fecha_vencimiento,
+                estado: formData.condicion === 'contado' ? 'pagado' : (invoice?.estado || 'pendiente'),
+                banco: formData.banco || null,
+                numero_cheque: formData.numero_cheque || null,
+                condicion: formData.condicion,
+                metodo_pago: formData.metodo_pago,
+                concepto: formData.concepto || null,
+                moneda: 'ARS'
+            }
 
             const { error } = await supabase
                 .from('comprobantes')
-                .upsert({
-                    id: invoice?.id,
-                    organization_id: orgId,
-                    entidad_id: formData.socio_id,
-                    cuit_socio: selectedSocio.cuit,
-                    razon_social_socio: selectedSocio.razon_social,
-                    tipo: type,
-                    numero: formData.numero,
-                    monto_total: formData.monto_total,
-                    monto_pendiente: (invoice?.estado === 'pagado' || formData.condicion === 'contado') ? 0 : formData.monto_total,
-                    fecha_emision: formData.fecha_emision,
-                    fecha_vencimiento: formData.fecha_vencimiento,
-                    estado: formData.condicion === 'contado' ? 'pagado' : (invoice?.estado || 'pendiente'),
-                    banco: formData.banco,
-                    numero_cheque: formData.numero_cheque,
-                    condicion: formData.condicion,
-                    metodo_pago: formData.metodo_pago,
-                    concepto: formData.concepto
-                })
+                .upsert(upsertData)
 
             if (error) {
                 console.error('[Submit] Error de Supabase:', error)
-                throw error
+                toast.error(`Error de base de datos: ${error.message} (${error.code})`)
+                setLoading(false)
+                return
             }
 
             toast.success(invoice ? 'Comprobante actualizado' : 'Comprobante registrado con éxito')
             onSuccess()
             onClose()
         } catch (err: any) {
-            console.error('Error saving invoice:', err)
-            toast.error('Error al guardar: ' + err.message)
+            console.error('[Submit] Error crítico en handleSubmit:', err)
+            toast.error('Error crítico al guardar: ' + (err.message || 'Error desconocido'))
         } finally {
             setLoading(false)
         }
