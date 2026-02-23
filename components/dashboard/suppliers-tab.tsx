@@ -66,20 +66,37 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         s.cuit.includes(searchTerm)
     )
 
-    const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`¿Estás seguro de que deseas eliminar a "${name}"? Esta acción no se puede deshacer.`)) {
+    const handleDelete = async (id: string, name: string, currentCategory: string) => {
+        const actionLabel = category === 'cliente' ? 'cliente' : 'proveedor'
+        const otherCategory = category === 'cliente' ? 'proveedor' : 'cliente'
+
+        if (!confirm(`¿Estás seguro de que deseas eliminar a "${name}" como ${actionLabel}? Esta acción no se puede deshacer.`)) {
             return
         }
 
         try {
-            const { error } = await supabase
-                .from('entidades')
-                .delete()
-                .eq('id', id)
+            if (currentCategory === 'ambos') {
+                // Downgrade category instead of deleting
+                console.log(`[Delete] Downgrading entity ${id} from 'ambos' to '${otherCategory}'`)
+                const { error } = await supabase
+                    .from('entidades')
+                    .update({ categoria: otherCategory })
+                    .eq('id', id)
 
-            if (error) throw error
+                if (error) throw error
+                toast.success(`Ahora "${name}" ya no es ${actionLabel}, pero sigue guardado como ${otherCategory}`)
+            } else {
+                // Physical delete
+                console.log(`[Delete] Physical delete for entity ${id}`)
+                const { error } = await supabase
+                    .from('entidades')
+                    .delete()
+                    .eq('id', id)
 
-            toast.success('Socio eliminado con éxito')
+                if (error) throw error
+                toast.success(`${name} eliminado con éxito`)
+            }
+
             fetchSocios()
         } catch (err: any) {
             console.error('Error deleting entity:', err)
@@ -468,7 +485,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8 text-gray-500 hover:text-red-400"
-                                                onClick={() => handleDelete(supplier.id, supplier.razon_social)}
+                                                onClick={() => handleDelete(supplier.id, supplier.razon_social, supplier.categoria)}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
