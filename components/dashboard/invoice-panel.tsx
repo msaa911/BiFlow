@@ -258,6 +258,39 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 data={importData}
                 orgId={orgId}
                 type={view === 'AR' ? 'factura_venta' : 'factura_compra'}
+                onConfirm={async (validData) => {
+                    const loadingToast = toast.loading('Guardando comprobantes...')
+                    try {
+                        const payload = validData.map(inv => ({
+                            organization_id: orgId,
+                            entidad_id: inv.entidad_id,
+                            tipo: view === 'AR' ? 'factura_venta' : 'factura_compra',
+                            fecha_emision: inv.fecha_emision,
+                            fecha_vencimiento: inv.fecha_vencimiento || inv.fecha_emision,
+                            numero: inv.numero,
+                            monto_total: inv.monto_total,
+                            monto_pendiente: inv.monto_total,
+                            estado: 'pendiente',
+                            condicion: inv.condicion || 'cta_cte',
+                            metodo_pago: inv.metodo_pago || 'a_convenir',
+                            razon_social_socio: inv.razon_social_socio,
+                            cuit_socio: inv.cuit_socio
+                        }))
+
+                        const { error } = await supabase.from('comprobantes').insert(payload)
+                        if (error) throw error
+                        toast.success(`${validData.length} comprobantes importados`)
+                        onRefresh()
+                    } catch (err: any) {
+                        toast.error('Error al importar: ' + err.message)
+                        throw err
+                    } finally {
+                        toast.dismiss(loadingToast)
+                    }
+                }}
+                onRowUpdate={(updatedRow) => {
+                    setImportData(prev => prev.map(row => row.rowNum === updatedRow.rowNum ? updatedRow : row))
+                }}
                 onSuccess={() => {
                     setIsImportPreviewOpen(false)
                     onRefresh()
