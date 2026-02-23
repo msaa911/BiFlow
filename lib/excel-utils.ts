@@ -131,7 +131,7 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
 
                     const rawCuit = getValByRegex(/cuit|cuil|id|identificacion/i)
                     const cleanCuit = rawCuit.replace(/[^\d]/g, '')
-                    const razonSocial = getValByRegex(/razon|social|nombre|empresa|proveedor|denominacion|cliente/i)
+                    const razonSocial = getValByRegex(/cliente|proveedor|razon|social|nombre|empresa|denominacion/i)
 
                     const itemErrors: string[] = []
                     if (!razonSocial) itemErrors.push('Falta Razón Social')
@@ -166,27 +166,61 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
         reader.readAsArrayBuffer(file)
     })
 }
+
 export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra') {
-    const ws = XLSX.utils.json_to_sheet([
+    const isVenta = type === 'factura_venta'
+    const entityLabel = isVenta ? 'Cliente' : 'Proveedor'
+
+    // Filas de ejemplo que cubren todos los medios de pago
+    const rows = isVenta ? [
         {
             'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
             'Fecha Vencimiento': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
-            'Socio (Nombre o CUIT)': 'ACME S.A.',
-            'CUIT Socio': '30-12345678-9',
+            'Cliente (Nombre o CUIT)': 'CLIENTE EJEMPLO S.A.',
+            'CUIT Cliente': '30-12345678-9',
             'Número Comprobante': '0001-00000001',
             'Concepto / Descripción': 'Venta de mercadería',
             'Monto Total': 150000.50,
             'Condición (Contado/Cta Cte)': 'Cuenta Corriente',
             'Medio de Pago': 'Transferencia',
             'Banco (Opcional)': 'Banco Galicia',
-            'Número Cheque (Opcional)': '12345678'
-        }
-    ])
+            'Número de Instrumento (Opcional)': 'TRANSF-123'
+        },
+        { 'Medio de Pago': 'Efectivo (Indica Condición: Contado)' },
+        { 'Medio de Pago': 'Transferencia' },
+        { 'Medio de Pago': 'Tarjeta de Débito' },
+        { 'Medio de Pago': 'Tarjeta de Crédito' },
+        { 'Medio de Pago': 'Cheque' },
+        { 'Medio de Pago': 'A convenir' }
+    ] : [
+        {
+            'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
+            'Fecha Vencimiento': new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
+            'Proveedor (Nombre o CUIT)': 'PROVEEDOR LOGISTICA S.R.L.',
+            'CUIT Proveedor': '30-44556677-8',
+            'Número Comprobante': '0005-00012345',
+            'Concepto / Descripción': 'Flete y distribución',
+            'Monto Total': 85000.00,
+            'Condición (Contado/Cta Cte)': 'Cuenta Corriente',
+            'Medio de Pago': 'Cheque Propio',
+            'Banco (Opcional)': 'Banco Nación',
+            'Número de Instrumento (Opcional)': 'CHQ-998877'
+        },
+        { 'Medio de Pago': 'Efectivo' },
+        { 'Medio de Pago': 'Transferencia' },
+        { 'Medio de Pago': 'Tarjeta de Débito' },
+        { 'Medio de Pago': 'Tarjeta de Crédito' },
+        { 'Medio de Pago': 'Cheque Propio' },
+        { 'Medio de Pago': 'Cheque de Terceros (Endosado)' },
+        { 'Medio de Pago': 'Retenciones Impositivas' },
+        { 'Medio de Pago': 'A convenir' }
+    ]
 
+    const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Facturas')
+    XLSX.utils.book_append_sheet(wb, ws, 'Comprobantes')
 
-    const prefix = type === 'factura_venta' ? 'ingresos' : 'egresos'
+    const prefix = isVenta ? 'ingresos' : 'egresos'
     const filename = `plantilla_biflow_${prefix}.xlsx`
     XLSX.writeFile(wb, filename)
 }
@@ -228,16 +262,20 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                     const fechaEmision = getValByRegex(/fecha.*emision|fecha.*factura|emision/i)
                     const fechaVencimiento = getValByRegex(/fecha.*vencimiento|vencimiento|vence/i)
                     const cuit = getValByRegex(/cuit|cuil|id|identificacion/i).replace(/[^\d]/g, '')
-                    const razonSocial = getValByRegex(/socio|razon|social|nombre|cliente|proveedor/i)
+                    const razonSocial = getValByRegex(/cliente|proveedor|socio|razon|social|nombre/i)
                     const numero = getValByRegex(/numero|nro|n°|factura|comprobante/i)
-                    const monto = parseFloat(getValByRegex(/monto|total|importe|valor/i).replace(/[^\d.,]/g, '').replace(',', '.'))
+                    const montoRaw = getValByRegex(/monto|total|importe|valor/i)
+                    const monto = parseFloat(montoRaw.replace(/[^\d.,]/g, '').replace(',', '.'))
 
                     const condicionRaw = getValByRegex(/condicion|pago|venta|compra/i).toLowerCase()
                     const condicion = (condicionRaw.includes('contado') || condicionRaw === 'efectivo') ? 'contado' : 'cuenta_corriente'
 
+                    // Ignorar filas que sean solo ejemplos (sin número de factura ni monto)
+                    if (!numero && isNaN(monto)) return
+
                     const itemErrors: string[] = []
                     if (!fechaEmision) itemErrors.push('Falta Fecha de Emisión')
-                    if (!cuit && !razonSocial) itemErrors.push('Falta Socio (Nombre o CUIT)')
+                    if (!cuit && !razonSocial) itemErrors.push('Falta Cliente/Proveedor')
                     if (!numero) itemErrors.push('Falta Número de Comprobante')
                     if (isNaN(monto)) itemErrors.push('Monto inválido')
 
@@ -253,7 +291,7 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                         metodo_pago: getValByRegex(/metodo|medio|pago|instrumento/i),
                         concepto: getValByRegex(/concepto|descripcion|detalle/i),
                         banco: getValByRegex(/banco|entidad/i),
-                        numero_cheque: getValByRegex(/cheque|nro.*cheque/i),
+                        numero_cheque: getValByRegex(/instrumento|cheque|nro.*cheque/i),
                         rowNum,
                         errors: itemErrors,
                         isValid: itemErrors.length === 0
