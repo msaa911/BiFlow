@@ -23,6 +23,13 @@ export function AIAdvisor() {
     const [isLoading, setIsLoading] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
 
+    // Listener para apertura externa desde el Header
+    useEffect(() => {
+        const handleToggle = () => setIsOpen(prev => !prev)
+        window.addEventListener('toggle-biflow-ai', handleToggle)
+        return () => window.removeEventListener('toggle-biflow-ai', handleToggle)
+    }, [])
+
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -30,6 +37,7 @@ export function AIAdvisor() {
     }, [messages])
 
     const handleSend = async () => {
+        // ... (keep logic)
         if (!input.trim() || isLoading) return
 
         const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input }
@@ -56,23 +64,10 @@ export function AIAdvisor() {
         }
     }
 
-    if (!isOpen) {
-        return (
-            <button
-                onClick={() => setIsOpen(true)}
-                className="fixed bottom-8 right-8 p-4 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl shadow-2xl shadow-emerald-500/20 transition-all hover:scale-110 z-50 group flex items-center gap-3"
-            >
-                <div className="relative">
-                    <Bot className="w-6 h-6" />
-                    <span className="absolute top-0 right-0 w-2 h-2 bg-white rounded-full border-2 border-emerald-500 animate-pulse"></span>
-                </div>
-                <span className="font-bold text-sm pr-2">BiFLOW AI</span>
-            </button>
-        )
-    }
+    if (!isOpen) return null
 
     return (
-        <div className="fixed bottom-8 right-8 w-96 max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-6rem)] bg-gray-950 border border-gray-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-50 animate-in fade-in zoom-in duration-300">
+        <div className="fixed bottom-24 right-8 w-96 max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-10rem)] bg-gray-950 border border-gray-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-50 animate-in fade-in zoom-in duration-300">
             {/* Header */}
             <div className="p-4 border-b border-gray-800 bg-emerald-500/5 flex items-center justify-between">
                 <div className="flex items-center gap-3">

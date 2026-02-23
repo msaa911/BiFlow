@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Search, Menu } from 'lucide-react'
+import { Bell, Search, Menu, Bot } from 'lucide-react'
 
 export function Header() {
     return (
@@ -25,6 +25,18 @@ export function Header() {
             </div>
 
             <div className="flex items-center gap-4">
+                <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('toggle-biflow-ai'))}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-full border border-emerald-500/20 transition-all group shadow-lg shadow-emerald-500/5"
+                >
+                    <Bot className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-tight hidden sm:inline">BiFlow AI</span>
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                </button>
+
                 <button className="relative p-2 text-gray-400 hover:text-white transition-colors">
                     <Bell className="h-5 w-5" />
                     <span className="absolute top-2 right-2 h-2 w-2 bg-emerald-500 rounded-full border border-gray-900" />
