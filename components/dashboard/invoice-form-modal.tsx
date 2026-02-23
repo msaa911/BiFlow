@@ -177,47 +177,58 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                     </Badge>
                                 )}
                             </div>
-                            <Select
-                                value={formData.socio_id}
-                                onValueChange={(v) => {
-                                    const selected = socios.find(s => s.id === v)
-                                    if (selected) {
-                                        // Validación cruzada de categoría
-                                        const isVenta = type === 'factura_venta'
-                                        const needsUpdate = isVenta
-                                            ? selected.categoria === 'proveedor'
-                                            : selected.categoria === 'cliente'
+                            <div className="space-y-2 relative">
+                                <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 focus-within:border-emerald-500/50 transition-colors">
+                                    <Search className="w-4 h-4 text-gray-500" />
+                                    <Input
+                                        placeholder={`Buscar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`}
+                                        className="bg-transparent border-none focus-visible:ring-0 h-11 px-0"
+                                        onChange={async (e) => {
+                                            const term = e.target.value
+                                            const supabase = createClient()
+                                            const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
 
-                                        if (needsUpdate) {
-                                            toast.info(`El socio pasará a ser categoría 'Ambos'`)
-                                        }
-                                    }
-                                    setFormData({ ...formData, socio_id: v })
-                                }}
-                            >
-                                <SelectTrigger className="bg-gray-900 border-gray-800 hover:border-emerald-500/50 transition-colors h-11">
-                                    <SelectValue placeholder={`Seleccionar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`} />
-                                </SelectTrigger>
-                                <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-[300px]">
+                                            setSearchingSocio(true)
+                                            const { data } = await supabase
+                                                .from('entidades')
+                                                .select('id, razon_social, cuit, categoria')
+                                                .eq('organization_id', orgId)
+                                                .in('categoria', [targetCat, 'ambos'])
+                                                .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
+                                                .limit(10)
+
+                                            if (data) setSocios(data)
+                                            setSearchingSocio(false)
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Lista de resultados */}
+                                <div className="mt-1 bg-gray-900 border border-gray-800 rounded-lg overflow-hidden max-h-[200px] overflow-y-auto">
                                     {searchingSocio ? (
                                         <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
                                             <Loader2 className="w-3 h-3 animate-spin" />
                                             Buscando...
                                         </div>
                                     ) : socios.length === 0 ? (
-                                        <div className="p-4 text-center text-xs text-gray-500 font-medium">No se encontraron resultados.</div>
+                                        <div className="p-4 text-center text-xs text-gray-500">No se encontraron resultados.</div>
                                     ) : (
                                         socios.map(s => (
-                                            <SelectItem key={s.id} value={s.id} className="focus:bg-emerald-600 focus:text-white cursor-pointer">
-                                                <div className="flex flex-col py-1">
-                                                    <span className="font-semibold">{s.razon_social}</span>
-                                                    <span className="text-[10px] opacity-50 font-mono">{s.cuit}</span>
+                                            <div
+                                                key={s.id}
+                                                onClick={() => setFormData({ ...formData, socio_id: s.id })}
+                                                className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.socio_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-white leading-none mb-1">{s.razon_social}</span>
+                                                    <span className="text-[10px] text-gray-500 font-mono tracking-tight">{s.cuit}</span>
                                                 </div>
-                                            </SelectItem>
+                                                {formData.socio_id === s.id && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
+                                            </div>
                                         ))
                                     )}
-                                </SelectContent>
-                            </Select>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="space-y-2">
