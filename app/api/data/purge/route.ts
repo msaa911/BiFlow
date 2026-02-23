@@ -24,6 +24,26 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, message: 'Todos los datos han sido eliminados.' })
         }
 
+        if (mode === 'delete_clients') {
+            const { error } = await supabase
+                .from('entidades')
+                .delete()
+                .eq('organization_id', orgId)
+                .eq('categoria', 'cliente')
+            if (error) throw error
+            return NextResponse.json({ success: true, message: 'Todos los clientes han sido eliminados.' })
+        }
+
+        if (mode === 'delete_suppliers') {
+            const { error } = await supabase
+                .from('entidades')
+                .delete()
+                .eq('organization_id', orgId)
+                .eq('categoria', 'proveedor')
+            if (error) throw error
+            return NextResponse.json({ success: true, message: 'Todos los proveedores han sido eliminados.' })
+        }
+
         // 1. Delete transactions with null archivo_importacion_id (orphans that cause duplicates)
         const { error: transErr } = await supabase
             .from('transacciones')

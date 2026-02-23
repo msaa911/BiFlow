@@ -192,6 +192,54 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         }
     }
 
+    const handleDeleteAllClients = async () => {
+        if (!confirm('¡ATENCIÓN! Esto eliminará TODOS los clientes de tu organización. Esta acción NO se puede deshacer. ¿Seguro?')) return
+        if (!confirm('Confirmación final: ¿Realmente quieres borrar todos los clientes?')) return
+
+        setSaving(true)
+        try {
+            const res = await fetch('/api/data/purge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'delete_clients' })
+            })
+            if (res.ok) {
+                alert('Todos los clientes han sido eliminados.')
+            } else {
+                const err = await res.json()
+                alert('Error al eliminar clientes: ' + (err.details || err.error))
+            }
+        } catch (err) {
+            alert('Error de conexión.')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleDeleteAllSuppliers = async () => {
+        if (!confirm('¡ATENCIÓN! Esto eliminará TODOS los proveedores de tu organización. Esta acción NO se puede deshacer. ¿Seguro?')) return
+        if (!confirm('Confirmación final: ¿Realmente quieres borrar todos los proveedores?')) return
+
+        setSaving(true)
+        try {
+            const res = await fetch('/api/data/purge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'delete_suppliers' })
+            })
+            if (res.ok) {
+                alert('Todos los proveedores han sido eliminados.')
+            } else {
+                const err = await res.json()
+                alert('Error al eliminar proveedores: ' + (err.details || err.error))
+            }
+        } catch (err) {
+            alert('Error de conexión.')
+        } finally {
+            setSaving(false)
+        }
+    }
+
     const handleSave = async () => {
         setSaving(true)
         setSuccess(false)
@@ -578,6 +626,40 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                             {saving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <RotateCcw className="mr-2 h-4 w-4" />}
                             REINICIAR TODO
                         </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col items-start justify-between gap-4 p-4 bg-blue-500/5 rounded-xl border border-blue-500/20">
+                            <div className="space-y-1">
+                                <p className="text-white font-bold text-sm uppercase">Purgar Clientes</p>
+                                <p className="text-[10px] text-blue-400/80">Elimina exclusivamente la base de datos de Clientes.</p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={handleDeleteAllClients}
+                                disabled={saving}
+                                className="w-full border-blue-500/20 hover:bg-blue-500/10 text-blue-400 font-bold text-xs"
+                            >
+                                {saving ? <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" /> : <Trash2 className="mr-2 h-3.5 w-3.5" />}
+                                ELIMINAR CLIENTES
+                            </Button>
+                        </div>
+
+                        <div className="flex flex-col items-start justify-between gap-4 p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/20">
+                            <div className="space-y-1">
+                                <p className="text-white font-bold text-sm uppercase">Purgar Proveedores</p>
+                                <p className="text-[10px] text-emerald-400/80">Elimina exclusivamente la base de datos de Proveedores.</p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={handleDeleteAllSuppliers}
+                                disabled={saving}
+                                className="w-full border-emerald-500/20 hover:bg-emerald-500/10 text-emerald-400 font-bold text-xs"
+                            >
+                                {saving ? <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" /> : <Trash2 className="mr-2 h-3.5 w-3.5" />}
+                                ELIMINAR PROVEEDORES
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
