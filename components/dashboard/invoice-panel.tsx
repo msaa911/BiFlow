@@ -163,7 +163,8 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                         <tr>
                             <th className="px-6 py-4">F. Vencimiento</th>
                             <th className="px-6 py-4">Socio / CUIT</th>
-                            <th className="px-6 py-4">Número</th>
+                            <th className="px-6 py-4">Concepto / Condición</th>
+                            <th className="px-6 py-4">M. Pago</th>
                             <th className="px-6 py-4 text-right">Monto</th>
                             <th className="px-6 py-4 text-center">Estado</th>
                             <th className="px-6 py-4 text-center">Acciones</th>
@@ -188,7 +189,19 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                         <span className="text-xs text-gray-400 font-mono tracking-tighter">{inv.cuit_socio}</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-gray-500 font-mono text-xs">{inv.numero || '---'}</td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-col">
+                                        <span className="text-white font-medium truncate max-w-[200px]">{inv.concepto || (inv.numero || 'Operación')}</span>
+                                        <Badge variant="outline" className={`w-fit text-[9px] mt-1 ${inv.condicion === 'contado' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-800 text-gray-400'}`}>
+                                            {inv.condicion?.replace('_', ' ').toUpperCase() || 'CTA CTE'}
+                                        </Badge>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className="text-xs text-gray-400 uppercase font-medium">
+                                        {inv.metodo_pago?.replace('_', ' ') || '---'}
+                                    </span>
+                                </td>
                                 <td className={`px-6 py-4 text-right font-bold ${view === 'AR' ? 'text-emerald-400' : 'text-red-400'}`}>
                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_total)}
                                 </td>

@@ -31,7 +31,10 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
         fecha_emision: new Date().toISOString().split('T')[0],
         fecha_vencimiento: new Date().toISOString().split('T')[0],
         banco: '',
-        numero_cheque: ''
+        numero_cheque: '',
+        condicion: 'cuenta_corriente',
+        metodo_pago: '',
+        concepto: ''
     })
 
     useEffect(() => {
@@ -78,7 +81,10 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 fecha_emision: invoice.fecha_emision || new Date().toISOString().split('T')[0],
                 fecha_vencimiento: invoice.fecha_vencimiento || new Date().toISOString().split('T')[0],
                 banco: invoice.banco || '',
-                numero_cheque: invoice.numero_cheque || ''
+                numero_cheque: invoice.numero_cheque || '',
+                condicion: invoice.condicion || 'cuenta_corriente',
+                metodo_pago: invoice.metodo_pago || '',
+                concepto: invoice.concepto || ''
             })
         } else {
             // Reset for new invoice
@@ -89,7 +95,10 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 fecha_emision: new Date().toISOString().split('T')[0],
                 fecha_vencimiento: new Date().toISOString().split('T')[0],
                 banco: '',
-                numero_cheque: ''
+                numero_cheque: '',
+                condicion: 'cuenta_corriente',
+                metodo_pago: '',
+                concepto: ''
             })
         }
     }, [invoice, isOpen, orgId])
@@ -137,9 +146,12 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     monto_pendiente: invoice?.estado === 'pagado' ? 0 : formData.monto_total,
                     fecha_emision: formData.fecha_emision,
                     fecha_vencimiento: formData.fecha_vencimiento,
-                    estado: invoice?.estado || 'pendiente',
+                    estado: formData.condicion === 'contado' ? 'pagado' : (invoice?.estado || 'pendiente'),
                     banco: formData.banco,
-                    numero_cheque: formData.numero_cheque
+                    numero_cheque: formData.numero_cheque,
+                    condicion: formData.condicion,
+                    metodo_pago: formData.metodo_pago,
+                    concepto: formData.concepto
                 })
 
             if (error) throw error
@@ -231,14 +243,73 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                             </div>
                         </div>
 
+                        <div className="col-span-2 space-y-2">
+                            <Label className="text-xs uppercase text-gray-500 font-bold">Concepto / Operación Personalizada</Label>
+                            <Input
+                                placeholder={type === 'factura_venta' ? 'Ej: Venta de servicios de consultoría' : 'Ej: Compra de insumos de oficina'}
+                                value={formData.concepto}
+                                onChange={(e) => setFormData({ ...formData, concepto: e.target.value })}
+                                className="bg-gray-900 border-gray-800"
+                            />
+                        </div>
+
                         <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Número</Label>
+                            <Label className="text-xs uppercase text-gray-500 font-bold">Condición</Label>
+                            <Select
+                                value={formData.condicion}
+                                onValueChange={(v: any) => {
+                                    setFormData({
+                                        ...formData,
+                                        condicion: v,
+                                        fecha_vencimiento: v === 'contado' ? formData.fecha_emision : formData.fecha_vencimiento
+                                    })
+                                }}
+                            >
+                                <SelectTrigger className="bg-gray-900 border-gray-800">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                    <SelectItem value="contado">Contado</SelectItem>
+                                    <SelectItem value="cuenta_corriente">Cuenta Corriente</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs uppercase text-gray-500 font-bold">Medio de Pago</Label>
+                            <Select
+                                value={formData.metodo_pago}
+                                onValueChange={(v) => setFormData({ ...formData, metodo_pago: v })}
+                            >
+                                <SelectTrigger className="bg-gray-900 border-gray-800 px-3">
+                                    <SelectValue placeholder="Seleccionar..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                    <SelectItem value="efectivo">Efectivo</SelectItem>
+                                    <SelectItem value="transferencia">Transferencia</SelectItem>
+                                    <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
+                                    <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
+                                    {type === 'factura_compra' ? (
+                                        <>
+                                            <SelectItem value="cheque_propio">Cheque Propio</SelectItem>
+                                            <SelectItem value="cheque_terceros">Cheque de Terceros (Endosado)</SelectItem>
+                                            <SelectItem value="retenciones">Retenciones Impositivas</SelectItem>
+                                        </>
+                                    ) : (
+                                        <SelectItem value="cheque">Cheque</SelectItem>
+                                    )}
+                                    <SelectItem value="a_convenir">A convenir</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs uppercase text-gray-500 font-bold">Número de Factura</Label>
                             <Input
                                 placeholder="0001-00001234"
                                 value={formData.numero}
                                 onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
                                 className="bg-gray-900 border-gray-800"
-                                required
                             />
                         </div>
 
@@ -261,7 +332,14 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                 <Input
                                     type="date"
                                     value={formData.fecha_emision}
-                                    onChange={(e) => setFormData({ ...formData, fecha_emision: e.target.value })}
+                                    onChange={(e) => {
+                                        const newDate = e.target.value
+                                        setFormData({
+                                            ...formData,
+                                            fecha_emision: newDate,
+                                            fecha_vencimiento: formData.condicion === 'contado' ? newDate : formData.fecha_vencimiento
+                                        })
+                                    }}
                                     className="bg-gray-900 border-gray-800 pl-10 block w-full"
                                     required
                                 />
@@ -269,14 +347,17 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold text-emerald-400">Fecha Vencimiento</Label>
+                            <Label className={`text-xs uppercase text-gray-500 font-bold ${formData.condicion === 'contado' ? 'opacity-50' : 'text-emerald-400'}`}>
+                                Fecha Vencimiento
+                            </Label>
                             <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                                <Calendar className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${formData.condicion === 'contado' ? 'text-gray-600' : 'text-emerald-500'}`} />
                                 <Input
                                     type="date"
                                     value={formData.fecha_vencimiento}
+                                    disabled={formData.condicion === 'contado'}
                                     onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
-                                    className="bg-gray-900 border-emerald-500/30 pl-10 text-emerald-400"
+                                    className={`bg-gray-900 pl-10 ${formData.condicion === 'contado' ? 'border-gray-800 text-gray-500 opacity-50 cursor-not-allowed' : 'border-emerald-500/30 text-emerald-400'}`}
                                     required
                                 />
                             </div>
@@ -296,11 +377,11 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-xs uppercase text-gray-500 font-bold">Número de Cheque</Label>
+                            <Label className="text-xs uppercase text-gray-500 font-bold">Número de Instrumento</Label>
                             <div className="relative">
                                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                                 <Input
-                                    placeholder="8 dígitos"
+                                    placeholder="8 dígitos / Nº Transf."
                                     value={formData.numero_cheque}
                                     onChange={(e) => setFormData({ ...formData, numero_cheque: e.target.value })}
                                     className="bg-gray-900 border-gray-800 pl-10 font-mono"
