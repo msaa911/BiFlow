@@ -118,15 +118,20 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                 const results: any[] = []
                 json.forEach((row: any, index: number) => {
                     const rowNum = index + 2
+                    const keys = Object.keys(row)
 
-                    const getVal = (dataRow: any, opts: string[]) => {
-                        const k = opts.find(o => dataRow[o] !== undefined)
-                        return k ? String(dataRow[k]).trim() : ''
+                    const getValByRegex = (pattern: RegExp) => {
+                        const foundKey = keys.find(k => {
+                            // Normalize key: lowercase and remove accents
+                            const nk = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                            return pattern.test(nk)
+                        })
+                        return foundKey ? String(row[foundKey]).trim() : ''
                     }
 
-                    const rawCuit = getVal(row, ['CUIT', 'Cuit', 'cuit', 'CUIL', 'Identificación'])
+                    const rawCuit = getValByRegex(/cuit|cuil|id|identificacion/i)
                     const cleanCuit = rawCuit.replace(/[^\d]/g, '')
-                    const razonSocial = getVal(row, ['Razón Social / Nombre', 'Nombre', 'Razon Social', 'Empresa', 'Proveedor', 'Denominación', 'Cliente'])
+                    const razonSocial = getValByRegex(/razon|social|nombre|empresa|proveedor|denominacion|cliente/i)
 
                     const itemErrors: string[] = []
                     if (!razonSocial) itemErrors.push('Falta Razón Social')
@@ -137,15 +142,15 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                         id: `row-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
                         razon_social: razonSocial,
                         cuit: cleanCuit,
-                        cbu_habitual: getVal(row, ['CBU / CVU Habitual', 'CBU', 'CVU']),
-                        direccion: getVal(row, ['Dirección', 'Direccion', 'Calle']),
-                        localidad: getVal(row, ['Localidad', 'Ciudad']),
-                        departamento: getVal(row, ['Departamento', 'Partido']),
-                        provincia: getVal(row, ['Provincia', 'Estado']),
-                        codigo_postal: getVal(row, ['Código Postal', 'CP']),
-                        email: getVal(row, ['Email', 'Mail']),
-                        telefono_1: getVal(row, ['Teléfono', 'Telefono', 'Celular']),
-                        contacto: getVal(row, ['Contacto', 'Responsable']),
+                        cbu_habitual: getValByRegex(/cbu|cvu|cuenta|habitual/i),
+                        direccion: getValByRegex(/direccion|calle|domicilio/i),
+                        localidad: getValByRegex(/localidad|ciudad/i),
+                        departamento: getValByRegex(/departamento|partido/i),
+                        provincia: getValByRegex(/provincia|estado/i),
+                        codigo_postal: getValByRegex(/codigo|postal|cp/i),
+                        email: getValByRegex(/email|mail/i),
+                        telefono_1: getValByRegex(/telefono|tel|celular|cel/i),
+                        contacto: getValByRegex(/contacto|responsable/i),
                         rowNum,
                         errors: itemErrors,
                         isValid: itemErrors.length === 0
