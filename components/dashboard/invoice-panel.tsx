@@ -21,9 +21,10 @@ interface InvoicePanelProps {
     loading: boolean
     defaultView?: 'AR' | 'AP'
     onRefresh: () => void
+    hideViewSelector?: boolean
 }
 
-export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onRefresh }: InvoicePanelProps) {
+export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onRefresh, hideViewSelector = false }: InvoicePanelProps) {
     const [view, setView] = useState<'AR' | 'AP'>(defaultView)
     const [searchTerm, setSearchTerm] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -57,20 +58,22 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     return (
         <Card className="bg-gray-900 border-gray-800 overflow-hidden">
             <div className="p-6 border-b border-gray-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex bg-gray-800 p-1 rounded-lg">
-                    <button
-                        onClick={() => setView('AR')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'AR' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        Ingresos (Ventas)
-                    </button>
-                    <button
-                        onClick={() => setView('AP')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'AP' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        Egresos (Compras)
-                    </button>
-                </div>
+                {!hideViewSelector && (
+                    <div className="flex bg-gray-800 p-1 rounded-lg">
+                        <button
+                            onClick={() => setView('AR')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'AR' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            Ingresos (Ventas)
+                        </button>
+                        <button
+                            onClick={() => setView('AP')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'AP' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            Egresos (Compras)
+                        </button>
+                    </div>
+                )}
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <Button
