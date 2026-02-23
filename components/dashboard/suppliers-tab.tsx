@@ -219,7 +219,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 <div className="relative w-full md:w-72">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <Input
-                        placeholder={`Filtrar...`}
+                        placeholder={`Buscar ${category === 'cliente' ? 'cliente' : 'proveedor'}...`}
                         className="pl-10 bg-gray-900 border-gray-800 text-white h-9"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
