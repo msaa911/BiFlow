@@ -29,15 +29,15 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
     const [isProcessing, setIsProcessing] = useState(false)
     const [editingRowId, setEditingRowId] = useState<string | null>(null)
 
-    const validCount = data.filter(d => d.isValid).length
-    const errorCount = data.filter(d => d.errors?.length > 0).length
-    const warningCount = data.filter(d => d.isValid && d.warnings?.length > 0).length
+    const validCount = data.filter((d: any) => d.isValid).length
+    const errorCount = data.filter((d: any) => d.errors?.length > 0).length
+    const warningCount = data.filter((d: any) => d.isValid && d.warnings?.length > 0).length
 
     const handleConfirm = async () => {
         console.log('[PreviewModal] Confirm button CLICKED. Records to send:', data.filter(d => d.isValid).length)
         setIsProcessing(true)
         try {
-            const validData = data.filter(d => d.isValid)
+            const validData = data.filter((d: any) => d.isValid)
             console.log('[PreviewModal] Calling parent onConfirm function...')
             await onConfirm(validData)
             console.log('[PreviewModal] Parent onConfirm SUCCESS. Closing modal.')
