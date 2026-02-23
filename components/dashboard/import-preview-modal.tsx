@@ -28,6 +28,7 @@ interface ImportPreviewModalProps {
 export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm, onRowUpdate }: ImportPreviewModalProps) {
     const [isProcessing, setIsProcessing] = useState(false)
     const [editingRowId, setEditingRowId] = useState<string | null>(null)
+    const [editingRowBackup, setEditingRowBackup] = useState<any | null>(null)
 
     const validCount = data.filter((d: any) => d.isValid).length
     const errorCount = data.filter((d: any) => d.errors?.length > 0).length
@@ -71,10 +72,30 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
         const updatedRow = {
             ...row,
             ...updates,
-            warnings: [],
-            isValid: row.errors?.length === 0 // Still valid if no errors
+            // Clear warnings only if we are actually editing/saving
         }
         onRowUpdate(updatedRow)
+    }
+
+    const startEditing = (row: any) => {
+        setEditingRowBackup({ ...row })
+        setEditingRowId(row.id)
+    }
+
+    const cancelEditing = (rowId: string) => {
+        if (editingRowBackup && editingRowBackup.id === rowId) {
+            onRowUpdate(editingRowBackup)
+        }
+        setEditingRowId(null)
+        setEditingRowBackup(null)
+    }
+
+    const finishEditing = (row: any) => {
+        // Clear all warnings once corrected
+        const cleanRow = { ...row, warnings: [] }
+        onRowUpdate(cleanRow)
+        setEditingRowId(null)
+        setEditingRowBackup(null)
     }
 
     return (
@@ -163,12 +184,17 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                             )}
                                         </td>
 
-                                        <td className="px-4 py-4 text-gray-400">
+                                        <td className="px-4 py-4 text-gray-400 relative">
                                             {editingRowId === row.id ? (
-                                                <div className="bg-gray-900 p-4 rounded-xl border border-blue-500/30 w-80 shadow-2xl relative z-30">
-                                                    <div className="flex items-center gap-2 mb-3 text-blue-400">
-                                                        <MapPin className="h-4 w-4" />
-                                                        <span className="text-xs font-bold uppercase">Corregir Ubicación</span>
+                                                <div className="absolute right-0 top-full mt-2 bg-gray-900 p-5 rounded-2xl border border-blue-500/40 w-[450px] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-2 text-blue-400">
+                                                            <MapPin className="h-4 w-4" />
+                                                            <span className="text-xs font-bold uppercase tracking-wider">Corregir Ubicación</span>
+                                                        </div>
+                                                        <div className="bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] text-amber-500 font-bold">
+                                                            DATO ORIGINAL: {editingRowBackup?.localidad}, {editingRowBackup?.provincia}
+                                                        </div>
                                                     </div>
                                                     <HierarchicalLocationSelector
                                                         formData={{
@@ -178,6 +204,23 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                         }}
                                                         onChange={(updates) => handleLocationChange(row, updates)}
                                                     />
+                                                    <div className="grid grid-cols-2 gap-3 mt-6">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="border-gray-700 hover:bg-gray-800 text-gray-400 font-bold"
+                                                            onClick={() => cancelEditing(row.id)}
+                                                        >
+                                                            CANCELAR
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-blue-600 hover:bg-blue-500 text-white font-bold"
+                                                            onClick={() => finishEditing(row)}
+                                                        >
+                                                            LISTO
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <div className="flex flex-col">
@@ -203,13 +246,10 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                         <td className="px-4 py-4">
                                             <div className="flex flex-col items-center gap-1.5">
                                                 {editingRowId === row.id ? (
-                                                    <Button
-                                                        size="sm"
-                                                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-8 text-xs"
-                                                        onClick={() => setEditingRowId(null)}
-                                                    >
-                                                        <Check className="h-3.5 w-3.5 mr-1" /> FINALIZAR
-                                                    </Button>
+                                                    <div className="bg-blue-500/10 p-2 rounded-lg border border-blue-500/20 flex flex-col items-center gap-1">
+                                                        <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+                                                        <span className="text-[10px] text-blue-400 font-bold">EDITANDO...</span>
+                                                    </div>
                                                 ) : row.isValid ? (
                                                     <>
                                                         <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-bold px-2 py-0.5">
@@ -220,7 +260,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="h-6 text-[10px] text-amber-500 hover:text-amber-400 px-2 mt-1 font-bold group"
-                                                                onClick={() => setEditingRowId(row.id)}
+                                                                onClick={() => startEditing(row)}
                                                             >
                                                                 <Edit2 className="h-3 w-3 mr-1 transition-transform group-hover:scale-110" /> EDITAR
                                                             </Button>
@@ -237,7 +277,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                             variant="secondary"
                                                             size="sm"
                                                             className="h-7 text-[10px] bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 mt-1 font-bold rounded-lg border border-red-400/20"
-                                                            onClick={() => setEditingRowId(row.id)}
+                                                            onClick={() => startEditing(row)}
                                                         >
                                                             <Edit2 className="h-3 w-3 mr-1" /> CORREGIR
                                                         </Button>

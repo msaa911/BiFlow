@@ -23,69 +23,6 @@ export function HierarchicalLocationSelector({ formData, onChange }: Hierarchica
 
     const supabase = createClient()
 
-    // Fetch provinces on mount
-    useEffect(() => {
-        const fetchProvinces = async () => {
-            setLoading(prev => ({ ...prev, p: true }))
-            const { data } = await supabase
-                .from('geo_argentina')
-                .select('provincia')
-
-            if (data) {
-                const unique = Array.from(new Set(data.map(d => d.provincia))).sort()
-                setProvinces(unique)
-            }
-            setLoading(prev => ({ ...prev, p: false }))
-        }
-        fetchProvinces()
-    }, [])
-
-    // Fetch departments when province changes
-    useEffect(() => {
-        if (!formData.provincia) {
-            setDepartments([])
-            return
-        }
-
-        const fetchDepartments = async () => {
-            setLoading(prev => ({ ...prev, d: true }))
-            const { data } = await supabase
-                .from('geo_argentina')
-                .select('departamento')
-                .eq('provincia', formData.provincia)
-
-            if (data) {
-                const unique = Array.from(new Set(data.map(d => d.departamento))).sort()
-                setDepartments(unique)
-            }
-            setLoading(prev => ({ ...prev, d: false }))
-        }
-        fetchDepartments()
-    }, [formData.provincia])
-
-    // Fetch localities when department changes
-    useEffect(() => {
-        if (!formData.departamento || !formData.provincia) {
-            setLocalities([])
-            return
-        }
-
-        const fetchLocalities = async () => {
-            setLoading(prev => ({ ...prev, l: true }))
-            const { data } = await supabase
-                .from('geo_argentina')
-                .select('localidad')
-                .eq('provincia', formData.provincia)
-                .eq('departamento', formData.departamento)
-
-            if (data) {
-                const unique = Array.from(new Set(data.map(d => d.localidad))).sort()
-                setLocalities(unique)
-            }
-            setLoading(prev => ({ ...prev, l: false }))
-        }
-        fetchLocalities()
-    }, [formData.departamento, formData.provincia])
 
     return (
         <div className="space-y-4">
