@@ -19,19 +19,22 @@ WHERE ip.movimiento_id = mt.id AND ip.organization_id IS NULL;
 
 -- 3. Fix RLS Policies for MOVIMIENTOS
 DROP POLICY IF EXISTS "Users can insert treasury movements of their org" ON public.movimientos_tesoreria;
+DROP POLICY IF EXISTS "Users can insert treasury movements" ON public.movimientos_tesoreria;
 CREATE POLICY "Users can insert treasury movements" ON public.movimientos_tesoreria
-    FOR INSERT WITH CHECK (auth.uid() IN (SELECT user_id FROM organization_users WHERE organization_id = organization_id));
+    FOR INSERT WITH CHECK (auth.uid() IN (SELECT user_id FROM organization_members WHERE organization_id = organization_id));
 
--- 4. Fix RLS Policies for APLICACIONES (All-in-one policy for simplicity and reliability)
+-- 4. Fix RLS Policies for APLICACIONES
 DROP POLICY IF EXISTS "Users can access applications of their org" ON public.aplicaciones_pago;
+DROP POLICY IF EXISTS "Users can manage applications" ON public.aplicaciones_pago;
 CREATE POLICY "Users can manage applications" ON public.aplicaciones_pago
     FOR ALL USING (
-        auth.uid() IN (SELECT user_id FROM organization_users WHERE organization_id = (SELECT organization_id FROM public.movimientos_tesoreria WHERE id = movimiento_id))
+        auth.uid() IN (SELECT user_id FROM public.organization_members WHERE organization_id = (SELECT organization_id FROM public.movimientos_tesoreria WHERE id = movimiento_id))
     );
 
 -- 5. Fix RLS Policies for INSTRUMENTOS
 DROP POLICY IF EXISTS "Users can access instruments of their org" ON public.instrumentos_pago;
+DROP POLICY IF EXISTS "Users can manage instruments" ON public.instrumentos_pago;
 CREATE POLICY "Users can manage instruments" ON public.instrumentos_pago
     FOR ALL USING (
-        auth.uid() IN (SELECT user_id FROM organization_users WHERE organization_id = (SELECT organization_id FROM public.movimientos_tesoreria WHERE id = movimiento_id))
+        auth.uid() IN (SELECT user_id FROM public.organization_members WHERE organization_id = (SELECT organization_id FROM public.movimientos_tesoreria WHERE id = movimiento_id))
     );

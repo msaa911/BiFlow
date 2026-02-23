@@ -175,23 +175,13 @@ export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra'
     const rows = isVenta ? [
         {
             'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
-            'Fecha Vencimiento': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
+            'Fecha Vencimiento': new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
             'Cliente (Nombre o CUIT)': 'CLIENTE EJEMPLO S.A.',
-            'CUIT Cliente': '30-12345678-9',
-            'Número Comprobante': '0001-00000001',
-            'Concepto / Descripción': 'Venta de mercadería',
-            'Monto Total': 150000.50,
-            'Condición (Contado/Cta Cte)': 'Cuenta Corriente',
-            'Medio de Pago': 'Transferencia',
-            'Banco (Opcional)': 'Banco Galicia',
-            'Número de Instrumento (Opcional)': 'TRANSF-123'
-        },
-        { 'Medio de Pago': 'Efectivo (Indica Condición: Contado)' },
-        { 'Medio de Pago': 'Transferencia' },
-        { 'Medio de Pago': 'Tarjeta de Débito' },
-        { 'Medio de Pago': 'Tarjeta de Crédito' },
-        { 'Medio de Pago': 'Cheque' },
-        { 'Medio de Pago': 'A convenir' }
+            'CUIT Cliente': '30-11223344-5',
+            'Número Comprobante': '0001-00001234',
+            'Concepto / Descripción': 'Venta de mercaderías varias',
+            'Monto Total': 1500.50
+        }
     ] : [
         {
             'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
@@ -200,20 +190,8 @@ export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra'
             'CUIT Proveedor': '30-44556677-8',
             'Número Comprobante': '0005-00012345',
             'Concepto / Descripción': 'Flete y distribución',
-            'Monto Total': 85000.00,
-            'Condición (Contado/Cta Cte)': 'Cuenta Corriente',
-            'Medio de Pago': 'Cheque Propio',
-            'Banco (Opcional)': 'Banco Nación',
-            'Número de Instrumento (Opcional)': 'CHQ-998877'
-        },
-        { 'Medio de Pago': 'Efectivo' },
-        { 'Medio de Pago': 'Transferencia' },
-        { 'Medio de Pago': 'Tarjeta de Débito' },
-        { 'Medio de Pago': 'Tarjeta de Crédito' },
-        { 'Medio de Pago': 'Cheque Propio' },
-        { 'Medio de Pago': 'Cheque de Terceros (Endosado)' },
-        { 'Medio de Pago': 'Retenciones Impositivas' },
-        { 'Medio de Pago': 'A convenir' }
+            'Monto Total': 85000.00
+        }
     ]
 
     const ws = XLSX.utils.json_to_sheet(rows)
@@ -287,11 +265,11 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                         razon_social_socio: razonSocial,
                         numero,
                         monto_total: monto,
-                        condicion: condicion,
-                        metodo_pago: getValByRegex(/metodo|medio|pago|instrumento/i),
+                        condicion: 'cuenta_corriente',
+                        metodo_pago: null,
                         concepto: getValByRegex(/concepto|descripcion|detalle/i),
-                        banco: getValByRegex(/banco|entidad/i),
-                        numero_cheque: getValByRegex(/instrumento|cheque|nro.*cheque/i),
+                        banco: null,
+                        numero_cheque: null,
                         rowNum,
                         errors: itemErrors,
                         isValid: itemErrors.length === 0

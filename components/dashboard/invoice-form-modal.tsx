@@ -30,10 +30,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
         monto_total: 0,
         fecha_emision: new Date().toISOString().split('T')[0],
         fecha_vencimiento: new Date().toISOString().split('T')[0],
-        banco: '',
-        numero_cheque: '',
-        condicion: 'cuenta_corriente',
-        metodo_pago: '',
         concepto: ''
     })
 
@@ -80,10 +76,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 monto_total: Number(invoice.monto_total) || 0,
                 fecha_emision: invoice.fecha_emision || new Date().toISOString().split('T')[0],
                 fecha_vencimiento: invoice.fecha_vencimiento || new Date().toISOString().split('T')[0],
-                banco: invoice.banco || '',
-                numero_cheque: invoice.numero_cheque || '',
-                condicion: invoice.condicion || 'cuenta_corriente',
-                metodo_pago: invoice.metodo_pago || '',
                 concepto: invoice.concepto || ''
             })
         } else {
@@ -94,10 +86,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 monto_total: 0,
                 fecha_emision: new Date().toISOString().split('T')[0],
                 fecha_vencimiento: new Date().toISOString().split('T')[0],
-                banco: '',
-                numero_cheque: '',
-                condicion: 'cuenta_corriente',
-                metodo_pago: '',
                 concepto: ''
             })
         }
@@ -135,9 +123,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             const currentCat = selectedSocio.categoria
             let newCat = currentCat
 
-            if (isVenta && currentCat === 'proveedor') newCat = 'ambos'
-            if (!isVenta && currentCat === 'cliente') newCat = 'ambos'
-
             if (newCat !== currentCat) {
                 console.log(`[Categoría] Actualizando socio ${selectedSocio.razon_social} a: ${newCat}`)
                 await supabase
@@ -149,8 +134,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             console.log('[Submit] Enviando datos a Supabase...', {
                 entidad_id: formData.socio_id,
                 tipo: type,
-                monto: formData.monto_total,
-                condicion: formData.condicion
+                monto: formData.monto_total
             })
 
             const upsertData = {
@@ -159,18 +143,15 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 entidad_id: formData.socio_id,
                 cuit_socio: selectedSocio.cuit,
                 razon_social_socio: selectedSocio.razon_social,
-                nombre_entidad: selectedSocio.razon_social, // Redundancia para compatibilidad
+                nombre_entidad: selectedSocio.razon_social,
                 tipo: type,
                 numero: formData.numero,
                 monto_total: formData.monto_total,
-                monto_pendiente: (invoice?.estado === 'pagado' || formData.condicion === 'contado') ? 0 : formData.monto_total,
+                monto_pendiente: invoice?.monto_pendiente ?? formData.monto_total,
                 fecha_emision: formData.fecha_emision,
                 fecha_vencimiento: formData.fecha_vencimiento,
-                estado: formData.condicion === 'contado' ? 'pagado' : (invoice?.estado || 'pendiente'),
-                banco: formData.banco || null,
-                numero_cheque: formData.numero_cheque || null,
-                condicion: formData.condicion,
-                metodo_pago: formData.metodo_pago,
+                estado: invoice?.estado || 'pendiente',
+                condicion: 'cuenta_corriente',
                 concepto: formData.concepto || null,
                 moneda: 'ARS'
             }
@@ -287,78 +268,13 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-xs uppercase text-gray-500 font-bold">Condición</Label>
-                                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-900 border border-gray-800 rounded-lg">
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({
-                                            ...formData,
-                                            condicion: 'contado',
-                                            fecha_vencimiento: formData.fecha_emision
-                                        })}
-                                        className={`py-2 px-3 rounded-md text-xs font-bold transition-all ${formData.condicion === 'contado' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                                    >
-                                        Contado
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, condicion: 'cuenta_corriente' })}
-                                        className={`py-2 px-3 rounded-md text-xs font-bold transition-all ${formData.condicion === 'cuenta_corriente' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                                    >
-                                        Cuenta Corriente
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2 relative">
-                                <Label className="text-xs uppercase text-gray-500 font-bold">Medio de Pago</Label>
-                                <div className="space-y-1">
-                                    <div className="bg-gray-900 border border-gray-800 rounded-lg max-h-[150px] overflow-y-auto custom-scrollbar">
-                                        {[
-                                            { id: 'efectivo', label: 'Efectivo' },
-                                            { id: 'transferencia', label: 'Transferencia' },
-                                            { id: 'tarjeta_debito', label: 'Tarjeta de Débito' },
-                                            { id: 'tarjeta_credito', label: 'Tarjeta de Crédito' },
-                                            ...(type === 'factura_compra' ? [
-                                                { id: 'cheque_propio', label: 'Cheque Propio' },
-                                                { id: 'cheque_terceros', label: 'Cheque de Terceros (Endosado)' },
-                                                { id: 'retenciones', label: 'Retenciones Impositivas' }
-                                            ] : [
-                                                { id: 'cheque', label: 'Cheque' }
-                                            ]),
-                                            { id: 'a_convenir', label: 'A convenir' }
-                                        ].map(opt => (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => setFormData({ ...formData, metodo_pago: opt.id })}
-                                                className={`w-full text-left px-3 py-2 text-xs transition-colors border-b border-gray-800 last:border-0 hover:bg-emerald-600/10 ${formData.metodo_pago === opt.id ? 'bg-emerald-600/20 text-emerald-400 font-bold' : 'text-gray-400'}`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-xs uppercase text-gray-500 font-bold">Número de Factura</Label>
-                                <Input
-                                    placeholder="0001-00001234"
-                                    value={formData.numero}
-                                    onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                                    className="bg-gray-900 border-gray-800"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
                                 <Label className="text-xs uppercase text-gray-500 font-bold">Monto Total</Label>
                                 <Input
                                     type="number"
                                     placeholder="0.00"
                                     value={formData.monto_total || ''}
                                     onChange={(e) => setFormData({ ...formData, monto_total: Number(e.target.value) })}
-                                    className="bg-gray-900 border-gray-800 text-right font-bold"
+                                    className="bg-gray-900 border-gray-800 text-right font-bold h-11 text-emerald-400"
                                     required
                                 />
                             </div>
@@ -374,55 +290,25 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                             const newDate = e.target.value
                                             setFormData({
                                                 ...formData,
-                                                fecha_emision: newDate,
-                                                fecha_vencimiento: formData.condicion === 'contado' ? newDate : formData.fecha_vencimiento
+                                                fecha_emision: newDate
                                             })
                                         }}
-                                        className="bg-gray-900 border-gray-800 pl-10 block w-full"
+                                        className="bg-gray-900 border-gray-800 pl-10 block w-full h-11"
                                         required
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <Label className={`text-xs uppercase text-gray-500 font-bold ${formData.condicion === 'contado' ? 'opacity-50' : 'text-emerald-400'}`}>
-                                    Fecha Vencimiento
-                                </Label>
+                                <Label className="text-xs uppercase text-emerald-400 font-bold">Fecha Vencimiento</Label>
                                 <div className="relative">
-                                    <Calendar className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${formData.condicion === 'contado' ? 'text-gray-600' : 'text-emerald-500'}`} />
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
                                     <Input
                                         type="date"
                                         value={formData.fecha_vencimiento}
-                                        disabled={formData.condicion === 'contado'}
                                         onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
-                                        className={`bg-gray-900 pl-10 ${formData.condicion === 'contado' ? 'border-gray-800 text-gray-500 opacity-50 cursor-not-allowed' : 'border-emerald-500/30 text-emerald-400'}`}
+                                        className="bg-gray-900 border-emerald-500/30 text-emerald-400 pl-10 h-11"
                                         required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-xs uppercase text-gray-500 font-bold">Banco (Si aplica)</Label>
-                                <div className="relative">
-                                    <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                    <Input
-                                        placeholder="Ej: Banco Galicia"
-                                        value={formData.banco}
-                                        onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
-                                        className="bg-gray-900 border-gray-800 pl-10"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-xs uppercase text-gray-500 font-bold">Número de Instrumento</Label>
-                                <div className="relative">
-                                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                    <Input
-                                        placeholder="8 dígitos / Nº Transf."
-                                        value={formData.numero_cheque}
-                                        onChange={(e) => setFormData({ ...formData, numero_cheque: e.target.value })}
-                                        className="bg-gray-900 border-gray-800 pl-10 font-mono"
                                     />
                                 </div>
                             </div>

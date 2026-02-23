@@ -274,8 +274,8 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             monto_total: inv.monto_total,
                             monto_pendiente: inv.monto_total,
                             estado: 'pendiente',
-                            condicion: inv.condicion || 'cta_cte',
-                            metodo_pago: inv.metodo_pago || 'a_convenir',
+                            condicion: 'cuenta_corriente',
+                            metodo_pago: null,
                             razon_social_socio: inv.razon_social_socio,
                             cuit_socio: inv.cuit_socio
                         }))

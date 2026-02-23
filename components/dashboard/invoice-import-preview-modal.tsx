@@ -140,17 +140,14 @@ export function InvoiceImportPreviewModal({
                                     <tr key={row.id} className={`hover:bg-white/[0.02] transition-colors ${!row.isValid ? 'bg-red-500/5' : ''}`}>
                                         <td className="px-4 py-4 text-gray-600 font-mono">#{row.rowNum}</td>
                                         <td className="px-4 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="relative">
-                                                    <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
-                                                    <Input
-                                                        type="text"
-                                                        value={row.fecha_emision}
-                                                        onChange={(e) => handleFieldChange(row, 'fecha_emision', e.target.value)}
-                                                        className="h-7 bg-gray-900 border-gray-800 pl-7 text-[10px]"
-                                                    />
-                                                </div>
-                                                <span className="text-[9px] text-gray-600 uppercase font-bold">Vence: {row.fecha_vencimiento}</span>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+                                                <Input
+                                                    type="text"
+                                                    value={row.fecha_emision}
+                                                    onChange={(e) => handleFieldChange(row, 'fecha_emision', e.target.value)}
+                                                    className="h-8 bg-gray-900 border-gray-800 pl-7 text-[10px]"
+                                                />
                                             </div>
                                         </td>
                                         <td className="px-4 py-4">
