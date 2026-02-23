@@ -87,12 +87,33 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                 }
 
                 const workbook = XLSX.read(data, { type: 'array' })
-                const sheetName = workbook.SheetNames[0]
-                if (!sheetName) throw new Error('El Excel no tiene hojas válidas.')
 
-                const sheet = workbook.Sheets[sheetName]
+                // Intelligent sheet selection
+                const targetSheetName = workbook.SheetNames.find(n =>
+                    /entidades|proveedores|clientes|plantilla|biflow/i.test(n)
+                ) || workbook.SheetNames[0]
+
+                if (!targetSheetName) throw new Error('El archivo Excel no tiene hojas válidas.')
+
+                const sheet = workbook.Sheets[targetSheetName]
                 const json = XLSX.utils.sheet_to_json(sheet)
+                console.log('[Import] Hojas:', workbook.SheetNames, 'Seleccionada:', targetSheetName)
                 console.log('[Import] Filas detectadas:', json.length)
+
+                if (json.length === 0) {
+                    resolve({ data: [], errors: ['El archivo no contiene filas de datos o está vacío.'] })
+                    return
+                }
+
+                // Check for at least ONE recognizable header to avoid "blind" imports
+                const firstRow = json[0] as any
+                const hasHeaders = Object.keys(firstRow).some(k =>
+                    /razon|social|nombre|cuit|empresa/i.test(k)
+                )
+
+                if (!hasHeaders) {
+                    console.warn('[Import] No se detectaron cabeceras reconocibles. Columnas encontradas:', Object.keys(firstRow))
+                }
 
                 const results: any[] = []
                 json.forEach((row: any, index: number) => {

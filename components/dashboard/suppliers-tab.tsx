@@ -100,11 +100,17 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         const loadingToast = toast.loading('Procesando archivo Excel...')
 
         try {
-            const { data: parsedData } = await parseEntityExcel(file)
+            const { data: parsedData, errors: parserErrors } = await parseEntityExcel(file)
             console.log('[Import] Parsed records:', parsedData.length)
 
+            // NEW: Handle specific parser errors (e.g., empty file, missing headers)
+            if (parserErrors && parserErrors.length > 0) {
+                toast.error(parserErrors[0])
+                return
+            }
+
             if (parsedData.length === 0) {
-                toast.error('No se encontraron datos válidos en el archivo')
+                toast.error('No se encontraron datos en el archivo. Verificá que la hoja no esté vacía.')
                 return
             }
 
@@ -352,7 +358,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept=".xlsx, .xls"
+                accept=".xlsx, .xls, .csv"
                 onChange={handleImportExcel}
             />
 
