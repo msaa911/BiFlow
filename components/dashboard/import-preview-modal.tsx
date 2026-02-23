@@ -157,31 +157,21 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                         <td className="px-4 py-4 text-gray-500 tabular-nums font-mono">#{row.rowNum}</td>
 
                                         <td className="px-4 py-4">
-                                            {editingRowId === row.id ? (
-                                                <Input
-                                                    value={row.razon_social}
-                                                    placeholder="Ej: ACME S.A."
-                                                    onChange={(e) => validateFieldChange(row, 'razon_social', e.target.value)}
-                                                    className="bg-gray-900 border-gray-700 h-8 text-sm focus:border-emerald-500"
-                                                />
-                                            ) : (
-                                                <span className={`font-medium ${!row.razon_social ? 'text-red-400 italic' : 'text-white'}`}>
-                                                    {row.razon_social || 'Sin nombre'}
-                                                </span>
-                                            )}
+                                            <Input
+                                                value={row.razon_social}
+                                                placeholder="Ej: ACME S.A."
+                                                onChange={(e) => validateFieldChange(row, 'razon_social', e.target.value)}
+                                                className={`bg-gray-900 border-gray-700 h-8 text-sm focus:border-emerald-500 ${!row.razon_social ? 'border-red-500/50' : ''}`}
+                                            />
                                         </td>
 
                                         <td className="px-4 py-4">
-                                            {editingRowId === row.id ? (
-                                                <Input
-                                                    value={row.cuit}
-                                                    placeholder="20123456789"
-                                                    onChange={(e) => validateFieldChange(row, 'cuit', e.target.value)}
-                                                    className="bg-gray-900 border-gray-700 h-8 text-sm font-mono focus:border-emerald-500"
-                                                />
-                                            ) : (
-                                                <span className="font-mono text-gray-400">{row.cuit}</span>
-                                            )}
+                                            <Input
+                                                value={row.cuit}
+                                                placeholder="20123456789"
+                                                onChange={(e) => validateFieldChange(row, 'cuit', e.target.value)}
+                                                className={`bg-gray-900 border-gray-700 h-8 text-sm font-mono focus:border-emerald-500 ${row.errors?.some((e: string) => e.includes('CUIT')) ? 'border-red-500/50' : ''}`}
+                                            />
                                         </td>
 
                                         <td className="px-4 py-4 text-gray-400 relative">

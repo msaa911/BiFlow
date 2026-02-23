@@ -108,12 +108,43 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 return
             }
 
+            // Dictionary of common geographical aliases to avoid false positives
+            const GEO_ALIASES: Record<string, { localidad?: string, provincia?: string }> = {
+                'caba': { localidad: 'comuna 1', provincia: 'ciudad autónoma de buenos aires' },
+                'mza': { provincia: 'mendoza' },
+                'mendoza': { provincia: 'mendoza' },
+                'cba': { provincia: 'córdoba' },
+                'cordoba': { provincia: 'córdoba' },
+                'sta fe': { provincia: 'santa fe' },
+                'santa fe': { provincia: 'santa fe' },
+                'bsas': { provincia: 'buenos aires' },
+                'buenos aires': { provincia: 'buenos aires' },
+                'tuc': { provincia: 'tucumán' },
+                'sl': { provincia: 'san luis' },
+                'sj': { provincia: 'san juan' },
+                'er': { provincia: 'entre ríos' },
+                'rn': { provincia: 'río negro' },
+                'chubut': { provincia: 'chubut' },
+                'lpa': { provincia: 'la pampa' }
+            }
+
+            const resolveAlias = (val: string, type: 'provincia' | 'localidad') => {
+                const clean = val.trim().toLowerCase()
+                const match = GEO_ALIASES[clean]
+                if (match) return match[type] || clean
+                return clean
+            }
+
             // NEW: Proactive Batch Check for Locations
             console.log('[Import] Step 2: Proactive Location Validation...')
             const uniqueLocs = Array.from(new Set(
                 parsedData
                     .filter((ent: any) => ent.localidad && ent.provincia)
-                    .map((ent: any) => `${ent.localidad.trim().toLowerCase()}|${ent.provincia.trim().toLowerCase()}`)
+                    .map((ent: any) => {
+                        const p = resolveAlias(ent.provincia, 'provincia')
+                        const l = resolveAlias(ent.localidad, 'localidad')
+                        return `${l}|${p}`
+                    })
             ))
 
             const validLocMap = new Set<string>()
@@ -129,7 +160,9 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
 
             const dataWithContext = parsedData.map((ent: any) => {
                 const warnings: string[] = []
-                const locKey = `${(ent.localidad || '').trim().toLowerCase()}|${(ent.provincia || '').trim().toLowerCase()}`
+                const p = resolveAlias(ent.provincia || '', 'provincia')
+                const l = resolveAlias(ent.localidad || '', 'localidad')
+                const locKey = `${l}|${p}`
 
                 if (!ent.localidad || !ent.provincia) {
                     warnings.push('Falta información de ubicación')
@@ -139,7 +172,8 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
 
                 return {
                     ...ent,
-                    warnings
+                    warnings,
+                    isValid: true // We still allow importing with warnings
                 }
             })
 
