@@ -25,22 +25,42 @@ export async function POST(request: Request) {
         }
 
         if (mode === 'delete_clients') {
-            const { error } = await supabase
+            // 1. Delete records that are only clients
+            const { error: delErr } = await supabase
                 .from('entidades')
                 .delete()
                 .eq('organization_id', orgId)
                 .eq('categoria', 'cliente')
-            if (error) throw error
+            if (delErr) throw delErr
+
+            // 2. Downgrade 'ambos' to 'proveedor'
+            const { error: updErr } = await supabase
+                .from('entidades')
+                .update({ categoria: 'proveedor' })
+                .eq('organization_id', orgId)
+                .eq('categoria', 'ambos')
+            if (updErr) throw updErr
+
             return NextResponse.json({ success: true, message: 'Todos los clientes han sido eliminados.' })
         }
 
         if (mode === 'delete_suppliers') {
-            const { error } = await supabase
+            // 1. Delete records that are only suppliers
+            const { error: delErr } = await supabase
                 .from('entidades')
                 .delete()
                 .eq('organization_id', orgId)
                 .eq('categoria', 'proveedor')
-            if (error) throw error
+            if (delErr) throw delErr
+
+            // 2. Downgrade 'ambos' to 'cliente'
+            const { error: updErr } = await supabase
+                .from('entidades')
+                .update({ categoria: 'cliente' })
+                .eq('organization_id', orgId)
+                .eq('categoria', 'ambos')
+            if (updErr) throw updErr
+
             return NextResponse.json({ success: true, message: 'Todos los proveedores han sido eliminados.' })
         }
 
@@ -94,4 +114,7 @@ async function performFullReset(supabase: any, orgId: string) {
 
     // 5. Delete financial thesaurus (custom patterns)
     await supabase.from('financial_thesaurus').delete().eq('organization_id', orgId)
+
+    // 6. Delete all entities (Socios)
+    await supabase.from('entidades').delete().eq('organization_id', orgId)
 }
