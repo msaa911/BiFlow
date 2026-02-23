@@ -158,6 +158,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 orgId={orgId}
                 entity={selectedEntity}
                 onSuccess={fetchSocios}
+                defaultCategory={category === 'ambos' ? 'proveedor' : category as 'cliente' | 'proveedor'}
             />
         </div>
     )

@@ -16,14 +16,15 @@ interface EntityModalProps {
     orgId: string
     entity?: any // If editing
     onSuccess: () => void
+    defaultCategory?: 'cliente' | 'proveedor'
 }
 
-export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess }: EntityModalProps) {
+export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, defaultCategory = 'proveedor' }: EntityModalProps) {
     const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState({
         cuit: '',
         razon_social: '',
-        categoria: 'proveedor',
+        categoria: defaultCategory as 'cliente' | 'proveedor' | 'ambos',
         cbu_habitual: ''
     })
 
@@ -32,18 +33,18 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess }: Entit
             setFormData({
                 cuit: entity.cuit || '',
                 razon_social: entity.razon_social || '',
-                categoria: entity.categoria || 'proveedor',
+                categoria: entity.categoria || defaultCategory,
                 cbu_habitual: entity.metadata?.cbu_habitual || ''
             })
         } else {
             setFormData({
                 cuit: '',
                 razon_social: '',
-                categoria: 'proveedor',
+                categoria: defaultCategory,
                 cbu_habitual: ''
             })
         }
-    }, [entity, isOpen])
+    }, [entity, isOpen, defaultCategory])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -93,7 +94,8 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess }: Entit
                 })
             }
 
-            toast.success(entity ? 'Socio actualizado' : 'Socio creado con éxito')
+            const entityLabel = defaultCategory === 'cliente' ? 'Cliente' : 'Proveedor'
+            toast.success(entity ? `${entityLabel} actualizado` : `${entityLabel} creado con éxito`)
             onSuccess()
             onClose()
         } catch (err: any) {
@@ -104,12 +106,14 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess }: Entit
         }
     }
 
+    const titleLabel = defaultCategory === 'cliente' ? 'Cliente' : 'Proveedor'
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="bg-gray-950 border-gray-800 text-white sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                        {entity ? 'Editar Socio' : 'Nuevo Socio'}
+                        {entity ? `Editar ${titleLabel}` : `Nuevo ${titleLabel}`}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -118,15 +122,23 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess }: Entit
                         <Label htmlFor="categoria" className="text-xs uppercase text-gray-500 font-bold">Categoría</Label>
                         <Select
                             value={formData.categoria}
-                            onValueChange={(v: string) => setFormData({ ...formData, categoria: v })}
+                            onValueChange={(v: string) => setFormData({ ...formData, categoria: v as 'cliente' | 'proveedor' | 'ambos' })}
                         >
                             <SelectTrigger className="bg-gray-900 border-gray-800">
                                 <SelectValue placeholder="Seleccionar categoría" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                <SelectItem value="cliente">Cliente</SelectItem>
-                                <SelectItem value="proveedor">Proveedor</SelectItem>
-                                <SelectItem value="ambos">Ambos (Cliente/Proveedor)</SelectItem>
+                                {defaultCategory === 'cliente' ? (
+                                    <>
+                                        <SelectItem value="cliente">Cliente</SelectItem>
+                                        <SelectItem value="ambos">Cliente / Proveedor</SelectItem>
+                                    </>
+                                ) : (
+                                    <>
+                                        <SelectItem value="proveedor">Proveedor</SelectItem>
+                                        <SelectItem value="ambos">Proveedor / Cliente</SelectItem>
+                                    </>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
@@ -180,7 +192,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess }: Entit
                         </Button>
                         <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white" disabled={loading}>
                             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                            {entity ? 'Guardar Cambios' : 'Crear Socio'}
+                            {entity ? 'Guardar Cambios' : `Crear ${titleLabel}`}
                         </Button>
                     </DialogFooter>
                 </form>
