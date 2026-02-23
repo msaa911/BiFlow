@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, ShieldCheck, Landmark, Search, Plus, Edit2 } from 'lucide-react'
+import { Users, ShieldCheck, Landmark, Search, Plus, Edit2, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { EntityModal } from './entity-modal'
+import { toast } from 'sonner'
 
 interface SuppliersTabProps {
     orgId: string
@@ -60,6 +61,27 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         s.cuit.includes(searchTerm)
     )
 
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`¿Estás seguro de que deseas eliminar a "${name}"? Esta acción no se puede deshacer.`)) {
+            return
+        }
+
+        try {
+            const { error } = await supabase
+                .from('entidades')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+
+            toast.success('Socio eliminado con éxito')
+            fetchSocios()
+        } catch (err: any) {
+            console.error('Error deleting entity:', err)
+            toast.error('Error al eliminar: ' + err.message)
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -111,17 +133,27 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                                         <Badge className={`${category === 'cliente' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
                                             {supplier.categoria?.toUpperCase()}
                                         </Badge>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-gray-500 hover:text-white"
-                                            onClick={() => {
-                                                setSelectedEntity(supplier)
-                                                setIsEntityModalOpen(true)
-                                            }}
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </Button>
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-gray-500 hover:text-white"
+                                                onClick={() => {
+                                                    setSelectedEntity(supplier)
+                                                    setIsEntityModalOpen(true)
+                                                }}
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-gray-500 hover:text-red-400"
+                                                onClick={() => handleDelete(supplier.id, supplier.razon_social)}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
                                     </div>
                                     <p className="text-sm text-gray-400 font-mono">CUIT: {supplier.cuit}</p>
                                 </div>
