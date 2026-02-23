@@ -119,7 +119,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                         codigo_postal: formData.codigo_postal,
                         departamento: formData.departamento,
                         provincia: formData.provincia,
-                        pais: formData.pais,
+                        pais: formData.pais || 'Argentina',
                         telefono_1: formData.telefono_1,
                         telefono_2: formData.telefono_2,
                         email: formData.email,
