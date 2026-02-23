@@ -105,10 +105,10 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        console.log('[Submit] Iniciando registro de comprobante...', { formData, type })
         setLoading(true)
 
-        const selectedSocio = socios.find(s => s.id === formData.socio_id)
-        if (!selectedSocio) {
+        if (!formData.socio_id) {
             toast.error(`Debe seleccionar un ${type === 'factura_venta' ? 'Cliente' : 'Proveedor'}`)
             setLoading(false)
             return
@@ -116,6 +116,20 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
         const supabase = createClient()
         try {
+            // Obtener datos frescos del socio para evitar depender del estado local volátil 'socios'
+            const { data: selectedSocio, error: socioError } = await supabase
+                .from('entidades')
+                .select('id, razon_social, cuit, categoria')
+                .eq('id', formData.socio_id)
+                .single()
+
+            if (socioError || !selectedSocio) {
+                console.error('[Submit] Error al obtener socio:', socioError)
+                toast.error('No se pudo validar el socio seleccionado.')
+                setLoading(false)
+                return
+            }
+
             // Lógica de Categoría Dual Dinámica
             const isVenta = type === 'factura_venta'
             const currentCat = selectedSocio.categoria
@@ -132,6 +146,12 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     .eq('id', selectedSocio.id)
             }
 
+            console.log('[Submit] Enviando datos a Supabase...', {
+                entidad_id: formData.socio_id,
+                tipo: type,
+                monto: formData.monto_total
+            })
+
             const { error } = await supabase
                 .from('comprobantes')
                 .upsert({
@@ -143,7 +163,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     tipo: type,
                     numero: formData.numero,
                     monto_total: formData.monto_total,
-                    monto_pendiente: invoice?.estado === 'pagado' ? 0 : formData.monto_total,
+                    monto_pendiente: (invoice?.estado === 'pagado' || formData.condicion === 'contado') ? 0 : formData.monto_total,
                     fecha_emision: formData.fecha_emision,
                     fecha_vencimiento: formData.fecha_vencimiento,
                     estado: formData.condicion === 'contado' ? 'pagado' : (invoice?.estado || 'pendiente'),
@@ -154,7 +174,10 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     concepto: formData.concepto
                 })
 
-            if (error) throw error
+            if (error) {
+                console.error('[Submit] Error de Supabase:', error)
+                throw error
+            }
 
             toast.success(invoice ? 'Comprobante actualizado' : 'Comprobante registrado con éxito')
             onSuccess()
