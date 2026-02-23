@@ -185,8 +185,8 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
             </div>
 
             {/* ACCIONES DE DATOS: Títulos y Botones 1, 2, 3 */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="flex flex-col md:flex-row items-center gap-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                <div className="flex flex-wrap items-center gap-3">
                     <Button
                         variant="secondary"
                         size="sm"
@@ -216,11 +216,11 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     </Button>
                 </div>
 
-                <div className="relative w-full md:w-72">
+                <div className="relative flex-1 w-full md:min-w-[300px]">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <Input
                         placeholder={`Buscar ${category === 'cliente' ? 'cliente' : 'proveedor'}...`}
-                        className="pl-10 bg-gray-900 border-gray-800 text-white h-9"
+                        className="pl-10 bg-gray-900 border-gray-800 text-white h-9 w-full"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
