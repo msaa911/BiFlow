@@ -305,3 +305,53 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
         reader.readAsArrayBuffer(file)
     })
 }
+
+export function exportTreasuryMovementToExcel(movement: any) {
+    const isCobro = movement.tipo === 'cobro'
+    const title = isCobro ? 'RECIBO DE COBRO' : 'ORDEN DE PAGO'
+
+    // 1. Header Information
+    const headerData = [
+        { label: 'Comprobante', value: movement.numero },
+        { label: 'Fecha', value: new Date(movement.fecha).toLocaleDateString('es-AR') },
+        { label: 'Entidad', value: movement.entidades?.razon_social || 'N/A' },
+        { label: 'Monto Total', value: movement.monto_total },
+        { label: 'Observaciones', value: movement.observaciones || '' }
+    ]
+
+    // 2. Instruments (Valores)
+    const instrumentsHeaders = ['Método', 'Monto', 'Disponibilidad', 'Banco', 'Referencia']
+    const instrumentsData = movement.instrumentos_pago.map((ins: any) => ({
+        'Método': ins.metodo.replace('_', ' ').toUpperCase(),
+        'Monto': ins.monto,
+        'Disponibilidad': new Date(ins.fecha_disponibilidad).toLocaleDateString('es-AR'),
+        'Banco': ins.banco || '',
+        'Referencia': ins.referencia || ''
+    }))
+
+    // 3. Applications (Facturas canceladas)
+    const applicationsHeaders = ['Tipo Factura', 'Número', 'Monto Aplicado']
+    const applicationsData = movement.aplicaciones_pago.map((app: any) => ({
+        'Tipo Factura': app.comprobantes?.tipo.replace('_', ' ').toUpperCase(),
+        'Número': app.comprobantes?.numero,
+        'Monto Aplicado': app.monto_aplicado
+    }))
+
+    // Create Worksheet
+    const wb = XLSX.utils.book_new()
+
+    // Summary Sheet
+    const wsHeader = XLSX.utils.json_to_sheet(headerData, { skipHeader: true })
+    XLSX.utils.book_append_sheet(wb, wsHeader, 'Resumen')
+
+    // Instruments Sheet
+    const wsIns = XLSX.utils.json_to_sheet(instrumentsData, { header: instrumentsHeaders })
+    XLSX.utils.book_append_sheet(wb, wsIns, 'Instrumentos')
+
+    // Applications Sheet
+    const wsApp = XLSX.utils.json_to_sheet(applicationsData, { header: applicationsHeaders })
+    XLSX.utils.book_append_sheet(wb, wsApp, 'Imputaciones')
+
+    const filename = `${movement.numero}_${movement.entidades?.razon_social.replace(/\s/g, '_')}.xlsx`
+    XLSX.writeFile(wb, filename)
+}

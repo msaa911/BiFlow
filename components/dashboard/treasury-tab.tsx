@@ -171,9 +171,13 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                         <BookUser className="w-3.5 h-3.5 mr-2" />
                         Proveedores
                     </TabsTrigger>
-                    <TabsTrigger value="historial" className="rounded-lg">
-                        <History className="w-3.5 h-3.5 mr-2" />
-                        Historial
+                    <TabsTrigger value="recibos" className="rounded-lg">
+                        <History className="w-3.5 h-3.5 mr-2 text-emerald-400" />
+                        Recibos
+                    </TabsTrigger>
+                    <TabsTrigger value="ordenes" className="rounded-lg">
+                        <History className="w-3.5 h-3.5 mr-2 text-orange-400" />
+                        Órdenes de Pago
                     </TabsTrigger>
                 </TabsList>
 
@@ -197,8 +201,12 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                     <SuppliersTab orgId={orgId} category="proveedor" />
                 </TabsContent>
 
-                <TabsContent value="historial">
-                    <TreasuryHistory orgId={orgId} />
+                <TabsContent value="recibos">
+                    <TreasuryHistory orgId={orgId} typeFilter="cobro" />
+                </TabsContent>
+
+                <TabsContent value="ordenes">
+                    <TreasuryHistory orgId={orgId} typeFilter="pago" />
                 </TabsContent>
 
                 <TabsContent value="advisor">
