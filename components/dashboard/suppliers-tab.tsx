@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, ShieldCheck, Landmark, Search, Plus, Edit2, Trash2 } from 'lucide-react'
+import { Users, ShieldCheck, Landmark, Search, Plus, Edit2, Trash2, FileDown, Upload, FileSpreadsheet, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { EntityModal } from './entity-modal'
 import { toast } from 'sonner'
+import { downloadEntityTemplate, exportEntitiesToExcel, parseEntityExcel } from '@/lib/excel-utils'
 
 interface SuppliersTabProps {
     orgId: string
@@ -82,33 +83,147 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         }
     }
 
+    const handleDownloadTemplate = () => {
+        downloadEntityTemplate(category)
+        toast.success('Plantilla descargada')
+    }
+
+    const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        const loadingToast = toast.loading('Procesando archivo...')
+        try {
+            const entities = await parseEntityExcel(file)
+            if (entities.length === 0) {
+                toast.error('No se encontraron datos válidos en el archivo')
+                return
+            }
+
+            // Batch upsert to Supabase
+            const { error } = await supabase
+                .from('entidades')
+                .upsert(
+                    entities.map(ent => ({
+                        organization_id: orgId,
+                        cuit: ent.cuit,
+                        razon_social: ent.razon_social,
+                        categoria: category === 'ambos' ? 'proveedor' : category, // Default to current tab
+                        metadata: {
+                            cbu_habitual: ent.cbu_habitual,
+                            direccion: ent.direccion,
+                            localidad: ent.localidad,
+                            departamento: ent.departamento,
+                            provincia: ent.provincia,
+                            codigo_postal: ent.codigo_postal,
+                            email: ent.email,
+                            telefono_1: ent.telefono_1,
+                            contacto: ent.contacto
+                        },
+                        updated_at: new Date().toISOString()
+                    })),
+                    { onConflict: 'organization_id, cuit' }
+                )
+
+            if (error) throw error
+
+            toast.success(`${entities.length} registros procesados correctamente`)
+            fetchSocios()
+        } catch (err: any) {
+            console.error('Error importing entities:', err)
+            toast.error('Error en la importación: ' + err.message)
+        } finally {
+            toast.dismiss(loadingToast)
+            if (e.target) e.target.value = '' // Clear input
+        }
+    }
+
+    const handleExportExcel = () => {
+        if (suppliers.length === 0) {
+            toast.error('No hay datos para exportar')
+            return
+        }
+        exportEntitiesToExcel(suppliers, category)
+        toast.success('Datos exportados')
+    }
+
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="relative w-full md:w-96">
+            {/* INPUT OCULTO PARA IMPORTACIÓN */}
+            <input
+                type="file"
+                id="excel-import"
+                className="hidden"
+                accept=".xlsx, .xls"
+                onChange={handleImportExcel}
+            />
+
+            {/* CABECERA: CONTADOR Y BOTÓN NUEVO */}
+            <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/10 rounded-lg">
+                        <Users className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-white leading-none">
+                            {category === 'cliente' ? 'Clientes' : 'Proveedores'} Registrados
+                        </h2>
+                        <span className="text-xs text-gray-500 font-medium">{suppliers.length} registros en total</span>
+                    </div>
+                </div>
+
+                <Button
+                    onClick={() => {
+                        setSelectedEntity(null)
+                        setIsEntityModalOpen(true)
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-9"
+                >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nuevo {category === 'cliente' ? 'Cliente' : 'Proveedor'}
+                </Button>
+            </div>
+
+            {/* ACCIONES DE DATOS: Títulos y Botones 1, 2, 3 */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleDownloadTemplate}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700 h-9"
+                    >
+                        <FileDown className="w-4 h-4 mr-2 text-emerald-500" />
+                        B1: Descargar Plantilla
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => document.getElementById('excel-import')?.click()}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700 h-9"
+                    >
+                        <Upload className="w-4 h-4 mr-2 text-blue-500" />
+                        B2: Importar {category === 'cliente' ? 'Clientes' : 'Proveedores'}
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleExportExcel}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700 h-9"
+                    >
+                        <FileSpreadsheet className="w-4 h-4 mr-2 text-amber-500" />
+                        B3: Exportar a Excel
+                    </Button>
+                </div>
+
+                <div className="relative w-full md:w-72">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <Input
-                        placeholder={`Buscar ${category === 'cliente' ? 'cliente' : 'proveedor'}...`}
-                        className="pl-10 bg-gray-900 border-gray-800 text-white"
+                        placeholder={`Filtrar...`}
+                        className="pl-10 bg-gray-900 border-gray-800 text-white h-9"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                </div>
-                <div className="flex items-center gap-3">
-                    <Button
-                        onClick={() => {
-                            setSelectedEntity(null)
-                            setIsEntityModalOpen(true)
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Nuevo {category === 'cliente' ? 'Cliente' : 'Proveedor'}
-                    </Button>
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                        <Users className="h-4 w-4" />
-                        <span>{suppliers.length} Registrados</span>
-                    </div>
                 </div>
             </div>
 
