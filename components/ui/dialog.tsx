@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { X } from "lucide-react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
 interface DialogProps {
@@ -11,12 +11,13 @@ interface DialogProps {
 }
 
 export function Dialog({ open, onOpenChange, children }: DialogProps) {
-    if (!open) return null
+    if (!open || typeof document === 'undefined') return null
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             {children}
-        </div>
+        </div>,
+        document.body
     )
 }
 

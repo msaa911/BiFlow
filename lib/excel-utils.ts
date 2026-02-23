@@ -82,55 +82,61 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
         reader.onload = (e) => {
             try {
                 const data = e.target?.result
-                const workbook = XLSX.read(data, { type: 'binary' })
+                if (data instanceof ArrayBuffer) {
+                    console.log('[Import] Fichero leído. Tamaño:', data.byteLength)
+                }
+
+                const workbook = XLSX.read(data, { type: 'array' })
                 const sheetName = workbook.SheetNames[0]
+                if (!sheetName) throw new Error('El Excel no tiene hojas válidas.')
+
                 const sheet = workbook.Sheets[sheetName]
                 const json = XLSX.utils.sheet_to_json(sheet)
+                console.log('[Import] Filas detectadas:', json.length)
 
                 const results: any[] = []
-                const errors: any[] = []
-
                 json.forEach((row: any, index: number) => {
-                    const rowNum = index + 2 // 1-indexed + header row
-                    const rawCuit = String(row['CUIT'] || row['Cuit'] || '').trim()
+                    const rowNum = index + 2
+
+                    const getVal = (opts: string[]) => {
+                        const k = opts.find(o => row[o] !== undefined)
+                        return k ? String(row[k]).trim() : ''
+                    }
+
+                    const rawCuit = getVal(['CUIT', 'Cuit', 'cuit', 'CUIL'])
                     const cleanCuit = rawCuit.replace(/[^\d]/g, '')
-                    const razonSocial = (row['Razón Social / Nombre'] || row['Nombre'] || row['Razon Social'] || '').trim()
+                    const razonSocial = getVal(['Razón Social / Nombre', 'Nombre', 'Razon Social', 'Empresa'])
 
                     const itemErrors: string[] = []
                     if (!razonSocial) itemErrors.push('Falta Razón Social')
-                    if (!cleanCuit) {
-                        itemErrors.push('Falta CUIT')
-                    } else if (cleanCuit.length !== 11) {
-                        itemErrors.push('CUIT debe tener 11 dígitos')
-                    }
+                    if (!cleanCuit) itemErrors.push('Falta CUIT')
+                    else if (cleanCuit.length !== 11) itemErrors.push('CUIT debe tener 11 dígitos')
 
-                    const record = {
-                        id: `row-${rowNum}`,
+                    results.push({
+                        id: `row-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
                         razon_social: razonSocial,
                         cuit: cleanCuit,
-                        cbu_habitual: String(row['CBU / CVU Habitual'] || row['CBU'] || row['CBU Habitual'] || '').trim(),
-                        direccion: (row['Dirección'] || row['Direccion'] || '').trim(),
-                        localidad: (row['Localidad'] || '').trim(),
-                        departamento: (row['Departamento'] || '').trim(),
-                        provincia: (row['Provincia'] || '').trim(),
-                        codigo_postal: String(row['Código Postal'] || row['CP'] || '').trim(),
-                        email: (row['Email'] || '').trim(),
-                        telefono_1: (row['Teléfono'] || row['Telefono'] || '').trim(),
-                        contacto: (row['Contacto'] || '').trim(),
+                        cbu_habitual: getVal(['CBU / CVU Habitual', 'CBU', 'CVU']),
+                        direccion: getVal(['Dirección', 'Direccion', 'Calle']),
+                        localidad: getVal(['Localidad', 'Ciudad']),
+                        departamento: getVal(['Departamento', 'Partido']),
+                        provincia: getVal(['Provincia', 'Estado']),
+                        codigo_postal: getVal(['Código Postal', 'CP']),
+                        email: getVal(['Email', 'Mail']),
+                        telefono_1: getVal(['Teléfono', 'Telefono']),
+                        contacto: getVal(['Contacto']),
                         rowNum,
                         errors: itemErrors,
                         isValid: itemErrors.length === 0
-                    }
-
-                    results.push(record)
+                    })
                 })
-
-                resolve({ data: results, errors })
+                resolve({ data: results, errors: [] })
             } catch (err) {
+                console.error('[Import] Error parseando Excel:', err)
                 reject(err)
             }
         }
-        reader.onerror = reject
-        reader.readAsBinaryString(file)
+        reader.onerror = (err) => reject(new Error('Error de lectura física del archivo.'))
+        reader.readAsArrayBuffer(file)
     })
 }

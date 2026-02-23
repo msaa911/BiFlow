@@ -96,44 +96,34 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         const file = e.target.files?.[0]
         if (!file) return
 
-        const loadingToast = toast.loading('Procesando y validando ubicaciones...')
+        console.log('[Import] Starting parse for file:', file.name)
+        const loadingToast = toast.loading('Procesando archivo Excel...')
+
         try {
             const { data: parsedData } = await parseEntityExcel(file)
+            console.log('[Import] Parsed records:', parsedData.length)
+
             if (parsedData.length === 0) {
                 toast.error('No se encontraron datos válidos en el archivo')
                 return
             }
 
-            // Preliminary check for location matches (Warnings)
-            const dataWithWarnings = await Promise.all(parsedData.map(async (ent) => {
-                if (!ent.isValid) return ent
-                if (ent.localidad && ent.provincia) {
-                    const { data: geoMatch } = await supabase
-                        .from('geo_argentina')
-                        .select('id')
-                        .ilike('localidad', ent.localidad)
-                        .ilike('provincia', ent.provincia)
-                        .limit(1)
-                        .single()
-
-                    if (!geoMatch) {
-                        return {
-                            ...ent,
-                            warnings: ['Ubicación no encontrada en base oficial. Se guardará como texto plano.']
-                        }
-                    }
-                }
-                return ent
+            // We skip the per-row DB check here to avoid hanging the browser.
+            // We only tag rows that are obviously missing info.
+            const dataWithContext = parsedData.map(ent => ({
+                ...ent,
+                warnings: (!ent.localidad || !ent.provincia) ? ['Falta información de ubicación'] : []
             }))
 
-            setImportData(dataWithWarnings)
+            setImportData(dataWithContext)
             setIsImportPreviewOpen(true)
+            console.log('[Import] Preview modal opened.')
         } catch (err: any) {
-            console.error('Error importing entities:', err)
-            toast.error('Error en la importación: ' + err.message)
+            console.error('[Import] FATAL ERROR:', err)
+            toast.error('Error crítico en el procesador: ' + (err.message || 'Desconocido'))
         } finally {
             toast.dismiss(loadingToast)
-            if (e.target) e.target.value = '' // Clear input
+            if (e.target) e.target.value = '' // Reset input
         }
     }
 
@@ -148,16 +138,19 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         try {
             // Normalize locations first
             const normalizedData = await Promise.all(validData.map(async (ent) => {
-                if (ent.localidad && ent.provincia) {
-                    const { data: geoMatch } = await supabase
+                // Skip if already normalized (has geo_lat/lon) or missing data
+                if (ent.geo_lat || !ent.localidad || !ent.provincia) return ent
+
+                try {
+                    const { data: geoMatches } = await supabase
                         .from('geo_argentina')
                         .select('localidad, departamento, provincia, latitud, longitud')
-                        .ilike('localidad', `%${ent.localidad}%`)
-                        .ilike('provincia', `%${ent.provincia}%`)
+                        .ilike('localidad', ent.localidad.trim())
+                        .ilike('provincia', ent.provincia.trim())
                         .limit(1)
-                        .single()
 
-                    if (geoMatch) {
+                    if (geoMatches && geoMatches.length > 0) {
+                        const geoMatch = geoMatches[0]
                         return {
                             ...ent,
                             localidad: geoMatch.localidad,
@@ -167,6 +160,8 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                             geo_lon: geoMatch.longitud
                         }
                     }
+                } catch (e) {
+                    console.warn('Normalization skip for row:', ent.razon_social, e)
                 }
                 return ent
             }))
