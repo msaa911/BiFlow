@@ -196,17 +196,42 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 })
             }
 
+            // 1.5 FETCH EXISTING CATEGORIES TO PREVENT OVERWRITES
+            console.log('[ConfirmImport] Step 1.5: Checking for existing categories...')
+            const allCuits = validData.map((ent: any) => ent.cuit)
+            const { data: existingEnts } = await supabase
+                .from('entidades')
+                .select('cuit, categoria')
+                .eq('organization_id', orgId)
+                .in('cuit', allCuits)
+
+            const existingCategoryMap = new Map<string, string>()
+            existingEnts?.forEach((e: any) => {
+                existingCategoryMap.set(e.cuit, e.categoria)
+            })
+
             // 2. MAPPING & CHUNKING
             console.log('[ConfirmImport] Step 2: Preparing data chunks...')
             const normalizedData = validData.map(ent => {
                 const key = `${(ent.localidad || '').trim().toLowerCase()}|${(ent.provincia || '').trim().toLowerCase()}`
                 const geoMatch = geoCachedMap.get(key)
 
+                // Intelligent Category Merging
+                const currentCategory = category === 'ambos' ? 'proveedor' : category
+                const existingCategory = existingCategoryMap.get(ent.cuit)
+
+                let finalCategory: 'cliente' | 'proveedor' | 'ambos' = currentCategory
+                if (existingCategory && existingCategory !== 'ambos' && existingCategory !== currentCategory) {
+                    finalCategory = 'ambos'
+                } else if (existingCategory === 'ambos') {
+                    finalCategory = 'ambos'
+                }
+
                 return {
                     organization_id: orgId,
                     cuit: ent.cuit,
                     razon_social: ent.razon_social,
-                    categoria: category === 'ambos' ? 'proveedor' : category,
+                    categoria: finalCategory as any,
                     metadata: {
                         cbu_habitual: ent.cbu_habitual,
                         direccion: ent.direccion,
