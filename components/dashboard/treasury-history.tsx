@@ -28,11 +28,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 
+import { exportTreasuryMovementToExcel } from '@/lib/excel-utils'
+
 interface TreasuryHistoryProps {
     orgId: string
+    typeFilter?: 'cobro' | 'pago'
 }
 
-export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
+export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
     const [movements, setMovements] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [expandedMov, setExpandedMov] = useState<string | null>(null)
@@ -41,7 +44,7 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
 
     async function fetchMovements() {
         setLoading(true)
-        const { data, error } = await supabase
+        let query = supabase
             .from('movimientos_tesoreria')
             .select(`
                 *,
@@ -49,12 +52,19 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
                 instrumentos_pago (*),
                 aplicaciones_pago (
                     monto_aplicado,
+                    comprobante_id,
                     comprobantes (numero, tipo)
                 )
             `)
             .eq('organization_id', orgId)
             .order('fecha', { ascending: false })
             .order('created_at', { ascending: false })
+
+        if (typeFilter) {
+            query = query.eq('tipo', typeFilter)
+        }
+
+        const { data, error } = await query
 
         if (error) {
             console.error('Error fetching movements:', error)
@@ -67,10 +77,11 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
 
     useEffect(() => {
         fetchMovements()
-    }, [orgId])
+    }, [orgId, typeFilter])
 
     const filteredMovements = movements.filter(m =>
         m.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -79,12 +90,9 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
 
         setLoading(true)
         try {
-            // Logic for voiding:
-            // 1. Get the movement details
             const mov = movements.find(m => m.id === movId)
             if (!mov) return
 
-            // 2. Update invoice balances
             for (const app of mov.aplicaciones_pago) {
                 const { data: inv } = await supabase.from('comprobantes').select('monto_pendiente, monto_total').eq('id', app.comprobante_id).single()
                 if (inv) {
@@ -92,14 +100,12 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
                     await supabase.from('comprobantes')
                         .update({
                             monto_pendiente: newMonto,
-                            estado: newMonto >= inv.monto_total ? 'pendiente' : 'parcial'
+                            estado: newMonto >= inv.monto_total ? 'pendiente' : (newMonto <= 0 ? 'pagado' : 'parcial')
                         })
                         .eq('id', app.comprobante_id)
                 }
             }
 
-            // 3. Delete or Update Movement Status
-            // For now, let's just delete it to keep it simple, or we could add an 'estado' column
             const { error: delErr } = await supabase.from('movimientos_tesoreria').delete().eq('id', movId)
 
             if (delErr) throw delErr
@@ -114,21 +120,24 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
         }
     }
 
+    const title = typeFilter === 'cobro' ? 'Recibos' : (typeFilter === 'pago' ? 'Órdenes de Pago' : 'Movimientos de Tesorería')
+    const subtitle = typeFilter === 'cobro' ? 'Consulta y gestiona tus Recibos de cobro.' : (typeFilter === 'pago' ? 'Consulta y gestiona tus Órdenes de Pago.' : 'Consulta y gestiona tus Recibos y Órdenes de Pago.')
+
     return (
         <Card className="p-6 bg-gray-950 border-gray-800 text-white min-h-[500px]">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <h2 className="text-xl font-bold flex items-center gap-2">
                         <Clock className="w-5 h-5 text-emerald-400" />
-                        Historial de Tesorería
+                        {title}
                     </h2>
-                    <p className="text-sm text-gray-500">Consulta y gestiona tus Recibos y Órdenes de Pago.</p>
+                    <p className="text-sm text-gray-500">{subtitle}</p>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
                         <Input
-                            placeholder="Buscar por entidad..."
+                            placeholder="Buscar por número o entidad..."
                             className="bg-gray-900 border-gray-800 pl-9 text-xs"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -145,21 +154,21 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
                     <TableHeader className="bg-gray-900">
                         <TableRow className="hover:bg-transparent border-gray-800">
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Fecha</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Tipo</TableHead>
+                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Número</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Entidad</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-right">Monto Total</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Detalle</TableHead>
-                            <TableHead className="w-10"></TableHead>
+                            <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-center">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center text-gray-500">Cargando movimientos...</TableCell>
+                                <TableCell colSpan={6} className="h-32 text-center text-gray-500">Cargando...</TableCell>
                             </TableRow>
                         ) : filteredMovements.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center text-gray-500">No se encontraron movimientos.</TableCell>
+                                <TableCell colSpan={6} className="h-32 text-center text-gray-500">No se encontraron registros.</TableCell>
                             </TableRow>
                         ) : filteredMovements.map(mov => (
                             <>
@@ -168,12 +177,11 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
                                         {new Date(mov.fecha).toLocaleDateString('es-AR')}
                                     </TableCell>
                                     <TableCell>
-                                        <Badge className={`uppercase text-[10px] font-bold ${mov.tipo === 'cobro' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
-                                            {mov.tipo === 'cobro' ? <ArrowDownCircle className="w-3 h-3 mr-1" /> : <ArrowUpCircle className="w-3 h-3 mr-1" />}
-                                            {mov.tipo === 'cobro' ? 'Recibo' : 'Orden Pago'}
+                                        <Badge className={`uppercase text-[9px] font-bold ${mov.tipo === 'cobro' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
+                                            {mov.numero || 'S/N'}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="font-bold text-gray-200 text-xs">
+                                    <TableCell className="font-bold text-gray-200 text-xs text-ellipsis overflow-hidden whitespace-nowrap max-w-[200px]">
                                         {mov.entidades?.razon_social}
                                     </TableCell>
                                     <TableCell className="text-right font-mono font-bold text-white text-xs">
@@ -189,10 +197,31 @@ export function TreasuryHistory({ orgId }: TreasuryHistoryProps) {
                                         </button>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleVoid(mov.id)} className="text-gray-600 hover:text-red-500 transition-colors">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                        <div className="flex justify-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                                title="Exportar a Excel"
+                                                onClick={() => {
+                                                    try {
+                                                        exportTreasuryMovementToExcel(mov)
+                                                        toast.success('Excel generado')
+                                                    } catch (e) {
+                                                        toast.error('Error al exportar')
+                                                    }
+                                                }}
+                                            >
+                                                <Download className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-gray-500 hover:text-red-500 hover:bg-red-500/10"
+                                                onClick={() => handleVoid(mov.id)}
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>
