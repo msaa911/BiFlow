@@ -174,7 +174,10 @@ export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra'
             'Socio (Nombre o CUIT)': 'ACME S.A.',
             'CUIT Socio': '30-12345678-9',
             'Número Comprobante': '0001-00000001',
+            'Concepto / Descripción': 'Venta de mercadería',
             'Monto Total': 150000.50,
+            'Condición (Contado/Cta Cte)': 'Cuenta Corriente',
+            'Medio de Pago': 'Transferencia',
             'Banco (Opcional)': 'Banco Galicia',
             'Número Cheque (Opcional)': '12345678'
         }
@@ -229,6 +232,9 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                     const numero = getValByRegex(/numero|nro|n°|factura|comprobante/i)
                     const monto = parseFloat(getValByRegex(/monto|total|importe|valor/i).replace(/[^\d.,]/g, '').replace(',', '.'))
 
+                    const condicionRaw = getValByRegex(/condicion|pago|venta|compra/i).toLowerCase()
+                    const condicion = (condicionRaw.includes('contado') || condicionRaw === 'efectivo') ? 'contado' : 'cuenta_corriente'
+
                     const itemErrors: string[] = []
                     if (!fechaEmision) itemErrors.push('Falta Fecha de Emisión')
                     if (!cuit && !razonSocial) itemErrors.push('Falta Socio (Nombre o CUIT)')
@@ -243,6 +249,9 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                         razon_social_socio: razonSocial,
                         numero,
                         monto_total: monto,
+                        condicion: condicion,
+                        metodo_pago: getValByRegex(/metodo|medio|pago|instrumento/i),
+                        concepto: getValByRegex(/concepto|descripcion|detalle/i),
                         banco: getValByRegex(/banco|entidad/i),
                         numero_cheque: getValByRegex(/cheque|nro.*cheque/i),
                         rowNum,
