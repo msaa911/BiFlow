@@ -157,9 +157,23 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     validLocMap.add(`${g.localidad.trim().toLowerCase()}|${g.provincia.trim().toLowerCase()}`)
                 })
             }
-
             const dataWithContext = parsedData.map((ent: any) => {
+                const errors: string[] = []
                 const warnings: string[] = []
+
+                // 1. Critical Validation (Errors)
+                if (!ent.razon_social?.trim()) {
+                    errors.push('Falta Razón Social')
+                }
+
+                const cleanCuit = (ent.cuit || '').toString().replace(/[^\d]/g, '')
+                if (!cleanCuit) {
+                    errors.push('Falta CUIT')
+                } else if (cleanCuit.length !== 11) {
+                    errors.push('CUIT incompleto (necesita 11 dígitos)')
+                }
+
+                // 2. Location Validation (Warnings)
                 const p = resolveAlias(ent.provincia || '', 'provincia')
                 const l = resolveAlias(ent.localidad || '', 'localidad')
                 const locKey = `${l}|${p}`
@@ -172,8 +186,9 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
 
                 return {
                     ...ent,
+                    errors,
                     warnings,
-                    isValid: true // We still allow importing with warnings
+                    isValid: errors.length === 0
                 }
             })
 
