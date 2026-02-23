@@ -68,7 +68,15 @@ export function exportEntitiesToExcel(entities: any[], category: string) {
     XLSX.writeFile(wb, filename)
 }
 
-export async function parseEntityExcel(file: File): Promise<any[]> {
+// Helper to validate CUIT (simplified checksum or length/format)
+export function isValidCUIT(cuit: string): boolean {
+    const clean = cuit.replace(/[^\d]/g, '')
+    if (clean.length !== 11) return false
+    // Basic format check, could add full weighted checksum if needed
+    return true
+}
+
+export async function parseEntityExcel(file: File): Promise<{ data: any[], errors: any[] }> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = (e) => {
@@ -79,22 +87,45 @@ export async function parseEntityExcel(file: File): Promise<any[]> {
                 const sheet = workbook.Sheets[sheetName]
                 const json = XLSX.utils.sheet_to_json(sheet)
 
-                // Map columns
-                const mapped = json.map((row: any) => ({
-                    razon_social: row['Razón Social / Nombre'] || row['Nombre'] || row['Razon Social'],
-                    cuit: String(row['CUIT'] || '').replace(/-/g, ''),
-                    cbu_habitual: String(row['CBU / CVU Habitual'] || row['CBU'] || row['CBU Habitual'] || ''),
-                    direccion: row['Dirección'] || row['Direccion'] || '',
-                    localidad: row['Localidad'] || '',
-                    departamento: row['Departamento'] || '',
-                    provincia: row['Provincia'] || '',
-                    codigo_postal: String(row['Código Postal'] || row['CP'] || ''),
-                    email: row['Email'] || '',
-                    telefono_1: row['Teléfono'] || row['Telefono'] || '',
-                    contacto: row['Contacto'] || ''
-                }))
+                const results: any[] = []
+                const errors: any[] = []
 
-                resolve(mapped.filter(m => m.razon_social && m.cuit))
+                json.forEach((row: any, index: number) => {
+                    const rowNum = index + 2 // 1-indexed + header row
+                    const rawCuit = String(row['CUIT'] || row['Cuit'] || '').trim()
+                    const cleanCuit = rawCuit.replace(/[^\d]/g, '')
+                    const razonSocial = (row['Razón Social / Nombre'] || row['Nombre'] || row['Razon Social'] || '').trim()
+
+                    const itemErrors: string[] = []
+                    if (!razonSocial) itemErrors.push('Falta Razón Social')
+                    if (!cleanCuit) {
+                        itemErrors.push('Falta CUIT')
+                    } else if (cleanCuit.length !== 11) {
+                        itemErrors.push('CUIT debe tener 11 dígitos')
+                    }
+
+                    const record = {
+                        id: `row-${rowNum}`,
+                        razon_social: razonSocial,
+                        cuit: cleanCuit,
+                        cbu_habitual: String(row['CBU / CVU Habitual'] || row['CBU'] || row['CBU Habitual'] || '').trim(),
+                        direccion: (row['Dirección'] || row['Direccion'] || '').trim(),
+                        localidad: (row['Localidad'] || '').trim(),
+                        departamento: (row['Departamento'] || '').trim(),
+                        provincia: (row['Provincia'] || '').trim(),
+                        codigo_postal: String(row['Código Postal'] || row['CP'] || '').trim(),
+                        email: (row['Email'] || '').trim(),
+                        telefono_1: (row['Teléfono'] || row['Telefono'] || '').trim(),
+                        contacto: (row['Contacto'] || '').trim(),
+                        rowNum,
+                        errors: itemErrors,
+                        isValid: itemErrors.length === 0
+                    }
+
+                    results.push(record)
+                })
+
+                resolve({ data: results, errors })
             } catch (err) {
                 reject(err)
             }

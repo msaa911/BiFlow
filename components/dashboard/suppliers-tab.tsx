@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { EntityModal } from './entity-modal'
 import { toast } from 'sonner'
 import { downloadEntityTemplate, exportEntitiesToExcel, parseEntityExcel } from '@/lib/excel-utils'
+import { ImportPreviewModal } from './import-preview-modal'
 
 interface SuppliersTabProps {
     orgId: string
@@ -22,6 +23,8 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     const [searchTerm, setSearchTerm] = useState('')
     const [isEntityModalOpen, setIsEntityModalOpen] = useState(false)
     const [selectedEntity, setSelectedEntity] = useState<any>(null)
+    const [importData, setImportData] = useState<any[]>([])
+    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
     const supabase = createClient()
 
     const fetchSocios = async () => {
@@ -94,21 +97,59 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
 
         const loadingToast = toast.loading('Procesando archivo...')
         try {
-            const entities = await parseEntityExcel(file)
-            if (entities.length === 0) {
+            const { data: parsedData } = await parseEntityExcel(file)
+            if (parsedData.length === 0) {
                 toast.error('No se encontraron datos válidos en el archivo')
                 return
             }
 
-            // Batch upsert to Supabase
+            setImportData(parsedData)
+            setIsImportPreviewOpen(true)
+        } catch (err: any) {
+            console.error('Error importing entities:', err)
+            toast.error('Error en la importación: ' + err.message)
+        } finally {
+            toast.dismiss(loadingToast)
+            if (e.target) e.target.value = '' // Clear input
+        }
+    }
+
+    const onConfirmImport = async (validData: any[]) => {
+        const loadingToast = toast.loading(`Normalizando y cargando ${validData.length} registros...`)
+        try {
+            // Normalize locations first
+            const normalizedData = await Promise.all(validData.map(async (ent) => {
+                if (ent.localidad && ent.provincia) {
+                    const { data: geoMatch } = await supabase
+                        .from('geo_argentina')
+                        .select('localidad, departamento, provincia, latitud, longitud')
+                        .ilike('localidad', `%${ent.localidad}%`)
+                        .ilike('provincia', `%${ent.provincia}%`)
+                        .limit(1)
+                        .single()
+
+                    if (geoMatch) {
+                        return {
+                            ...ent,
+                            localidad: geoMatch.localidad,
+                            departamento: geoMatch.departamento,
+                            provincia: geoMatch.provincia,
+                            geo_lat: geoMatch.latitud,
+                            geo_lon: geoMatch.longitud
+                        }
+                    }
+                }
+                return ent
+            }))
+
             const { error } = await supabase
                 .from('entidades')
                 .upsert(
-                    entities.map(ent => ({
+                    normalizedData.map(ent => ({
                         organization_id: orgId,
                         cuit: ent.cuit,
                         razon_social: ent.razon_social,
-                        categoria: category === 'ambos' ? 'proveedor' : category, // Default to current tab
+                        categoria: category === 'ambos' ? 'proveedor' : category,
                         metadata: {
                             cbu_habitual: ent.cbu_habitual,
                             direccion: ent.direccion,
@@ -118,7 +159,9 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                             codigo_postal: ent.codigo_postal,
                             email: ent.email,
                             telefono_1: ent.telefono_1,
-                            contacto: ent.contacto
+                            contacto: ent.contacto,
+                            geo_lat: ent.geo_lat,
+                            geo_lon: ent.geo_lon
                         },
                         updated_at: new Date().toISOString()
                     })),
@@ -126,15 +169,14 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 )
 
             if (error) throw error
-
-            toast.success(`${entities.length} registros procesados correctamente`)
+            toast.success(`${validData.length} registros procesados e importados correctamente`)
             fetchSocios()
         } catch (err: any) {
-            console.error('Error importing entities:', err)
-            toast.error('Error en la importación: ' + err.message)
+            console.error('Error confirming import:', err)
+            toast.error('Error al guardar los datos: ' + err.message)
+            throw err
         } finally {
             toast.dismiss(loadingToast)
-            if (e.target) e.target.value = '' // Clear input
         }
     }
 
@@ -302,6 +344,13 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 entity={selectedEntity}
                 onSuccess={fetchSocios}
                 defaultCategory={category === 'ambos' ? 'proveedor' : category as 'cliente' | 'proveedor'}
+            />
+            <ImportPreviewModal
+                isOpen={isImportPreviewOpen}
+                onClose={() => setIsImportPreviewOpen(false)}
+                data={importData}
+                category={category}
+                onConfirm={onConfirmImport}
             />
         </div>
     )
