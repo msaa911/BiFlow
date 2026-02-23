@@ -112,8 +112,8 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
             console.log('[Import] Step 2: Proactive Location Validation...')
             const uniqueLocs = Array.from(new Set(
                 parsedData
-                    .filter(ent => ent.localidad && ent.provincia)
-                    .map(ent => `${ent.localidad.trim().toLowerCase()}|${ent.provincia.trim().toLowerCase()}`)
+                    .filter((ent: any) => ent.localidad && ent.provincia)
+                    .map((ent: any) => `${ent.localidad.trim().toLowerCase()}|${ent.provincia.trim().toLowerCase()}`)
             ))
 
             const validLocMap = new Set<string>()
@@ -122,12 +122,12 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     .from('geo_argentina')
                     .select('localidad, provincia')
 
-                geoData?.forEach(g => {
+                geoData?.forEach((g: any) => {
                     validLocMap.add(`${g.localidad.trim().toLowerCase()}|${g.provincia.trim().toLowerCase()}`)
                 })
             }
 
-            const dataWithContext = parsedData.map(ent => {
+            const dataWithContext = parsedData.map((ent: any) => {
                 const warnings: string[] = []
                 const locKey = `${(ent.localidad || '').trim().toLowerCase()}|${(ent.provincia || '').trim().toLowerCase()}`
 

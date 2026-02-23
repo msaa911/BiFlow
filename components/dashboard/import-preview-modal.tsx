@@ -185,7 +185,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                         <span className={`font-medium ${!row.localidad ? 'text-gray-600 italic' : 'text-gray-300'}`}>
                                                             {row.localidad || 'No especificado'}
                                                         </span>
-                                                        {row.warnings?.some(w => w.includes('Ubicación no reconocida')) && (
+                                                        {row.warnings?.some((w: string) => w.includes('Ubicación no reconocida')) && (
                                                             <Badge variant="outline" className="text-[9px] h-4 bg-amber-500/10 text-amber-500 border-amber-500/20 px-1 py-0 leading-none">
                                                                 ERROR ORTOGRÁFICO?
                                                             </Badge>
