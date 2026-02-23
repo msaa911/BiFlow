@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Loader2, ShieldCheck, Landmark } from 'lucide-react'
-import { LocationSelector } from './location-selector'
+import { HierarchicalLocationSelector } from './location-selector'
 
 interface EntityModalProps {
     isOpen: boolean
@@ -269,21 +269,12 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                                         className="bg-gray-900 border-gray-800"
                                     />
                                 </div>
+                                <HierarchicalLocationSelector
+                                    formData={formData}
+                                    onChange={(updates: Partial<typeof formData>) => setFormData({ ...formData, ...updates })}
+                                />
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="localidad" className="text-xs text-gray-400">Localidad</Label>
-                                        <LocationSelector
-                                            value={formData.localidad}
-                                            onChange={(localidad, departamento, provincia) => {
-                                                setFormData({
-                                                    ...formData,
-                                                    localidad,
-                                                    departamento,
-                                                    provincia
-                                                })
-                                            }}
-                                        />
-                                    </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="codigo_postal" className="text-xs text-gray-400">Código Postal</Label>
                                         <Input
@@ -294,40 +285,16 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
                                             className="bg-gray-900 border-gray-800"
                                         />
                                     </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="departamento" className="text-xs text-gray-400">Departamento/Partido</Label>
+                                        <Label htmlFor="pais" className="text-xs text-gray-400">País</Label>
                                         <Input
-                                            id="departamento"
-                                            placeholder="Partido o sección"
-                                            value={formData.departamento}
-                                            onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
-                                            className="bg-gray-900 border-gray-800 opacity-80"
-                                            readOnly
+                                            id="pais"
+                                            placeholder="Argentina"
+                                            value={formData.pais}
+                                            onChange={(e) => setFormData({ ...formData, pais: e.target.value })}
+                                            className="bg-gray-900 border-gray-800"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="provincia" className="text-xs text-gray-400">Provincia</Label>
-                                        <Input
-                                            id="provincia"
-                                            placeholder="Buenos Aires"
-                                            value={formData.provincia}
-                                            onChange={(e) => setFormData({ ...formData, provincia: e.target.value })}
-                                            className="bg-gray-900 border-gray-800 opacity-80"
-                                            readOnly
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="pais" className="text-xs text-gray-400">País</Label>
-                                    <Input
-                                        id="pais"
-                                        placeholder="Argentina"
-                                        value={formData.pais}
-                                        onChange={(e) => setFormData({ ...formData, pais: e.target.value })}
-                                        className="bg-gray-900 border-gray-800"
-                                    />
                                 </div>
                             </div>
 

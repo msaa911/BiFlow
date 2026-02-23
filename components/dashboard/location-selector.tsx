@@ -1,116 +1,148 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, MapPin, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Loader2 } from 'lucide-react'
 
-interface Location {
-    localidad: string
-    departamento: string
-    provincia: string
+interface HierarchicalLocationSelectorProps {
+    formData: {
+        provincia: string
+        departamento: string
+        localidad: string
+    }
+    onChange: (updates: Partial<{ provincia: string, departamento: string, localidad: string }>) => void
 }
 
-interface LocationSelectorProps {
-    value: string
-    onChange: (locality: string, department: string, province: string) => void
-    className?: string
-}
+export function HierarchicalLocationSelector({ formData, onChange }: HierarchicalLocationSelectorProps) {
+    const [provinces, setProvinces] = useState<string[]>([])
+    const [departments, setDepartments] = useState<string[]>([])
+    const [localities, setLocalities] = useState<string[]>([])
+    const [loading, setLoading] = useState({ p: false, d: false, l: false })
 
-export function LocationSelector({ value, onChange, className }: LocationSelectorProps) {
-    const [search, setSearch] = useState(value)
-    const [results, setResults] = useState<Location[]>([])
-    const [loading, setLoading] = useState(false)
-    const [isOpen, setIsOpen] = useState(false)
-    const containerRef = useRef<HTMLDivElement>(null)
+    const supabase = createClient()
 
+    // Fetch provinces on mount
     useEffect(() => {
-        setSearch(value)
-    }, [value])
+        const fetchProvinces = async () => {
+            setLoading(prev => ({ ...prev, p: true }))
+            const { data } = await supabase
+                .from('geo_argentina')
+                .select('provincia')
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false)
+            if (data) {
+                const unique = Array.from(new Set(data.map(d => d.provincia))).sort()
+                setProvinces(unique)
             }
+            setLoading(prev => ({ ...prev, p: false }))
         }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
+        fetchProvinces()
     }, [])
 
-    const handleSearch = async (term: string) => {
-        setSearch(term)
-        if (term.length < 3) {
-            setResults([])
-            setIsOpen(false)
+    // Fetch departments when province changes
+    useEffect(() => {
+        if (!formData.provincia) {
+            setDepartments([])
             return
         }
 
-        setLoading(true)
-        const supabase = createClient()
-
-        try {
-            const { data, error } = await supabase
+        const fetchDepartments = async () => {
+            setLoading(prev => ({ ...prev, d: true }))
+            const { data } = await supabase
                 .from('geo_argentina')
-                .select('localidad, departamento, provincia')
-                .ilike('localidad', `%${term}%`)
-                .limit(10)
+                .select('departamento')
+                .eq('provincia', formData.provincia)
 
-            if (!error && data) {
-                setResults(data)
-                setIsOpen(true)
+            if (data) {
+                const unique = Array.from(new Set(data.map(d => d.departamento))).sort()
+                setDepartments(unique)
             }
-        } catch (err) {
-            console.error('Error fetching locations:', err)
-        } finally {
-            setLoading(false)
+            setLoading(prev => ({ ...prev, d: false }))
         }
-    }
+        fetchDepartments()
+    }, [formData.provincia])
 
-    const handleSelect = (loc: Location) => {
-        onChange(loc.localidad, loc.departamento, loc.provincia)
-        setSearch(loc.localidad)
-        setIsOpen(false)
-    }
+    // Fetch localities when department changes
+    useEffect(() => {
+        if (!formData.departamento || !formData.provincia) {
+            setLocalities([])
+            return
+        }
+
+        const fetchLocalities = async () => {
+            setLoading(prev => ({ ...prev, l: true }))
+            const { data } = await supabase
+                .from('geo_argentina')
+                .select('localidad')
+                .eq('provincia', formData.provincia)
+                .eq('departamento', formData.departamento)
+
+            if (data) {
+                const unique = Array.from(new Set(data.map(d => d.localidad))).sort()
+                setLocalities(unique)
+            }
+            setLoading(prev => ({ ...prev, l: false }))
+        }
+        fetchLocalities()
+    }, [formData.departamento, formData.provincia])
 
     return (
-        <div className={cn("relative", className)} ref={containerRef}>
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <Input
-                    placeholder="Buscar localidad..."
-                    value={search}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    onFocus={() => search.length >= 3 && setIsOpen(true)}
-                    className="bg-gray-900 border-gray-800 pl-10"
-                />
-                {loading && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-emerald-500" />
-                )}
+        <div className="space-y-4">
+            <div className="space-y-2">
+                <Label className="text-xs text-gray-400">Provincia</Label>
+                <Select
+                    value={formData.provincia}
+                    onValueChange={(v) => onChange({ provincia: v, departamento: '', localidad: '' })}
+                >
+                    <SelectTrigger className="bg-gray-900 border-gray-800">
+                        {loading.p ? <Loader2 className="w-4 h-4 animate-spin" /> : <SelectValue placeholder="Seleccionar provincia" />}
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60">
+                        {provinces.map(p => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
-            {isOpen && results.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-gray-900 border border-gray-800 rounded-md shadow-xl max-h-60 overflow-y-auto">
-                    {results.map((loc, idx) => (
-                        <button
-                            key={`${loc.localidad}-${loc.provincia}-${idx}`}
-                            type="button"
-                            className="w-full text-left px-4 py-3 hover:bg-gray-800 flex items-start gap-3 transition-colors border-b border-gray-800 last:border-0"
-                            onClick={() => handleSelect(loc)}
-                        >
-                            <MapPin className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                            <div>
-                                <div className="text-sm font-medium text-white">{loc.localidad}</div>
-                                <div className="text-[10px] text-gray-500 uppercase tracking-tighter">
-                                    {loc.departamento} • {loc.provincia}
-                                </div>
-                            </div>
-                        </button>
-                    ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label className="text-xs text-gray-400">Departamento/Partido</Label>
+                    <Select
+                        value={formData.departamento}
+                        onValueChange={(v) => onChange({ departamento: v, localidad: '' })}
+                        disabled={!formData.provincia || loading.d}
+                    >
+                        <SelectTrigger className="bg-gray-900 border-gray-800">
+                            {loading.d ? <Loader2 className="w-4 h-4 animate-spin" /> : <SelectValue placeholder="Seleccionar departamento" />}
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60">
+                            {departments.map(d => (
+                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
-            )}
+
+                <div className="space-y-2">
+                    <Label className="text-xs text-gray-400">Localidad</Label>
+                    <Select
+                        value={formData.localidad}
+                        onValueChange={(v) => onChange({ localidad: v })}
+                        disabled={!formData.departamento || loading.l}
+                    >
+                        <SelectTrigger className="bg-gray-900 border-gray-800">
+                            {loading.l ? <Loader2 className="w-4 h-4 animate-spin" /> : <SelectValue placeholder="Seleccionar localidad" />}
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60">
+                            {localities.map(l => (
+                                <SelectItem key={l} value={l}>{l}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
         </div>
     )
 }
