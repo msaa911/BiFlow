@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Search, Filter, TrendingDown, TrendingUp, ArrowRight, AlertCircle, Info, Plus, Edit2, Trash2, FileDown, Upload } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, FileDown, Upload, Bell, CheckCircle2, TrendingUp, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TreasuryEngine } from '@/lib/treasury-engine'
 import { InvoiceFormModal } from './invoice-form-modal'
@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { useRef } from 'react'
 import { downloadInvoiceTemplate, parseInvoiceExcel } from '@/lib/excel-utils'
 import { InvoiceImportPreviewModal } from './invoice-import-preview-modal'
+import { PaymentWizard } from './payment-wizard'
 
 interface InvoicePanelProps {
     orgId: string
@@ -26,6 +27,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     const [view, setView] = useState<'AR' | 'AP'>(defaultView)
     const [searchTerm, setSearchTerm] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isPaymentWizardOpen, setIsPaymentWizardOpen] = useState(false)
     const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
     const [importData, setImportData] = useState<any[]>([])
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
@@ -34,7 +36,6 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
     const handleDelete = async (id: string) => {
         if (!confirm('¿Seguro que desea eliminar este comprobante?')) return
-        const supabase = createClient()
         const { error } = await supabase.from('comprobantes').delete().eq('id', id)
         if (error) {
             toast.error('Error al eliminar: ' + error.message)
@@ -102,28 +103,11 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             try {
                                 const { data: parsed, errors } = await parseInvoiceExcel(file)
                                 if (errors.length > 0) throw new Error(errors[0])
-
-                                // Match with existing entities
-                                const { data: entities } = await supabase
-                                    .from('entidades')
-                                    .select('id, razon_social, cuit')
-                                    .eq('organization_id', orgId)
-
+                                const { data: entities } = await supabase.from('entidades').select('id, razon_social, cuit').eq('organization_id', orgId)
                                 const enriched = parsed.map(inv => {
-                                    const match = entities?.find(e =>
-                                        e.cuit === inv.cuit_socio ||
-                                        e.razon_social.toLowerCase() === inv.razon_social_socio.toLowerCase()
-                                    )
-                                    return {
-                                        ...inv,
-                                        entidad_id: match?.id,
-                                        razon_social_socio: match?.razon_social || inv.razon_social_socio,
-                                        cuit_socio: match?.cuit || inv.cuit_socio,
-                                        isValid: inv.isValid && !!match,
-                                        errors: !match ? [...(inv.errors || []), 'Socio no registrado'] : inv.errors
-                                    }
+                                    const match = entities?.find(e => e.cuit === inv.cuit_socio || e.razon_social.toLowerCase() === inv.razon_social_socio.toLowerCase())
+                                    return { ...inv, entidad_id: match?.id, razon_social_socio: match?.razon_social || inv.razon_social_socio, cuit_socio: match?.cuit || inv.cuit_socio, isValid: inv.isValid && !!match, errors: !match ? [...(inv.errors || []), 'Socio no registrado'] : inv.errors }
                                 })
-
                                 setImportData(enriched)
                                 setIsImportPreviewOpen(true)
                             } catch (err: any) {
@@ -145,15 +129,18 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                         <Plus className="w-4 h-4 mr-2" />
                         Nuevo {view === 'AR' ? 'Ingreso' : 'Egreso'}
                     </Button>
-                    <div className="relative w-full md:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                        <Input
-                            placeholder="Buscar cliente o factura..."
-                            className="pl-10 bg-gray-900 border-gray-800 text-sm h-9"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                </div>
+            </div>
+
+            <div className="p-4 bg-gray-900 flex items-center justify-between border-b border-gray-800">
+                <div className="relative w-full md:w-96">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Input
+                        placeholder="Buscar por cliente, CUIT o factura..."
+                        className="pl-10 bg-gray-950 border-gray-800 text-sm h-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
             </div>
 
@@ -161,12 +148,11 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-800/50 text-xs uppercase font-semibold text-gray-500 tracking-wider">
                         <tr>
-                            <th className="px-6 py-4">Fecha</th>
-                            <th className="px-6 py-4">CUIT</th>
+                            <th className="px-6 py-4">Fecha (Emisión)</th>
+                            <th className="px-6 py-4">CUIT / Entidad</th>
                             <th className="px-6 py-4">Concepto / Condición</th>
-                            <th className="px-6 py-4">M. Pago</th>
-                            <th className="px-6 py-4 text-right">Monto</th>
-                            <th className="px-6 py-4 text-center">Estado</th>
+                            <th className="px-6 py-4 text-right">Monto Total</th>
+                            <th className="px-6 py-4 text-right">Saldo Pendiente</th>
                             <th className="px-6 py-4 text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -174,48 +160,48 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                         {loading ? (
                             <tr><td colSpan={6} className="px-6 py-24 text-center text-gray-500">Cargando comprobantes...</td></tr>
                         ) : filteredInvoices.length === 0 ? (
-                            <tr><td colSpan={6} className="px-6 py-24 text-center text-gray-500 text-xl font-bold">No hay comprobantes cargados.</td></tr>
+                            <tr><td colSpan={6} className="px-6 py-24 text-center text-gray-500">No hay comprobantes registrados.</td></tr>
                         ) : filteredInvoices.map(inv => (
                             <tr key={inv.id} className="hover:bg-gray-800/20 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
                                         <span className="text-white font-bold">{new Date(inv.fecha_emision).toLocaleDateString('es-AR')}</span>
-                                        <span className="text-[10px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</span>
+                                        <span className="text-[10px] text-gray-500 uppercase">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
                                         <span className="text-white font-semibold">{inv.razon_social_socio}</span>
-                                        <span className="text-xs text-gray-400 font-mono tracking-tighter">{inv.cuit_socio}</span>
+                                        <span className="text-xs text-gray-400 font-mono">{inv.cuit_socio}</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
-                                        <span className="text-white font-medium truncate max-w-[200px]">{inv.concepto || (inv.numero || 'Operación')}</span>
+                                        <span className="text-white truncate max-w-[180px]">{inv.concepto || (inv.numero || 'Factura')}</span>
                                         <Badge variant="outline" className={`w-fit text-[9px] mt-1 ${inv.condicion === 'contado' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-800 text-gray-400'}`}>
-                                            {inv.condicion?.replace('_', ' ').toUpperCase() || 'CTA CTE'}
+                                            {inv.condicion?.toUpperCase() || 'CTA CTE'}
                                         </Badge>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
-                                    <span className="text-xs text-gray-400 uppercase font-medium">
-                                        {inv.metodo_pago?.replace('_', ' ') || '---'}
-                                    </span>
-                                </td>
-                                <td className={`px-6 py-4 text-right font-bold ${view === 'AR' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                <td className="px-6 py-4 text-right font-medium text-gray-400">
                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_total)}
                                 </td>
-                                <td className="px-6 py-4 text-center">
-                                    <Badge className={
-                                        inv.estado === 'reconciliado' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                            inv.estado === 'vencido' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                    }>
-                                        {inv.estado === 'reconciliado' ? 'COBRADO' : inv.estado?.toUpperCase()}
-                                    </Badge>
+                                <td className={`px-6 py-4 text-right font-bold ${inv.monto_pendiente > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                    {inv.monto_pendiente > 0 ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente) : <div className="flex items-center justify-end gap-1"><CheckCircle2 className="w-3 h-3" /> COBRADO</div>}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="flex justify-center gap-1">
+                                    <div className="flex justify-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            className={`h-8 font-bold ${view === 'AR' ? 'bg-emerald-600/10 text-emerald-500 hover:bg-emerald-600/20' : 'bg-red-600/10 text-red-500 hover:bg-red-600/20'}`}
+                                            disabled={inv.monto_pendiente <= 0}
+                                            onClick={() => {
+                                                setSelectedInvoice(inv)
+                                                setIsPaymentWizardOpen(true)
+                                            }}
+                                        >
+                                            {view === 'AR' ? 'Cobrar' : 'Pagar'}
+                                        </Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -226,14 +212,6 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                             }}
                                         >
                                             <Edit2 className="w-3.5 h-3.5" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-gray-500 hover:text-red-500"
-                                            onClick={() => handleDelete(inv.id)}
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
                                 </td>
@@ -246,7 +224,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
             {nettingOps.length > 0 && (
                 <div className="p-4 bg-emerald-600/5 border-t border-gray-800 flex items-center gap-3">
                     <div className="p-2 bg-emerald-500/20 rounded-full">
-                        <AlertCircle className="w-4 h-4 text-emerald-400" />
+                        <TrendingUp className="w-4 h-4 text-emerald-500" />
                     </div>
                     <div className="flex-1">
                         <p className="text-xs text-emerald-200/60 leading-relaxed">
@@ -255,7 +233,13 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             A pagar: <span className="text-red-400">${new Intl.NumberFormat('es-AR').format(nettingOps[0].pendingAP)}</span>.
                         </p>
                     </div>
-                    <button className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-4">Generar Compensación</button>
+                    <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+                    >
+                        Compensar Ahora
+                        <ArrowRight className="w-3 h-3 ml-2" />
+                    </Button>
                 </div>
             )}
 
@@ -263,46 +247,31 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 orgId={orgId}
-                type={view === 'AR' ? 'factura_venta' : 'factura_compra'}
                 invoice={selectedInvoice}
+                type={view === 'AR' ? 'factura_venta' : 'factura_compra'}
                 onSuccess={onRefresh}
             />
+
             <InvoiceImportPreviewModal
                 isOpen={isImportPreviewOpen}
                 onClose={() => setIsImportPreviewOpen(false)}
                 data={importData}
                 orgId={orgId}
                 type={view === 'AR' ? 'factura_venta' : 'factura_compra'}
-                onRowUpdate={(upd) => setImportData(prev => prev.map(r => r.id === upd.id ? upd : r))}
-                onConfirm={async (validData) => {
-                    const loadingToast = toast.loading(`Importando ${validData.length} comprobantes...`)
-                    try {
-                        const payload = validData.map(v => ({
-                            organization_id: orgId,
-                            entidad_id: v.entidad_id,
-                            tipo: view === 'AR' ? 'factura_venta' : 'factura_compra',
-                            numero: v.numero,
-                            monto_total: v.monto_total,
-                            monto_pendiente: v.monto_total,
-                            fecha_emision: v.fecha_emision,
-                            fecha_vencimiento: v.fecha_vencimiento,
-                            banco: v.banco,
-                            numero_cheque: v.numero_cheque,
-                            razon_social_socio: v.razon_social_socio,
-                            cuit_socio: v.cuit_socio,
-                            estado: 'pendiente'
-                        }))
-                        const { error } = await supabase.from('comprobantes').insert(payload)
-                        if (error) throw error
-                        toast.success('Comprobantes importados con éxito')
-                        onRefresh()
-                    } catch (err: any) {
-                        toast.error('Error: ' + err.message)
-                        throw err
-                    } finally {
-                        toast.dismiss(loadingToast)
-                    }
+                onSuccess={() => {
+                    setIsImportPreviewOpen(false)
+                    onRefresh()
                 }}
+            />
+
+            <PaymentWizard
+                isOpen={isPaymentWizardOpen}
+                onClose={() => setIsPaymentWizardOpen(false)}
+                orgId={orgId}
+                entidadId={selectedInvoice?.entidad_id}
+                razonSocial={selectedInvoice?.razon_social_socio}
+                tipo={view === 'AR' ? 'cobro' : 'pago'}
+                onSuccess={onRefresh}
             />
         </Card>
     )

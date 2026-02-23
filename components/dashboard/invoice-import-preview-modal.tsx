@@ -24,6 +24,7 @@ interface InvoiceImportPreviewModalProps {
     type: 'factura_venta' | 'factura_compra'
     onConfirm: (validData: any[]) => Promise<void>
     onRowUpdate: (updatedRow: any) => void
+    onSuccess?: () => void
 }
 
 export function InvoiceImportPreviewModal({
@@ -33,7 +34,8 @@ export function InvoiceImportPreviewModal({
     orgId,
     type,
     onConfirm,
-    onRowUpdate
+    onRowUpdate,
+    onSuccess
 }: InvoiceImportPreviewModalProps) {
     const [isProcessing, setIsProcessing] = useState(false)
     const [editingRowId, setEditingRowId] = useState<string | null>(null)
@@ -48,6 +50,7 @@ export function InvoiceImportPreviewModal({
         try {
             const validData = data.filter((d: any) => d.isValid)
             await onConfirm(validData)
+            if (onSuccess) onSuccess()
             onClose()
         } catch (error) {
             console.error('[InvoicePreview] Confirm Error:', error)
