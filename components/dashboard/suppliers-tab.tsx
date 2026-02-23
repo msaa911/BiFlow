@@ -134,57 +134,93 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     }
 
     const onConfirmImport = async (validData: any[]) => {
-        console.log('[ConfirmImport] Persist entry. Records:', validData.length)
-        const loadingToast = toast.loading(`Guardando ${validData.length} registros...`)
+        console.log('[ConfirmImport] Starting optimized persist for', validData.length, 'records')
+        const loadingToast = toast.loading(`Normalizando y guardando ${validData.length} registros...`)
 
         try {
-            if (!orgId) {
-                console.error('[ConfirmImport] Error: orgId is missing')
-                throw new Error('No se detectó el ID de la organización')
+            if (!orgId) throw new Error('No se detectó el ID de la organización')
+
+            // 1. BATCH NORMALIZATION
+            console.log('[ConfirmImport] Step 1: Batch Normalizing Locations...')
+            const uniqueLocations = Array.from(new Set(
+                validData
+                    .filter(ent => !ent.geo_lat && ent.localidad && ent.provincia)
+                    .map(ent => `${ent.localidad.trim().toLowerCase()}|${ent.provincia.trim().toLowerCase()}`)
+            ))
+
+            const geoCachedMap = new Map<string, any>()
+
+            if (uniqueLocations.length > 0) {
+                console.log(`[ConfirmImport] Fetching ${uniqueLocations.length} unique locations from DB...`)
+
+                // We fetch all potential matches in one go using OR filters or filtering by the list of provinces
+                // For simplicity and speed, we fetch only columns we need
+                const { data: geoData } = await supabase
+                    .from('geo_argentina')
+                    .select('localidad, departamento, provincia, latitud, longitud')
+
+                // Build a quick lookup map
+                geoData?.forEach(g => {
+                    const key = `${g.localidad.trim().toLowerCase()}|${g.provincia.trim().toLowerCase()}`
+                    if (!geoCachedMap.has(key)) {
+                        geoCachedMap.set(key, g)
+                    }
+                })
             }
 
-            console.log('[ConfirmImport] Upserting to entidades...')
-            const dataToUpsert = validData.map(ent => ({
-                organization_id: orgId,
-                cuit: ent.cuit,
-                razon_social: ent.razon_social,
-                categoria: category === 'ambos' ? 'proveedor' : category,
-                metadata: {
-                    cbu_habitual: ent.cbu_habitual,
-                    direccion: ent.direccion,
-                    localidad: ent.localidad,
-                    departamento: ent.departamento,
-                    provincia: ent.provincia,
-                    codigo_postal: ent.codigo_postal,
-                    email: ent.email,
-                    telefono_1: ent.telefono_1,
-                    contacto: ent.contacto,
-                    geo_lat: ent.geo_lat,
-                    geo_lon: ent.geo_lon
-                },
-                updated_at: new Date().toISOString()
-            }))
+            // 2. MAPPING & CHUNKING
+            console.log('[ConfirmImport] Step 2: Preparing data chunks...')
+            const normalizedData = validData.map(ent => {
+                const key = `${(ent.localidad || '').trim().toLowerCase()}|${(ent.provincia || '').trim().toLowerCase()}`
+                const geoMatch = geoCachedMap.get(key)
 
-            const { data: result, error: upsertError } = await supabase
-                .from('entidades')
-                .upsert(dataToUpsert, { onConflict: 'organization_id, cuit' })
-                .select()
+                return {
+                    organization_id: orgId,
+                    cuit: ent.cuit,
+                    razon_social: ent.razon_social,
+                    categoria: category === 'ambos' ? 'proveedor' : category,
+                    metadata: {
+                        cbu_habitual: ent.cbu_habitual,
+                        direccion: ent.direccion,
+                        localidad: geoMatch?.localidad || ent.localidad,
+                        departamento: geoMatch?.departamento || ent.departamento,
+                        provincia: geoMatch?.provincia || ent.provincia,
+                        codigo_postal: ent.codigo_postal,
+                        email: ent.email,
+                        telefono_1: ent.telefono_1,
+                        contacto: ent.contacto,
+                        geo_lat: geoMatch?.latitud || ent.geo_lat,
+                        geo_lon: geoMatch?.longitud || ent.geo_lon
+                    },
+                    updated_at: new Date().toISOString()
+                }
+            })
 
-            if (upsertError) {
-                console.error('[ConfirmImport] Persistence Error:', upsertError)
-                throw upsertError
+            // 3. CHUNKED UPSERT (Batches of 50)
+            const CHUNK_SIZE = 50
+            for (let i = 0; i < normalizedData.length; i += CHUNK_SIZE) {
+                const chunk = normalizedData.slice(i, i + CHUNK_SIZE)
+                console.log(`[ConfirmImport] Upserting chunk ${i / CHUNK_SIZE + 1}...`)
+
+                const { error: upsertError } = await supabase
+                    .from('entidades')
+                    .upsert(chunk, { onConflict: 'organization_id, cuit' })
+
+                if (upsertError) {
+                    console.error('[ConfirmImport] Error in chunk upsert:', upsertError)
+                    throw new Error(`Error en lote ${i / CHUNK_SIZE + 1}: ${upsertError.message}`)
+                }
             }
 
-            console.log('[ConfirmImport] SUCCESS. Persistence complete.')
+            console.log('[ConfirmImport] SUCCESS. Process finished.')
             toast.success(`${validData.length} registros importados correctamente`)
             fetchSocios()
         } catch (err: any) {
-            console.error('[ConfirmImport] CRITICAL ERROR:', err)
+            console.error('[ConfirmImport] FATAL ERROR:', err)
             toast.error('Error al guardar datos: ' + (err.message || 'Error desconocido'))
             throw err
         } finally {
             toast.dismiss(loadingToast)
-            console.log('[ConfirmImport] Flow finished.')
         }
     }
 
