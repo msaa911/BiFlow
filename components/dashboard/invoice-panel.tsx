@@ -161,8 +161,8 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-800/50 text-xs uppercase font-semibold text-gray-500 tracking-wider">
                         <tr>
-                            <th className="px-6 py-4">F. Vencimiento</th>
-                            <th className="px-6 py-4">Socio / CUIT</th>
+                            <th className="px-6 py-4">Fecha</th>
+                            <th className="px-6 py-4">CUIT</th>
                             <th className="px-6 py-4">Concepto / Condición</th>
                             <th className="px-6 py-4">M. Pago</th>
                             <th className="px-6 py-4 text-right">Monto</th>
@@ -179,8 +179,8 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             <tr key={inv.id} className="hover:bg-gray-800/20 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
-                                        <span className="text-white font-bold">{new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</span>
-                                        <span className="text-[10px] text-gray-500">Emisión: {new Date(inv.fecha_emision).toLocaleDateString()}</span>
+                                        <span className="text-white font-bold">{new Date(inv.fecha_emision).toLocaleDateString('es-AR')}</span>
+                                        <span className="text-[10px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
@@ -250,7 +250,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                     </div>
                     <div className="flex-1">
                         <p className="text-xs text-emerald-200/60 leading-relaxed">
-                            <strong className="text-emerald-400">Netting Inteligente Detectado:</strong> Tenemos un cruce de saldos con <span className="text-white font-semibold">{nettingOps[0].socio}</span>.
+                            <strong className="text-emerald-400">Netting Inteligente Detectado:</strong> Tenemos un cruce de saldos para <span className="text-white font-semibold">{nettingOps[0].socio}</span>.
                             A cobrar: <span className="text-emerald-400">${new Intl.NumberFormat('es-AR').format(nettingOps[0].pendingAR)}</span> |
                             A pagar: <span className="text-red-400">${new Intl.NumberFormat('es-AR').format(nettingOps[0].pendingAP)}</span>.
                         </p>
