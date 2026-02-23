@@ -258,52 +258,57 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
                             <div className="space-y-2">
                                 <Label className="text-xs uppercase text-gray-500 font-bold">Condición</Label>
-                                <Select
-                                    value={formData.condicion}
-                                    onValueChange={(v: any) => {
-                                        setFormData({
+                                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-900 border border-gray-800 rounded-lg">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({
                                             ...formData,
-                                            condicion: v,
-                                            fecha_vencimiento: v === 'contado' ? formData.fecha_emision : formData.fecha_vencimiento
-                                        })
-                                    }}
-                                >
-                                    <SelectTrigger className="bg-gray-900 border-gray-800">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                        <SelectItem value="contado">Contado</SelectItem>
-                                        <SelectItem value="cuenta_corriente">Cuenta Corriente</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                            condicion: 'contado',
+                                            fecha_vencimiento: formData.fecha_emision
+                                        })}
+                                        className={`py-2 px-3 rounded-md text-xs font-bold transition-all ${formData.condicion === 'contado' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        Contado
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, condicion: 'cuenta_corriente' })}
+                                        className={`py-2 px-3 rounded-md text-xs font-bold transition-all ${formData.condicion === 'cuenta_corriente' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        Cuenta Corriente
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-2 relative">
                                 <Label className="text-xs uppercase text-gray-500 font-bold">Medio de Pago</Label>
-                                <Select
-                                    value={formData.metodo_pago}
-                                    onValueChange={(v) => setFormData({ ...formData, metodo_pago: v })}
-                                >
-                                    <SelectTrigger className="bg-gray-900 border-gray-800 px-3">
-                                        <SelectValue placeholder="Seleccionar..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-900 border-gray-800 text-white border-gray-800">
-                                        <SelectItem value="efectivo">Efectivo</SelectItem>
-                                        <SelectItem value="transferencia">Transferencia</SelectItem>
-                                        <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
-                                        <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
-                                        {type === 'factura_compra' ? (
-                                            <>
-                                                <SelectItem value="cheque_propio">Cheque Propio</SelectItem>
-                                                <SelectItem value="cheque_terceros">Cheque de Terceros (Endosado)</SelectItem>
-                                                <SelectItem value="retenciones">Retenciones Impositivas</SelectItem>
-                                            </>
-                                        ) : (
-                                            <SelectItem value="cheque">Cheque</SelectItem>
-                                        )}
-                                        <SelectItem value="a_convenir">A convenir</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="space-y-1">
+                                    <div className="bg-gray-900 border border-gray-800 rounded-lg max-h-[150px] overflow-y-auto custom-scrollbar">
+                                        {[
+                                            { id: 'efectivo', label: 'Efectivo' },
+                                            { id: 'transferencia', label: 'Transferencia' },
+                                            { id: 'tarjeta_debito', label: 'Tarjeta de Débito' },
+                                            { id: 'tarjeta_credito', label: 'Tarjeta de Crédito' },
+                                            ...(type === 'factura_compra' ? [
+                                                { id: 'cheque_propio', label: 'Cheque Propio' },
+                                                { id: 'cheque_terceros', label: 'Cheque de Terceros (Endosado)' },
+                                                { id: 'retenciones', label: 'Retenciones Impositivas' }
+                                            ] : [
+                                                { id: 'cheque', label: 'Cheque' }
+                                            ]),
+                                            { id: 'a_convenir', label: 'A convenir' }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, metodo_pago: opt.id })}
+                                                className={`w-full text-left px-3 py-2 text-xs transition-colors border-b border-gray-800 last:border-0 hover:bg-emerald-600/10 ${formData.metodo_pago === opt.id ? 'bg-emerald-600/20 text-emerald-400 font-bold' : 'text-gray-400'}`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="space-y-2">
