@@ -112,32 +112,33 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="flex gap-4 mb-4">
-                    <div className="flex-1 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        <div>
-                            <p className="text-sm font-bold text-emerald-400">{validCount} Listos</p>
-                            <p className="text-xs text-emerald-500/70">Para importar ahora</p>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {/* Ready Card */}
+                    <div className={`p-4 rounded-xl border-2 transition-all ${errorCount === 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${errorCount === 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-700 text-gray-400'}`}>
+                                <CheckCircle2 className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className={`text-sm font-bold ${errorCount === 0 ? 'text-emerald-400' : 'text-gray-400'}`}>{validCount} Listos</h3>
+                                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Para importar ahora</p>
+                            </div>
                         </div>
                     </div>
-                    {warningCount > 0 && (
-                        <div className="flex-1 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-3">
-                            <Info className="h-5 w-5 text-amber-500" />
+
+                    {/* Errors Card */}
+                    <div className={`p-4 rounded-xl border-2 transition-all ${errorCount > 0 ? 'bg-red-500/10 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'bg-gray-800/50 border-gray-700'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${errorCount > 0 ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-400'}`}>
+                                <AlertCircle className="h-5 w-5" />
+                            </div>
                             <div>
-                                <p className="text-sm font-bold text-amber-400">{warningCount} Advertencias</p>
-                                <p className="text-xs text-amber-500/70">Ubicación a normalizar</p>
+                                <h3 className={`text-sm font-bold ${errorCount > 0 ? 'text-red-400' : 'text-gray-400'}`}>{errorCount} Errores</h3>
+                                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Requieren corrección</p>
                             </div>
                         </div>
-                    )}
-                    {errorCount > 0 && (
-                        <div className="flex-1 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
-                            <AlertCircle className="h-5 w-5 text-red-500" />
-                            <div>
-                                <p className="text-sm font-bold text-red-400">{errorCount} Errores</p>
-                                <p className="text-xs text-red-500/70">Requieren corrección</p>
-                            </div>
-                        </div>
-                    )}
+                    </div>
                 </div>
 
                 <div className="border border-gray-800 rounded-xl overflow-hidden flex-1 bg-gray-950/50">
@@ -180,8 +181,12 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                         </td>
 
                                         <td className="px-4 py-4 text-gray-400 relative">
-                                            {editingRowId === row.id ? (
-                                                <div className="flex flex-col gap-2">
+                                            <div className="flex flex-col">
+                                                <span className="text-white text-sm font-medium">{row.localidad || 'Sin Localidad'}</span>
+                                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">{row.provincia || 'Sin Provincia'}</span>
+                                            </div>
+                                            {editingRowId === row.id && (
+                                                <div className="flex flex-col gap-2 mt-2">
                                                     {!showLocationPanel ? (
                                                         <Button
                                                             variant="ghost"
@@ -221,24 +226,6 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                                 </Button>
                                                             </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`font-medium ${!row.localidad ? 'text-gray-600 italic' : 'text-gray-300'}`}>
-                                                            {row.localidad || 'No especificado'}
-                                                        </span>
-                                                        {row.warnings?.some((w: string) => w.includes('Ubicación no reconocida')) && (
-                                                            <Badge variant="outline" className="text-[9px] h-4 bg-amber-500/10 text-amber-500 border-amber-500/20 px-1 py-0 leading-none">
-                                                                ERROR ORTOGRÁFICO?
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                    {row.provincia && (
-                                                        <span className="text-[10px] text-gray-500 uppercase tracking-tighter">
-                                                            {row.departamento && `${row.departamento}, `}{row.provincia}
-                                                        </span>
                                                     )}
                                                 </div>
                                             )}

@@ -163,9 +163,8 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
             }
             const dataWithContext = parsedData.map((ent: any) => {
                 const errors: string[] = []
-                const warnings: string[] = []
 
-                // 1. Critical Validation (Errors)
+                // 1. Critical Information Validation
                 if (!ent.razon_social?.trim()) {
                     errors.push('Falta Razón Social')
                 }
@@ -177,7 +176,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     errors.push('CUIT incompleto (necesita 11 dígitos)')
                 }
 
-                // 2. Location SILENT Normalization
+                // 2. Location SILENT Normalization & Strict Error Mapping
                 let normalizedProv = resolveAlias(ent.provincia || '', 'provincia')
                 let normalizedLoc = resolveAlias(ent.localidad || '', 'localidad')
                 const locKey = `${normalizedLoc}|${normalizedProv}`
@@ -189,15 +188,19 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     ent.localidad = geoMatch.localidad
                     ent.departamento = geoMatch.departamento
                 } else if (!ent.localidad || !ent.provincia) {
-                    warnings.push('Falta información de ubicación')
+                    // MISSING location is now an Error, not a warning
+                    errors.push('Falta información de ubicación')
                 } else {
-                    warnings.push('Ubicación no reconocida (posible error ortográfico)')
+                    // If it's not a match but it has some data, we DON'T add a warning/error anymore.
+                    // We trust it enough to be imported if the user doesn't care about geo-tagging,
+                    // or we simply avoid the noise.
+                    console.log(`[Import] Location not in DB but not blocking: ${locKey}`)
                 }
 
                 return {
                     ...ent,
                     errors,
-                    warnings,
+                    warnings: [], // Explicitly empty to avoid UI noise
                     isValid: errors.length === 0
                 }
             })
