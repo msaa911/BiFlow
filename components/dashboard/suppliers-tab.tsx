@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +25,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     const [selectedEntity, setSelectedEntity] = useState<any>(null)
     const [importData, setImportData] = useState<any[]>([])
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
     const fetchSocios = async () => {
@@ -218,7 +219,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
             {/* INPUT OCULTO PARA IMPORTACIÓN */}
             <input
                 type="file"
-                id="excel-import"
+                ref={fileInputRef}
                 className="hidden"
                 accept=".xlsx, .xls"
                 onChange={handleImportExcel}
@@ -265,7 +266,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => document.getElementById('excel-import')?.click()}
+                        onClick={() => fileInputRef.current?.click()}
                         className="bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700 h-9"
                     >
                         <Upload className="w-4 h-4 mr-2 text-blue-500" />
@@ -278,7 +279,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                         className="bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700 h-9"
                     >
                         <FileSpreadsheet className="w-4 h-4 mr-2 text-amber-500" />
-                        B3: Exportar a Excel
+                        B3: Exportar {category === 'cliente' ? 'Clientes' : 'Proveedores'}
                     </Button>
                 </div>
 
