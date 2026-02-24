@@ -14,7 +14,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
     if (!open || typeof document === 'undefined') return null
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             {children}
         </div>,
         document.body
