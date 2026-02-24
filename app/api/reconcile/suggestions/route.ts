@@ -3,6 +3,8 @@ import { ReconciliationEngine } from '@/lib/reconciliation-engine'
 import { getOrgId } from '@/lib/supabase/utils'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
     try {
         const supabase = await createClient()

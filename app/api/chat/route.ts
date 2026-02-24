@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { CashFlowAdvisor } from '@/lib/ai/cashflow-advisor'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
