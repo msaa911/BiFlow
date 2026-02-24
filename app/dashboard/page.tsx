@@ -51,27 +51,34 @@ export default async function DashboardPage() {
     // Fetch All Transactions for Metrics
     const { data: allTransactions } = await supabase
         .from('transacciones')
-        .select('id, monto, metadata, fecha, descripcion')
+        .select('id, monto, metadata, fecha, descripcion, created_at')
         .eq('organization_id', orgId)
         .order('fecha', { ascending: false })
 
     // 1. Calculate OPERATIVE BALANCE
-    // Fetch Initial Bank Balances from Configuration
-    const { data: bankAccounts } = await supabase
-        .from('cuentas_bancarias')
-        .select('saldo_inicial')
-        .eq('organization_id', orgId)
-
-    const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
-
-    // Sum of all transaction amounts
-    const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
-
-    // Final Balance = Manual Start + Incremental Changes
-    const totalBalance = initialBalancesSum + transactionsSum
-
-    // For auditing/reference: find the latest transaction that has a 'saldo' in its metadata
+    // Priority: Use the latest transaction that has a 'saldo' in its metadata (Audit Balance)
     const latestWithSaldo = allTransactions?.find(t => t.metadata?.saldo !== undefined)
+
+    let totalBalance = 0;
+    if (latestWithSaldo) {
+        const baseBalance = Number(latestWithSaldo.metadata.saldo);
+        // Sum all transactions AFTER this one (more recent in time)
+        const moreRecentTransactions = allTransactions
+            ?.filter(t => new Date(t.fecha) > new Date(latestWithSaldo.fecha) || (t.fecha === latestWithSaldo.fecha && t.id !== latestWithSaldo.id && new Date(t.created_at || 0) > new Date(latestWithSaldo.created_at || 0)))
+            ?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
+
+        totalBalance = baseBalance + moreRecentTransactions;
+    } else {
+        // Fallback: Initial Bank Balances from Configuration + Full history
+        const { data: bankAccounts } = await supabase
+            .from('cuentas_bancarias')
+            .select('saldo_inicial')
+            .eq('organization_id', orgId)
+
+        const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
+        const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
+        totalBalance = initialBalancesSum + transactionsSum
+    }
 
     // 2. Calculate BURN RATE (Expenses in last 30 days)
     const thirtyDaysAgo = new Date()
