@@ -11,10 +11,12 @@ import { CashFlowChart } from './cash-flow-chart'
 interface CashFlowHubProps {
     invoices: Invoice[]
     currentBalance: number
+    liquidityCushion?: number
 }
 
-export function CashFlowHub({ invoices, currentBalance }: CashFlowHubProps) {
+export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: CashFlowHubProps) {
     const [projections, setProjections] = useState<ProjectedMovement[]>([])
+    const [excludedInvoices, setExcludedInvoices] = useState<string[]>([])
     const [isAdding, setIsAdding] = useState(false)
     const [newProjected, setNewProjected] = useState<Partial<ProjectedMovement>>({
         descripcion: '',
@@ -53,13 +55,30 @@ export function CashFlowHub({ invoices, currentBalance }: CashFlowHubProps) {
 
         window.addEventListener('biflow-add-multiple-projections', handleMultipleSuggestions);
 
+        const handleExclusion = (e: any) => {
+            const { invoiceId, ids } = e.detail;
+            if (ids && Array.isArray(ids)) {
+                setExcludedInvoices(prev => [...new Set([...prev, ...ids])]);
+            } else if (invoiceId) {
+                setExcludedInvoices(prev => [...new Set([...prev, invoiceId])]);
+            }
+        };
+
+        window.addEventListener('biflow-simulate-exclusion', handleExclusion);
+
         return () => {
             window.removeEventListener('biflow-add-projection', handleAISuggestion);
             window.removeEventListener('biflow-add-multiple-projections', handleMultipleSuggestions);
+            window.removeEventListener('biflow-simulate-exclusion', handleExclusion);
         };
     }, []);
 
-    const projection = TreasuryEngine.projectDailyBalance(currentBalance, invoices, projections)
+    const projection = TreasuryEngine.projectDailyBalance(
+        currentBalance,
+        invoices.filter(i => !excludedInvoices.includes(i.id)),
+        projections,
+        liquidityCushion
+    )
 
     const addProjection = () => {
         if (!newProjected.descripcion || !newProjected.monto || !newProjected.fecha) return
@@ -203,6 +222,50 @@ export function CashFlowHub({ invoices, currentBalance }: CashFlowHubProps) {
                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.min(...projection.map(p => p.balance)))}
                                 </p>
                             </div>
+                        </div>
+                    </Card>
+
+                    <Card className="bg-gray-900 border-gray-800 overflow-hidden">
+                        <div className="p-4 border-b border-gray-800 bg-gray-800/20">
+                            <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center justify-between">
+                                SIMULACIÓN: EXCLUSIONES
+                                {excludedInvoices.length > 0 && (
+                                    <button
+                                        onClick={() => setExcludedInvoices([])}
+                                        className="text-emerald-500 hover:text-emerald-400 normal-case font-bold"
+                                    >
+                                        Restaurar todo
+                                    </button>
+                                )}
+                            </h4>
+                        </div>
+                        <div className="p-2 space-y-1 max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                            {invoices
+                                .filter(i => i.monto_pendiente > 0)
+                                .sort((a, b) => b.monto_pendiente - a.monto_pendiente)
+                                .map(inv => {
+                                    const isExcluded = excludedInvoices.includes(inv.id)
+                                    return (
+                                        <div
+                                            key={inv.id}
+                                            onClick={() => setExcludedInvoices(prev =>
+                                                isExcluded ? prev.filter(id => id !== inv.id) : [...prev, inv.id]
+                                            )}
+                                            className={`p-2 rounded-lg border cursor-pointer transition-all flex items-center justify-between gap-2 ${isExcluded
+                                                ? 'bg-red-500/5 border-red-500/20 opacity-50'
+                                                : 'bg-gray-950 border-gray-800 hover:border-emerald-500/30'
+                                                }`}
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-bold text-gray-200 truncate">{inv.razon_social_socio}</p>
+                                                <p className="text-[9px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
+                                            </div>
+                                            <p className={`text-[10px] font-black whitespace-nowrap ${isExcluded ? 'text-gray-500 line-through' : 'text-white'}`}>
+                                                ${inv.monto_pendiente.toLocaleString('es-AR')}
+                                            </p>
+                                        </div>
+                                    )
+                                })}
                         </div>
                     </Card>
 

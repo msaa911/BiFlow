@@ -15,9 +15,10 @@ import { CheckPortfolio } from './check-portfolio'
 
 interface TreasuryTabProps {
     orgId: string
+    liquidityCushion?: number
 }
 
-export function TreasuryTab({ orgId }: TreasuryTabProps) {
+export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     const [invoices, setInvoices] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
@@ -183,7 +184,7 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                 </TabsList>
 
                 <TabsContent value="cashflow">
-                    <CashFlowHub invoices={invoices} currentBalance={initialBalancesSum} />
+                    <CashFlowHub invoices={invoices} currentBalance={initialBalancesSum} liquidityCushion={liquidityCushion} />
                 </TabsContent>
 
                 <TabsContent value="cartera">

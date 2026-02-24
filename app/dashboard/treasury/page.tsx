@@ -15,6 +15,7 @@ export default async function TreasuryPage() {
     }
 
     const orgId = await getOrgId(supabase, user.id)
+    const { data: orgConfig } = await supabase.from('configuracion_empresa').select('colchon_liquidez').eq('organization_id', orgId).single()
 
     return (
         <div className="space-y-8">
@@ -23,7 +24,7 @@ export default async function TreasuryPage() {
                 <p className="text-gray-400">Gestión avanzada de cobros, pagos y simulaciones de caja.</p>
             </div>
 
-            <TreasuryTab orgId={orgId} />
+            <TreasuryTab orgId={orgId} liquidityCushion={orgConfig?.colchon_liquidez || 0} />
         </div>
     )
 }
