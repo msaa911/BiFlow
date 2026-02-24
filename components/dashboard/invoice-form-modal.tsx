@@ -26,7 +26,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
     const [searchingSocio, setSearchingSocio] = useState(false)
     const [formData, setFormData] = useState({
         socio_id: '',
-        tipo: type, // Valor inicial
+        tipo: type,
         numero: '',
         monto_total: 0,
         fecha_emision: new Date().toISOString().split('T')[0],
@@ -34,7 +34,9 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
         concepto: '',
         vinculado_id: 'none'
     })
+    const [searchQuery, setSearchQuery] = useState('')
     const [originalInvoices, setOriginalInvoices] = useState<any[]>([])
+    const [initialized, setInitialized] = useState(false)
 
     useEffect(() => {
         async function fetchInitialSocios() {
@@ -68,34 +70,44 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             setSearchingSocio(false)
         }
 
-        if (isOpen) {
+        if (isOpen && !initialized) {
+            console.log('[InvoiceForm] Initializing form...')
             fetchInitialSocios()
+
+            if (invoice) {
+                setFormData({
+                    socio_id: invoice.entidad_id || '',
+                    tipo: invoice.tipo || type,
+                    numero: invoice.numero || '',
+                    monto_total: Number(invoice.monto_total) || 0,
+                    fecha_emision: invoice.fecha_emision || new Date().toISOString().split('T')[0],
+                    fecha_vencimiento: invoice.fecha_vencimiento || new Date().toISOString().split('T')[0],
+                    concepto: invoice.concepto || '',
+                    vinculado_id: invoice.vinculado_id || 'none'
+                })
+                setSearchQuery(invoice.razon_social_socio || '')
+            } else {
+                setFormData({
+                    socio_id: '',
+                    tipo: type,
+                    numero: '',
+                    monto_total: 0,
+                    fecha_emision: new Date().toISOString().split('T')[0],
+                    fecha_vencimiento: new Date().toISOString().split('T')[0],
+                    concepto: '',
+                    vinculado_id: 'none'
+                })
+                setSearchQuery('')
+            }
+            setInitialized(true)
         }
 
-        if (invoice) {
-            setFormData({
-                socio_id: invoice.entidad_id || '',
-                tipo: invoice.tipo || type,
-                numero: invoice.numero || '',
-                monto_total: Number(invoice.monto_total) || 0,
-                fecha_emision: invoice.fecha_emision || new Date().toISOString().split('T')[0],
-                fecha_vencimiento: invoice.fecha_vencimiento || new Date().toISOString().split('T')[0],
-                concepto: invoice.concepto || '',
-                vinculado_id: invoice.vinculado_id || 'none'
-            })
-        } else {
-            setFormData({
-                socio_id: '',
-                tipo: type,
-                numero: '',
-                monto_total: 0,
-                fecha_emision: new Date().toISOString().split('T')[0],
-                fecha_vencimiento: new Date().toISOString().split('T')[0],
-                concepto: '',
-                vinculado_id: 'none'
-            })
+        if (!isOpen) {
+            setInitialized(false)
+            setSocios([])
+            setSearchQuery('')
         }
-    }, [invoice, isOpen, orgId, type])
+    }, [invoice, isOpen, orgId, type, initialized])
 
     useEffect(() => {
         async function fetchOriginalInvoices() {
@@ -251,8 +263,16 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                         <Input
                                             placeholder={`Buscar por nombre o CUIT...`}
                                             className="bg-transparent border-none focus-visible:ring-0 h-11 px-0"
+                                            value={searchQuery}
                                             onChange={async (e) => {
                                                 const term = e.target.value
+                                                setSearchQuery(term)
+
+                                                if (!term || term.length < 2) {
+                                                    setSocios([])
+                                                    return
+                                                }
+
                                                 const supabase = createClient()
                                                 const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
 
@@ -269,9 +289,22 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                                 setSearchingSocio(false)
                                             }}
                                         />
+                                        {formData.socio_id && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setFormData({ ...formData, socio_id: '' })
+                                                    setSearchQuery('')
+                                                    setSocios([])
+                                                }}
+                                                className="text-[10px] text-gray-500 hover:text-red-400 font-bold uppercase"
+                                            >
+                                                Cambiar
+                                            </button>
+                                        )}
                                     </div>
 
-                                    {/* Lista de resultados - Z-index alto pero menor que el dropdown del select */}
+                                    {/* Lista de resultados */}
                                     {socios.length > 0 && (
                                         <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-gray-950 border border-gray-800 rounded-lg shadow-2xl overflow-hidden max-h-[180px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
                                             {searchingSocio ? (
@@ -284,7 +317,9 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                                     <div
                                                         key={s.id}
                                                         onClick={() => {
+                                                            console.log('[InvoiceForm] Socio seleccionado:', s.razon_social)
                                                             setFormData({ ...formData, socio_id: s.id })
+                                                            setSearchQuery(s.razon_social)
                                                             setSocios([])
                                                         }}
                                                         className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.socio_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
