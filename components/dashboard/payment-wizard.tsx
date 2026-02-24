@@ -48,6 +48,12 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
     ])
 
     useEffect(() => {
+        if (step === 2 && instruments.length === 1 && instruments[0].monto === 0) {
+            updateInstrument('1', { monto: totalSelected })
+        }
+    }, [step])
+
+    useEffect(() => {
         if (isOpen && entidadId) {
             fetchPendingInvoices()
         }
@@ -74,6 +80,8 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
 
     const totalInstruments = instruments.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0)
     const difference = totalSelected - totalInstruments
+    const isPartialPayment = totalInstruments > 0 && totalInstruments < totalSelected - 0.01
+    const isOverPayment = totalInstruments > totalSelected + 0.01
 
     const handleAddInstrument = () => {
         setInstruments([...instruments, {
@@ -250,8 +258,16 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-lg font-bold">Carga de Instrumentos (Monto a Cubrir: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(totalSelected)})</Label>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                    <Label className="text-lg font-bold">Carga de Instrumentos</Label>
+                                    <div className="flex gap-4 text-xs font-bold uppercase tracking-wider">
+                                        <span className="text-gray-400">Seleccionado: <span className="text-white">${new Intl.NumberFormat('es-AR').format(totalSelected)}</span></span>
+                                        <span className={isPartialPayment ? 'text-amber-400' : isOverPayment ? 'text-red-400' : 'text-emerald-400'}>
+                                            A Cubrir: ${new Intl.NumberFormat('es-AR').format(totalSelected - totalInstruments)}
+                                        </span>
+                                    </div>
+                                </div>
                                 <Button size="sm" onClick={handleAddInstrument} variant="outline" className="border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10">
                                     <Plus className="w-4 h-4 mr-2" /> Agregar Valor
                                 </Button>
@@ -341,10 +357,18 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                 </div>
                                 <div>
                                     <span className="text-[10px] text-gray-400">Total Valores:</span>
-                                    <p className={`text-lg font-bold leading-none mt-1 ${totalInstruments === totalSelected ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                    <p className={`text-lg font-bold leading-none mt-1 ${isPartialPayment ? 'text-amber-400' : isOverPayment ? 'text-red-400' : 'text-emerald-400'}`}>
                                         {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(totalInstruments)}
                                     </p>
                                 </div>
+                                {isPartialPayment && (
+                                    <div className="border-l border-gray-700 pl-4 animate-in fade-in slide-in-from-left-2">
+                                        <span className="text-[10px] text-amber-500 font-bold uppercase">Saldo Remanente:</span>
+                                        <p className="text-lg font-bold text-amber-400 leading-none mt-1">
+                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(difference)}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -368,11 +392,11 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                             ) : (
                                 <Button
                                     onClick={handleConfirm}
-                                    disabled={totalInstruments === 0 || loading || Math.abs(difference) > 0.01}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 shadow-xl shadow-emerald-500/20"
+                                    disabled={totalInstruments === 0 || loading || isOverPayment}
+                                    className={`${isPartialPayment ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'} text-white font-bold px-8 shadow-xl transition-all`}
                                 >
                                     {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                                    Finalizar {tipo === 'cobro' ? 'Recibo' : 'Orden de Pago'}
+                                    Finalizar {tipo === 'cobro' ? 'Recibo' : 'Orden de Pago'} {isPartialPayment ? '(Parcial)' : ''}
                                 </Button>
                             )}
                         </div>
