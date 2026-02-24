@@ -26,12 +26,15 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
     const [searchingSocio, setSearchingSocio] = useState(false)
     const [formData, setFormData] = useState({
         socio_id: '',
+        tipo: type, // Valor inicial
         numero: '',
         monto_total: 0,
         fecha_emision: new Date().toISOString().split('T')[0],
         fecha_vencimiento: new Date().toISOString().split('T')[0],
-        concepto: ''
+        concepto: '',
+        vinculado_id: ''
     })
+    const [originalInvoices, setOriginalInvoices] = useState<any[]>([])
 
     useEffect(() => {
         async function fetchInitialSocios() {
@@ -72,24 +75,44 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
         if (invoice) {
             setFormData({
                 socio_id: invoice.entidad_id || '',
+                tipo: invoice.tipo || type,
                 numero: invoice.numero || '',
                 monto_total: Number(invoice.monto_total) || 0,
                 fecha_emision: invoice.fecha_emision || new Date().toISOString().split('T')[0],
                 fecha_vencimiento: invoice.fecha_vencimiento || new Date().toISOString().split('T')[0],
-                concepto: invoice.concepto || ''
+                concepto: invoice.concepto || '',
+                vinculado_id: invoice.vinculado_id || ''
             })
         } else {
-            // Reset for new invoice
             setFormData({
                 socio_id: '',
+                tipo: type,
                 numero: '',
                 monto_total: 0,
                 fecha_emision: new Date().toISOString().split('T')[0],
                 fecha_vencimiento: new Date().toISOString().split('T')[0],
-                concepto: ''
+                concepto: '',
+                vinculado_id: ''
             })
         }
-    }, [invoice, isOpen, orgId])
+    }, [invoice, isOpen, orgId, type])
+
+    useEffect(() => {
+        async function fetchOriginalInvoices() {
+            if (!formData.socio_id || !['nota_credito', 'nota_debito'].includes(formData.tipo)) return
+
+            const supabase = createClient()
+            const { data } = await supabase
+                .from('comprobantes')
+                .select('id, numero, fecha_emision, monto_total')
+                .eq('entidad_id', formData.socio_id)
+                .in('tipo', ['factura_venta', 'factura_compra'])
+                .order('fecha_emision', { ascending: false })
+
+            if (data) setOriginalInvoices(data)
+        }
+        fetchOriginalInvoices()
+    }, [formData.socio_id, formData.tipo])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -144,7 +167,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 cuit_socio: selectedSocio.cuit,
                 razon_social_socio: selectedSocio.razon_social,
                 nombre_entidad: selectedSocio.razon_social,
-                tipo: type,
+                tipo: formData.tipo, // Usar el seleccionado en el form
                 numero: formData.numero,
                 monto_total: formData.monto_total,
                 monto_pendiente: invoice?.monto_pendiente ?? formData.monto_total,
@@ -153,6 +176,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 estado: invoice?.estado || 'pendiente',
                 condicion: 'cuenta_corriente',
                 concepto: formData.concepto || null,
+                vinculado_id: formData.vinculado_id || null,
                 moneda: 'ARS'
             }
 
@@ -256,6 +280,46 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="col-span-2 space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Tipo de Comprobante</Label>
+                                <Select
+                                    value={formData.tipo}
+                                    onValueChange={(val: any) => setFormData({ ...formData, tipo: val })}
+                                >
+                                    <SelectTrigger className="bg-gray-900 border-gray-800 h-11">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                        <SelectItem value={type}>Factura (Original)</SelectItem>
+                                        <SelectItem value="nota_credito">Nota de Crédito</SelectItem>
+                                        <SelectItem value="nota_debito">Nota de Débito</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {['nota_credito', 'nota_debito'].includes(formData.tipo) && (
+                                <div className="col-span-2 space-y-2 animate-in fade-in slide-in-from-top-2">
+                                    <Label className="text-xs uppercase text-amber-500 font-bold tracking-wider">Vincular a Comprobante Original (AFIP)</Label>
+                                    <Select
+                                        value={formData.vinculado_id}
+                                        onValueChange={(val) => setFormData({ ...formData, vinculado_id: val })}
+                                    >
+                                        <SelectTrigger className="bg-gray-900 border-amber-500/20 h-11 text-xs">
+                                            <SelectValue placeholder="Seleccione la factura que está ajustando..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-[200px]">
+                                            <SelectItem value="">Sin vincular (ajuste suelto)</SelectItem>
+                                            {originalInvoices.map(inv => (
+                                                <SelectItem key={inv.id} value={inv.id}>
+                                                    {inv.numero || 'S/N'} - {new Date(inv.fecha_emision).toLocaleDateString()} (${new Intl.NumberFormat('es-AR').format(inv.monto_total)})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-[10px] text-gray-500 italic">Obligatorio segun RG 4540 de AFIP para notas de ajuste vinculadas.</p>
+                                </div>
+                            )}
 
                             <div className="col-span-2 space-y-2">
                                 <Label className="text-xs uppercase text-gray-500 font-bold">Concepto / Operación Personalizada</Label>

@@ -47,7 +47,12 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     }
 
     const filteredInvoices = invoices.filter(inv => {
-        const typeMatch = view === 'AR' ? inv.tipo === 'factura_venta' : inv.tipo === 'factura_compra'
+        // En Ingresos (AR) mostramos facturas de venta, NC y ND
+        // En Egresos (AP) mostramos facturas de compra, NC y ND
+        const isIngreso = inv.tipo.includes('venta') || (view === 'AR' && ['nota_credito', 'nota_debito'].includes(inv.tipo))
+        const isEgreso = inv.tipo.includes('compra') || (view === 'AP' && ['nota_credito', 'nota_debito'].includes(inv.tipo))
+
+        const typeMatch = view === 'AR' ? isIngreso : isEgreso
         const searchMatch = (inv.razon_social_socio || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (inv.numero || '').toLowerCase().includes(searchTerm.toLowerCase())
         return typeMatch && searchMatch
@@ -180,7 +185,11 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
-                                        <span className="text-white truncate max-w-[180px]">{inv.concepto || (inv.numero || 'Factura')}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-white truncate max-w-[180px]">{inv.concepto || (inv.numero || 'Sin Número')}</span>
+                                            {inv.tipo === 'nota_credito' && <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[9px]">NC</Badge>}
+                                            {inv.tipo === 'nota_debito' && <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[9px]">ND</Badge>}
+                                        </div>
                                         <Badge variant="outline" className={`w-fit text-[9px] mt-1 ${inv.condicion === 'contado' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-800 text-gray-400'}`}>
                                             {inv.condicion?.toUpperCase() || 'CTA CTE'}
                                         </Badge>

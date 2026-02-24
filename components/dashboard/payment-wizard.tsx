@@ -61,13 +61,16 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
 
     async function fetchPendingInvoices() {
         const supabase = createClient()
-        const targetType = tipo === 'cobro' ? 'factura_venta' : 'factura_compra'
+        // Incluir Facturas, Notas de Crédito y Notas de Débito
+        const targetTypes = tipo === 'cobro'
+            ? ['factura_venta', 'nota_credito', 'nota_debito']
+            : ['factura_compra', 'nota_credito', 'nota_debito']
 
         const { data } = await supabase
             .from('comprobantes')
             .select('*')
             .eq('entidad_id', entidadId)
-            .eq('tipo', targetType)
+            .in('tipo', targetTypes)
             .neq('estado', 'pagado')
             .order('fecha_vencimiento', { ascending: true })
 
@@ -76,7 +79,11 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
 
     const totalSelected = pendingInvoices
         .filter(inv => selectedInvoices.includes(inv.id))
-        .reduce((acc, curr) => acc + curr.monto_pendiente, 0)
+        .reduce((acc, curr) => {
+            // NOTA DE CRÉDITO RESTA del saldo a pagar/cobrar
+            if (curr.tipo === 'nota_credito') return acc - curr.monto_pendiente
+            return acc + curr.monto_pendiente
+        }, 0)
 
     const totalInstruments = instruments.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0)
     const difference = totalSelected - totalInstruments
@@ -222,37 +229,47 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                         <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-2xl text-gray-500">
                                             No hay comprobantes pendientes para esta entidad.
                                         </div>
-                                    ) : pendingInvoices.map(inv => (
-                                        <div
-                                            key={inv.id}
-                                            onClick={() => {
-                                                if (selectedInvoices.includes(inv.id)) {
-                                                    setSelectedInvoices(prev => prev.filter(id => id !== inv.id))
-                                                } else {
-                                                    setSelectedInvoices(prev => [...prev, inv.id])
-                                                }
-                                            }}
-                                            className={`group relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${selectedInvoices.includes(inv.id) ? 'bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
-                                        >
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex gap-4 items-center">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${selectedInvoices.includes(inv.id) ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-500'}`}>
-                                                        {selectedInvoices.includes(inv.id) ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-3 h-3 rounded-full border-2 border-gray-700" />}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-white">{inv.numero || 'Sin Número'}</p>
-                                                        <p className="text-xs text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
+                                    ) : (
+                                        <div className="grid gap-3">
+                                            {pendingInvoices.map(inv => (
+                                                <div
+                                                    key={inv.id}
+                                                    onClick={() => {
+                                                        if (selectedInvoices.includes(inv.id)) {
+                                                            setSelectedInvoices(prev => prev.filter(id => id !== inv.id))
+                                                        } else {
+                                                            setSelectedInvoices(prev => [...prev, inv.id])
+                                                        }
+                                                    }}
+                                                    className={`group relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${selectedInvoices.includes(inv.id) ? 'bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
+                                                >
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="flex gap-4 items-center">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${selectedInvoices.includes(inv.id) ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-500'}`}>
+                                                                {selectedInvoices.includes(inv.id) ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-3 h-3 rounded-full border-2 border-gray-700" />}
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-bold text-white">{inv.numero || 'Sin Número'}</p>
+                                                                    {inv.tipo === 'nota_credito' && <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[9px]">NC</Badge>}
+                                                                    {inv.tipo === 'nota_debito' && <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[9px]">ND</Badge>}
+                                                                </div>
+                                                                <p className="text-xs text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className={`font-mono font-bold ${inv.tipo === 'nota_credito' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                                {inv.tipo === 'nota_credito' ? '-' : ''} {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
+                                                            </p>
+                                                            <p className="text-[10px] text-gray-500 uppercase font-bold">
+                                                                {inv.tipo === 'nota_credito' ? 'Crédito a Favor' : 'Saldo Pendiente'}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="font-mono font-bold text-emerald-400">
-                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
-                                                    </p>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Saldo Pendiente</p>
-                                                </div>
-                                            </div>
+                                            ))}
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </ScrollArea>
                         </div>
