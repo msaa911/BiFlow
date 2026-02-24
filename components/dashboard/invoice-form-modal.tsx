@@ -156,8 +156,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
             console.log('[InvoiceForm] Socio validado:', selectedSocio.razon_social)
 
-            const upsertData = {
-                id: invoice?.id,
+            const upsertData: Record<string, any> = {
                 organization_id: orgId,
                 entidad_id: formData.socio_id,
                 cuit_socio: selectedSocio.cuit,
@@ -172,8 +171,20 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 estado: invoice?.estado || 'pendiente',
                 condicion: 'cuenta_corriente',
                 concepto: formData.concepto || null,
-                vinculado_id: formData.vinculado_id === 'none' ? null : (formData.vinculado_id || null),
                 moneda: 'ARS'
+            }
+
+            // Solo incluir id si estamos editando (evitar enviar undefined)
+            if (invoice?.id) {
+                upsertData.id = invoice.id
+            }
+
+            // Solo incluir vinculado_id para NC/ND (columna puede no existir en schemas antiguos)
+            if (['nota_credito', 'nota_debito'].includes(formData.tipo)) {
+                const vinculadoVal = formData.vinculado_id === 'none' ? null : (formData.vinculado_id || null)
+                if (vinculadoVal) {
+                    upsertData.vinculado_id = vinculadoVal
+                }
             }
 
             console.log('[InvoiceForm] Sending to Supabase (Optimized with Timeout)...')
