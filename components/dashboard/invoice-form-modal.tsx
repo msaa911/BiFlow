@@ -32,7 +32,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
         fecha_emision: new Date().toISOString().split('T')[0],
         fecha_vencimiento: new Date().toISOString().split('T')[0],
         concepto: '',
-        vinculado_id: ''
+        vinculado_id: 'none'
     })
     const [originalInvoices, setOriginalInvoices] = useState<any[]>([])
 
@@ -81,7 +81,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 fecha_emision: invoice.fecha_emision || new Date().toISOString().split('T')[0],
                 fecha_vencimiento: invoice.fecha_vencimiento || new Date().toISOString().split('T')[0],
                 concepto: invoice.concepto || '',
-                vinculado_id: invoice.vinculado_id || ''
+                vinculado_id: invoice.vinculado_id || 'none'
             })
         } else {
             setFormData({
@@ -92,7 +92,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 fecha_emision: new Date().toISOString().split('T')[0],
                 fecha_vencimiento: new Date().toISOString().split('T')[0],
                 concepto: '',
-                vinculado_id: ''
+                vinculado_id: 'none'
             })
         }
     }, [invoice, isOpen, orgId, type])
@@ -176,7 +176,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 estado: invoice?.estado || 'pendiente',
                 condicion: 'cuenta_corriente',
                 concepto: formData.concepto || null,
-                vinculado_id: formData.vinculado_id || null,
+                vinculado_id: formData.vinculado_id === 'none' ? null : (formData.vinculado_id || null),
                 moneda: 'ARS'
             }
 
@@ -317,7 +317,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                             <SelectValue placeholder="Seleccione la factura que está ajustando..." />
                                         </SelectTrigger>
                                         <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-[200px]">
-                                            <SelectItem value="">Sin vincular (ajuste suelto)</SelectItem>
+                                            <SelectItem value="none">Sin vincular (ajuste suelto)</SelectItem>
                                             {originalInvoices.map(inv => (
                                                 <SelectItem key={inv.id} value={inv.id}>
                                                     {inv.numero || 'S/N'} - {new Date(inv.fecha_emision).toLocaleDateString()} (${new Intl.NumberFormat('es-AR').format(inv.monto_total)})
