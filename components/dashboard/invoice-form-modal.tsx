@@ -216,14 +216,36 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 <div className="max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar">
                     <form onSubmit={handleSubmit} className="space-y-4 py-4 focus:outline-none">
                         <div className="grid grid-cols-2 gap-4">
+                            {/* 1. Tipo de Comprobante - Movido al principio para evitar overlap con la búsqueda */}
+                            <div className="col-span-2 space-y-2">
+                                <Label className="text-xs uppercase text-emerald-500 font-bold tracking-wider">¿Qué estás registrando?</Label>
+                                <Select
+                                    value={formData.tipo}
+                                    onValueChange={(val: any) => {
+                                        console.log('[Form] Tipo cambiado a:', val)
+                                        setFormData({ ...formData, tipo: val })
+                                    }}
+                                >
+                                    <SelectTrigger className="bg-gray-900 border-gray-800 h-11 focus:ring-emerald-500/50 z-[60]">
+                                        <SelectValue placeholder="Seleccione el tipo..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-950 border-gray-800 text-white z-[200]" position="popper" sideOffset={5}>
+                                        <SelectItem value={type} className="focus:bg-emerald-600 focus:text-white cursor-pointer">Factura (Original)</SelectItem>
+                                        <SelectItem value="nota_credito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Crédito</SelectItem>
+                                        <SelectItem value="nota_debito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Débito</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* 2. Socio (Cliente/Proveedor) */}
                             <div className="col-span-2 space-y-2">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-xs uppercase text-gray-500 font-bold">
-                                        {type === 'factura_venta' ? 'Cliente' : 'Proveedor'}
+                                        {type === 'factura_venta' ? 'Cliente / Entidad' : 'Proveedor / Entidad'}
                                     </Label>
                                     {formData.socio_id && (
                                         <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                                            Vinculado
+                                            Socio Seleccionado
                                         </Badge>
                                     )}
                                 </div>
@@ -231,7 +253,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                     <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 focus-within:border-emerald-500/50 transition-colors">
                                         <Search className="w-4 h-4 text-gray-500" />
                                         <Input
-                                            placeholder={`Buscar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`}
+                                            placeholder={`Buscar por nombre o CUIT...`}
                                             className="bg-transparent border-none focus-visible:ring-0 h-11 px-0"
                                             onChange={async (e) => {
                                                 const term = e.target.value
@@ -253,9 +275,9 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                         />
                                     </div>
 
-                                    {/* Lista de resultados - Ahora absoluta para no romper el layout */}
+                                    {/* Lista de resultados - Z-index alto pero menor que el dropdown del select */}
                                     {socios.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-gray-950 border border-gray-800 rounded-lg shadow-2xl overflow-hidden max-h-[200px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-gray-950 border border-gray-800 rounded-lg shadow-2xl overflow-hidden max-h-[180px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
                                             {searchingSocio ? (
                                                 <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
                                                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -267,11 +289,11 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                                         key={s.id}
                                                         onClick={() => {
                                                             setFormData({ ...formData, socio_id: s.id })
-                                                            setSocios([]) // Cerrar la lista al seleccionar
+                                                            setSocios([])
                                                         }}
                                                         className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.socio_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
                                                     >
-                                                        <div className="flex flex-col">
+                                                        <div className="flex flex-col text-left">
                                                             <span className="text-sm font-bold text-white leading-none mb-1">{s.razon_social}</span>
                                                             <span className="text-[10px] text-gray-500 font-mono tracking-tight">{s.cuit}</span>
                                                         </div>
@@ -282,26 +304,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                         </div>
                                     )}
                                 </div>
-                            </div>
-
-                            <div className="col-span-2 space-y-2">
-                                <Label className="text-xs uppercase text-gray-500 font-bold">Tipo de Comprobante</Label>
-                                <Select
-                                    value={formData.tipo}
-                                    onValueChange={(val: any) => {
-                                        console.log('[Form] Tipo cambiado a:', val)
-                                        setFormData({ ...formData, tipo: val })
-                                    }}
-                                >
-                                    <SelectTrigger className="bg-gray-900 border-gray-800 h-11 focus:ring-emerald-500/50">
-                                        <SelectValue placeholder="Seleccione el tipo..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-900 border-gray-800 text-white" position="popper" sideOffset={5}>
-                                        <SelectItem value={type} className="focus:bg-emerald-600 focus:text-white cursor-pointer">Factura (Original)</SelectItem>
-                                        <SelectItem value="nota_credito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Crédito</SelectItem>
-                                        <SelectItem value="nota_debito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Débito</SelectItem>
-                                    </SelectContent>
-                                </Select>
                             </div>
 
                             {['nota_credito', 'nota_debito'].includes(formData.tipo) && (
