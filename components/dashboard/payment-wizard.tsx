@@ -22,7 +22,8 @@ import {
     Calendar,
     Hash,
     Loader2,
-    Briefcase
+    Briefcase,
+    AlertTriangle
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -33,6 +34,8 @@ interface Check {
     banco: string
     monto: number
     fecha_disponibilidad: string
+    cant_endosos: number
+    tipo_cheque: 'comun' | 'cpd'
 }
 
 interface PaymentWizardProps {
@@ -74,7 +77,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
         const supabase = createClient()
         const { data } = await supabase
             .from('instrumentos_pago')
-            .select('id, referencia, banco, monto, fecha_disponibilidad')
+            .select('id, referencia, banco, monto, fecha_disponibilidad, cant_endosos, tipo_cheque')
             .eq('metodo', 'cheque_terceros')
             .eq('estado', 'pendiente')
 
@@ -159,7 +162,9 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                     fecha_disponibilidad: i.fecha_disponibilidad,
                     banco: i.banco || null,
                     referencia: i.referencia || null,
-                    vinculo_instrumento_id: i.vinculo_instrumento_id || null
+                    vinculo_instrumento_id: i.vinculo_instrumento_id || null,
+                    cant_endosos: i.metodo === 'endoso' ? (i.cant_endosos || 0) + 1 : 0,
+                    tipo_cheque: i.tipo_cheque || 'cpd'
                 }))
 
             if (instrumentsPayload.length > 0) {
@@ -170,7 +175,10 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                 if (endosados.length > 0) {
                     for (const endoso of endosados) {
                         await supabase.from('instrumentos_pago')
-                            .update({ estado: 'endosado' })
+                            .update({
+                                estado: 'endosado',
+                                cant_endosos: (endoso.cant_endosos || 0) + 1
+                            })
                             .eq('id', endoso.vinculo_instrumento_id)
                     }
                 }
@@ -308,7 +316,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                                     <Label className="text-[10px] uppercase text-gray-500 font-bold">Medio</Label>
                                                     <select
                                                         value={ins.metodo}
-                                                        onChange={(e) => updateInstrument(ins.id, { metodo: e.target.value })}
+                                                        onChange={(e) => updateInstrument(ins.id, { metodo: e.target.value, vinculo_instrumento_id: null })}
                                                         className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-xs text-white"
                                                     >
                                                         <option value="efectivo">Efectivo</option>
@@ -320,14 +328,19 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                                 </div>
 
                                                 {ins.metodo === 'endoso' ? (
-                                                    <div className="col-span-3 flex items-end">
+                                                    <div className="col-span-3 flex items-end gap-2">
                                                         <Button
                                                             variant="outline"
-                                                            className="w-full border-dashed border-gray-700 h-9 text-xs"
+                                                            className={`w-full border-dashed h-9 text-xs ${ins.limitExceeded ? 'border-red-500 bg-red-500/10' : 'border-gray-700'}`}
                                                             onClick={() => setIsSelectingCheck(true)}
                                                         >
-                                                            {ins.vinculo_instrumento_id ? `Seleccionado: ${ins.referencia}` : 'Click para seleccionar cheque...'}
+                                                            {ins.vinculo_instrumento_id ? `Cheque ${ins.referencia} (${ins.cant_endosos} endosos)` : 'Seleccionar cheque de cartera...'}
                                                         </Button>
+                                                        {ins.limitExceeded && (
+                                                            <div className="flex items-center gap-1 text-red-400 text-[10px] animate-pulse">
+                                                                <AlertTriangle className="w-3 h-3" /> LÍMITE BCRA
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <>
@@ -350,13 +363,23 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                                             />
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <Label className="text-[10px] uppercase text-gray-500 font-bold">Ref</Label>
-                                                            <Input
-                                                                placeholder="00000000"
-                                                                value={ins.referencia || ''}
-                                                                onChange={(e) => updateInstrument(ins.id, { referencia: e.target.value })}
-                                                                className="bg-gray-950 border-gray-800 h-9 text-xs"
-                                                            />
+                                                            <Label className="text-[10px] uppercase text-gray-500 font-bold">Ref / Tipo</Label>
+                                                            <div className="flex gap-1">
+                                                                <Input
+                                                                    placeholder="Nro"
+                                                                    value={ins.referencia || ''}
+                                                                    onChange={(e) => updateInstrument(ins.id, { referencia: e.target.value })}
+                                                                    className="bg-gray-950 border-gray-800 h-9 text-xs w-2/3"
+                                                                />
+                                                                <select
+                                                                    value={ins.tipo_cheque || 'cpd'}
+                                                                    onChange={(e) => updateInstrument(ins.id, { tipo_cheque: e.target.value })}
+                                                                    className="bg-gray-950 border border-gray-800 rounded-lg text-[9px] w-1/3 text-white"
+                                                                >
+                                                                    <option value="cpd">CPD</option>
+                                                                    <option value="comun">Común</option>
+                                                                </select>
+                                                            </div>
                                                         </div>
                                                     </>
                                                 )}
@@ -370,37 +393,50 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                                     <div className="bg-gray-950 border border-gray-800 w-full max-w-lg rounded-2xl p-6">
                                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                            <Briefcase className="w-5 h-5 text-emerald-400" /> Seleccionar Cheque
+                                            <Briefcase className="w-5 h-5 text-emerald-400" /> Seleccionar Cheque a Endosar
                                         </h3>
                                         <ScrollArea className="h-64 pr-4">
                                             <div className="space-y-2">
                                                 {availableChecks.length === 0 ? (
                                                     <p className="text-center py-8 text-gray-500 text-sm italic">No hay cheques en cartera.</p>
-                                                ) : availableChecks.map(c => (
-                                                    <div
-                                                        key={c.id}
-                                                        onClick={() => {
-                                                            const targetIns = instruments.find(i => i.metodo === 'endoso' && !i.vinculo_instrumento_id) || instruments.find(i => i.metodo === 'endoso');
-                                                            if (targetIns) {
-                                                                updateInstrument(targetIns.id, {
-                                                                    vinculo_instrumento_id: c.id,
-                                                                    monto: c.monto,
-                                                                    referencia: c.referencia,
-                                                                    banco: c.banco,
-                                                                    fecha_disponibilidad: c.fecha_disponibilidad
-                                                                });
-                                                            }
-                                                            setIsSelectingCheck(false);
-                                                        }}
-                                                        className="p-3 bg-gray-900 border border-gray-800 rounded-xl cursor-pointer hover:border-emerald-500/50 flex justify-between items-center"
-                                                    >
-                                                        <div>
-                                                            <p className="font-bold text-xs">{c.referencia} - {c.banco}</p>
-                                                            <p className="text-[10px] text-gray-500">Vence: {new Date(c.fecha_disponibilidad).toLocaleDateString()}</p>
+                                                ) : availableChecks.map(c => {
+                                                    const limit = c.tipo_cheque === 'comun' ? 1 : 2;
+                                                    const isLimitReached = c.cant_endosos >= limit;
+
+                                                    return (
+                                                        <div
+                                                            key={c.id}
+                                                            onClick={() => {
+                                                                const targetIns = instruments.find(i => i.metodo === 'endoso' && !i.vinculo_instrumento_id) || instruments.find(i => i.metodo === 'endoso');
+                                                                if (targetIns) {
+                                                                    updateInstrument(targetIns.id, {
+                                                                        vinculo_instrumento_id: c.id,
+                                                                        monto: c.monto,
+                                                                        referencia: c.referencia,
+                                                                        banco: c.banco,
+                                                                        fecha_disponibilidad: c.fecha_disponibilidad,
+                                                                        cant_endosos: c.cant_endosos,
+                                                                        tipo_cheque: c.tipo_cheque,
+                                                                        limitExceeded: isLimitReached
+                                                                    });
+                                                                }
+                                                                setIsSelectingCheck(false);
+                                                            }}
+                                                            className={`p-3 border rounded-xl cursor-pointer transition-all flex justify-between items-center ${isLimitReached ? 'bg-red-500/5 border-red-500/20 hover:border-red-500/50' : 'bg-gray-900 border-gray-800 hover:border-emerald-500/50'}`}
+                                                        >
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-bold text-xs">{c.referencia} - {c.banco}</p>
+                                                                    <Badge variant="outline" className="text-[8px] py-0 h-3">{c.tipo_cheque || 'cpd'}</Badge>
+                                                                </div>
+                                                                <p className={`text-[10px] ${isLimitReached ? 'text-red-400 font-bold' : 'text-gray-500'}`}>
+                                                                    Endosos: {c.cant_endosos || 0} / {limit} {isLimitReached && '(LÍMITE ALCANZADO)'}
+                                                                </p>
+                                                            </div>
+                                                            <p className="font-mono font-bold text-emerald-400">${new Intl.NumberFormat('es-AR').format(c.monto)}</p>
                                                         </div>
-                                                        <p className="font-mono font-bold text-emerald-400">${new Intl.NumberFormat('es-AR').format(c.monto)}</p>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </ScrollArea>
                                         <div className="mt-6 flex justify-end">
@@ -414,7 +450,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                 </div>
 
                 <div className="p-6 border-t border-gray-800 bg-gray-900/50 flex items-center justify-between">
-                    <div>
+                    <div className="flex flex-col">
                         <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Total Valores</span>
                         <p className="text-lg font-bold text-emerald-400">
                             ${new Intl.NumberFormat('es-AR').format(totalInstruments)}
@@ -427,8 +463,12 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                         {step === 1 ? (
                             <Button onClick={() => setStep(2)} disabled={selectedInvoices.length === 0} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold">Siguiente <ChevronRight className="w-4 h-4 ml-2" /></Button>
                         ) : (
-                            <Button onClick={handleConfirm} disabled={totalInstruments === 0 || loading || isOverPayment} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8">
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} Finalizar
+                            <Button
+                                onClick={handleConfirm}
+                                disabled={totalInstruments === 0 || loading || isOverPayment || instruments.some(i => i.limitExceeded)}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 shadow-lg shadow-emerald-900/20"
+                            >
+                                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} Finalizar y Confirmar
                             </Button>
                         )}
                     </div>

@@ -56,20 +56,17 @@ export default async function DashboardPage() {
         .order('fecha', { ascending: false })
 
     // 1. Calculate OPERATIVE BALANCE
-    // Priority: Use the latest transaction that has a 'saldo' in its metadata (Audit Balance)
     const latestWithSaldo = allTransactions?.find(t => t.metadata?.saldo !== undefined)
 
     let totalBalance = 0;
     if (latestWithSaldo) {
         const baseBalance = Number(latestWithSaldo.metadata.saldo);
-        // Sum all transactions AFTER this one (more recent in time)
         const moreRecentTransactions = allTransactions
             ?.filter(t => new Date(t.fecha) > new Date(latestWithSaldo.fecha) || (t.fecha === latestWithSaldo.fecha && t.id !== latestWithSaldo.id && new Date(t.created_at || 0) > new Date(latestWithSaldo.created_at || 0)))
             ?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
 
         totalBalance = baseBalance + moreRecentTransactions;
     } else {
-        // Fallback: Initial Bank Balances from Configuration + Full history
         const { data: bankAccounts } = await supabase
             .from('cuentas_bancarias')
             .select('saldo_inicial')
@@ -80,7 +77,7 @@ export default async function DashboardPage() {
         totalBalance = initialBalancesSum + transactionsSum
     }
 
-    // 2. Calculate BURN RATE (Expenses in last 30 days)
+    // 2. Calculate BURN RATE
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
@@ -100,7 +97,7 @@ export default async function DashboardPage() {
 
     const totalRecoverable = taxItems?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
 
-    // Fetch Expense Guard Anomalies (Include duplicates and trust ledger alerts)
+    // Fetch Expense Guard Anomalies
     const { data: anomalies } = await supabase
         .from('transacciones')
         .select('*')
@@ -109,8 +106,6 @@ export default async function DashboardPage() {
         .order('fecha', { ascending: false })
 
     const anomalyCount = anomalies?.length || 0
-
-    // Separate anomalies for widgets
     const priceSpikes = anomalies?.filter(a => a.tags?.includes('alerta_precio')) || []
     const duplicates = anomalies?.filter(a => a.tags?.includes('posible_duplicado')) || []
 
@@ -121,21 +116,20 @@ export default async function DashboardPage() {
         .eq('organization_id', orgId)
         .eq('estado', 'pendiente')
 
-    // Fetch Pending Tax Rules for Alert
+    // Fetch Pending Tax Rules
     const { count: pendingTaxesCount } = await supabase
         .from('reglas_fiscales_ia')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', orgId)
         .eq('estado', 'PENDIENTE')
 
-    // 2. Fetch Audit Findings for Score
+    // Fetch Audit Findings for Score
     const { data: findings } = await supabase
         .from('hallazgos')
         .select('tipo, severidad')
         .eq('organization_id', orgId)
         .eq('estado', 'detectado')
 
-    // Calculate Score (Base 100)
     let healthScore = 100
     if (findings) {
         findings.forEach(f => {
@@ -144,9 +138,9 @@ export default async function DashboardPage() {
             else healthScore -= 3
         })
     }
-    healthScore = Math.max(15, healthScore) // Floor at 15
+    healthScore = Math.max(15, healthScore)
 
-    // 2.2 Fetch Pending AP Invoices for Stress Test
+    // Fetch Pending AP Invoices
     const { data: pendingInvoices } = await supabase
         .from('comprobantes')
         .select('descripcion, monto_pendiente, fecha_vencimiento')
@@ -161,7 +155,7 @@ export default async function DashboardPage() {
         fecha: inv.fecha_vencimiento
     })) || []
 
-    // 3. Fetch Company Config (TNA & Overdraft & Cushion)
+    // Fetch Company Config
     const { data: orgConfig } = await supabase
         .from('configuracion_empresa')
         .select('*')
@@ -174,8 +168,6 @@ export default async function DashboardPage() {
     const liquidityCushion = orgConfig?.colchon_liquidez || 0
 
     let tnaEfectiva = tnaManual
-    let lastTnaUpdate: string | null = null
-
     if (modoTasa === 'AUTOMATICO') {
         const { data: marketData } = await supabase
             .from('indices_mercado')
@@ -186,12 +178,10 @@ export default async function DashboardPage() {
 
         if (marketData) {
             tnaEfectiva = marketData.tasa_plazo_fijo_30d || marketData.tasa_plazo_fijo || tnaManual
-            lastTnaUpdate = marketData.fecha
         }
     }
 
-    // 4. Fetch Last Global Activity
-    // Check latest archive import
+    // Last Global Activity
     const { data: lastImport } = await supabase
         .from('archivos_importados')
         .select('created_at')
@@ -200,7 +190,6 @@ export default async function DashboardPage() {
         .limit(1)
         .maybeSingle()
 
-    // Check latest transaction
     const { data: lastTx } = await supabase
         .from('transacciones')
         .select('created_at')
@@ -215,18 +204,16 @@ export default async function DashboardPage() {
         orgConfig?.updated_at
     ].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]
 
-    // Total spent in last 30 days including taxes
     const totalVolume = allTransactions
         ?.filter(t => new Date(t.fecha) >= thirtyDaysAgo)
-        ?.reduce((acc, t) => acc + Math.abs(t.monto), 0) || 1 // Avoid divide by zero
+        ?.reduce((acc, t) => acc + Math.abs(t.monto), 0) || 1
 
     const recoveryPotential = Math.min(100, Math.round((totalRecoverable / totalVolume) * 100))
 
-    // Liquidity Logic
     const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tnaEfectiva, liquidityCushion)
     const daysOfRunway = dailyBurn > 100 ? Math.min(365, Math.floor((totalBalance + overdraftLimit) / dailyBurn)) : 'stable'
 
-    // Triple View Calculations
+    // Triple View
     const incomes = allTransactions?.filter(t => t.monto > 0).slice(0, 20) || []
     const expenses = allTransactions?.filter(t => t.monto < 0).slice(0, 20) || []
     const bankTransactions = allTransactions?.slice(0, 20) || []
@@ -242,16 +229,13 @@ export default async function DashboardPage() {
                     <p className="text-gray-400">Bienvenido a tu centro de inteligencia financiera.</p>
                 </div>
                 {lastActivityDate && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-full shadow-inner animate-in fade-in slide-in-from-right-4 duration-700">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-full shadow-inner">
                         <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                             Última Actividad: <span className="text-gray-300 ml-1">
                                 {new Date(lastActivityDate).toLocaleString('es-AR', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
+                                    day: '2-digit', month: '2-digit', year: '2-digit',
+                                    hour: '2-digit', minute: '2-digit',
                                     timeZone: 'America/Argentina/Buenos_Aires'
                                 })} hs
                             </span>
@@ -260,37 +244,27 @@ export default async function DashboardPage() {
                 )}
             </div>
 
-            {/* Quarantine Alert */}
             {quarantineCount && quarantineCount > 0 ? (
-                <div className="bg-purple-900/20 border border-purple-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="bg-purple-900/20 border border-purple-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-purple-500/20 rounded-full">
                             <AlertTriangle className="w-6 h-6 text-purple-400" />
                         </div>
                         <div>
                             <h3 className="text-lg font-bold text-white">Tienes {quarantineCount} transacciones en revisión</h3>
-                            <p className="text-sm text-purple-200/70">
-                                Detectamos datos ambiguos en tus últimas importaciones. Revísalos para asegurar la integridad.
-                            </p>
+                            <p className="text-sm text-purple-200/70">Revísalos para asegurar la integridad.</p>
                         </div>
                     </div>
-                    <a
-                        href="/dashboard/quarantine"
-                        className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-purple-500/20 whitespace-nowrap"
-                    >
-                        Revisar Cuarentena
-                    </a>
+                    <a href="/dashboard/quarantine" className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition-colors">Revisar Cuarentena</a>
                 </div>
             ) : null}
 
-            {/* Tax Learning Widget - Direct interaction if pending taxes exist */}
             {pendingTaxesCount && pendingTaxesCount > 0 ? (
                 <div className="max-w-4xl mx-auto">
                     <TaxLearningWidget organizationId={orgId} />
                 </div>
             ) : null}
 
-            {/* Algorithmic CFO Widgets */}
             <DashboardCFO
                 healthScore={healthScore}
                 anomalyCount={anomalyCount}
@@ -300,6 +274,7 @@ export default async function DashboardPage() {
                 opportunityCost={opportunityCost}
                 daysOfRunway={daysOfRunway}
                 overdraftLimit={overdraftLimit}
+                liquidityBuffer={liquidityCushion}
                 apBatch={apBatch}
             />
 
@@ -310,9 +285,7 @@ export default async function DashboardPage() {
                 <FeeAuditWidget />
             </div>
 
-            {/* Transactions Refactor: Triple View */}
             <div className="grid gap-6 md:grid-cols-2 items-stretch">
-                {/* Left: Global Bank Transactions */}
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[600px] flex flex-col">
                     <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/20">
                         <h3 className="font-bold text-white uppercase tracking-tighter text-sm flex items-center gap-2">
@@ -320,7 +293,7 @@ export default async function DashboardPage() {
                         </h3>
                         <Link href="/dashboard/transactions" className="text-[10px] text-emerald-500 hover:text-emerald-400 font-black uppercase tracking-widest transition-colors">Ver todas</Link>
                     </div>
-                    <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                    <div className="overflow-y-auto flex-1">
                         <table className="w-full text-left text-xs text-gray-400">
                             <thead className="bg-black/20 text-[10px] uppercase font-bold text-gray-500 sticky top-0 z-10 backdrop-blur-md">
                                 <tr>
@@ -335,11 +308,9 @@ export default async function DashboardPage() {
                                         <td className="px-6 py-4 whitespace-nowrap font-mono text-gray-500 group-hover:text-gray-300">
                                             {new Date(t.fecha).toLocaleDateString('es-AR')}
                                         </td>
-                                        <td className="px-6 py-4 text-white font-medium truncate max-w-[200px]">
-                                            {t.descripcion}
-                                        </td>
+                                        <td className="px-6 py-4 text-white font-medium truncate max-w-[200px]">{t.descripcion}</td>
                                         <td className={`px-6 py-4 text-right font-black ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                            {formatCurrency(t.monto)}
+                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
                                         </td>
                                     </tr>
                                 ))}
@@ -348,30 +319,21 @@ export default async function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Right: Income & Expenses Split */}
                 <div className="flex flex-col gap-6 h-[600px]">
-                    {/* Top: Incomes */}
                     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex-1 flex flex-col">
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-emerald-500/5">
                             <h3 className="font-bold text-white uppercase tracking-tighter text-xs flex items-center gap-2">
                                 <TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos Recientes
                             </h3>
-                            <span className="text-[9px] font-black bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded uppercase">Últimos 20</span>
                         </div>
-                        <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                        <div className="overflow-y-auto flex-1">
                             <table className="w-full text-left text-[11px] text-gray-400">
                                 <tbody className="divide-y divide-gray-800">
                                     {incomes.map((t: any) => (
                                         <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
-                                            <td className="px-4 py-3 whitespace-nowrap font-mono text-gray-500">
-                                                {new Date(t.fecha).toLocaleDateString('es-AR')}
-                                            </td>
-                                            <td className="px-4 py-3 text-white font-medium truncate max-w-[150px]">
-                                                {t.descripcion}
-                                            </td>
-                                            <td className="px-4 py-3 text-right font-black text-emerald-400">
-                                                {formatCurrency(t.monto)}
-                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap font-mono text-gray-500">{new Date(t.fecha).toLocaleDateString('es-AR')}</td>
+                                            <td className="px-4 py-3 text-white font-medium truncate max-w-[150px]">{t.descripcion}</td>
+                                            <td className="px-4 py-3 text-right font-black text-emerald-400">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -379,28 +341,20 @@ export default async function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Bottom: Expenses */}
                     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex-1 flex flex-col">
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-red-500/5">
                             <h3 className="font-bold text-white uppercase tracking-tighter text-xs flex items-center gap-2">
                                 <TrendingDown className="w-3 h-3 text-red-500" /> Egresos Recientes
                             </h3>
-                            <span className="text-[9px] font-black bg-red-500/10 text-red-500 px-2 py-0.5 rounded uppercase">Últimos 20</span>
                         </div>
-                        <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                        <div className="overflow-y-auto flex-1">
                             <table className="w-full text-left text-[11px] text-gray-400">
                                 <tbody className="divide-y divide-gray-800">
                                     {expenses.map((t: any) => (
                                         <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
-                                            <td className="px-4 py-3 whitespace-nowrap font-mono text-gray-500">
-                                                {new Date(t.fecha).toLocaleDateString('es-AR')}
-                                            </td>
-                                            <td className="px-4 py-3 text-white font-medium truncate max-w-[150px]">
-                                                {t.descripcion}
-                                            </td>
-                                            <td className="px-4 py-3 text-right font-black text-red-400">
-                                                {formatCurrency(t.monto)}
-                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap font-mono text-gray-500">{new Date(t.fecha).toLocaleDateString('es-AR')}</td>
+                                            <td className="px-4 py-3 text-white font-medium truncate max-w-[150px]">{t.descripcion}</td>
+                                            <td className="px-4 py-3 text-right font-black text-red-400">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -411,13 +365,4 @@ export default async function DashboardPage() {
             </div>
         </div>
     )
-}
-
-function formatCurrency(amount: number) {
-    return new Intl.NumberFormat('es-AR', {
-        style: 'currency',
-        currency: 'ARS',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(amount)
 }

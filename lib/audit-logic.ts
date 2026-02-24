@@ -13,7 +13,7 @@ export interface AuditFinding {
 export class AuditEngine {
     /**
      * Compara una transacción contra los convenios vigentes.
-     * Se enfoca en comisiones de cheques y mantenimientos de cuenta.
+     * Se enfoca en comisiones de cheques, mantenimientos de cuenta y normativa BCRA.
      */
     static async auditTransaction(transaction: any, agreement: any): Promise<AuditFinding | null> {
         const tags = transaction.tags || [];
@@ -53,8 +53,6 @@ export class AuditEngine {
 
         // 3. Auditoría de Comisiones Bancarias Genéricas
         if (tags.includes('comision_bancaria')) {
-            // Si el mantenimiento o cheque no fueron capturados específicamente, pero hay comisiones genéricas,
-            // validamos según políticas de la empresa (o simplemente reportamos como alerta si son montos altos).
             if (montoAbs > 5000 && !tags.includes('mantenimiento')) {
                 return {
                     organization_id: transaction.organization_id,
@@ -68,11 +66,9 @@ export class AuditEngine {
             }
         }
 
-        // 4. Tasa de Descubierto (Alerta de exceso sobre lo pactado)
+        // 4. Tasa de Descubierto
         if (tags.includes('comision_descubierto') || tags.includes('interes')) {
             const tasaPactada = agreement.tasa_descubierto_anual_pactada || 0;
-            // Para auditar la tasa real necesitamos el saldo diario, pero si la tasa pactada es 0
-            // y cobran interés, ya es un hallazgo.
             if (tasaPactada === 0 && montoAbs > 100) {
                 return {
                     organization_id: transaction.organization_id,
@@ -86,6 +82,41 @@ export class AuditEngine {
             }
         }
 
+        // 5. Auditoría BCRA 6.5.1 (Multas por Cheque Rechazado)
+        if (tags.includes('multa_cheque_rechazado')) {
+            const supabase = await createClient();
+            const nroCheque = transaction.metadata?.numero_cheque || transaction.numero_cheque;
+
+            if (nroCheque) {
+                // Buscamos si el cheque fue regularizado (cubierto)
+                const { data: originalCheck } = await supabase
+                    .from('instrumentos_pago')
+                    .select('monto, created_at, estado')
+                    .eq('referencia', nroCheque)
+                    .eq('metodo', 'cheque_propio')
+                    .maybeSingle();
+
+                if (originalCheck) {
+                    const montoCheque = Number(originalCheck.monto);
+                    const multaEsperada2 = montoCheque * 0.02;
+                    const multaEsperada4 = montoCheque * 0.04;
+
+                    // Si el banco cobró cerca del 4% pero el cheque fue regularizado (2%), hay un hallazgo.
+                    if (Math.abs(montoAbs - multaEsperada4) < 10) {
+                        return {
+                            organization_id: transaction.organization_id,
+                            transaccion_id: transaction.id,
+                            tipo_error: 'COMISION_EXCEDIDA',
+                            monto_esperado: multaEsperada2,
+                            monto_real: montoAbs,
+                            diferencia: montoAbs - multaEsperada2,
+                            notas_ia: `Según BCRA 6.5.1, la multa por el cheque ${nroCheque} debería ser del 2% ($${multaEsperada2.toFixed(2)}) si fue regularizado, pero el banco debitó el 4% ($${montoAbs.toFixed(2)}).`
+                        };
+                    }
+                }
+            }
+        }
+
         return null;
     }
 
@@ -95,7 +126,6 @@ export class AuditEngine {
     static async runAuditOnBatch(organizationId: string, transactionIds: string[]) {
         const supabase = await createClient();
 
-        // Obtener el convenio activo
         const { data: agreement } = await supabase
             .from('convenios_bancarios')
             .select('*')
@@ -105,7 +135,6 @@ export class AuditEngine {
 
         if (!agreement) return;
 
-        // Obtener las transacciones
         const { data: transactions } = await supabase
             .from('transacciones')
             .select('*')

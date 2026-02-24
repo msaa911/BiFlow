@@ -22,6 +22,7 @@ export interface DailyBalance {
     date: string;
     balance: number;
     isProjected: boolean;
+    isAlert?: boolean;
 }
 
 export class TreasuryEngine {
@@ -34,7 +35,8 @@ export class TreasuryEngine {
     static projectDailyBalance(
         currentBalance: number,
         invoices: Invoice[],
-        projects: ProjectedMovement[]
+        projects: ProjectedMovement[],
+        liquidityBuffer: number = 0
     ): DailyBalance[] {
         const projection: DailyBalance[] = [];
         const today = new Date();
@@ -68,7 +70,8 @@ export class TreasuryEngine {
             projection.push({
                 date: dateStr,
                 balance: runningBalance,
-                isProjected: i > 0
+                isProjected: i > 0,
+                isAlert: runningBalance < liquidityBuffer
             });
         }
 
@@ -94,10 +97,7 @@ export class TreasuryEngine {
      * Assigns a credit rating based on soci name or payment history (simulated for now).
      */
     static getClientRating(cuit: string, razonSocial: string): { rating: string; color: string } {
-        // Safe check for null/undefined
         const name = razonSocial || '';
-
-        // Mock logic: Some clients are more reliable
         if (name.includes('Lopez') || name.includes('Martinez')) {
             return { rating: 'A+', color: 'text-emerald-400' };
         }
@@ -127,11 +127,7 @@ export class TreasuryEngine {
         });
     }
 
-    /**
-     * Estimates enterprise valuation based on current liquidity + AR - AP.
-     */
     static calculateEnterpriseValuation(totalBalance: number, totalAR: number, totalAP: number): number {
-        // Simplified dynamic valuation: Net Liquidity + Adjusted AR - AP
         return totalBalance + (totalAR * 0.9) - totalAP;
     }
 }
