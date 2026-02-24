@@ -86,31 +86,47 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
     )
 
     const handleVoid = async (movId: string) => {
-        if (!confirm('¿Estás seguro de que quieres anular este movimiento? Esta acción no se puede deshacer y liberará los saldos de las facturas.')) return
+        if (!confirm('¿Estás seguro de que quieres anular este movimiento? Los saldos de las facturas serán restaurados.')) return
 
         setLoading(true)
         try {
             const mov = movements.find(m => m.id === movId)
             if (!mov) return
 
+            // 1. Revert all aplicaciones: restore monto_pendiente on each comprobante
             for (const app of mov.aplicaciones_pago) {
-                const { data: inv } = await supabase.from('comprobantes').select('monto_pendiente, monto_total').eq('id', app.comprobante_id).single()
+                const { data: inv } = await supabase.from('comprobantes').select('monto_pendiente, monto_total, tipo').eq('id', app.comprobante_id).single()
                 if (inv) {
-                    const newMonto = Number(inv.monto_pendiente) + Number(app.monto_aplicado)
+                    // Para NC, restaurar su monto pendiente original
+                    const restoredMonto = inv.tipo === 'nota_credito'
+                        ? Number(app.monto_aplicado) // NC was zeroed, restore the applied amount
+                        : Number(inv.monto_pendiente) + Number(app.monto_aplicado)
+
+                    const newEstado = restoredMonto >= inv.monto_total ? 'pendiente' : (restoredMonto <= 0 ? 'pagado' : 'parcial')
+
                     await supabase.from('comprobantes')
                         .update({
-                            monto_pendiente: newMonto,
-                            estado: newMonto >= inv.monto_total ? 'pendiente' : (newMonto <= 0 ? 'pagado' : 'parcial')
+                            monto_pendiente: restoredMonto,
+                            estado: newEstado
                         })
                         .eq('id', app.comprobante_id)
                 }
             }
 
-            const { error: delErr } = await supabase.from('movimientos_tesoreria').delete().eq('id', movId)
+            // 2. Soft-delete: mark as anulado with audit trail (instead of hard delete)
+            const { error: voidErr } = await supabase.from('movimientos_tesoreria')
+                .update({
+                    observaciones: `[ANULADO ${new Date().toLocaleDateString('es-AR')}] ${mov.observaciones || ''}`.trim()
+                })
+                .eq('id', movId)
 
-            if (delErr) throw delErr
+            if (voidErr) throw voidErr
 
-            toast.success('Movimiento anulado correctamente')
+            // 3. Delete aplicaciones and instrumentos (cascade from the movement)
+            await supabase.from('aplicaciones_pago').delete().eq('movimiento_id', movId)
+            await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
+
+            toast.success('Movimiento anulado correctamente. Saldos restaurados.')
             fetchMovements()
         } catch (err: any) {
             console.error('Error voiding movement:', err)

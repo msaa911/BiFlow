@@ -47,12 +47,22 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     }
 
     const filteredInvoices = invoices.filter(inv => {
-        // En Ingresos (AR) mostramos facturas de venta, NC y ND
-        // En Egresos (AP) mostramos facturas de compra, NC y ND
-        const isIngreso = inv.tipo.includes('venta') || (view === 'AR' && ['nota_credito', 'nota_debito'].includes(inv.tipo))
-        const isEgreso = inv.tipo.includes('compra') || (view === 'AP' && ['nota_credito', 'nota_debito'].includes(inv.tipo))
+        let typeMatch = false
+        if (view === 'AR') {
+            if (inv.tipo === 'factura_venta') typeMatch = true
+            // NC/ND: mostrar en AR si está vinculada a una factura_venta, o si la entidad es cliente
+            else if (['nota_credito', 'nota_debito'].includes(inv.tipo)) {
+                const vinculado = inv.vinculado_id ? invoices.find(i => i.id === inv.vinculado_id) : null
+                typeMatch = vinculado ? vinculado.tipo === 'factura_venta' : !inv.tipo.includes('compra')
+            }
+        } else {
+            if (inv.tipo === 'factura_compra') typeMatch = true
+            else if (['nota_credito', 'nota_debito'].includes(inv.tipo)) {
+                const vinculado = inv.vinculado_id ? invoices.find(i => i.id === inv.vinculado_id) : null
+                typeMatch = vinculado ? vinculado.tipo === 'factura_compra' : !inv.tipo.includes('venta')
+            }
+        }
 
-        const typeMatch = view === 'AR' ? isIngreso : isEgreso
         const searchMatch = (inv.razon_social_socio || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (inv.numero || '').toLowerCase().includes(searchTerm.toLowerCase())
         return typeMatch && searchMatch

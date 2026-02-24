@@ -69,6 +69,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
         const { data } = await supabase
             .from('comprobantes')
             .select('*')
+            .eq('organization_id', orgId)
             .eq('entidad_id', entidadId)
             .in('tipo', targetTypes)
             .neq('estado', 'pagado')
@@ -155,20 +156,36 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                 }
             }
 
-            // 3. Create Applications and update Invoices
-            let remainingPayment = totalInstruments
-            for (const invoiceId of selectedInvoices) {
-                if (remainingPayment <= 0.01) break // Precision handling
+            // 3. Separar facturas/ND de NCs
+            const selectedComprobantes = selectedInvoices.map(id => pendingInvoices.find(i => i.id === id)).filter(Boolean)
+            const facturas = selectedComprobantes.filter(inv => inv.tipo !== 'nota_credito')
+            const notasCredito = selectedComprobantes.filter(inv => inv.tipo === 'nota_credito')
 
-                const inv = pendingInvoices.find(i => i.id === invoiceId)
-                if (!inv) continue
+            // 3a. Cerrar Notas de Crédito seleccionadas (se aplican como descuento)
+            for (const nc of notasCredito) {
+                const { error: appErr } = await supabase.from('aplicaciones_pago').insert({
+                    movimiento_id: mov.id,
+                    comprobante_id: nc.id,
+                    monto_aplicado: nc.monto_pendiente
+                })
+                if (appErr) throw appErr
+
+                const { error: updErr } = await supabase.from('comprobantes')
+                    .update({ monto_pendiente: 0, estado: 'pagado' })
+                    .eq('id', nc.id)
+                if (updErr) throw updErr
+            }
+
+            // 3b. Aplicar instrumentos a facturas/ND
+            let remainingPayment = totalInstruments
+            for (const inv of facturas) {
+                if (remainingPayment <= 0.01) break
 
                 const amountToApply = Math.min(remainingPayment, inv.monto_pendiente)
 
                 const { error: appErr } = await supabase.from('aplicaciones_pago').insert({
-                    organization_id: orgId,
                     movimiento_id: mov.id,
-                    comprobante_id: invoiceId,
+                    comprobante_id: inv.id,
                     monto_aplicado: amountToApply
                 })
                 if (appErr) throw appErr
@@ -179,7 +196,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                         monto_pendiente: newMontoPendiente,
                         estado: newMontoPendiente <= 0.01 ? 'pagado' : 'parcial'
                     })
-                    .eq('id', invoiceId)
+                    .eq('id', inv.id)
                 if (updErr) throw updErr
 
                 remainingPayment -= amountToApply
@@ -220,7 +237,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                         <div className="space-y-6">
                             <div className="flex items-center justify-between mb-2">
                                 <Label className="text-lg font-bold">Seleccionar Comprobantes Pendientes</Label>
-                                <span className="text-xs text-gray-500 uppercase font-bold tracking-widest">Saldo Total: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(pendingInvoices.reduce((a, b) => a + b.monto_pendiente, 0))}</span>
+                                <span className="text-xs text-gray-500 uppercase font-bold tracking-widest">Saldo Total: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(pendingInvoices.reduce((a, b) => a + (b.tipo === 'nota_credito' ? -b.monto_pendiente : b.monto_pendiente), 0))}</span>
                             </div>
 
                             <ScrollArea className="max-h-[400px] pr-4">
