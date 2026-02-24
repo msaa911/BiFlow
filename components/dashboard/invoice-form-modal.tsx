@@ -253,31 +253,34 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                         />
                                     </div>
 
-                                    {/* Lista de resultados */}
-                                    <div className="mt-1 bg-gray-900 border border-gray-800 rounded-lg overflow-hidden max-h-[200px] overflow-y-auto">
-                                        {searchingSocio ? (
-                                            <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-                                                <Loader2 className="w-3 h-3 animate-spin" />
-                                                Buscando...
-                                            </div>
-                                        ) : socios.length === 0 ? (
-                                            <div className="p-4 text-center text-xs text-gray-500">No se encontraron resultados.</div>
-                                        ) : (
-                                            socios.map(s => (
-                                                <div
-                                                    key={s.id}
-                                                    onClick={() => setFormData({ ...formData, socio_id: s.id })}
-                                                    className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.socio_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
-                                                >
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-white leading-none mb-1">{s.razon_social}</span>
-                                                        <span className="text-[10px] text-gray-500 font-mono tracking-tight">{s.cuit}</span>
-                                                    </div>
-                                                    {formData.socio_id === s.id && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
+                                    {/* Lista de resultados - Ahora absoluta para no romper el layout */}
+                                    {socios.length > 0 && (
+                                        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-gray-950 border border-gray-800 rounded-lg shadow-2xl overflow-hidden max-h-[200px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                                            {searchingSocio ? (
+                                                <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                    Buscando...
                                                 </div>
-                                            ))
-                                        )}
-                                    </div>
+                                            ) : (
+                                                socios.map(s => (
+                                                    <div
+                                                        key={s.id}
+                                                        onClick={() => {
+                                                            setFormData({ ...formData, socio_id: s.id })
+                                                            setSocios([]) // Cerrar la lista al seleccionar
+                                                        }}
+                                                        className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.socio_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
+                                                    >
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-white leading-none mb-1">{s.razon_social}</span>
+                                                            <span className="text-[10px] text-gray-500 font-mono tracking-tight">{s.cuit}</span>
+                                                        </div>
+                                                        {formData.socio_id === s.id && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -285,15 +288,18 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                 <Label className="text-xs uppercase text-gray-500 font-bold">Tipo de Comprobante</Label>
                                 <Select
                                     value={formData.tipo}
-                                    onValueChange={(val: any) => setFormData({ ...formData, tipo: val })}
+                                    onValueChange={(val: any) => {
+                                        console.log('[Form] Tipo cambiado a:', val)
+                                        setFormData({ ...formData, tipo: val })
+                                    }}
                                 >
-                                    <SelectTrigger className="bg-gray-900 border-gray-800 h-11">
-                                        <SelectValue />
+                                    <SelectTrigger className="bg-gray-900 border-gray-800 h-11 focus:ring-emerald-500/50">
+                                        <SelectValue placeholder="Seleccione el tipo..." />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                        <SelectItem value={type}>Factura (Original)</SelectItem>
-                                        <SelectItem value="nota_credito">Nota de Crédito</SelectItem>
-                                        <SelectItem value="nota_debito">Nota de Débito</SelectItem>
+                                    <SelectContent className="bg-gray-900 border-gray-800 text-white" position="popper" sideOffset={5}>
+                                        <SelectItem value={type} className="focus:bg-emerald-600 focus:text-white cursor-pointer">Factura (Original)</SelectItem>
+                                        <SelectItem value="nota_credito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Crédito</SelectItem>
+                                        <SelectItem value="nota_debito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Débito</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
