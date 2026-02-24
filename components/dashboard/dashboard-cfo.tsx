@@ -5,8 +5,11 @@ import { CashHealthScore } from './cash-health-score'
 import { StressTestModal } from './stress-test-modal'
 import { DashboardActions } from './actions'
 import { KPICard } from '@/components/ui/kpi-card'
-import { Activity, DollarSign, AlertCircle } from 'lucide-react'
+import { Activity, DollarSign, AlertCircle, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { CashFlowChart } from './cash-flow-chart'
+import { ReconciliationAlerts } from './reconciliation-alerts'
+import { DailyBalance } from '@/lib/treasury-engine'
 
 interface DashboardCFOProps {
     healthScore: number
@@ -18,6 +21,7 @@ interface DashboardCFOProps {
     daysOfRunway: number | 'stable'
     overdraftLimit: number
     liquidityBuffer?: number
+    projectionData?: DailyBalance[]
     apBatch?: { descripcion: string, monto: number, fecha: string }[]
 }
 
@@ -31,6 +35,7 @@ export function DashboardCFO({
     daysOfRunway,
     overdraftLimit,
     liquidityBuffer = 0,
+    projectionData = [],
     apBatch = []
 }: DashboardCFOProps) {
     const [isStressTestOpen, setIsStressTestOpen] = useState(false)
@@ -70,37 +75,46 @@ export function DashboardCFO({
                 />
             </div>
 
-            {isUnderBuffer && (
-                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-2xl flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-500" />
-                        <div>
-                            <p className="text-red-400 font-bold text-sm">Alerta de Liquidez Crítica</p>
-                            <p className="text-gray-400 text-xs text-balance">El saldo actual está por debajo de tu colchón configurado de {formatCurrency(liquidityBuffer)}. Riesgo de incumplimiento en 48hs.</p>
+            <div className="grid gap-6 lg:grid-cols-3 mb-6">
+                {/* Main Projections Area */}
+                <div className="lg:col-span-2 space-y-6">
+                    {isUnderBuffer && (
+                        <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-500">
+                            <div className="flex items-center gap-3">
+                                <AlertCircle className="w-5 h-5 text-red-500" />
+                                <div>
+                                    <p className="text-red-400 font-bold text-sm">Alerta de Liquidez Crítica</p>
+                                    <p className="text-gray-400 text-xs">El saldo actual está por debajo de tu colchón de {formatCurrency(liquidityBuffer)}. Riesgo de incumplimiento en 48hs.</p>
+                                </div>
+                            </div>
+                            <Badge variant="destructive" className="animate-pulse">RIESGO ALTO</Badge>
                         </div>
-                    </div>
-                    <Badge variant="destructive" className="animate-pulse">RIESGO ALTO</Badge>
-                </div>
-            )}
+                    )}
 
-            <div className="grid gap-6 md:grid-cols-3 items-stretch">
-                <div className="md:col-span-2 h-full">
-                    <CashHealthScore
-                        score={healthScore}
-                        anomalyCount={anomalyCount}
-                        recoveryPotential={recoveryPotential}
-                        opportunityCost={opportunityCost}
-                        onOpenStressTest={() => setIsStressTestOpen(true)}
-                    />
+                    <CashFlowChart data={projectionData} liquidityBuffer={liquidityBuffer} />
                 </div>
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 group hover:border-gray-700 transition-all duration-500 shadow-2xl flex flex-col h-full">
-                    <h3 className="font-bold text-white mb-6 uppercase tracking-tighter text-sm flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-emerald-500" /> Acciones Rápidas
-                    </h3>
-                    <div className="flex-1 flex flex-col justify-center">
+
+                {/* Right Alerts Area */}
+                <div className="space-y-6">
+                    <ReconciliationAlerts />
+
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 group hover:border-gray-700 transition-all duration-500 shadow-2xl flex flex-col h-fit">
+                        <h3 className="font-bold text-white mb-6 uppercase tracking-tighter text-sm flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-emerald-500" /> Acciones Rápidas
+                        </h3>
                         <DashboardActions />
                     </div>
                 </div>
+            </div>
+
+            <div className="mb-6">
+                <CashHealthScore
+                    score={healthScore}
+                    anomalyCount={anomalyCount}
+                    recoveryPotential={recoveryPotential}
+                    opportunityCost={opportunityCost}
+                    onOpenStressTest={() => setIsStressTestOpen(true)}
+                />
             </div>
 
             <StressTestModal
