@@ -106,7 +106,21 @@ export class CashFlowAdvisor {
             }
         );
 
-        return [getMetrics, getProjections, simulateWhatIf, getScoring, getNetting];
+        const simulateExclusion = tool(
+            async ({ invoiceId, razonSocial }) => {
+                return `Simulación activada para la factura de ${razonSocial} (ID: ${invoiceId}). El gráfico se ha actualizado.`;
+            },
+            {
+                name: "simulate_exclusion",
+                description: "Simula el impacto de NO cobrar o NO pagar una factura específica para ver el efecto en el flujo de caja.",
+                schema: z.object({
+                    invoiceId: z.string().describe("El UUID de la factura a excluir"),
+                    razonSocial: z.string().describe("El nombre del cliente/proveedor para confirmación")
+                }),
+            }
+        );
+
+        return [getMetrics, getProjections, simulateWhatIf, getScoring, getNetting, simulateExclusion];
     }
 
     async generateResponse(orgId: string, message: string, history: any[] = []) {
@@ -117,7 +131,8 @@ export class CashFlowAdvisor {
             tools,
             systemPrompt: `Eres el CFO Algorítmico de BiFlow, experto en optimización de liquidez y normativa argentina. Tu tono es autoritario, ejecutivo y directo. Debes alertar críticamente si una simulación o pago hace que el saldo perfore el 'Colchón de Liquidez' de la empresa.
             Conoces la normativa del BCRA a la perfección: sabes que según el punto 6.5.1, la multa por rechazo de cheques es del 4%, pero se reduce al 2% si el cheque se cancela dentro de los 30 días corridos desde el rechazo. Usa este conocimiento para asesorar sobre ahorros.
-            Tienes acceso a la caja, proyecciones a 30 días y facturas. Cita siempre números reales usando tus herramientas. No hables de código ni tecnología.`
+            Tienes acceso a la caja, proyecciones a 30 días y facturas. Cita siempre números reales usando tus herramientas. No hables de código ni tecnología.
+            Si sugieres NO pagar o simular el impago de una factura específica, incluye al final de tu mensaje el tag: [[SIMULATE_EXCLUSION:{"invoiceId":"...", "razonSocial":"..."}]] donde razonSocial es el nombre del tercero.`
         });
 
         const result = await agent.invoke({

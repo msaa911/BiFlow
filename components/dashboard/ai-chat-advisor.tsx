@@ -129,9 +129,16 @@ export function AIChatAdvisor() {
                     {messages.map((m, idx) => {
                         const isAssistant = m.role === 'assistant'
                         const suggestionMatch = m.content.match(/\[\[SUGGESTION:(.*?)\]\]/)
-                        const displayContent = m.content.replace(/\[\[SUGGESTION:.*?\]\]/g, '')
+                        const simulationMatch = m.content.match(/\[\[SIMULATE_EXCLUSION:(.*?)\]\]/)
+                        const displayContent = m.content
+                            .replace(/\[\[SUGGESTION:.*?\]\]/g, '')
+                            .replace(/\[\[SIMULATE_EXCLUSION:.*?\]\]/g, '')
+
                         let suggestionData = null
                         try { if (suggestionMatch) suggestionData = JSON.parse(suggestionMatch[1]) } catch (e) { }
+
+                        let simulationData = null
+                        try { if (simulationMatch) simulationData = JSON.parse(simulationMatch[1]) } catch (e) { }
 
                         return (
                             <div key={m.id} className={cn(
@@ -186,6 +193,34 @@ export function AIChatAdvisor() {
                                             className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
                                         >
                                             Ejecutar en Cash Flow
+                                            <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {simulationData && (
+                                    <div className="ml-11 mt-3 p-4 bg-emerald-500/5 border border-emerald-500/30 rounded-2xl max-w-[80%] shadow-lg">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="p-1 bg-emerald-500/20 rounded">
+                                                <TrendingUp className="w-3 h-3 text-emerald-400" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Análisis What-If</span>
+                                        </div>
+                                        <p className="text-xs text-white mb-4">
+                                            ¿Quieres simular el impacto de excluir la factura de <span className="font-bold text-emerald-400">{simulationData.razonSocial}</span>?
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                window.dispatchEvent(new CustomEvent('biflow-simulate-exclusion', { detail: { invoiceId: simulationData.invoiceId } }));
+                                                toast.success("Impacto simulado en el gráfico", {
+                                                    description: `Exclusión de ${simulationData.razonSocial} aplicada.`,
+                                                });
+                                                // Close and scroll logic could go here
+                                                setIsOpen(false);
+                                            }}
+                                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                                        >
+                                            Ver Impacto en Gráfico
                                             <ChevronRight className="w-4 h-4" />
                                         </button>
                                     </div>
