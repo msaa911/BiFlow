@@ -32,7 +32,7 @@ export function FeeAuditWidget() {
     async function loadFindings() {
         const supabase = createClient()
         const { data } = await supabase
-            .from('hallazgos') // Using 'hallazgos' table based on previously viewed AuditEngine logic
+            .from('hallazgos_auditoria')
             .select(`
                 *,
                 transaccion:transacciones (
@@ -87,7 +87,7 @@ export function FeeAuditWidget() {
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className={`text-[9px] font-black ${isBCRA ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'} px-1.5 py-0.5 rounded uppercase tracking-widest flex items-center gap-1`}>
                                                     {isBCRA && <Scale className="w-2.5 h-2.5" />}
-                                                    {finding.tipo_error.replace('_', ' ')}
+                                                    {(finding.tipo_error || 'DESVÍO').replace('_', ' ')}
                                                 </span>
                                                 <span className="text-[10px] text-gray-400 font-mono">
                                                     {new Date(finding.transaccion?.fecha).toLocaleDateString('es-AR')}
