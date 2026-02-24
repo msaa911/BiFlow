@@ -189,18 +189,16 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 return
             }
 
-            console.log('[InvoiceForm] SUCCESS:', savedData)
+            console.log('[InvoiceForm] SUCCESS - Closing Modal')
             toast.success(invoice ? 'Comprobante actualizado' : 'Comprobante registrado con éxito')
 
-            try {
-                console.log('[InvoiceForm] Triggering onSuccess...')
-                await onSuccess()
-                console.log('[InvoiceForm] Closing modal...')
-                onClose()
-            } catch (postErr) {
-                console.error('[InvoiceForm] Error in callbacks:', postErr)
-                onClose() // Cerrar igualment
-            }
+            // Acción inmediata: Cerrar modal
+            onClose()
+
+            // Acción diferida: Refrescar datos
+            setTimeout(() => {
+                onSuccess()
+            }, 100)
         } catch (err: any) {
             console.error('[InvoiceForm] CRITICAL ERROR:', err)
             toast.error('Error crítico: ' + (err.message || 'Error desconocido'))
