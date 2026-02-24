@@ -12,7 +12,7 @@ async function forceAnalysis() {
     console.log('[FORCE] Resetting and Analyzing...');
 
     // 1. Clear existing PENDIENTE rules to avoid conflicts and start fresh
-    await supabase.from('tax_intelligence_rules').delete().eq('organization_id', ORG_ID);
+    await supabase.from('reglas_fiscales_ia').delete().eq('organization_id', ORG_ID);
     console.log('[FORCE] Old rules cleared.');
 
     // 2. Keywords
@@ -70,7 +70,7 @@ async function forceAnalysis() {
     // 5. Insert Rules (Using insert since we cleared before)
     console.log(`[FORCE] Inserting ${newRules.length} rules...`);
     if (newRules.length > 0) {
-        const { error } = await supabase.from('tax_intelligence_rules').insert(newRules);
+        const { error } = await supabase.from('reglas_fiscales_ia').insert(newRules);
         if (error) {
             console.error('[FORCE] Error inserting rules:', error.message);
         } else {

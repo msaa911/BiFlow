@@ -11,7 +11,7 @@ const ORG_ID = "8bca8172-b23f-4da7-b50c-ba2fd78187ac";
 async function restoreData() {
     console.log('[RESTORE] Cleanning first...');
     await supabase.from('transacciones').delete().eq('organization_id', ORG_ID);
-    await supabase.from('tax_intelligence_rules').delete().eq('organization_id', ORG_ID);
+    await supabase.from('reglas_fiscales_ia').delete().eq('organization_id', ORG_ID);
 
     console.log('[RESTORE] Inserting test transactions...');
     const { data: trans, error: terr } = await supabase.from('transacciones').insert([
@@ -40,7 +40,7 @@ async function restoreData() {
     if (terr) console.error('Error trans:', terr);
 
     console.log('[RESTORE] Inserting pending rule...');
-    const { data: rules, error: rerr } = await supabase.from('tax_intelligence_rules').insert([
+    const { data: rules, error: rerr } = await supabase.from('reglas_fiscales_ia').insert([
         {
             organization_id: ORG_ID,
             patron_busqueda: 'DEBITO SERV. TELECOM / INTERNET',

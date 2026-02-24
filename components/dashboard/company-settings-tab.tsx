@@ -100,7 +100,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
             // 5. Cargar Reglas de Impuestos
             const { data: rules } = await supabase
-                .from('tax_intelligence_rules')
+                .from('reglas_fiscales_ia')
                 .select('*')
                 .eq('organization_id', organizationId)
                 .order('created_at', { ascending: false })
@@ -142,7 +142,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     }
 
     const deleteTaxRule = async (ruleId: string) => {
-        const { error } = await supabase.from('tax_intelligence_rules').delete().eq('id', ruleId)
+        const { error } = await supabase.from('reglas_fiscales_ia').delete().eq('id', ruleId)
         if (!error) {
             setTaxRules(prev => prev.filter(r => r.id !== ruleId))
         }

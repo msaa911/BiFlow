@@ -30,7 +30,7 @@ async function nuclearReset() {
 
     // 3. Reset Tax Configuration to Pending
     console.log('Resetting tax rules...');
-    const { error: rerr } = await supabase.from('tax_intelligence_rules').delete().not('id', 'is', null);
+    const { error: rerr } = await supabase.from('reglas_fiscales_ia').delete().not('id', 'is', null);
     if (rerr) console.error('Error resetting rules:', rerr);
 
     console.log('--- NUCLEAR RESET COMPLETE ---');

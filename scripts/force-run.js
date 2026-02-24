@@ -68,7 +68,7 @@ async function forceAnalysis() {
 
     console.log(`[FORCE] Creating ${newRules.length} learning rules...`);
     if (newRules.length > 0) {
-        await supabase.from('tax_intelligence_rules').upsert(newRules, { onConflict: 'organization_id, patron_busqueda' });
+        await supabase.from('reglas_fiscales_ia').upsert(newRules, { onConflict: 'organization_id, patron_busqueda' });
     }
 
     console.log('[FORCE] DONE. Please refresh dashboard.');

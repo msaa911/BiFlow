@@ -107,7 +107,7 @@ async function performFullReset(supabase: any, orgId: string) {
     await supabase.from('comprobantes').delete().eq('organization_id', orgId)
 
     // 3. Delete AI rules
-    await supabase.from('tax_intelligence_rules').delete().eq('organization_id', orgId)
+    await supabase.from('reglas_fiscales_ia').delete().eq('organization_id', orgId)
 
     // 4. Delete import logs
     await supabase.from('archivos_importados').delete().eq('organization_id', orgId)
