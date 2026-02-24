@@ -31,6 +31,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
         monto_total: 0,
         fecha_emision: new Date().toISOString().split('T')[0],
         fecha_vencimiento: new Date().toISOString().split('T')[0],
+        condicion: 'cuenta_corriente',
         concepto: '',
         vinculado_id: 'none'
     })
@@ -82,6 +83,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     monto_total: Number(invoice.monto_total) || 0,
                     fecha_emision: invoice.fecha_emision || new Date().toISOString().split('T')[0],
                     fecha_vencimiento: invoice.fecha_vencimiento || new Date().toISOString().split('T')[0],
+                    condicion: invoice.condicion || 'cuenta_corriente',
                     concepto: invoice.concepto || '',
                     vinculado_id: invoice.vinculado_id || 'none'
                 })
@@ -94,6 +96,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     monto_total: 0,
                     fecha_emision: new Date().toISOString().split('T')[0],
                     fecha_vencimiento: new Date().toISOString().split('T')[0],
+                    condicion: 'cuenta_corriente',
                     concepto: '',
                     vinculado_id: 'none'
                 })
@@ -165,11 +168,11 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 tipo: formData.tipo,
                 numero: formData.numero || null,
                 monto_total: formData.monto_total,
-                monto_pendiente: invoice?.monto_pendiente ?? formData.monto_total,
+                monto_pendiente: formData.condicion === 'contado' ? 0 : (invoice?.monto_pendiente ?? formData.monto_total),
                 fecha_emision: formData.fecha_emision,
                 fecha_vencimiento: formData.fecha_vencimiento,
-                estado: invoice?.estado || 'pendiente',
-                condicion: 'cuenta_corriente',
+                estado: formData.condicion === 'contado' ? 'pagado' : (invoice?.estado || 'pendiente'),
+                condicion: formData.condicion,
                 concepto: formData.concepto || null,
                 moneda: 'ARS'
             }
@@ -192,9 +195,9 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
             let query;
             if (invoice?.id) {
-                query = supabase.from('comprobantes').update(upsertData).eq('id', invoice.id)
+                query = supabase.from('comprobantes').update(upsertData).eq('id', invoice.id).select().single()
             } else {
-                query = supabase.from('comprobantes').insert([upsertData])
+                query = supabase.from('comprobantes').insert([upsertData]).select().single()
             }
 
             // Timeout de 15 segundos
@@ -202,10 +205,10 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 setTimeout(() => reject(new Error('Tiempo de espera agotado en la base de datos (15s)')), 15000)
             );
 
-            const { error } = (await Promise.race([
+            const { data: savedInvoice, error } = (await Promise.race([
                 query,
                 timeoutPromise
-            ])) as { error: any }
+            ])) as { data: any, error: any }
 
             console.log(`[InvoiceForm] DB Response in ${Date.now() - startTime}ms`, { error })
 
@@ -214,6 +217,42 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 toast.error(`Error de base de datos: ${error.message}`)
                 setLoading(false)
                 return
+            }
+
+            // SI ES CONTADO -> GENERAR RECIBO AUTOMATICO
+            if (formData.condicion === 'contado' && savedInvoice) {
+                console.log('[InvoiceForm] Generando pago automático por Condición Contado...')
+
+                // 1. Crear Movimiento de Tesorería
+                const { data: mov, error: movErr } = await supabase.from('movimientos_tesoreria').insert({
+                    organization_id: orgId,
+                    entidad_id: formData.socio_id,
+                    tipo: type === 'factura_venta' ? 'cobro' : 'pago',
+                    monto_total: formData.monto_total,
+                    fecha: formData.fecha_emision,
+                    observaciones: `Cierre automático: Pago Contado ${savedInvoice.numero || ''}`
+                }).select().single()
+
+                if (!movErr && mov) {
+                    // 2. Crear Instrumento (Efectivo por defecto)
+                    await supabase.from('instrumentos_pago').insert({
+                        movimiento_id: mov.id,
+                        metodo: 'efectivo',
+                        monto: formData.monto_total,
+                        fecha_disponibilidad: formData.fecha_emision
+                    })
+
+                    // 3. Crear Aplicación
+                    await supabase.from('aplicaciones_pago').insert({
+                        movimiento_id: mov.id,
+                        comprobante_id: savedInvoice.id,
+                        monto_aplicado: formData.monto_total
+                    })
+
+                    toast.success(`Pago automático ${mov.numero} registrado`)
+                } else if (movErr) {
+                    console.error('[InvoiceForm] Error en pago auto:', movErr)
+                }
             }
 
             console.log('[InvoiceForm] SUCCESS - Closing Modal and Refreshing')
@@ -266,6 +305,23 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                         <SelectItem value={type} className="focus:bg-emerald-600 focus:text-white cursor-pointer">Factura (Original)</SelectItem>
                                         <SelectItem value="nota_credito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Crédito</SelectItem>
                                         <SelectItem value="nota_debito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Débito</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Condición de Pago */}
+                            <div className="col-span-2 space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold tracking-wider">Condición de Pago</Label>
+                                <Select
+                                    value={formData.condicion}
+                                    onValueChange={(val: any) => setFormData({ ...formData, condicion: val })}
+                                >
+                                    <SelectTrigger className="bg-gray-900 border-gray-800 h-11 focus:ring-emerald-500/50">
+                                        <SelectValue placeholder="Seleccione condición..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-950 border-gray-800 text-white">
+                                        <SelectItem value="cuenta_corriente">Cuenta Corriente (A cobrar luego)</SelectItem>
+                                        <SelectItem value="contado">Contado (Pagado/Cobrado ahora)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

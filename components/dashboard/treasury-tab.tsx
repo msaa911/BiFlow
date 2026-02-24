@@ -10,7 +10,8 @@ import { TreasuryEngine } from '@/lib/treasury-engine'
 import { CashFlowHub } from './cash-flow-hub'
 import { SuppliersTab } from './suppliers-tab'
 import { TreasuryHistory } from './treasury-history'
-import { Shield, BookUser, History } from 'lucide-react'
+import { Shield, BookUser, History, Landmark } from 'lucide-react'
+import { CheckPortfolio } from './check-portfolio'
 
 interface TreasuryTabProps {
     orgId: string
@@ -175,14 +176,18 @@ export function TreasuryTab({ orgId }: TreasuryTabProps) {
                         <History className="w-3.5 h-3.5 mr-2 text-emerald-400" />
                         Recibos
                     </TabsTrigger>
-                    <TabsTrigger value="ordenes" className="rounded-lg">
-                        <History className="w-3.5 h-3.5 mr-2 text-orange-400" />
-                        Órdenes de Pago
+                    <TabsTrigger value="cartera" className="rounded-lg">
+                        <Landmark className="w-3.5 h-3.5 mr-2 text-blue-400" />
+                        Cartera
                     </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="cashflow">
                     <CashFlowHub invoices={invoices} currentBalance={initialBalancesSum} />
+                </TabsContent>
+
+                <TabsContent value="cartera">
+                    <CheckPortfolio orgId={orgId} />
                 </TabsContent>
 
                 <TabsContent value="ingresos" className="space-y-6">
