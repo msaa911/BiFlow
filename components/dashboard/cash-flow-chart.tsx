@@ -107,7 +107,7 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                             />
                                         )
                                     }
-                                    return null;
+                                    return <></>;
                                 }}
                             />
                         </AreaChart>
