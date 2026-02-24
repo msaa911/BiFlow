@@ -116,18 +116,19 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log('[Submit] Iniciando registro de comprobante...', { formData, type })
+        console.log('[InvoiceForm] START handleSubmit', { formData, type })
         setLoading(true)
 
-        if (!formData.socio_id) {
-            toast.error(`Debe seleccionar un ${type === 'factura_venta' ? 'Cliente' : 'Proveedor'}`)
-            setLoading(false)
-            return
-        }
-
-        const supabase = createClient()
         try {
-            // Obtener datos frescos del socio para evitar depender del estado local volátil 'socios'
+            if (!formData.socio_id || formData.socio_id === 'none') {
+                toast.error(`Debe seleccionar un ${type === 'factura_venta' ? 'Cliente' : 'Proveedor'}`)
+                setLoading(false)
+                return
+            }
+
+            const supabase = createClient()
+            console.log('[InvoiceForm] Validating socio:', formData.socio_id)
+
             const { data: selectedSocio, error: socioError } = await supabase
                 .from('entidades')
                 .select('id, razon_social, cuit, categoria')
@@ -135,30 +136,13 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 .single()
 
             if (socioError || !selectedSocio) {
-                console.error('[Submit] Error al obtener socio:', socioError)
-                toast.error('No se pudo validar el socio seleccionado.')
+                console.error('[InvoiceForm] Error socio validation:', socioError)
+                toast.error('No se pudo validar el socio seleccionado: ' + (socioError?.message || 'No encontrado'))
                 setLoading(false)
                 return
             }
 
-            // Lógica de Categoría Dual Dinámica
-            const isVenta = type === 'factura_venta'
-            const currentCat = selectedSocio.categoria
-            let newCat = currentCat
-
-            if (newCat !== currentCat) {
-                console.log(`[Categoría] Actualizando socio ${selectedSocio.razon_social} a: ${newCat}`)
-                await supabase
-                    .from('entidades')
-                    .update({ categoria: newCat })
-                    .eq('id', selectedSocio.id)
-            }
-
-            console.log('[Submit] Enviando datos a Supabase...', {
-                entidad_id: formData.socio_id,
-                tipo: type,
-                monto: formData.monto_total
-            })
+            console.log('[InvoiceForm] Socio validado:', selectedSocio.razon_social)
 
             const upsertData = {
                 id: invoice?.id,
@@ -167,8 +151,8 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 cuit_socio: selectedSocio.cuit,
                 razon_social_socio: selectedSocio.razon_social,
                 nombre_entidad: selectedSocio.razon_social,
-                tipo: formData.tipo, // Usar el seleccionado en el form
-                numero: formData.numero,
+                tipo: formData.tipo,
+                numero: formData.numero || null,
                 monto_total: formData.monto_total,
                 monto_pendiente: invoice?.monto_pendiente ?? formData.monto_total,
                 fecha_emision: formData.fecha_emision,
@@ -180,24 +164,36 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 moneda: 'ARS'
             }
 
-            const { error } = await supabase
+            console.log('[InvoiceForm] Sending to Supabase:', upsertData)
+            const { data: savedData, error } = await supabase
                 .from('comprobantes')
                 .upsert(upsertData)
+                .select()
 
             if (error) {
-                console.error('[Submit] Error de Supabase:', error)
-                toast.error(`Error de base de datos: ${error.message} (${error.code})`)
+                console.error('[InvoiceForm] Supabase error:', error)
+                toast.error(`Error de base de datos: ${error.message}`)
                 setLoading(false)
                 return
             }
 
+            console.log('[InvoiceForm] SUCCESS:', savedData)
             toast.success(invoice ? 'Comprobante actualizado' : 'Comprobante registrado con éxito')
-            onSuccess()
-            onClose()
+
+            try {
+                console.log('[InvoiceForm] Triggering onSuccess...')
+                await onSuccess()
+                console.log('[InvoiceForm] Closing modal...')
+                onClose()
+            } catch (postErr) {
+                console.error('[InvoiceForm] Error in callbacks:', postErr)
+                onClose() // Cerrar igualment
+            }
         } catch (err: any) {
-            console.error('[Submit] Error crítico en handleSubmit:', err)
-            toast.error('Error crítico al guardar: ' + (err.message || 'Error desconocido'))
+            console.error('[InvoiceForm] CRITICAL ERROR:', err)
+            toast.error('Error crítico: ' + (err.message || 'Error desconocido'))
         } finally {
+            console.log('[InvoiceForm] END handleSubmit')
             setLoading(false)
         }
     }
