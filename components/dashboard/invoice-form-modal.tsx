@@ -176,26 +176,42 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 moneda: 'ARS'
             }
 
-            console.log('[InvoiceForm] Sending to Supabase:', upsertData)
-            const { data: savedData, error } = await supabase
-                .from('comprobantes')
-                .upsert(upsertData)
-                .select()
+            console.log('[InvoiceForm] Sending to Supabase (Optimized with Timeout)...')
+            const startTime = Date.now()
+
+            let query;
+            if (invoice?.id) {
+                query = supabase.from('comprobantes').update(upsertData).eq('id', invoice.id)
+            } else {
+                query = supabase.from('comprobantes').insert([upsertData])
+            }
+
+            // Timeout de 15 segundos
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Tiempo de espera agotado en la base de datos (15s)')), 15000)
+            );
+
+            const { error } = (await Promise.race([
+                query,
+                timeoutPromise
+            ])) as { error: any }
+
+            console.log(`[InvoiceForm] DB Response in ${Date.now() - startTime}ms`, { error })
 
             if (error) {
-                console.error('[InvoiceForm] Supabase error:', error)
+                console.error('[InvoiceForm] Database error:', error)
                 toast.error(`Error de base de datos: ${error.message}`)
                 setLoading(false)
                 return
             }
 
-            console.log('[InvoiceForm] SUCCESS - Closing Modal')
+            console.log('[InvoiceForm] SUCCESS - Closing Modal and Refreshing')
             toast.success(invoice ? 'Comprobante actualizado' : 'Comprobante registrado con éxito')
 
             // Acción inmediata: Cerrar modal
             onClose()
 
-            // Acción diferida: Refrescar datos
+            // Acción diferida: Refrescar datos para no bloquear el cierre
             setTimeout(() => {
                 onSuccess()
             }, 100)
