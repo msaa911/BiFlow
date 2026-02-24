@@ -140,7 +140,7 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                                                         type="date"
                                                         value={newProjected.fecha}
                                                         onChange={e => setNewProjected({ ...newProjected, fecha: e.target.value })}
-                                                        className="bg-gray-950 border-gray-800 h-8 text-xs"
+                                                        className="bg-gray-950 border-gray-800 h-8 text-xs text-white [color-scheme:dark]"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -148,7 +148,7 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                                                         placeholder="Ej: Inversión en Stock"
                                                         value={newProjected.descripcion}
                                                         onChange={e => setNewProjected({ ...newProjected, descripcion: e.target.value })}
-                                                        className="bg-gray-950 border-gray-800 h-8 text-xs text-white"
+                                                        className="bg-gray-950 border-gray-800 h-8 text-xs text-white placeholder:text-gray-600"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3">
