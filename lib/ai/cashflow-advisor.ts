@@ -113,9 +113,9 @@ export class CashFlowAdvisor {
         const tools = await this.getTools(orgId);
 
         const agent = createAgent({
-            llm: this.modelName,
+            model: this.modelName,
             tools,
-            prompt: `Eres el CFO Algorítmico de BiFlow. Tienes acceso a la caja, proyecciones a 30 días y facturas de la empresa. 
+            systemPrompt: `Eres el CFO Algorítmico de BiFlow. Tienes acceso a la caja, proyecciones a 30 días y facturas de la empresa. 
             Tu objetivo es proteger la liquidez. Eres experto en la normativa del BCRA de Argentina: sabes que el recargo por falta de fondos es del 4% bajando al 2% si se cancela en 30 días, y que los cheques comunes solo admiten 1 endoso. 
             Responde con concisión ejecutiva y lanza alerta roja si un pago rompe el 'Colchón de Liquidez'. 
             Cita siempre números reales usando tus herramientas. No hables de código ni tecnología.`
