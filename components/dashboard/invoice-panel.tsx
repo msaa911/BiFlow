@@ -190,7 +190,14 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_total)}
                                 </td>
                                 <td className={`px-6 py-4 text-right font-bold ${inv.monto_pendiente > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                    {inv.monto_pendiente > 0 ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente) : <div className="flex items-center justify-end gap-1"><CheckCircle2 className="w-3 h-3" /> COBRADO</div>}
+                                    {inv.monto_pendiente > 0 ? (
+                                        new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)
+                                    ) : (
+                                        <div className="flex items-center justify-end gap-1">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            {view === 'AR' ? 'COBRADO' : 'PAGADO'}
+                                        </div>
+                                    )}
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex justify-center gap-2">
