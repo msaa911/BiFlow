@@ -31,17 +31,17 @@ const bankData = [
 // 2. Invoices (AR/AP)
 // Ensure names match EXACTLY with generated entities
 const invoiceData = [
-    ["Fecha", "Entidad", "Número", "Tipo", "Monto", "Vencimiento", "Condición"],
-    ["01/01/2026", "Cliente Alpha S.A.", "A-0001", "Venta", 350000.00, "15/01/2026", "Contado"],
-    ["10/01/2026", "Cliente Beta Corp", "A-0002", "Venta", 450000.00, "25/01/2026", "Contado"],
-    ["10/01/2026", "Inmobiliaria Local", "B-5521", "Compra", 100000.00, "10/01/2026", "Contado"],
-    ["20/01/2026", "Tech Solutions", "A-1200", "Venta", 120000.00, "20/02/2026", "Cuenta Corriente"],
-    ["22/01/2026", "Tech Solutions", "C-0091", "Compra", 15000.00, "22/01/2026", "Contado"],
-    ["01/02/2026", "Cliente Alpha S.A.", "A-0003", "Venta", 350000.00, "15/02/2026", "Contado"],
-    ["10/02/2026", "Cliente Beta Corp", "A-0004", "Venta", 450000.00, "25/02/2026", "Contado"],
-    ["10/02/2026", "Inmobiliaria Local", "B-5522", "Compra", 120000.00, "10/02/2026", "Contado"],
-    ["01/03/2026", "Cliente Gamma (CRÍTICO)", "A-9901", "Venta", 900000.00, "05/03/2026", "Cuenta Corriente"],
-    ["10/03/2026", "Proveedor Importación", "IMP-550", "Compra", 1500000.00, "15/03/2026", "Cuenta Corriente"]
+    ["Tipo Documento", "Fecha", "Entidad", "Número", "Tipo", "Monto", "Vencimiento", "Condición"],
+    ["Factura", "01/01/2026", "Cliente Alpha S.A.", "A-0001", "Venta", 350000.00, "15/01/2026", "Contado"],
+    ["Factura", "10/01/2026", "Cliente Beta Corp", "A-0002", "Venta", 450000.00, "25/01/2026", "Contado"],
+    ["Factura", "10/01/2026", "Inmobiliaria Local", "B-5521", "Compra", 100000.00, "10/01/2026", "Contado"],
+    ["Nota de Crédito", "20/01/2026", "Tech Solutions", "NC-001", "Venta", 50000.00, "20/01/2026", "Cuenta Corriente"],
+    ["Nota de Débito", "22/01/2026", "Tech Solutions", "ND-044", "Compra", 15000.00, "22/01/2026", "Contado"],
+    ["Factura", "01/02/2026", "Cliente Alpha S.A.", "A-0003", "Venta", 350000.00, "15/02/2026", "Contado"],
+    ["Nota de Crédito", "10/02/2026", "Cliente Beta Corp", "NC-002", "Venta", 25000.00, "10/02/2026", "Contado"],
+    ["Factura", "10/02/2026", "Inmobiliaria Local", "B-5522", "Compra", 120000.00, "10/02/2026", "Contado"],
+    ["Factura", "01/03/2026", "Cliente Gamma (CRÍTICO)", "A-9901", "Venta", 900000.00, "05/03/2026", "Cuenta Corriente"],
+    ["Factura", "10/03/2026", "Proveedor Importación", "IMP-550", "Compra", 1500000.00, "15/03/2026", "Cuenta Corriente"]
 ];
 
 // 2.1 Entities (Clients and Suppliers) SEPARATED - FULL FIELDS

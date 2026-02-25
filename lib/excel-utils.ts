@@ -257,6 +257,11 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                     const condicionRaw = getValue(/condicion|pago|venta|compra/i).toLowerCase()
                     const condicion = (condicionRaw.includes('contado') || condicionRaw === 'efectivo') ? 'contado' : 'cuenta_corriente'
 
+                    const tipoDocumentoRaw = getValue(/tipo.*documento|tipo.*comprobante|^tipo$/i).toLowerCase()
+                    let tipoDocumento = 'factura' // Default
+                    if (tipoDocumentoRaw.includes('credito') || tipoDocumentoRaw === 'nc') tipoDocumento = 'nota_credito'
+                    else if (tipoDocumentoRaw.includes('debito') || tipoDocumentoRaw === 'nd') tipoDocumento = 'nota_debito'
+
                     // Ignorar filas que sean solo ejemplos (sin número de factura ni monto)
                     if (!numero && isNaN(monto)) return
 
@@ -275,6 +280,7 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                         numero,
                         monto_total: monto,
                         condicion: condicion,
+                        tipo_documento: tipoDocumento,
                         moneda: 'ARS',
                         metodo_pago: null,
                         concepto: getValue(/concepto|descripcion|detalle/i),

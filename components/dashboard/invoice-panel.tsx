@@ -294,7 +294,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             validData.map(inv => ({
                                 organization_id: orgId,
                                 entidad_id: inv.entidad_id,
-                                tipo: view === 'AR' ? 'factura_venta' : 'factura_compra',
+                                tipo: inv.tipo_documento === 'factura' ? (view === 'AR' ? 'factura_venta' : 'factura_compra') : inv.tipo_documento,
                                 fecha_emision: inv.fecha_emision,
                                 fecha_vencimiento: inv.fecha_vencimiento || inv.fecha_emision,
                                 numero: inv.numero,
