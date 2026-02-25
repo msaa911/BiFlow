@@ -237,10 +237,10 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                         return foundKey ? String(row[foundKey]).trim() : ''
                     }
 
-                    const fechaEmision = getValByRegex(/fecha.*emision|fecha.*factura|emision/i)
+                    const fechaEmision = getValByRegex(/fecha.*emision|fecha.*factura|^fecha$|emision/i)
                     const fechaVencimiento = getValByRegex(/fecha.*vencimiento|vencimiento|vence/i)
                     const cuit = getValByRegex(/cuit|cuil|id|identificacion/i).replace(/[^\d]/g, '')
-                    const razonSocial = getValByRegex(/cliente|proveedor|socio|razon|social|nombre/i)
+                    const razonSocial = getValByRegex(/cliente|proveedor|socio|razon|social|nombre|^entidad$/i)
                     const numero = getValByRegex(/numero|nro|n°|factura|comprobante/i)
                     const montoRaw = getValByRegex(/monto|total|importe|valor/i)
                     const monto = parseFloat(montoRaw.replace(/[^\d.,]/g, '').replace(',', '.'))

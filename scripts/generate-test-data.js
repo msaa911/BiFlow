@@ -30,17 +30,17 @@ const bankData = [
 
 // 2. Invoices (AR/AP)
 const invoiceData = [
-    ["Fecha", "Entidad", "Tipo", "Monto", "Vencimiento", "Estado"],
-    ["01/01/2026", "Cliente Alpha S.A.", "Venta", 350000.00, "15/01/2026", "Cobrada"],
-    ["10/01/2026", "Cliente Beta Corp", "Venta", 450000.00, "25/01/2026", "Cobrada"],
-    ["10/01/2026", "Inmobiliaria Local", "Compra", 100000.00, "10/01/2026", "Pagada"],
-    ["20/01/2026", "Tech Solutions", "Venta", 120000.00, "20/02/2026", "Pendiente"],
-    ["22/01/2026", "Tech Solutions", "Compra", 15000.00, "22/01/2026", "Pagada"],
-    ["01/02/2026", "Cliente Alpha S.A.", "Venta", 350000.00, "15/02/2026", "Cobrada"],
-    ["10/02/2026", "Cliente Beta Corp", "Venta", 450000.00, "25/02/2026", "Cobrada"],
-    ["10/02/2026", "Inmobiliaria Local", "Compra", 120000.00, "10/02/2026", "Pagada"],
-    ["01/03/2026", "Cliente Gamma (CRÍTICO)", "Venta", 900000.00, "05/03/2026", "Pendiente"],
-    ["10/03/2026", "Proveedor Importación", "Compra", 1500000.00, "15/03/2026", "Pendiente"]
+    ["Fecha", "Entidad", "Número", "Tipo", "Monto", "Vencimiento", "Estado"],
+    ["01/01/2026", "Cliente Alpha S.A.", "A-0001", "Venta", 350000.00, "15/01/2026", "Cobrada"],
+    ["10/01/2026", "Cliente Beta Corp", "A-0002", "Venta", 450000.00, "25/01/2026", "Cobrada"],
+    ["10/01/2026", "Inmobiliaria Local", "B-5521", "Compra", 100000.00, "10/01/2026", "Pagada"],
+    ["20/01/2026", "Tech Solutions", "A-1200", "Venta", 120000.00, "20/02/2026", "Pendiente"],
+    ["22/01/2026", "Tech Solutions", "C-0091", "Compra", 15000.00, "22/01/2026", "Pagada"],
+    ["01/02/2026", "Cliente Alpha S.A.", "A-0003", "Venta", 350000.00, "15/02/2026", "Cobrada"],
+    ["10/02/2026", "Cliente Beta Corp", "A-0004", "Venta", 450000.00, "25/02/2026", "Cobrada"],
+    ["10/02/2026", "Inmobiliaria Local", "B-5522", "Compra", 120000.00, "10/02/2026", "Pagada"],
+    ["01/03/2026", "Cliente Gamma (CRÍTICO)", "A-9901", "Venta", 900000.00, "05/03/2026", "Pendiente"],
+    ["10/03/2026", "Proveedor Importación", "IMP-550", "Compra", 1500000.00, "15/03/2026", "Pendiente"]
 ];
 
 // 3. Payments/Receipts (Treasury Movements + Instruments)
