@@ -44,20 +44,20 @@ const invoiceData = [
     ["10/03/2026", "Proveedor Importación", "IMP-550", "Compra", 1500000.00, "15/03/2026", "Pendiente"]
 ];
 
-// 2.1 Entities (Clients and Suppliers) SEPARATED
+// 2.1 Entities (Clients and Suppliers) SEPARATED - FULL FIELDS
 const clientData = [
-    ["Razón Social", "CUIT", "CBU", "Email", "Categoría"],
-    ["Cliente Alpha S.A.", "30-11223344-5", "0000003100012345678901", "alpha@test.com", "cliente"],
-    ["Cliente Beta Corp", "30-22334455-6", "0000003100012345678902", "beta@test.com", "cliente"],
-    ["Tech Solutions", "30-33445566-7", "0000003100012345678903", "tech@test.com", "ambos"],
-    ["Cliente Gamma (CRÍTICO)", "30-44556677-8", "0000003100012345678904", "gamma@test.com", "cliente"]
+    ["Razón Social", "CUIT", "CBU", "Email", "Categoría", "Dirección", "Localidad", "Departamento", "Provincia", "Código Postal", "País", "Teléfono"],
+    ["Cliente Alpha S.A.", "30-11223344-5", "0000003100012345678901", "alpha@test.com", "cliente", "Av. 9 de Julio 1234", "CABA", "Comuna 1", "Capital Federal", "1001", "Argentina", "11 4455-6677"],
+    ["Cliente Beta Corp", "30-22334455-6", "0000003100012345678902", "beta@test.com", "cliente", "Calle Falsa 123", "Rosario", "Rosario", "Santa Fe", "2000", "Argentina", "341 455-6677"],
+    ["Tech Solutions", "30-33445566-7", "0000003100012345678903", "tech@test.com", "ambos", "Av. del Libertador 500", "Vicente López", "Vicente López", "Buenos Aires", "1638", "Argentina", "11 3322-1100"],
+    ["Cliente Gamma (CRÍTICO)", "30-44556677-8", "0000003100012345678904", "gamma@test.com", "cliente", "Ruta 20 km 5", "Córdoba", "Capital", "Córdoba", "5000", "Argentina", "351 998-8776"]
 ];
 
 const supplierData = [
-    ["Razón Social", "CUIT", "Categoría"],
-    ["Inmobiliaria Local", "30-55667788-9", "proveedor"],
-    ["Proveedor Importación", "30-66778899-0", "proveedor"],
-    ["Tech Solutions", "30-33445566-7", "ambos"]
+    ["Razón Social", "CUIT", "Categoría", "Dirección", "Localidad", "Provincia", "País"],
+    ["Inmobiliaria Local", "30-55667788-9", "proveedor", "Pueyrredón 440", "Mendoza", "Mendoza", "Argentina"],
+    ["Proveedor Importación", "30-66778899-0", "proveedor", "Puerto Madero 10", "CABA", "Capital Federal", "Argentina"],
+    ["Tech Solutions", "30-33445566-7", "ambos", "Av. del Libertador 500", "Vicente López", "Buenos Aires", "Argentina"]
 ];
 
 // 3. Payments/Receipts (Treasury Movements + Instruments)

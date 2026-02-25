@@ -120,7 +120,7 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                     const rowNum = index + 2
                     const keys = Object.keys(row)
 
-                    const getValByRegex = (pattern: RegExp) => {
+                    const getValue = (pattern: RegExp) => {
                         const foundKey = keys.find(k => {
                             // Normalize key: lowercase and remove accents
                             const nk = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -129,9 +129,9 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                         return foundKey ? String(row[foundKey]).trim() : ''
                     }
 
-                    const rawCuit = getValByRegex(/cuit|cuil|id|identificacion/i)
+                    const rawCuit = getValue(/cuit|cuil|id|identificacion/i)
                     const cleanCuit = rawCuit.replace(/[^\d]/g, '')
-                    const razonSocial = getValByRegex(/cliente|proveedor|razon|social|nombre|empresa|denominacion/i)
+                    const razonSocial = getValue(/cliente|proveedor|razon|social|nombre|empresa|denominacion/i)
 
                     const itemErrors: string[] = []
                     if (!razonSocial) itemErrors.push('Falta Razón Social')
@@ -142,15 +142,17 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                         id: `row-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
                         razon_social: razonSocial,
                         cuit: cleanCuit,
-                        cbu_habitual: getValByRegex(/cbu|cvu|cuenta|habitual/i),
-                        direccion: getValByRegex(/direccion|calle|domicilio/i),
-                        localidad: getValByRegex(/localidad|ciudad/i),
-                        departamento: getValByRegex(/departamento|partido/i),
-                        provincia: getValByRegex(/provincia|estado/i),
-                        codigo_postal: getValByRegex(/codigo|postal|cp/i),
-                        email: getValByRegex(/email|mail/i),
-                        telefono_1: getValByRegex(/telefono|tel|celular|cel/i),
-                        contacto: getValByRegex(/contacto|responsable/i),
+                        cbu_habitual: getValue(/cbu|cvu|cuenta|habitual/i),
+                        direccion: getValue(/direccion|calle|domicilio/i),
+                        localidad: getValue(/localidad|ciudad/i),
+                        departamento: getValue(/departamento|partido/i),
+                        provincia: getValue(/provincia|estado/i),
+                        codigo_postal: getValue(/codigo|postal|cp/i),
+                        pais: getValue(/pais|country/i) || 'Argentina',
+                        email: getValue(/email|mail/i),
+                        telefono_1: getValue(/telefono|tel|celular|cel/i),
+                        telefono_2: getValue(/telefono2|tel2|fijo/i),
+                        contacto: getValue(/contacto|responsable/i),
                         rowNum,
                         errors: itemErrors,
                         isValid: itemErrors.length === 0
