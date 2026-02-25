@@ -25,8 +25,8 @@ export async function POST(req: Request) {
 
         // Fetch the pattern
         const { data: rule } = await serviceSupabase
-            .from('reglas_fiscales_ia')
-            .select('patron_busqueda')
+            .from('tax_intelligence_rules')
+            .select('patron_busqueda, categoria') // Aded categoria just in case it's needed below
             .eq('id', id)
             .single()
 
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
         }
 
         const { error } = await serviceSupabase
-            .from('reglas_fiscales_ia')
+            .from('tax_intelligence_rules')
             .update({
                 es_recuperable,
                 omitir_siempre,

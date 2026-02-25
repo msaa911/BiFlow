@@ -111,6 +111,7 @@ async function performFullReset(supabase: any, orgId: string) {
         'pagos_proyectados',
         'transacciones',
         'comprobantes',
+        'tax_intelligence_rules',
         'reglas_fiscales_ia',
         'configuracion_impuestos',
         'configuracion_empresa',

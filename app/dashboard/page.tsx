@@ -88,7 +88,7 @@ export default async function DashboardPage() {
     const { data: anomalies } = await supabase.from('transacciones').select('*').eq('organization_id', orgId).or('tags.cs.{"alerta_precio"},tags.cs.{"posible_duplicado"},tags.cs.{"riesgo_bec"}').order('fecha', { ascending: false })
     const anomalyCount = anomalies?.length || 0
     const { count: quarantineCount } = await supabase.from('transacciones_revision').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('estado', 'pendiente')
-    const { count: pendingTaxesCount } = await supabase.from('reglas_fiscales_ia').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('estado', 'PENDIENTE')
+    const { count: pendingTaxesCount } = await supabase.from('tax_intelligence_rules').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('estado', 'PENDIENTE')
     const { data: findings } = await supabase.from('hallazgos').select('tipo, severidad').eq('organization_id', orgId).eq('estado', 'detectado')
 
     let healthScore = 100
