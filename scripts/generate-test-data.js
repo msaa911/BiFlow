@@ -78,8 +78,20 @@ function saveExcel(data, filename) {
     console.log(`Generated: ${filename}`);
 }
 
+// Split Invoices into Income and Expenses
+const incomeRows = [
+    ["Tipo Documento", "Fecha", "Entidad", "Número", "Tipo", "Monto", "Vencimiento", "Condición"],
+    ...invoiceData.slice(1).filter(row => row[4] === "Venta")
+];
+const expenseRows = [
+    ["Tipo Documento", "Fecha", "Entidad", "Número", "Tipo", "Monto", "Vencimiento", "Condición"],
+    ...invoiceData.slice(1).filter(row => row[4] === "Compra")
+];
+
+// 3. Save All Files
 saveExcel(bankData, 'bank_statement.xlsx');
-saveExcel(invoiceData, 'invoices.xlsx');
+saveExcel(incomeRows, 'income.xlsx');
+saveExcel(expenseRows, 'expenses.xlsx');
 saveExcel(clientData, 'clients.xlsx');
 saveExcel(supplierData, 'suppliers.xlsx');
 saveExcel(paymentData, 'payments.xlsx');

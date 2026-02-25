@@ -176,23 +176,27 @@ export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra'
     // Filas de ejemplo que cubren todos los medios de pago
     const rows = isVenta ? [
         {
+            'Tipo Documento': 'Factura',
             'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
             'Fecha Vencimiento': new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
-            'Cliente (Nombre o CUIT)': 'CLIENTE EJEMPLO S.A.',
+            'Entidad (Nombre o CUIT)': 'CLIENTE EJEMPLO S.A.',
             'CUIT Cliente': '30-11223344-5',
             'Número Comprobante': '0001-00001234',
             'Concepto / Descripción': 'Venta de mercaderías varias',
-            'Monto Total': 1500.50
+            'Monto Total': 1500.50,
+            'Condición': 'Contado'
         }
     ] : [
         {
+            'Tipo Documento': 'Factura',
             'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
             'Fecha Vencimiento': new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
-            'Proveedor (Nombre o CUIT)': 'PROVEEDOR LOGISTICA S.R.L.',
+            'Entidad (Nombre o CUIT)': 'PROVEEDOR LOGISTICA S.R.L.',
             'CUIT Proveedor': '30-44556677-8',
             'Número Comprobante': '0005-00012345',
             'Concepto / Descripción': 'Flete y distribución',
-            'Monto Total': 85000.00
+            'Monto Total': 85000.00,
+            'Condición': 'Cuenta Corriente'
         }
     ]
 
