@@ -171,9 +171,8 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
 
 export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra') {
     const isVenta = type === 'factura_venta'
-    const entityLabel = isVenta ? 'Cliente' : 'Proveedor'
+    const headers = ['Tipo Documento', 'Fecha Emisión', 'Fecha Vencimiento', 'Entidad (Nombre o CUIT)', 'CUIT Cliente', 'Número Comprobante', 'Concepto / Descripción', 'Monto Total', 'Condición']
 
-    // Filas de ejemplo que cubren todos los medios de pago
     const rows = isVenta ? [
         {
             'Tipo Documento': 'Factura',
@@ -191,22 +190,53 @@ export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra'
             'Tipo Documento': 'Factura',
             'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
             'Fecha Vencimiento': new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
-            'Entidad (Nombre o CUIT)': 'PROVEEDOR LOGISTICA S.R.L.',
-            'CUIT Proveedor': '30-44556677-8',
-            'Número Comprobante': '0005-00012345',
-            'Concepto / Descripción': 'Flete y distribución',
-            'Monto Total': 85000.00,
+            'Entidad (Nombre o CUIT)': 'PROVEEDOR EJEMPLO S.R.L.',
+            'CUIT Cliente': '30-99887766-5',
+            'Número Comprobante': '0005-00043210',
+            'Concepto / Descripción': 'Compra de insumos',
+            'Monto Total': 2450.00,
             'Condición': 'Cuenta Corriente'
         }
     ]
 
-    const ws = XLSX.utils.json_to_sheet(rows)
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers })
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Comprobantes')
+    XLSX.utils.book_append_sheet(wb, ws, isVenta ? 'Ventas' : 'Compras')
 
-    const prefix = isVenta ? 'ingresos' : 'egresos'
-    const filename = `plantilla_biflow_${prefix}.xlsx`
-    XLSX.writeFile(wb, filename)
+    // Auto-size columns
+    const wscols = headers.map(h => ({ wch: h.length + 10 }))
+    ws['!cols'] = wscols
+
+    XLSX.writeFile(wb, `plantilla_${type}.xlsx`)
+}
+
+export function downloadTreasuryTemplate(type: 'cobro' | 'pago') {
+    const isCobro = type === 'cobro'
+    const headers = ['Fecha', 'Número', 'Entidad (Nombre o CUIT)', 'Monto Total', 'Medio', 'Banco', 'Referencia', 'Disponibilidad', 'Observaciones']
+
+    const rows = [
+        {
+            'Fecha': new Date().toLocaleDateString('es-AR'),
+            'Número': isCobro ? 'REC-0001' : 'OP-0001',
+            'Entidad (Nombre o CUIT)': isCobro ? 'CLIENTE EJEMPLO S.A.' : 'PROVEEDOR EJEMPLO S.R.L.',
+            'Monto Total': 5000.00,
+            'Medio': isCobro ? 'transferencia' : 'cheque_propio',
+            'Banco': 'Galicia',
+            'Referencia': isCobro ? 'TRF-12345' : 'CH-998822',
+            'Disponibilidad': new Date().toLocaleDateString('es-AR'),
+            'Observaciones': isCobro ? 'Cobro factura Ene' : 'Pago insumos Feb'
+        }
+    ]
+
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers })
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, isCobro ? 'Recibos' : 'Pagos')
+
+    // Auto-size columns
+    const wscols = headers.map(h => ({ wch: h.length + 10 }))
+    ws['!cols'] = wscols
+
+    XLSX.writeFile(wb, `plantilla_${isCobro ? 'recibo' : 'orden_pago'}.xlsx`)
 }
 
 export async function parseInvoiceExcel(file: File): Promise<{ data: any[], errors: any[] }> {

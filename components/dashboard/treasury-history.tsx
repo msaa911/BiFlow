@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
 import {
@@ -18,17 +18,16 @@ import {
     Trash2,
     Download,
     Clock,
-    ArrowUpCircle,
-    ArrowDownCircle,
     Search,
-    RefreshCcw
+    RefreshCcw,
+    Upload,
+    DownloadCloud
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-
-import { exportTreasuryMovementToExcel } from '@/lib/excel-utils'
+import { exportTreasuryMovementToExcel, downloadTreasuryTemplate } from '@/lib/excel-utils'
 
 interface TreasuryHistoryProps {
     orgId: string
@@ -40,6 +39,8 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
     const [loading, setLoading] = useState(true)
     const [expandedMov, setExpandedMov] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
+    const [isUploading, setIsUploading] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
     async function fetchMovements() {
@@ -78,6 +79,38 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
     useEffect(() => {
         fetchMovements()
     }, [orgId, typeFilter])
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setIsUploading(true)
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('context', typeFilter === 'cobro' ? 'receipt' : 'payment')
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            })
+
+            const result = await response.json()
+
+            if (response.ok) {
+                toast.success(`Importación exitosa: ${result.count} movimientos cargados.`)
+                fetchMovements()
+            } else {
+                toast.error(`Error en importación: ${result.error || 'Desconocido'}`)
+            }
+        } catch (error) {
+            console.error('Error uploading treasury movements:', error)
+            toast.error('Error de red al intentar importar.')
+        } finally {
+            setIsUploading(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
 
     const filteredMovements = movements.filter(m =>
         m.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -150,16 +183,45 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
                     <p className="text-sm text-gray-500">{subtitle}</p>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleFileUpload}
+                    />
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-gray-800 bg-gray-900 text-gray-300 gap-2 h-9"
+                        onClick={() => downloadTreasuryTemplate(typeFilter === 'cobro' ? 'cobro' : 'pago')}
+                    >
+                        <DownloadCloud className="w-4 h-4" />
+                        <span className="hidden sm:inline">Plantilla</span>
+                    </Button>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 gap-2 h-9"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                    >
+                        <Upload className="w-4 h-4" />
+                        <span className="hidden sm:inline">{isUploading ? 'Cargando...' : 'Importar'}</span>
+                    </Button>
+
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
                         <Input
-                            placeholder="Buscar por número o entidad..."
-                            className="bg-gray-900 border-gray-800 pl-9 text-xs"
+                            placeholder="Buscar..."
+                            className="bg-gray-900 border-gray-800 pl-9 text-xs h-9"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" size="icon" onClick={fetchMovements} className="border-gray-800 bg-gray-900">
+                    <Button variant="outline" size="icon" onClick={fetchMovements} className="border-gray-800 bg-gray-900 h-9 w-9">
                         <RefreshCcw className="w-4 h-4" />
                     </Button>
                 </div>

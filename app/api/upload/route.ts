@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         const manualMapping = formData.get('mapping') as string
         const invertSigns = formData.get('invertSigns') === 'true'
         const hasConfirmedSign = formData.has('invertSigns')
-        const uploadContext = (formData.get('context') || 'bank') as 'bank' | 'income' | 'expense'
+        const uploadContext = (formData.get('context') || 'bank') as 'bank' | 'income' | 'expense' | 'receipt' | 'payment'
         let uniTransactions: any = null
 
         if (formatId || manualMapping) {
@@ -256,39 +256,86 @@ export async function POST(request: Request) {
                 archivo_importacion_id: importId
             }))
 
-            if (uploadContext === 'income' || uploadContext === 'expense') {
-                console.log(`[UPLOAD] [TREASURY] Routing ${transactions.length} rows to comprobantes`)
+            if (uploadContext === 'income' || uploadContext === 'expense' || uploadContext === 'receipt' || uploadContext === 'payment') {
+                console.log(`[UPLOAD] [TREASURY] Routing ${transactions.length} rows to ${uploadContext}`)
                 uniqueCount = transactions.length
 
-                const sanitizedComprobantes = transactionsWithLink.map((t: any) => ({
-                    organization_id: t.organization_id || orgId,
-                    archivo_importacion_id: importId,
-                    tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
-                    numero: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
-                    cuit_socio: t.cuit || '00-00000000-0',
-                    razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
-                    nombre_entidad: t.razon_social || t.descripcion || 'Sin Razón Social',
-                    banco: t.banco || null,
-                    numero_cheque: t.numero_cheque || null,
-                    fecha_emision: t.fecha,
-                    fecha_vencimiento: t.vencimiento || t.fecha,
-                    monto_total: Math.abs(t.monto),
-                    monto_pendiente: Math.abs(t.monto),
-                    estado: 'pendiente',
-                    moneda: t.moneda || 'ARS',
-                    metadata: { ...(t.metadata || {}), raw_row: t.raw }
-                }))
+                if (uploadContext === 'income' || uploadContext === 'expense') {
+                    const sanitizedComprobantes = transactionsWithLink.map((t: any) => ({
+                        organization_id: t.organization_id || orgId,
+                        archivo_importacion_id: importId,
+                        tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
+                        numero: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
+                        cuit_socio: t.cuit || '00-00000000-0',
+                        razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
+                        nombre_entidad: t.razon_social || t.descripcion || 'Sin Razón Social',
+                        banco: t.banco || null,
+                        numero_cheque: t.numero_cheque || null,
+                        fecha_emision: t.fecha,
+                        fecha_vencimiento: t.vencimiento || t.fecha,
+                        monto_total: Math.abs(t.monto),
+                        monto_pendiente: Math.abs(t.monto),
+                        estado: 'pendiente',
+                        moneda: t.moneda || 'ARS',
+                        metadata: { ...(t.metadata || {}), raw_row: t.raw }
+                    }))
 
-                console.log(`[UPLOAD] [TREASURY] Final mapped count for ${uploadContext}: ${sanitizedComprobantes.length}`)
-                uniqueCount = sanitizedComprobantes.length
+                    const { error: compError } = await currentSupabase
+                        .from('comprobantes')
+                        .insert(sanitizedComprobantes)
 
-                const { error: compError } = await currentSupabase
-                    .from('comprobantes')
-                    .insert(sanitizedComprobantes)
+                    if (compError) {
+                        console.error('[UPLOAD] [TREASURY] Insert Error:', compError)
+                        throw new Error(`Error insertion treasury: ${compError.message}`)
+                    }
+                } else {
+                    // RECEIPTS AND PAYMENT ORDERS
+                    const isCobro = uploadContext === 'receipt'
+                    const movements = transactionsWithLink.map((t: any) => ({
+                        organization_id: orgId,
+                        tipo: isCobro ? 'cobro' : 'pago',
+                        numero: t.numero || (isCobro ? 'REC' : 'OP') + '-' + Math.random().toString(36).substring(7).toUpperCase(),
+                        fecha: t.fecha,
+                        monto_total: Math.abs(t.monto),
+                        moneda: t.moneda || 'ARS',
+                        observaciones: t.concepto || t.descripcion || '',
+                        metadata: { ...(t.metadata || {}), raw_row: t.raw, import_type: uploadContext }
+                    }))
 
-                if (compError) {
-                    console.error('[UPLOAD] [TREASURY] Insert Error:', compError)
-                    throw new Error(`Error insertion treasury: ${compError.message}`)
+                    const { data: insertedMovs, error: movsError } = await currentSupabase
+                        .from('movimientos_tesoreria')
+                        .insert(movements)
+                        .select()
+
+                    if (movsError) {
+                        console.error('[UPLOAD] [TREASURY] Movs Insert Error:', movsError)
+                        throw new Error(`Error insertion treasury movements: ${movsError.message}`)
+                    }
+
+                    // Create Instruments for each movement
+                    if (insertedMovs && insertedMovs.length > 0) {
+                        const instruments = insertedMovs.map((m: any, idx: number) => {
+                            const raw = transactionsWithLink[idx]
+                            return {
+                                movimiento_id: m.id,
+                                metodo: raw.metadata?.metodo || (isCobro ? 'transferencia' : 'cheque_propio'),
+                                monto: m.monto_total,
+                                banco: raw.banco || raw.metadata?.banco || null,
+                                fecha_disponibilidad: raw.vencimiento || raw.fecha,
+                                referencia: raw.numero_cheque || raw.metadata?.referencia || null,
+                                estado: 'pendiente'
+                            }
+                        })
+
+                        const { error: insError } = await currentSupabase
+                            .from('instrumentos_pago')
+                            .insert(instruments)
+
+                        if (insError) {
+                            console.error('[UPLOAD] [TREASURY] Instruments Insert Error:', insError)
+                            // We don't throw fatal here because movements were inserted, but it's bad.
+                        }
+                    }
                 }
             } else {
                 // DEFAULT: BANK TRANSACTIONS

@@ -60,13 +60,25 @@ const supplierData = [
     ["Tech Solutions", "30-33445566-7", "ambos", "Av. del Libertador 500", "Vicente López", "Buenos Aires", "Argentina"]
 ];
 
-// 3. Payments/Receipts (Treasury Movements + Instruments)
-const paymentData = [
-    ["Fecha", "Entidad", "Monto", "Tipo", "Método", "Banco"],
-    ["10/01/2026", "Cliente Alpha S.A.", 350000.00, "Cobro", "Transferencia", "Galicia"],
-    ["12/01/2026", "Inmobiliaria Local", 100000.00, "Pago", "Efectivo", ""],
-    ["15/01/2026", "Cliente Beta Corp", 450000.00, "Cobro", "Transferencia", "Santander"],
-    ["10/02/2026", "Cliente Alpha S.A.", 350000.00, "Cobro", "Transferencia", "Galicia"]
+// 3. Payments/Receipts (Treasury Movements)
+// Headers matching downloadTreasuryTemplate
+const treasuryHeaders = ["Fecha", "Número", "Entidad (Nombre o CUIT)", "Monto Total", "Medio", "Banco", "Referencia", "Disponibilidad", "Observaciones"];
+
+const rawPayments = [
+    { fecha: "15/01/2026", num: "REC-501", ent: "Cliente Alpha S.A.", monto: 350000, tipo: "Cobro", medio: "cheque_terceros", banco: "Santander", ref: "CH-4401", disp: "30/01/2026", obs: "Pago Factura Alpha" },
+    { fecha: "25/02/2026", num: "REC-602", ent: "Cliente Beta Corp", monto: 450000, tipo: "Cobro", medio: "transferencia", banco: "Macro", ref: "TRF-1102", disp: "25/02/2026", obs: "Pago Factura Beta" },
+    { fecha: "10/01/2026", num: "OP-102", ent: "Inmobiliaria Local", monto: 100000, tipo: "Pago", medio: "transferencia", banco: "Galicia", ref: "TRF-9981", disp: "10/01/2026", obs: "Alquiler Enero" },
+    { fecha: "05/02/2026", num: "OP-201", ent: "Nómina Ene 2026", monto: 650000, tipo: "Pago", medio: "transferencia", banco: "Galicia", ref: "TRF-2210", disp: "05/02/2026", obs: "Sueldos" }
+];
+
+const receiptRows = [
+    treasuryHeaders,
+    ...rawPayments.filter(p => p.tipo === "Cobro").map(p => [p.fecha, p.num, p.ent, p.monto, p.medio, p.banco, p.ref, p.disp, p.obs])
+];
+
+const paymentOrderRows = [
+    treasuryHeaders,
+    ...rawPayments.filter(p => p.tipo === "Pago").map(p => [p.fecha, p.num, p.ent, p.monto, p.medio, p.banco, p.ref, p.disp, p.obs])
 ];
 
 // Helper to save sheet
@@ -94,6 +106,7 @@ saveExcel(incomeRows, 'income.xlsx');
 saveExcel(expenseRows, 'expenses.xlsx');
 saveExcel(clientData, 'clients.xlsx');
 saveExcel(supplierData, 'suppliers.xlsx');
-saveExcel(paymentData, 'payments.xlsx');
+saveExcel(receiptRows, 'receipts.xlsx');
+saveExcel(paymentOrderRows, 'payment_orders.xlsx');
 
 console.log("\nData generation complete in: " + outputDir);
