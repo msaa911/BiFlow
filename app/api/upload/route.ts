@@ -464,7 +464,25 @@ function parseExcel(buffer: Buffer, orgId: string) {
     const transactions: any[] = []
     const reviewItems: any[] = []
 
-    for (const row of data) {
+    // Detect header row to skip it (Improved Logic)
+    let headerIdx = -1;
+    const headerKeywords = ['fecha', 'date', 'monto', 'desc', 'referencia', 'importe', 'concepto'];
+
+    // Check first 10 rows for header
+    for (let i = 0; i < Math.min(data.length, 10); i++) {
+        const row = data[i];
+        if (!row || row.length < 2) continue;
+        const rowStr = row.join(' ').toLowerCase();
+        // If at least 2 keywords match, it's likely the header
+        if (headerKeywords.filter(k => rowStr.includes(k)).length >= 2) {
+            headerIdx = i;
+            break;
+        }
+    }
+
+    const dataRows = headerIdx !== -1 ? data.slice(headerIdx + 1) : data;
+
+    for (const row of dataRows) {
         if (!row || row.length < 2) continue
         let fecha: string | null = ''
         if (typeof row[0] === 'number') {
