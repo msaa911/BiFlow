@@ -229,23 +229,30 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                     const rowNum = index + 2
                     const keys = Object.keys(row)
 
-                    const getValByRegex = (pattern: RegExp) => {
+                    const getValue = (pattern: RegExp) => {
                         const foundKey = keys.find(k => {
                             const nk = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                             return pattern.test(nk)
                         })
-                        return foundKey ? String(row[foundKey]).trim() : ''
+                        if (!foundKey) return ''
+                        const val = row[foundKey]
+                        if (typeof val === 'number' && pattern.test('fecha')) {
+                            // Convert Excel serial date to YYYY-MM-DD
+                            const d = new Date(Math.round((val - 25569) * 864e5))
+                            return d.toISOString().split('T')[0]
+                        }
+                        return String(val).trim()
                     }
 
-                    const fechaEmision = getValByRegex(/fecha.*emision|fecha.*factura|^fecha$|emision/i)
-                    const fechaVencimiento = getValByRegex(/fecha.*vencimiento|vencimiento|vence/i)
-                    const cuit = getValByRegex(/cuit|cuil|id|identificacion/i).replace(/[^\d]/g, '')
-                    const razonSocial = getValByRegex(/cliente|proveedor|socio|razon|social|nombre|^entidad$/i)
-                    const numero = getValByRegex(/numero|nro|n°|factura|comprobante/i)
-                    const montoRaw = getValByRegex(/monto|total|importe|valor/i)
+                    const fechaEmision = getValue(/fecha.*emision|fecha.*factura|^fecha$|emision/i)
+                    const fechaVencimiento = getValue(/fecha.*vencimiento|vencimiento|vence/i)
+                    const cuit = getValue(/cuit|cuil|id|identificacion/i).replace(/[^\d]/g, '')
+                    const razonSocial = getValue(/cliente|proveedor|socio|razon|social|nombre|^entidad$/i)
+                    const numero = getValue(/numero|nro|n°|factura|comprobante/i)
+                    const montoRaw = getValue(/monto|total|importe|valor/i)
                     const monto = parseFloat(montoRaw.replace(/[^\d.,]/g, '').replace(',', '.'))
 
-                    const condicionRaw = getValByRegex(/condicion|pago|venta|compra/i).toLowerCase()
+                    const condicionRaw = getValue(/condicion|pago|venta|compra/i).toLowerCase()
                     const condicion = (condicionRaw.includes('contado') || condicionRaw === 'efectivo') ? 'contado' : 'cuenta_corriente'
 
                     // Ignorar filas que sean solo ejemplos (sin número de factura ni monto)
@@ -267,7 +274,7 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                         monto_total: monto,
                         condicion: 'cuenta_corriente',
                         metodo_pago: null,
-                        concepto: getValByRegex(/concepto|descripcion|detalle/i),
+                        concepto: getValue(/concepto|descripcion|detalle/i),
                         banco: null,
                         numero_cheque: null,
                         rowNum,

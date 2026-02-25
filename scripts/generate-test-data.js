@@ -29,6 +29,7 @@ const bankData = [
 ];
 
 // 2. Invoices (AR/AP)
+// Ensure names match EXACTLY with generated entities
 const invoiceData = [
     ["Fecha", "Entidad", "Número", "Tipo", "Monto", "Vencimiento", "Estado"],
     ["01/01/2026", "Cliente Alpha S.A.", "A-0001", "Venta", 350000.00, "15/01/2026", "Cobrada"],
@@ -43,13 +44,29 @@ const invoiceData = [
     ["10/03/2026", "Proveedor Importación", "IMP-550", "Compra", 1500000.00, "15/03/2026", "Pendiente"]
 ];
 
+// 2.1 Entities (Clients and Suppliers) SEPARATED
+const clientData = [
+    ["Razón Social", "CUIT", "CBU", "Email", "Categoría"],
+    ["Cliente Alpha S.A.", "30-11223344-5", "0000003100012345678901", "alpha@test.com", "cliente"],
+    ["Cliente Beta Corp", "30-22334455-6", "0000003100012345678902", "beta@test.com", "cliente"],
+    ["Tech Solutions", "30-33445566-7", "0000003100012345678903", "tech@test.com", "ambos"],
+    ["Cliente Gamma (CRÍTICO)", "30-44556677-8", "0000003100012345678904", "gamma@test.com", "cliente"]
+];
+
+const supplierData = [
+    ["Razón Social", "CUIT", "Categoría"],
+    ["Inmobiliaria Local", "30-55667788-9", "proveedor"],
+    ["Proveedor Importación", "30-66778899-0", "proveedor"],
+    ["Tech Solutions", "30-33445566-7", "ambos"]
+];
+
 // 3. Payments/Receipts (Treasury Movements + Instruments)
 const paymentData = [
-    ["Fecha", "Tipo", "Monto", "ID Referencia", "Doc Vinculado", "Medio de Pago", "Banco", "Ref Instrumento", "Disponibilidad"],
-    ["10/01/2026", "OP", 100000.00, "OP-102", "Factura Inmobiliaria (Ene)", "transferencia", "Galicia", "TRF-9981", "10/01/2026"],
-    ["15/01/2026", "Recibo", 350000.00, "REC-501", "Fact-A-201 (Alpha)", "cheque_terceros", "Santander", "CH-4401", "30/01/2026"],
-    ["05/02/2026", "OP", 650000.00, "OP-201", "Nómina General", "transferencia", "Galicia", "TRF-2210", "05/02/2026"],
-    ["25/02/2026", "Recibo", 450000.00, "REC-602", "Fact-A-302 (Beta)", "transferencia", "Macro", "TRF-1102", "25/02/2026"]
+    ["Fecha", "Entidad", "Monto", "Tipo", "Método", "Banco"],
+    ["10/01/2026", "Cliente Alpha S.A.", 350000.00, "Cobro", "Transferencia", "Galicia"],
+    ["12/01/2026", "Inmobiliaria Local", 100000.00, "Pago", "Efectivo", ""],
+    ["15/01/2026", "Cliente Beta Corp", 450000.00, "Cobro", "Transferencia", "Santander"],
+    ["10/02/2026", "Cliente Alpha S.A.", 350000.00, "Cobro", "Transferencia", "Galicia"]
 ];
 
 // Helper to save sheet
@@ -63,6 +80,8 @@ function saveExcel(data, filename) {
 
 saveExcel(bankData, 'bank_statement.xlsx');
 saveExcel(invoiceData, 'invoices.xlsx');
+saveExcel(clientData, 'clients.xlsx');
+saveExcel(supplierData, 'suppliers.xlsx');
 saveExcel(paymentData, 'payments.xlsx');
 
 console.log("\nData generation complete in: " + outputDir);
