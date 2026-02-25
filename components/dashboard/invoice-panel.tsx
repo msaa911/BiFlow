@@ -290,24 +290,68 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 onConfirm={async (validData) => {
                     const loadingToast = toast.loading('Guardando comprobantes...')
                     try {
-                        const payload = validData.map(inv => ({
-                            organization_id: orgId,
-                            entidad_id: inv.entidad_id,
-                            tipo: view === 'AR' ? 'factura_venta' : 'factura_compra',
-                            fecha_emision: inv.fecha_emision,
-                            fecha_vencimiento: inv.fecha_vencimiento || inv.fecha_emision,
-                            numero: inv.numero,
-                            monto_total: inv.monto_total,
-                            monto_pendiente: inv.monto_total,
-                            estado: 'pendiente',
-                            condicion: 'cuenta_corriente',
-                            metodo_pago: null,
-                            razon_social_socio: inv.razon_social_socio,
-                            cuit_socio: inv.cuit_socio
-                        }))
+                        const { error: insertError } = await supabase.from('comprobantes').insert(
+                            validData.map(inv => ({
+                                organization_id: orgId,
+                                entidad_id: inv.entidad_id,
+                                tipo: view === 'AR' ? 'factura_venta' : 'factura_compra',
+                                fecha_emision: inv.fecha_emision,
+                                fecha_vencimiento: inv.fecha_vencimiento || inv.fecha_emision,
+                                numero: inv.numero,
+                                monto_total: inv.monto_total,
+                                monto_pendiente: inv.condicion === 'contado' ? 0 : inv.monto_total,
+                                estado: inv.condicion === 'contado' ? 'pagado' : 'pendiente',
+                                condicion: inv.condicion,
+                                moneda: inv.moneda || 'ARS',
+                                razon_social_socio: inv.razon_social_socio,
+                                cuit_socio: inv.cuit_socio
+                            }))
+                        ).select()
 
-                        const { error } = await supabase.from('comprobantes').insert(payload)
-                        if (error) throw error
+                        if (insertError) throw insertError
+
+                        // B. Handle 'contado' automated payments
+                        const contadoInvoices = validData.filter(inv => inv.condicion === 'contado')
+                        if (contadoInvoices.length > 0) {
+                            // We need the saved IDs to create applications. 
+                            // Re-fetch or use the .select() result.
+                            const { data: savedInvoices } = await supabase
+                                .from('comprobantes')
+                                .select('id, numero, monto_total, entidad_id, fecha_emision')
+                                .in('numero', contadoInvoices.map(i => i.numero))
+                                .eq('organization_id', orgId)
+
+                            if (savedInvoices) {
+                                for (const inv of savedInvoices) {
+                                    // 1. Create Treasury Movement
+                                    const { data: mov } = await supabase.from('movimientos_tesoreria').insert({
+                                        organization_id: orgId,
+                                        entidad_id: inv.entidad_id,
+                                        tipo: view === 'AR' ? 'cobro' : 'pago',
+                                        monto_total: inv.monto_total,
+                                        fecha: inv.fecha_emision,
+                                        observaciones: `Cierre automático (Importación): Contado ${inv.numero || ''}`
+                                    }).select().single()
+
+                                    if (mov) {
+                                        // 2. Create Instrument (Default to Cash)
+                                        await supabase.from('instrumentos_pago').insert({
+                                            movimiento_id: mov.id,
+                                            metodo: 'efectivo',
+                                            monto: inv.monto_total,
+                                            fecha_disponibilidad: inv.fecha_emision
+                                        })
+
+                                        // 3. Apply Payment
+                                        await supabase.from('aplicaciones_pago').insert({
+                                            movimiento_id: mov.id,
+                                            comprobante_id: inv.id,
+                                            monto_aplicado: inv.monto_total
+                                        })
+                                    }
+                                }
+                            }
+                        }
                         toast.success(`${validData.length} comprobantes importados`)
                         onRefresh()
                     } catch (err: any) {
