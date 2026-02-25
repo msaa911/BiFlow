@@ -99,40 +99,48 @@ export async function DELETE(request: Request) {
 }
 
 async function performFullReset(supabase: any, orgId: string) {
-    // 1. Delete findings and audit logs (highest dependency)
-    await supabase.from('hallazgos').delete().eq('organization_id', orgId)
-    await supabase.from('hallazgos_auditoria').delete().eq('organization_id', orgId)
+    console.log(`[PURGE] Starting full reset for org: ${orgId}`);
+    const results: { table: string, success: boolean, count?: number, error?: string }[] = [];
 
-    // 2. Delete Treasury related tables (OP, Recibos, Applications)
-    // Deleting movements first will cascade to applications and instruments if established, 
-    // but we do it explicitly or in order for safety.
-    await supabase.from('aplicaciones_pago').delete().filter('comprobante_id', 'in',
-        supabase.from('comprobantes').select('id').eq('organization_id', orgId)
-    )
-    await supabase.from('instrumentos_pago').delete().filter('movimiento_id', 'in',
-        supabase.from('movimientos_tesoreria').select('id').eq('organization_id', orgId)
-    )
-    await supabase.from('movimientos_tesoreria').delete().eq('organization_id', orgId)
+    const tables = [
+        'hallazgos_auditoria',
+        'hallazgos',
+        'aplicaciones_pago',
+        'instrumentos_pago',
+        'movimientos_tesoreria',
+        'transacciones',
+        'comprobantes',
+        'reglas_fiscales_ia',
+        'configuracion_empresa',
+        'convenios_bancarios',
+        'archivos_importados',
+        'financial_thesaurus',
+        'trust_ledger',
+        'entidades',
+        'cuentas_bancarias'
+    ];
 
-    // 3. Delete transactions and invoices
-    await supabase.from('transacciones').delete().eq('organization_id', orgId)
-    await supabase.from('comprobantes').delete().eq('organization_id', orgId)
+    for (const table of tables) {
+        try {
+            const { error, count } = await supabase
+                .from(table)
+                .delete({ count: 'exact' })
+                .eq('organization_id', orgId);
 
-    // 4. Delete AI rules and configuration
-    await supabase.from('reglas_fiscales_ia').delete().eq('organization_id', orgId)
-    await supabase.from('configuracion_empresa').delete().eq('organization_id', orgId)
-    await supabase.from('convenios_bancarios').delete().eq('organization_id', orgId)
+            if (error) {
+                results.push({ table, success: false, error: error.message });
+            } else {
+                results.push({ table, success: true, count: count || 0 });
+            }
+        } catch (e: any) {
+            results.push({ table, success: false, error: e.message });
+        }
+    }
 
-    // 5. Delete import logs and legacy files
-    await supabase.from('archivos_importados').delete().eq('organization_id', orgId)
+    const failures = results.filter(r => !r.success);
+    if (failures.length > 0) {
+        throw new Error(`Fallo al limpiar algunas tablas: ${failures.map(f => `${f.table}: ${f.error}`).join(', ')}`);
+    }
 
-    // 6. Delete financial thesaurus and trust ledger (AI Learning)
-    await supabase.from('financial_thesaurus').delete().eq('organization_id', orgId)
-    await supabase.from('trust_ledger').delete().eq('organization_id', orgId)
-
-    // 7. Delete all entities (Socios)
-    await supabase.from('entidades').delete().eq('organization_id', orgId)
-
-    // 8. Delete bank accounts
-    await supabase.from('cuentas_bancarias').delete().eq('organization_id', orgId)
+    return results;
 }
