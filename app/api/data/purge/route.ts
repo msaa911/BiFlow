@@ -100,7 +100,7 @@ export async function DELETE(request: Request) {
 
 async function performFullReset(supabase: any, orgId: string) {
     console.log(`[PURGE] Starting full reset for org: ${orgId}`);
-    const results: { table: string, success: boolean, count?: number, error?: string }[] = [];
+    const results: { table: string, success: boolean, count?: number, error?: string, ignored?: boolean }[] = [];
 
     const tables = [
         'hallazgos_auditoria',
@@ -111,13 +111,15 @@ async function performFullReset(supabase: any, orgId: string) {
         'pagos_proyectados',
         'transacciones',
         'comprobantes',
+        'reglas_fiscales_ia',
         'configuracion_impuestos',
         'configuracion_empresa',
         'convenios_bancarios',
         'archivos_importados',
         'trust_ledger',
         'entidades',
-        'cuentas_bancarias'
+        'cuentas_bancarias',
+        'financial_thesaurus'
     ];
 
     for (const table of tables) {
@@ -128,7 +130,17 @@ async function performFullReset(supabase: any, orgId: string) {
                 .eq('organization_id', orgId);
 
             if (error) {
-                results.push({ table, success: false, error: error.message });
+                const isMinor = error.message.includes('Could not find the table') ||
+                    error.message.includes('does not exist') ||
+                    error.code === 'PGRST116' || // Not found
+                    error.code === '42P01';      // Undefined table
+
+                results.push({
+                    table,
+                    success: isMinor,
+                    error: error.message,
+                    ignored: isMinor
+                });
             } else {
                 results.push({ table, success: true, count: count || 0 });
             }
@@ -137,9 +149,10 @@ async function performFullReset(supabase: any, orgId: string) {
         }
     }
 
-    const failures = results.filter(r => !r.success);
-    if (failures.length > 0) {
-        throw new Error(`Fallo al limpiar algunas tablas: ${failures.map(f => `${f.table}: ${f.error}`).join(', ')}`);
+    // Fail if ALL tables failed (sign of a critical connection/auth issue)
+    const successCount = results.filter(r => r.success).length;
+    if (successCount === 0 && tables.length > 0) {
+        throw new Error(`Fallo crítico: No se pudo limpiar ninguna tabla.`);
     }
 
     return results;
