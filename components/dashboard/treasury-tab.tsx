@@ -177,6 +177,10 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                         <History className="w-3.5 h-3.5 mr-2 text-emerald-400" />
                         Recibos
                     </TabsTrigger>
+                    <TabsTrigger value="ordenes" className="rounded-lg">
+                        <History className="w-3.5 h-3.5 mr-2 text-red-400" />
+                        Órdenes de Pago
+                    </TabsTrigger>
                     <TabsTrigger value="cartera" className="rounded-lg">
                         <Landmark className="w-3.5 h-3.5 mr-2 text-blue-400" />
                         Cartera

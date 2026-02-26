@@ -61,12 +61,18 @@ export function InvoiceImportPreviewModal({
 
     const validateRow = (row: any) => {
         const errors: string[] = []
+        const warnings: string[] = []
+
         if (!row.fecha_emision) errors.push('Falta Fecha')
-        if (!row.numero) errors.push('Falta Número')
+        // El número ahora es opcional pero se advierte si falta
+        if (!row.numero || row.numero === '') {
+            warnings.push('Sin Número')
+        }
         if (isNaN(row.monto_total) || row.monto_total <= 0) errors.push('Monto Inválido')
         if (!row.entidad_id && !row.cuit_socio && !row.razon_social_socio) errors.push('Falta Socio')
 
         row.errors = errors
+        row.warnings = warnings
         row.isValid = errors.length === 0
         return row
     }
@@ -208,7 +214,12 @@ export function InvoiceImportPreviewModal({
                                         </td>
                                         <td className="px-4 py-4 text-center">
                                             {row.isValid ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] uppercase font-bold tracking-widest px-2">Válido</Badge>
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] uppercase font-bold tracking-widest px-2">Válido</Badge>
+                                                    {row.warnings?.map((warn: string, i: number) => (
+                                                        <span key={i} className="text-[7px] bg-amber-500/10 text-amber-500 font-bold px-1 rounded border border-amber-500/10 uppercase">{warn}</span>
+                                                    ))}
+                                                </div>
                                             ) : (
                                                 <div className="flex flex-col items-center gap-1">
                                                     {row.errors?.map((err: string, i: number) => (

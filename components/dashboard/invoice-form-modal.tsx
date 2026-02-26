@@ -39,38 +39,38 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
     const [originalInvoices, setOriginalInvoices] = useState<any[]>([])
     const [initialized, setInitialized] = useState(false)
 
-    useEffect(() => {
-        async function fetchInitialSocios() {
-            setSearchingSocio(true)
-            const supabase = createClient()
+    async function fetchInitialSocios() {
+        setSearchingSocio(true)
+        const supabase = createClient()
 
-            // Filtrado estricto por categoría
-            const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
+        // Filtrado estricto por categoría
+        const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
 
-            const { data } = await supabase
-                .from('entidades')
-                .select('id, razon_social, cuit, categoria')
-                .eq('organization_id', orgId)
-                .in('categoria', [targetCat, 'ambos']) // Filtrado PROACTIVO
-                .order('razon_social')
-                .limit(20)
+        const { data } = await supabase
+            .from('entidades')
+            .select('id, razon_social, cuit, categoria')
+            .eq('organization_id', orgId)
+            .in('categoria', [targetCat, 'ambos'])
+            .order('razon_social')
+            .limit(20)
 
-            if (data) {
-                let finalSocios = [...data]
-                // Si el socio de la factura no está en los 20 primeros, lo buscamos específicamente
-                if (invoice?.entidad_id && !data.find(s => s.id === invoice.entidad_id)) {
-                    const { data: specificSocio } = await supabase
-                        .from('entidades')
-                        .select('id, razon_social, cuit, categoria')
-                        .eq('id', invoice.entidad_id)
-                        .single()
-                    if (specificSocio) finalSocios = [specificSocio, ...finalSocios]
-                }
-                setSocios(finalSocios)
+        if (data) {
+            let finalSocios = [...data]
+            // Si el socio de la factura no está en los 20 primeros, lo buscamos específicamente
+            if (invoice?.entidad_id && !data.find(s => s.id === invoice.entidad_id)) {
+                const { data: specificSocio } = await supabase
+                    .from('entidades')
+                    .select('id, razon_social, cuit, categoria')
+                    .eq('id', invoice.entidad_id)
+                    .single()
+                if (specificSocio) finalSocios = [specificSocio, ...finalSocios]
             }
-            setSearchingSocio(false)
+            setSocios(finalSocios)
         }
+        setSearchingSocio(false)
+    }
 
+    useEffect(() => {
         if (isOpen && !initialized) {
             console.log('[InvoiceForm] Initializing form...')
             fetchInitialSocios()
@@ -376,7 +376,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                                 onClick={() => {
                                                     setFormData({ ...formData, socio_id: '' })
                                                     setSearchQuery('')
-                                                    setSocios([])
+                                                    fetchInitialSocios() // Restaurar la lista inicial
                                                 }}
                                                 className="text-[10px] text-gray-500 hover:text-red-400 font-bold uppercase"
                                             >
@@ -415,6 +415,20 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                             )}
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* Campo de Número de Comprobante */}
+                            <div className="col-span-2 space-y-2">
+                                <Label className="text-xs uppercase text-gray-500 font-bold">Número de Comprobante (Opcional)</Label>
+                                <div className="relative">
+                                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                    <Input
+                                        placeholder="0001-00001234"
+                                        value={formData.numero}
+                                        onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                                        className="bg-gray-900 border-gray-800 pl-10 font-mono"
+                                    />
                                 </div>
                             </div>
 

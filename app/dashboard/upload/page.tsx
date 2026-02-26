@@ -22,7 +22,7 @@ export default function UploadPage() {
     const [showFormatBuilder, setShowFormatBuilder] = useState(false)
     const [formats, setFormats] = useState<any[]>([])
     const [selectedFormat, setSelectedFormat] = useState<string>('')
-    const [uploadContext, setUploadContext] = useState<'bank' | 'income' | 'expense'>('bank')
+    const [uploadContext, setUploadContext] = useState<'bank' | 'income' | 'expense' | 'receipt' | 'payment'>('bank')
 
     // New state for detailed feedback
     const [uploadResult, setUploadResult] = useState<{
@@ -448,14 +448,32 @@ export default function UploadPage() {
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight text-white">Carga de Documentos</h2>
                     <p className="text-gray-400 text-sm">Sube extractos, listas de clientes, facturas o cualquier documento financiero para análisis.</p>
-                    <a
-                        href="/templates/biflow_formato_recomendado.xlsx"
-                        download
-                        className="inline-flex items-center gap-2 mt-2 text-xs text-emerald-500 hover:text-emerald-400 font-medium transition-colors cursor-pointer"
-                    >
-                        <FileSpreadsheet className="w-3.5 h-3.5" />
-                        Descargar Formato Recomendado (.xlsx)
-                    </a>
+                    <div className="flex flex-wrap gap-3 mt-3">
+                        <a
+                            href="/templates/biflow_extracto_bancario.xlsx"
+                            download
+                            className="inline-flex items-center gap-2 text-[10px] text-emerald-500 hover:text-emerald-400 font-bold transition-colors cursor-pointer bg-emerald-500/5 px-2 py-1 rounded-md border border-emerald-500/10"
+                        >
+                            <FileSpreadsheet className="w-3 h-3" />
+                            Plantilla Extracto
+                        </a>
+                        <a
+                            href="/templates/biflow_recibos.xlsx"
+                            download
+                            className="inline-flex items-center gap-2 text-[10px] text-blue-500 hover:text-blue-400 font-bold transition-colors cursor-pointer bg-blue-500/5 px-2 py-1 rounded-md border border-blue-500/10"
+                        >
+                            <FileSpreadsheet className="w-3 h-3" />
+                            Plantilla Recibos
+                        </a>
+                        <a
+                            href="/templates/biflow_ordenes_pago.xlsx"
+                            download
+                            className="inline-flex items-center gap-2 text-[10px] text-red-500 hover:text-red-400 font-bold transition-colors cursor-pointer bg-red-500/5 px-2 py-1 rounded-md border border-red-500/10"
+                        >
+                            <FileSpreadsheet className="w-3 h-3" />
+                            Plantilla Órdenes Pago
+                        </a>
+                    </div>
                 </div>
                 <button
                     onClick={() => setShowFormatBuilder(true)}
@@ -472,30 +490,44 @@ export default function UploadPage() {
                 {!success && !uploading && (
                     <div className="mb-8">
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Tipo de Documento</label>
-                        <div className="flex bg-gray-800 p-1 rounded-xl gap-1">
+                        <div className="grid grid-cols-2 md:grid-cols-5 bg-gray-800 p-1 rounded-xl gap-1">
                             <button
                                 onClick={() => setUploadContext('bank')}
-                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${uploadContext === 'bank' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                                className={`py-2 rounded-lg text-[10px] font-bold transition-all ${uploadContext === 'bank' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
                             >
-                                Extracto Bancario
+                                Extracto
                             </button>
                             <button
                                 onClick={() => setUploadContext('income')}
-                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${uploadContext === 'income' ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                                className={`py-2 rounded-lg text-[10px] font-bold transition-all ${uploadContext === 'income' ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
                             >
-                                Ingresos
+                                Facturas (V)
                             </button>
                             <button
                                 onClick={() => setUploadContext('expense')}
-                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${uploadContext === 'expense' ? 'bg-purple-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                                className={`py-2 rounded-lg text-[10px] font-bold transition-all ${uploadContext === 'expense' ? 'bg-purple-500 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
                             >
-                                Egresos
+                                Facturas (C)
+                            </button>
+                            <button
+                                onClick={() => setUploadContext('receipt')}
+                                className={`py-2 rounded-lg text-[10px] font-bold transition-all ${uploadContext === 'receipt' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                                Recibos
+                            </button>
+                            <button
+                                onClick={() => setUploadContext('payment')}
+                                className={`py-2 rounded-lg text-[10px] font-bold transition-all ${uploadContext === 'payment' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                                Órdenes Pago
                             </button>
                         </div>
                         <p className="mt-2 text-[10px] text-gray-500 text-center italic">
                             {uploadContext === 'bank' && 'Los movimientos irán a tu Flujo de Caja bancario.'}
-                            {uploadContext === 'income' && 'Las facturas se cargarán en Cuentas por Cobrar.'}
-                            {uploadContext === 'expense' && 'Las facturas se cargarán en Cuentas por Pagar.'}
+                            {uploadContext === 'income' && 'Las facturas de venta se cargarán en Cuentas por Cobrar.'}
+                            {uploadContext === 'expense' && 'Las facturas de compra se cargarán en Cuentas por Pagar.'}
+                            {uploadContext === 'receipt' && 'Documenta los cobros recibidos (Cheques, Transf).'}
+                            {uploadContext === 'payment' && 'Registra las órdenes de pago emitidas.'}
                         </p>
                     </div>
                 )}

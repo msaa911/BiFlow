@@ -61,8 +61,8 @@ const supplierData = [
 ];
 
 // 3. Payments/Receipts (Treasury Movements)
-// Headers matching downloadTreasuryTemplate
-const treasuryHeaders = ["Fecha", "Número", "Entidad (Nombre o CUIT)", "Monto Total", "Medio", "Banco", "Referencia", "Disponibilidad", "Observaciones"];
+const receiptHeaders = ["Fecha", "Número de Recibo", "Cliente (Nombre o CUIT)", "Monto Total", "Medio de Pago", "Banco", "Referencia", "Disponibilidad", "Observaciones"];
+const paymentHeaders = ["Fecha", "Número de OP", "Proveedor (Nombre o CUIT)", "Monto Total", "Medio de Pago", "Banco", "Referencia", "Disponibilidad", "Observaciones"];
 
 const rawPayments = [
     { fecha: "15/01/2026", num: "REC-501", ent: "Cliente Alpha S.A.", monto: 350000, tipo: "Cobro", medio: "cheque_terceros", banco: "Santander", ref: "CH-4401", disp: "30/01/2026", obs: "Pago Factura Alpha" },
@@ -72,12 +72,12 @@ const rawPayments = [
 ];
 
 const receiptRows = [
-    treasuryHeaders,
+    receiptHeaders,
     ...rawPayments.filter(p => p.tipo === "Cobro").map(p => [p.fecha, p.num, p.ent, p.monto, p.medio, p.banco, p.ref, p.disp, p.obs])
 ];
 
 const paymentOrderRows = [
-    treasuryHeaders,
+    paymentHeaders,
     ...rawPayments.filter(p => p.tipo === "Pago").map(p => [p.fecha, p.num, p.ent, p.monto, p.medio, p.banco, p.ref, p.disp, p.obs])
 ];
 
