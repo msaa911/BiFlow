@@ -302,7 +302,6 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                     const itemErrors: string[] = []
                     if (!fechaEmision) itemErrors.push('Falta Fecha de Emisión')
                     if (!cuit && !razonSocial) itemErrors.push('Falta Cliente/Proveedor')
-                    if (!numero) itemErrors.push('Falta Número de Comprobante')
                     if (isNaN(monto)) itemErrors.push('Monto inválido')
 
                     results.push({
