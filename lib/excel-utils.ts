@@ -265,23 +265,25 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                     const rowNum = index + 2
                     const keys = Object.keys(row)
 
-                    const getValue = (pattern: RegExp) => {
+                    const getValue = (pattern: RegExp, isDate: boolean = false) => {
                         const foundKey = keys.find(k => {
                             const nk = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                             return pattern.test(nk)
                         })
                         if (!foundKey) return ''
                         const val = row[foundKey]
-                        if (typeof val === 'number' && pattern.test('fecha')) {
-                            // Convert Excel serial date to YYYY-MM-DD
+
+                        // Handle Excel serial dates (e.g., 46037)
+                        if (isDate && typeof val === 'number') {
                             const d = new Date(Math.round((val - 25569) * 864e5))
                             return d.toISOString().split('T')[0]
                         }
+
                         return String(val).trim()
                     }
 
-                    const fechaEmision = getValue(/fecha.*emision|fecha.*factura|^fecha$|emision/i)
-                    const fechaVencimiento = getValue(/fecha.*vencimiento|vencimiento|vence/i)
+                    const fechaEmision = getValue(/fecha.*emision|fecha.*factura|^fecha$|emision/i, true)
+                    const fechaVencimiento = getValue(/fecha.*vencimiento|vencimiento|vence/i, true)
                     const cuit = getValue(/cuit|cuil|id|identificacion/i).replace(/[^\d]/g, '')
                     const razonSocial = getValue(/cliente|proveedor|socio|razon|social|nombre|^entidad$/i)
                     const numero = getValue(/numero|nro|n°|factura|comprobante/i)

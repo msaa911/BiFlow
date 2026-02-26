@@ -290,13 +290,22 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 onConfirm={async (validData) => {
                     const loadingToast = toast.loading('Guardando comprobantes...')
                     try {
+                        // Fail-safe date parser
+                        const safeDate = (val: any) => {
+                            if (!val) return new Date().toISOString().split('T')[0]
+                            if (typeof val === 'number') {
+                                return new Date(Math.round((val - 25569) * 864e5)).toISOString().split('T')[0]
+                            }
+                            return String(val)
+                        }
+
                         const { error: insertError } = await supabase.from('comprobantes').insert(
                             validData.map(inv => ({
                                 organization_id: orgId,
                                 entidad_id: inv.entidad_id,
                                 tipo: inv.tipo_documento === 'factura' ? (view === 'AR' ? 'factura_venta' : 'factura_compra') : inv.tipo_documento,
-                                fecha_emision: inv.fecha_emision,
-                                fecha_vencimiento: inv.fecha_vencimiento || inv.fecha_emision,
+                                fecha_emision: safeDate(inv.fecha_emision),
+                                fecha_vencimiento: safeDate(inv.fecha_vencimiento || inv.fecha_emision),
                                 numero: inv.numero,
                                 monto_total: inv.monto_total,
                                 monto_pendiente: inv.condicion === 'contado' ? 0 : inv.monto_total,
