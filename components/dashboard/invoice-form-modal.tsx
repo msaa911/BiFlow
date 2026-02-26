@@ -279,8 +279,9 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             <DialogContent className="bg-gray-950 border-gray-800 text-white sm:max-w-[500px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
                 <div className="p-6 pb-2">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold">
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             {invoice ? 'Editar Comprobante' : `Nuevo ${type === 'factura_venta' ? 'Ingreso' : 'Egreso'}`}
+                            <Badge variant="outline" className="text-[9px] opacity-50">v2</Badge>
                         </DialogTitle>
                     </DialogHeader>
                 </div>
@@ -374,20 +375,25 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                             <button
                                                 type="button"
                                                 onClick={() => {
+                                                    console.log('[InvoiceForm] Reseting socio search...')
                                                     setFormData({ ...formData, socio_id: '' })
                                                     setSearchQuery('')
-                                                    fetchInitialSocios() // Restaurar la lista inicial
+                                                    fetchInitialSocios()
                                                 }}
-                                                className="text-[10px] text-gray-500 hover:text-red-400 font-bold uppercase"
+                                                className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded hover:bg-red-500/20 font-bold uppercase transition-colors"
                                             >
                                                 Cambiar
                                             </button>
                                         )}
                                     </div>
 
-                                    {/* Lista de resultados */}
+                                    {/* Lista de resultados - Añadido un z-index más agresivo and min-height behavior */}
                                     {socios.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-gray-950 border border-gray-800 rounded-lg shadow-2xl overflow-hidden max-h-[180px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="absolute top-full left-0 right-0 z-[200] mt-1 bg-gray-950 border border-emerald-500/30 rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden max-h-[180px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="p-1.5 bg-gray-900/50 border-b border-gray-800 text-[9px] uppercase font-bold text-gray-500 flex justify-between items-center">
+                                                <span>Seleccione una entidad</span>
+                                                <span className="text-emerald-500">{socios.length} hallados</span>
+                                            </div>
                                             {searchingSocio ? (
                                                 <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
                                                     <Loader2 className="w-3 h-3 animate-spin" />

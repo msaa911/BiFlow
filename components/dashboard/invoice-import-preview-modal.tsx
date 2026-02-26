@@ -127,6 +127,15 @@ export function InvoiceImportPreviewModal({
                 </div>
 
                 <div className="border border-gray-800 rounded-xl overflow-hidden flex-1 bg-gray-950/50">
+                    <DialogHeader className="p-6 pb-2">
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            Previsualización de Importación
+                            <Badge variant="outline" className="text-[9px] opacity-50">v2</Badge>
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500">
+                            Revise los datos antes de confirmar. Las filas con advertencias se pueden importar.
+                        </DialogDescription>
+                    </DialogHeader>
                     <ScrollArea className="h-[400px]">
                         <table className="w-full text-xs text-left">
                             <thead className="bg-gray-900 border-b border-gray-800 sticky top-0 z-20">
@@ -217,7 +226,9 @@ export function InvoiceImportPreviewModal({
                                                 <div className="flex flex-col items-center gap-1">
                                                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] uppercase font-bold tracking-widest px-2">Válido</Badge>
                                                     {row.warnings?.map((warn: string, i: number) => (
-                                                        <span key={i} className="text-[7px] bg-amber-500/10 text-amber-500 font-bold px-1 rounded border border-amber-500/10 uppercase">{warn}</span>
+                                                        <span key={i} className="text-[8px] bg-amber-500 text-black font-black px-1.5 rounded animate-pulse uppercase">
+                                                            ⚠️ {warn}
+                                                        </span>
                                                     ))}
                                                 </div>
                                             ) : (
