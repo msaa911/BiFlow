@@ -16,6 +16,13 @@ export async function POST(request: Request) {
     let fileName = 'unknown_file'
     let currentSupabase: any = null
 
+    // Service role client for archivos_importados state updates (bypasses RLS)
+    const { createClient: createServiceClient } = require('@supabase/supabase-js')
+    const adminSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     try {
         console.log('1. Parsing Form Data')
         const formData = await request.formData()
@@ -345,7 +352,7 @@ export async function POST(request: Request) {
                         monto_total: Math.abs(t.monto),
                         moneda: t.moneda || 'ARS',
                         observaciones: t.concepto || t.descripcion || '',
-                        metadata: { ...(t.metadata || {}), raw_row: t.raw, import_type: uploadContext }
+                        metadata: { ...(t.metadata || {}), raw_row: t.raw, import_type: uploadContext, archivo_importacion_id: importId }
                     }))
 
                     const { data: insertedMovs, error: movsError } = await currentSupabase
@@ -451,7 +458,7 @@ export async function POST(request: Request) {
                 }
             }
 
-            await currentSupabase.from('archivos_importados').update({
+            await adminSupabase.from('archivos_importados').update({
                 estado: 'completado',
                 metadata: { processed: transactions.length, inserted: uniqueCount, context: uploadContext, warnings: warnings.slice(0, 20) }
             }).eq('id', importId)
@@ -480,7 +487,7 @@ export async function POST(request: Request) {
         }
 
         if (transactions.length === 0 && reviewItems.length > 0) {
-            await currentSupabase.from('archivos_importados').update({
+            await adminSupabase.from('archivos_importados').update({
                 estado: 'completado',
                 metadata: {
                     note: 'Pendiente de Revisión',
@@ -496,7 +503,7 @@ export async function POST(request: Request) {
             })
         }
 
-        await currentSupabase.from('archivos_importados').update({ estado: 'completado', metadata: { note: 'No data' } }).eq('id', importId)
+        await adminSupabase.from('archivos_importados').update({ estado: 'completado', metadata: { note: 'No data' } }).eq('id', importId)
         return NextResponse.json({ success: true, count: 0, message: 'Archivo procesado sin transacciones.' })
 
     } catch (error: any) {
@@ -518,7 +525,7 @@ export async function POST(request: Request) {
                 const targetId = latest?.id
 
                 if (targetId) {
-                    await currentSupabase.from('archivos_importados').update({
+                    await adminSupabase.from('archivos_importados').update({
                         estado: 'error',
                         metadata: { fatal_error: error.message }
                     }).eq('id', targetId)

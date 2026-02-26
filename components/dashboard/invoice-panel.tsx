@@ -299,10 +299,27 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             return String(val)
                         }
 
+                        // 1. Create archivos_importados record for tracking
+                        const tipoLabel = view === 'AR' ? 'ingresos' : 'egresos'
+                        const { data: importLog, error: logError } = await supabase
+                            .from('archivos_importados')
+                            .insert({
+                                organization_id: orgId,
+                                nombre_archivo: `importacion_${tipoLabel}_${new Date().toISOString().split('T')[0]}.xlsx`,
+                                estado: 'procesando',
+                                metadata: { context: tipoLabel, total: validData.length }
+                            })
+                            .select()
+                            .single()
+
+                        const importId = importLog?.id || null
+
+                        // 2. Insert comprobantes with link to archivos_importados
                         const { error: insertError } = await supabase.from('comprobantes').insert(
                             validData.map(inv => ({
                                 organization_id: orgId,
                                 entidad_id: inv.entidad_id,
+                                archivo_importacion_id: importId,
                                 tipo: inv.tipo_documento === 'factura' ? (view === 'AR' ? 'factura_venta' : 'factura_compra') : inv.tipo_documento,
                                 fecha_emision: safeDate(inv.fecha_emision),
                                 fecha_vencimiento: safeDate(inv.fecha_vencimiento || inv.fecha_emision),
@@ -319,11 +336,9 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
                         if (insertError) throw insertError
 
-                        // B. Handle 'contado' automated payments
+                        // 3. Handle 'contado' automated payments
                         const contadoInvoices = validData.filter(inv => inv.condicion === 'contado')
                         if (contadoInvoices.length > 0) {
-                            // We need the saved IDs to create applications. 
-                            // Re-fetch or use the .select() result.
                             const { data: savedInvoices } = await supabase
                                 .from('comprobantes')
                                 .select('id, numero, monto_total, entidad_id, fecha_emision')
@@ -332,7 +347,6 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
                             if (savedInvoices) {
                                 for (const inv of savedInvoices) {
-                                    // 1. Create Treasury Movement
                                     const { data: mov } = await supabase.from('movimientos_tesoreria').insert({
                                         organization_id: orgId,
                                         entidad_id: inv.entidad_id,
@@ -343,15 +357,12 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     }).select().single()
 
                                     if (mov) {
-                                        // 2. Create Instrument (Default to Cash)
                                         await supabase.from('instrumentos_pago').insert({
                                             movimiento_id: mov.id,
                                             metodo: 'efectivo',
                                             monto: inv.monto_total,
                                             fecha_disponibilidad: inv.fecha_emision
                                         })
-
-                                        // 3. Apply Payment
                                         await supabase.from('aplicaciones_pago').insert({
                                             movimiento_id: mov.id,
                                             comprobante_id: inv.id,
@@ -361,6 +372,20 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                 }
                             }
                         }
+
+                        // 4. Update import record state to 'completado' via API (service role)
+                        if (importId) {
+                            await fetch('/api/imports', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    id: importId,
+                                    estado: 'completado',
+                                    metadata: { context: tipoLabel, inserted: validData.length }
+                                })
+                            })
+                        }
+
                         toast.success(`${validData.length} comprobantes importados`)
                         onRefresh()
                     } catch (err: any) {

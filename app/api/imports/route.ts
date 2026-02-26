@@ -56,7 +56,7 @@ export async function DELETE(request: Request) {
     const { createClient: createServiceClient } = require('@supabase/supabase-js')
     const adminClient = createServiceClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // This is actually the service role key
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
     try {
@@ -109,4 +109,30 @@ export async function DELETE(request: Request) {
         console.error('[IMPORTS DELETE] Error:', err)
         return NextResponse.json({ error: err.message || 'Unknown error' }, { status: 500 })
     }
+}
+
+export async function PATCH(request: Request) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { id, estado, metadata } = await request.json()
+    if (!id || !estado) return NextResponse.json({ error: 'Missing id or estado' }, { status: 400 })
+
+    // Use service role to bypass RLS for state updates
+    const { createClient: createServiceClient } = require('@supabase/supabase-js')
+    const adminClient = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { error } = await adminClient
+        .from('archivos_importados')
+        .update({ estado, metadata })
+        .eq('id', id)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    return NextResponse.json({ success: true })
 }
