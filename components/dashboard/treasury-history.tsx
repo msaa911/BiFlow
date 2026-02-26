@@ -118,8 +118,8 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
         m.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const handleVoid = async (movId: string) => {
-        if (!confirm('¿Estás seguro de que quieres anular este movimiento? Los saldos de las facturas serán restaurados.')) return
+    const handleDelete = async (movId: string) => {
+        if (!confirm('¿Estás seguro de que quieres eliminar este movimiento? Los saldos de las facturas imputadas serán restaurados. Esta acción no se puede deshacer.')) return
 
         setLoading(true)
         try {
@@ -127,43 +127,37 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
             if (!mov) return
 
             // 1. Revert all aplicaciones: restore monto_pendiente on each comprobante
-            for (const app of mov.aplicaciones_pago) {
-                const { data: inv } = await supabase.from('comprobantes').select('monto_pendiente, monto_total, tipo').eq('id', app.comprobante_id).single()
-                if (inv) {
-                    // Para NC, restaurar su monto pendiente original
-                    const restoredMonto = inv.tipo === 'nota_credito'
-                        ? Number(app.monto_aplicado) // NC was zeroed, restore the applied amount
-                        : Number(inv.monto_pendiente) + Number(app.monto_aplicado)
+            if (mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0) {
+                for (const app of mov.aplicaciones_pago) {
+                    const { data: inv } = await supabase.from('comprobantes').select('monto_pendiente, monto_total, tipo').eq('id', app.comprobante_id).single()
+                    if (inv) {
+                        const restoredMonto = inv.tipo === 'nota_credito'
+                            ? Number(app.monto_aplicado)
+                            : Number(inv.monto_pendiente) + Number(app.monto_aplicado)
 
-                    const newEstado = restoredMonto >= inv.monto_total ? 'pendiente' : (restoredMonto <= 0 ? 'pagado' : 'parcial')
+                        const newEstado = restoredMonto >= inv.monto_total ? 'pendiente' : (restoredMonto <= 0 ? 'pagado' : 'parcial')
 
-                    await supabase.from('comprobantes')
-                        .update({
-                            monto_pendiente: restoredMonto,
-                            estado: newEstado
-                        })
-                        .eq('id', app.comprobante_id)
+                        await supabase.from('comprobantes')
+                            .update({ monto_pendiente: restoredMonto, estado: newEstado })
+                            .eq('id', app.comprobante_id)
+                    }
                 }
             }
 
-            // 2. Soft-delete: mark as anulado with audit trail (instead of hard delete)
-            const { error: voidErr } = await supabase.from('movimientos_tesoreria')
-                .update({
-                    observaciones: `[ANULADO ${new Date().toLocaleDateString('es-AR')}] ${mov.observaciones || ''}`.trim()
-                })
-                .eq('id', movId)
-
-            if (voidErr) throw voidErr
-
-            // 3. Delete aplicaciones and instrumentos (cascade from the movement)
+            // 2. Delete children first (aplicaciones + instrumentos)
             await supabase.from('aplicaciones_pago').delete().eq('movimiento_id', movId)
             await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
 
-            toast.success('Movimiento anulado correctamente. Saldos restaurados.')
+            // 3. Hard-delete the movement row
+            const { error: delErr } = await supabase.from('movimientos_tesoreria').delete().eq('id', movId)
+
+            if (delErr) throw delErr
+
+            toast.success('Movimiento eliminado correctamente.')
             fetchMovements()
         } catch (err: any) {
-            console.error('Error voiding movement:', err)
-            toast.error('Error al anular: ' + err.message)
+            console.error('Error deleting movement:', err)
+            toast.error('Error al eliminar: ' + err.message)
         } finally {
             setLoading(false)
         }
@@ -296,7 +290,7 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8 text-gray-500 hover:text-red-500 hover:bg-red-500/10"
-                                                onClick={() => handleVoid(mov.id)}
+                                                onClick={() => handleDelete(mov.id)}
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </Button>

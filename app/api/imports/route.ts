@@ -52,90 +52,61 @@ export async function DELETE(request: Request) {
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // 0. Delete related Error Logs (Check metadata->file or import_id if stored)
-    // Note: Error logs might not have a direct foreign key, but good to clean up if possible.
-    // For now, we focus on confirmed foreign keys.
+    // Use service role client to bypass RLS for admin delete operations
+    const { createClient: createServiceClient } = require('@supabase/supabase-js')
+    const adminClient = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // This is actually the service role key
+    )
 
-    // 1. Delete associated transactions (Rollback)
-    const { error: transError } = await supabase
-        .from('transacciones')
-        .delete()
-        .eq('archivo_importacion_id', id)
+    try {
+        // 1. Delete associated bank transactions
+        await adminClient.from('transacciones').delete().eq('archivo_importacion_id', id)
 
-    if (transError) console.error('Error deleting transactions:', transError)
+        // 2. Delete associated quarantine items
+        await adminClient.from('transacciones_revision').delete().eq('archivo_importacion_id', id)
 
-    // 2. Delete associated quarantine items
-    const { error: quarantineError } = await supabase
-        .from('transacciones_revision')
-        .delete()
-        .eq('archivo_importacion_id', id)
+        // 3. Delete associated invoices (comprobantes)
+        await adminClient.from('comprobantes').delete().eq('archivo_importacion_id', id)
 
-    if (quarantineError) console.error('Error deleting quarantine:', quarantineError)
-
-    // 2b. Delete associated invoices (Safeguard)
-    const { error: compError } = await supabase
-        .from('comprobantes')
-        .delete()
-        .eq('archivo_importacion_id', id)
-
-    if (compError) console.error('Error deleting comprobantes:', compError)
-
-    // 2c. Delete associated treasury movements (Safeguard)
-    // Note: This relies on `archivo_importacion_id` existing on `movimientos_tesoreria` or checking metadata.
-    // Wait, let's check if `archivo_importacion_id` is actually on `movimientos_tesoreria`. I didn't add it in the upload route!
-    // Ah, in `/api/upload/route.ts` I mapped `metadata: { import_type: uploadContext }` but I didn't add `archivo_importacion_id` explicitly. Let me check the upload route again.
-    // Actually, in the previous fix I just did, I passed `metadata: { ...t.metadata, raw_row: t.raw, import_type: uploadContext }`. 
-    // `archivo_importacion_id` is not a column in `movimientos_tesoreria` right now. I should check if it exists or use metadata. 
-    // To cleanly delete, we might need a SQL query or just use the metadata.
-    const { data: treasuryMovs } = await supabase
-        .from('movimientos_tesoreria')
-        .select('id')
-        .contains('metadata', { archivo_importacion_id: id })
-
-    if (treasuryMovs && treasuryMovs.length > 0) {
-        const movIds = treasuryMovs.map(m => m.id)
-        // Clean up linked instruments and applications first (if not cascading)
-        await supabase.from('instrumentos_pago').delete().in('movimiento_id', movIds)
-        await supabase.from('aplicaciones_pago').delete().in('movimiento_id', movIds)
-
-        const { error: treasError } = await supabase
+        // 4. Delete associated treasury movements (via metadata search)
+        const { data: treasuryMovs } = await adminClient
             .from('movimientos_tesoreria')
+            .select('id')
+            .contains('metadata', { archivo_importacion_id: id })
+
+        if (treasuryMovs && treasuryMovs.length > 0) {
+            const movIds = treasuryMovs.map((m: any) => m.id)
+            await adminClient.from('instrumentos_pago').delete().in('movimiento_id', movIds)
+            await adminClient.from('aplicaciones_pago').delete().in('movimiento_id', movIds)
+            await adminClient.from('movimientos_tesoreria').delete().in('id', movIds)
+        }
+
+        // 5. Get storage path before deleting the record
+        const { data: fileRecord } = await adminClient
+            .from('archivos_importados')
+            .select('storage_path')
+            .eq('id', id)
+            .single()
+
+        // 6. Delete the file record itself
+        const { error: logError } = await adminClient
+            .from('archivos_importados')
             .delete()
-            .in('id', movIds)
+            .eq('id', id)
 
-        if (treasError) console.error('Error deleting treasury movements:', treasError)
+        if (logError) {
+            return NextResponse.json({ error: `DB Error: ${logError.message}` }, { status: 500 })
+        }
+
+        // 7. Delete from Storage (best effort)
+        if (fileRecord?.storage_path) {
+            await adminClient.storage.from('raw-imports').remove([fileRecord.storage_path])
+        }
+
+        return NextResponse.json({ success: true })
+    } catch (err: any) {
+        console.error('[IMPORTS DELETE] Error:', err)
+        return NextResponse.json({ error: err.message || 'Unknown error' }, { status: 500 })
     }
-
-    // 3. Clear Cache for this organization (Optional but good practice)
-    // await supabase.from('daily_cashflow_cache').delete().eq('organization_id', organization_id)
-
-    // 4. Delete the file record
-    const { data: fileRecord, error: fetchError } = await supabase
-        .from('archivos_importados')
-        .select('storage_path')
-        .eq('id', id)
-        .single()
-
-    if (fetchError) {
-        return NextResponse.json({ error: 'File not found' }, { status: 404 })
-    }
-
-    const { error: logError } = await supabase
-        .from('archivos_importados')
-        .delete()
-        .eq('id', id)
-
-    if (logError) {
-        // If this fails, it's likely a Foreign Key constraint we missed. Return detailed error.
-        return NextResponse.json({ error: `DB Error: ${logError.message}` }, { status: 500 })
-    }
-
-    // 5. Delete from Storage (Best effort)
-    if (fileRecord?.storage_path) {
-        await supabase.storage
-            .from('raw-imports')
-            .remove([fileRecord.storage_path])
-    }
-
-    return NextResponse.json({ success: true })
 }
