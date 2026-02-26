@@ -242,6 +242,14 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                         >
                                             <Edit2 className="w-3.5 h-3.5" />
                                         </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-gray-500 hover:text-red-400"
+                                            onClick={() => handleDelete(inv.id)}
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
                                     </div>
                                 </td>
                             </tr>
