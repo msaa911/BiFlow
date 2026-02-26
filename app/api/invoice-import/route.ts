@@ -33,6 +33,7 @@ export async function POST(request: Request) {
             .insert({
                 organization_id: orgId,
                 nombre_archivo: `importacion_${tipoLabel}_${new Date().toISOString().split('T')[0]}.xlsx`,
+                storage_path: `imports/${orgId}/${tipoLabel}_${Date.now()}.xlsx`,
                 estado: 'procesando',
                 metadata: { context: tipoLabel, total: comprobantes.length }
             })
