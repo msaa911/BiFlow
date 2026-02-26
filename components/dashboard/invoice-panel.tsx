@@ -298,7 +298,6 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 onConfirm={async (validData) => {
                     const loadingToast = toast.loading('Guardando comprobantes...')
                     try {
-                        // Fail-safe date parser
                         const safeDate = (val: any) => {
                             if (!val) return new Date().toISOString().split('T')[0]
                             if (typeof val === 'number') {
@@ -307,92 +306,38 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             return String(val)
                         }
 
-                        // 1. Create archivos_importados record via server API (bypasses RLS)
                         const tipoLabel = view === 'AR' ? 'ingresos' : 'egresos'
-                        const importRes = await fetch('/api/imports', {
+
+                        // Send everything to server-side endpoint (service role handles all DB ops)
+                        const res = await fetch('/api/invoice-import', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                nombre_archivo: `importacion_${tipoLabel}_${new Date().toISOString().split('T')[0]}.xlsx`,
-                                metadata: { context: tipoLabel, total: validData.length }
+                                tipoLabel,
+                                comprobantes: validData.map(inv => ({
+                                    entidad_id: inv.entidad_id,
+                                    tipo: inv.tipo_documento === 'factura' ? (view === 'AR' ? 'factura_venta' : 'factura_compra') : inv.tipo_documento,
+                                    fecha_emision: safeDate(inv.fecha_emision),
+                                    fecha_vencimiento: safeDate(inv.fecha_vencimiento || inv.fecha_emision),
+                                    numero: inv.numero,
+                                    monto_total: inv.monto_total,
+                                    monto_pendiente: inv.condicion === 'contado' ? 0 : inv.monto_total,
+                                    estado: inv.condicion === 'contado' ? 'pagado' : 'pendiente',
+                                    condicion: inv.condicion,
+                                    moneda: inv.moneda || 'ARS',
+                                    razon_social_socio: inv.razon_social_socio,
+                                    cuit_socio: inv.cuit_socio
+                                }))
                             })
                         })
-                        const importLog = importRes.ok ? await importRes.json() : null
-                        const importId = importLog?.id || null
 
-                        // 2. Insert comprobantes with link to archivos_importados
-                        const { error: insertError } = await supabase.from('comprobantes').insert(
-                            validData.map(inv => ({
-                                organization_id: orgId,
-                                entidad_id: inv.entidad_id,
-                                archivo_importacion_id: importId,
-                                tipo: inv.tipo_documento === 'factura' ? (view === 'AR' ? 'factura_venta' : 'factura_compra') : inv.tipo_documento,
-                                fecha_emision: safeDate(inv.fecha_emision),
-                                fecha_vencimiento: safeDate(inv.fecha_vencimiento || inv.fecha_emision),
-                                numero: inv.numero,
-                                monto_total: inv.monto_total,
-                                monto_pendiente: inv.condicion === 'contado' ? 0 : inv.monto_total,
-                                estado: inv.condicion === 'contado' ? 'pagado' : 'pendiente',
-                                condicion: inv.condicion,
-                                moneda: inv.moneda || 'ARS',
-                                razon_social_socio: inv.razon_social_socio,
-                                cuit_socio: inv.cuit_socio
-                            }))
-                        ).select()
-
-                        if (insertError) throw insertError
-
-                        // 3. Handle 'contado' automated payments
-                        const contadoInvoices = validData.filter(inv => inv.condicion === 'contado')
-                        if (contadoInvoices.length > 0) {
-                            const { data: savedInvoices } = await supabase
-                                .from('comprobantes')
-                                .select('id, numero, monto_total, entidad_id, fecha_emision')
-                                .in('numero', contadoInvoices.map(i => i.numero))
-                                .eq('organization_id', orgId)
-
-                            if (savedInvoices) {
-                                for (const inv of savedInvoices) {
-                                    const { data: mov } = await supabase.from('movimientos_tesoreria').insert({
-                                        organization_id: orgId,
-                                        entidad_id: inv.entidad_id,
-                                        tipo: view === 'AR' ? 'cobro' : 'pago',
-                                        monto_total: inv.monto_total,
-                                        fecha: inv.fecha_emision,
-                                        observaciones: `Cierre automático (Importación): Contado ${inv.numero || ''}`
-                                    }).select().single()
-
-                                    if (mov) {
-                                        await supabase.from('instrumentos_pago').insert({
-                                            movimiento_id: mov.id,
-                                            metodo: 'efectivo',
-                                            monto: inv.monto_total,
-                                            fecha_disponibilidad: inv.fecha_emision
-                                        })
-                                        await supabase.from('aplicaciones_pago').insert({
-                                            movimiento_id: mov.id,
-                                            comprobante_id: inv.id,
-                                            monto_aplicado: inv.monto_total
-                                        })
-                                    }
-                                }
-                            }
+                        if (!res.ok) {
+                            const err = await res.json()
+                            throw new Error(err.error || 'Error al importar')
                         }
 
-                        // 4. Update import record state to 'completado' via API (service role)
-                        if (importId) {
-                            await fetch('/api/imports', {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    id: importId,
-                                    estado: 'completado',
-                                    metadata: { context: tipoLabel, inserted: validData.length }
-                                })
-                            })
-                        }
-
-                        toast.success(`${validData.length} comprobantes importados`)
+                        const result = await res.json()
+                        toast.success(`${result.count} comprobantes importados`)
                         onRefresh()
                     } catch (err: any) {
                         toast.error('Error al importar: ' + err.message)
