@@ -307,19 +307,17 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             return String(val)
                         }
 
-                        // 1. Create archivos_importados record for tracking
+                        // 1. Create archivos_importados record via server API (bypasses RLS)
                         const tipoLabel = view === 'AR' ? 'ingresos' : 'egresos'
-                        const { data: importLog, error: logError } = await supabase
-                            .from('archivos_importados')
-                            .insert({
-                                organization_id: orgId,
+                        const importRes = await fetch('/api/imports', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
                                 nombre_archivo: `importacion_${tipoLabel}_${new Date().toISOString().split('T')[0]}.xlsx`,
-                                estado: 'procesando',
                                 metadata: { context: tipoLabel, total: validData.length }
                             })
-                            .select()
-                            .single()
-
+                        })
+                        const importLog = importRes.ok ? await importRes.json() : null
                         const importId = importLog?.id || null
 
                         // 2. Insert comprobantes with link to archivos_importados

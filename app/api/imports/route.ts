@@ -41,6 +41,41 @@ export async function GET(request: Request) {
     return NextResponse.json(enriched)
 }
 
+export async function POST(request: Request) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).single()
+    if (!member) return NextResponse.json({ error: 'No organization' }, { status: 403 })
+
+    const { nombre_archivo, metadata } = await request.json()
+    if (!nombre_archivo) return NextResponse.json({ error: 'Missing nombre_archivo' }, { status: 400 })
+
+    // Use service role to bypass RLS
+    const { createClient: createServiceClient } = require('@supabase/supabase-js')
+    const adminClient = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: importLog, error } = await adminClient
+        .from('archivos_importados')
+        .insert({
+            organization_id: member.organization_id,
+            nombre_archivo,
+            estado: 'procesando',
+            metadata: metadata || {}
+        })
+        .select()
+        .single()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    return NextResponse.json(importLog)
+}
+
 export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
