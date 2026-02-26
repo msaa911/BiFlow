@@ -281,7 +281,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             {invoice ? 'Editar Comprobante' : `Nuevo ${type === 'factura_venta' ? 'Ingreso' : 'Egreso'}`}
-                            <Badge variant="outline" className="text-[9px] opacity-50">v2</Badge>
                         </DialogTitle>
                     </DialogHeader>
                 </div>

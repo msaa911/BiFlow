@@ -131,7 +131,6 @@ export function InvoiceImportPreviewModal({
                     <DialogHeader className="p-6 pb-2">
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             Previsualización de Importación
-                            <Badge variant="outline" className="text-[9px] opacity-50">v2</Badge>
                         </DialogTitle>
                         <DialogDescription className="text-gray-500">
                             Revise los datos antes de confirmar. Las filas con advertencias se pueden importar.
