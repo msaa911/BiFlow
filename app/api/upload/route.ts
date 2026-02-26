@@ -167,10 +167,18 @@ export async function POST(request: Request) {
                 }
 
             } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-                const res = parseExcel(buffer, orgId)
-                transactions = res.transactions
-                warnings = res.warnings
-                reviewItems = res.reviewItems
+                if (uploadContext === 'receipt' || uploadContext === 'payment') {
+                    const type = uploadContext === 'receipt' ? 'cobro' : 'pago'
+                    const res = parseTreasuryExcelServer(buffer, orgId, type)
+                    transactions = res.transactions
+                    warnings = res.warnings
+                    reviewItems = res.reviewItems
+                } else {
+                    const res = parseExcel(buffer, orgId)
+                    transactions = res.transactions
+                    warnings = res.warnings
+                    reviewItems = res.reviewItems
+                }
             } else if (fileName.endsWith('.pdf')) {
                 console.log('Loading pdf-parse dynamically')
                 const pdf = require('pdf-parse')
@@ -291,8 +299,46 @@ export async function POST(request: Request) {
                 } else {
                     // RECEIPTS AND PAYMENT ORDERS
                     const isCobro = uploadContext === 'receipt'
+
+                    // 1. Resolve Entities (Socios)
+                    console.log(`[UPLOAD] [TREASURY] Resolving entities for ${transactionsWithLink.length} movements...`)
+                    for (const t of transactionsWithLink) {
+                        const razonSocial = t.razon_social || t.concepto || 'Sin Razón Social'
+
+                        // Try to find existing entity
+                        const { data: existingEntity } = await currentSupabase
+                            .from('entidades')
+                            .select('id')
+                            .eq('organization_id', orgId)
+                            .ilike('razon_social', razonSocial)
+                            .single()
+
+                        if (existingEntity) {
+                            t.entidad_id = existingEntity.id
+                        } else {
+                            // Create new entity
+                            const { data: newEntity, error: createError } = await currentSupabase
+                                .from('entidades')
+                                .insert({
+                                    organization_id: orgId,
+                                    razon_social: razonSocial,
+                                    categoria: isCobro ? 'cliente' : 'proveedor',
+                                    metadata: { origen: 'importacion_tesoreria_automatica' }
+                                })
+                                .select('id')
+                                .single()
+
+                            if (newEntity) {
+                                t.entidad_id = newEntity.id
+                            } else {
+                                console.error('[UPLOAD] [TREASURY] Error creating entity:', createError)
+                            }
+                        }
+                    }
+
                     const movements = transactionsWithLink.map((t: any) => ({
                         organization_id: orgId,
+                        entidad_id: t.entidad_id || null, // Ensure entidad_id is mapped
                         tipo: isCobro ? 'cobro' : 'pago',
                         numero: t.numero || (isCobro ? 'REC' : 'OP') + '-' + Math.random().toString(36).substring(7).toUpperCase(),
                         fecha: t.fecha,
@@ -502,6 +548,77 @@ async function logError(supabase: any, origin: string, message: string, fileName
             metadata: { file: fileName }
         })
     } catch (e) { }
+}
+
+
+function parseTreasuryExcelServer(buffer: Buffer, orgId: string, type: 'cobro' | 'pago') {
+    const workbook = XLSX.read(buffer, { type: 'buffer' })
+    const targetSheetName = workbook.SheetNames.find(n =>
+        /recibos|pagos|cobros|ordenes|tesoreria|plantilla/i.test(n)
+    ) || workbook.SheetNames[0]
+
+    const data = XLSX.utils.sheet_to_json(workbook.Sheets[targetSheetName]) as any[]
+    const transactions: any[] = []
+    const reviewItems: any[] = []
+
+    for (const row of data) {
+        if (!row || Object.keys(row).length < 2) continue
+
+        const keys = Object.keys(row)
+        const getValue = (pattern: RegExp, isDate: boolean = false) => {
+            const foundKey = keys.find(k => {
+                const nk = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                return pattern.test(nk)
+            })
+            if (!foundKey) return ''
+            const val = row[foundKey]
+
+            if (isDate && typeof val === 'number') {
+                const d = new Date(Math.round((val - 25569) * 864e5))
+                return d.toISOString().split('T')[0]
+            }
+            return String(val).trim()
+        }
+
+        const fecha = getValue(/fecha|^fec$/i, true)
+        const numero = getValue(/numero|nro|n°|comprobante|recibo|orden/i)
+        const razonSocial = getValue(/entidad|cliente|proveedor|socio|razon|social|nombre/i)
+        const montoRaw = getValue(/monto|total|importe|valor/i)
+        const monto = parseFloat(montoRaw.replace(/[^\d.,-]/g, '').replace(',', '.'))
+        const medio = getValue(/medio|metodo|instrumento|forma/i).toLowerCase().replace(' ', '_')
+        const banco = getValue(/banco|entidad bancaria/i)
+        const referencia = getValue(/referencia|ref|cheque|transf/i)
+        const disponibilidad = getValue(/disponibilidad|acreditacion/i, true)
+        const observaciones = getValue(/observaciones|obs|detalle|notas/i)
+
+        if (!numero && isNaN(monto)) continue
+
+        let itemErrors = []
+        if (!fecha) itemErrors.push('Falta Fecha')
+        if (!razonSocial) itemErrors.push('Falta Entidad')
+        if (isNaN(monto)) itemErrors.push('Monto inválido')
+
+        if (itemErrors.length === 0) {
+            transactions.push({
+                fecha,
+                monto,
+                numero,
+                concepto: observaciones || razonSocial,
+                razon_social: razonSocial,
+                vencimiento: disponibilidad,
+                banco,
+                numero_cheque: referencia, // Map ref to numero_cheque for the pipeline
+                metadata: {
+                    metodo: medio,
+                    referencia,
+                }
+            })
+        } else {
+            reviewItems.push({ organization_id: orgId, datos_crudos: { row: Object.values(row) }, motivo: 'Mapping failed: ' + itemErrors.join(', '), estado: 'pendiente' })
+        }
+    }
+
+    return { transactions, warnings: [], reviewItems }
 }
 
 

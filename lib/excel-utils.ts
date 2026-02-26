@@ -335,6 +335,92 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
     })
 }
 
+export async function parseTreasuryExcel(file: File, type: 'cobro' | 'pago'): Promise<{ data: any[], errors: any[] }> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            try {
+                const data = e.target?.result
+                const workbook = XLSX.read(data, { type: 'array' })
+                const targetSheetName = workbook.SheetNames.find(n =>
+                    /recibos|pagos|cobros|ordenes|tesoreria|plantilla/i.test(n)
+                ) || workbook.SheetNames[0]
+
+                if (!targetSheetName) throw new Error('No hay hojas válidas.')
+
+                const sheet = workbook.Sheets[targetSheetName]
+                const json = XLSX.utils.sheet_to_json(sheet)
+
+                if (json.length === 0) {
+                    resolve({ data: [], errors: ['Archivo vacío'] })
+                    return
+                }
+
+                const results: any[] = []
+                json.forEach((row: any, index: number) => {
+                    const rowNum = index + 2
+                    const keys = Object.keys(row)
+
+                    const getValue = (pattern: RegExp, isDate: boolean = false) => {
+                        const foundKey = keys.find(k => {
+                            const nk = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                            return pattern.test(nk)
+                        })
+                        if (!foundKey) return ''
+                        const val = row[foundKey]
+
+                        if (isDate && typeof val === 'number') {
+                            const d = new Date(Math.round((val - 25569) * 864e5))
+                            return d.toISOString().split('T')[0]
+                        }
+                        return String(val).trim()
+                    }
+
+                    const fecha = getValue(/fecha|^fec$/i, true)
+                    const numero = getValue(/numero|nro|n°|comprobante|recibo|orden/i)
+                    const razonSocial = getValue(/entidad|cliente|proveedor|socio|razon|social|nombre/i)
+                    const montoRaw = getValue(/monto|total|importe|valor/i)
+                    const monto = parseFloat(montoRaw.replace(/[^\d.,-]/g, '').replace(',', '.'))
+                    const medio = getValue(/medio|metodo|instrumento|forma/i).toLowerCase().replace(' ', '_')
+                    const banco = getValue(/banco|entidad bancaria/i)
+                    const referencia = getValue(/referencia|ref|cheque|transf/i)
+                    const disponibilidad = getValue(/disponibilidad|acreditacion/i, true)
+                    const observaciones = getValue(/observaciones|obs|detalle|notas/i)
+
+                    if (!numero && isNaN(monto)) return
+
+                    const itemErrors: string[] = []
+                    if (!fecha) itemErrors.push('Falta Fecha')
+                    if (!razonSocial) itemErrors.push('Falta Entidad')
+                    if (isNaN(monto)) itemErrors.push('Monto inválido')
+
+                    results.push({
+                        id: `treasury-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
+                        fecha: fecha,
+                        numero: numero || (type === 'cobro' ? 'REC-S/N' : 'OP-S/N'),
+                        tipo: type,
+                        razon_social: razonSocial,
+                        monto_total: monto,
+                        metodo: medio || 'efectivo',
+                        banco: banco || null,
+                        referencia: referencia || null,
+                        fecha_disponibilidad: disponibilidad || fecha,
+                        observaciones: observaciones || null,
+                        rowNum,
+                        errors: itemErrors,
+                        isValid: itemErrors.length === 0
+                    })
+                })
+                resolve({ data: results, errors: [] })
+            } catch (err) {
+                reject(err)
+            }
+        }
+        reader.onerror = () => reject(new Error('Error reading file'))
+        reader.readAsArrayBuffer(file)
+    })
+}
+
 export function exportTreasuryMovementToExcel(movement: any) {
     const isCobro = movement.tipo === 'cobro'
     const title = isCobro ? 'RECIBO DE COBRO' : 'ORDEN DE PAGO'
