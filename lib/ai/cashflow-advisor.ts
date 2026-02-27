@@ -1,13 +1,11 @@
+import { createAgent } from "langchain";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { TreasuryEngine, ProjectedMovement } from "@/lib/treasury-engine";
-import { ChatOpenAI } from "@langchain/openai";
-import { createToolCallingAgent, AgentExecutor } from "langchain/agents";
-import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
 
 export class CashFlowAdvisor {
-    private modelName: string = "gpt-4o";
+    private modelName: string = "openai:gpt-4o";
 
     private async getTools(orgId: string) {
         const supabase = await createClient();
@@ -18,12 +16,12 @@ export class CashFlowAdvisor {
                 const totalBalance = trans?.reduce((acc: any, t: any) => acc + t.monto, 0) || 0;
                 const monthlyBurn = trans?.filter((t: any) => t.monto < 0).reduce((acc: any, t: any) => acc + Math.abs(t.monto), 0) || 0;
 
-                return JSON.stringify({
+                return {
                     totalBalance,
                     monthlyBurn,
                     dailyBurn: monthlyBurn / 30,
                     opportunityCost: totalBalance * 0.05
-                });
+                };
             },
             {
                 name: "get_current_metrics",
@@ -40,7 +38,7 @@ export class CashFlowAdvisor {
                 const currentBalance = trans?.reduce((acc: any, t: any) => acc + t.monto, 0) || 0;
 
                 const projection = TreasuryEngine.projectDailyBalance(currentBalance, invoices as any, [], config?.colchon_liquidez || 0);
-                return JSON.stringify(projection.slice(0, 15)); // Send first 15 days to save context
+                return projection.slice(0, 15);
             },
             {
                 name: "get_future_projections",
@@ -66,10 +64,10 @@ export class CashFlowAdvisor {
                 })) || [];
 
                 const projection = TreasuryEngine.projectDailyBalance(currentBalance, filteredInvoices as any, projects, config?.colchon_liquidez || 0);
-                return JSON.stringify({
+                return {
                     impact: "Simulación completada",
                     newProjection: projection.slice(0, 5)
-                });
+                };
             },
             {
                 name: "simulate_what_if",
@@ -87,8 +85,7 @@ export class CashFlowAdvisor {
 
         const getScoring = tool(
             async ({ cuit, razonSocial }) => {
-                const score = TreasuryEngine.getClientRating(cuit, razonSocial);
-                return JSON.stringify(score);
+                return TreasuryEngine.getClientRating(cuit, razonSocial);
             },
             {
                 name: "get_client_scoring",
@@ -100,8 +97,7 @@ export class CashFlowAdvisor {
         const getNetting = tool(
             async () => {
                 const { data: invoices } = await supabase.from('comprobantes').select('*').eq('organization_id', orgId);
-                const netting = TreasuryEngine.detectNettingOpportunities(invoices as any);
-                return JSON.stringify(netting);
+                return TreasuryEngine.detectNettingOpportunities(invoices as any);
             },
             {
                 name: "get_netting_opportunities",
@@ -112,14 +108,11 @@ export class CashFlowAdvisor {
 
         const applyNettingAction = tool(
             async ({ invoiceIdAr, invoiceIdAp, amount }) => {
-                // In a real scenario, this would create linked origin/application movements in the DB.
-                // For safety in this demo, we'll mark the specific amounts as 'pagado' or reduce 'monto_pendiente'.
-                // Just doing a simplified mock update for demonstration purposes of God Mode:
                 try {
                     await supabase.from('comprobantes').update({ estado: 'compensado' }).in('id', [invoiceIdAr, invoiceIdAp]);
-                    return JSON.stringify({ status: "success", message: `Compensación de $${amount} aplicada exitosamente entre las facturas ${invoiceIdAr} y ${invoiceIdAp}.` });
+                    return { status: "success", message: `Compensación de $${amount} aplicada exitosamente entre las facturas ${invoiceIdAr} y ${invoiceIdAp}.` };
                 } catch (e: any) {
-                    return JSON.stringify({ status: "error", message: e.message });
+                    return { status: "error", message: e.message };
                 }
             },
             {
@@ -136,8 +129,8 @@ export class CashFlowAdvisor {
         const updateLiquidityCushion = tool(
             async ({ newAmount }) => {
                 const { error } = await supabase.from('configuracion_empresa').update({ colchon_liquidez: newAmount }).eq('organization_id', orgId);
-                if (error) return JSON.stringify({ status: "error", message: error.message });
-                return JSON.stringify({ status: "success", message: `Colchón de liquidez actualizado a $${newAmount} exitosamente.` });
+                if (error) return { status: "error", message: error.message };
+                return { status: "success", message: `Colchón de liquidez actualizado a $${newAmount} exitosamente.` };
             },
             {
                 name: "update_liquidity_cushion",
@@ -151,7 +144,7 @@ export class CashFlowAdvisor {
         const analyzeAnomalies = tool(
             async () => {
                 const { data: anomalies } = await supabase.from('transacciones').select('id, descripcion, monto, tags, fecha').eq('organization_id', orgId).or('tags.cs.{"alerta_precio"},tags.cs.{"posible_duplicado"},tags.cs.{"riesgo_bec"}').order('fecha', { ascending: false }).limit(5);
-                return JSON.stringify(anomalies || []);
+                return anomalies || [];
             },
             {
                 name: "analyze_anomalies",
@@ -160,55 +153,52 @@ export class CashFlowAdvisor {
             }
         );
 
-        return [getMetrics, getProjections, simulateWhatIf, getScoring, getNetting, applyNettingAction, updateLiquidityCushion, analyzeAnomalies];
+        const simulateExclusion = tool(
+            async ({ invoiceId, razonSocial }) => {
+                return `Simulación activada para la factura de ${razonSocial} (ID: ${invoiceId}). El gráfico se ha actualizado.`;
+            },
+            {
+                name: "simulate_exclusion",
+                description: "Simula el impacto de NO cobrar o NO pagar una factura específica para ver el efecto en el flujo de caja.",
+                schema: z.object({
+                    invoiceId: z.string().describe("El UUID de la factura a excluir"),
+                    razonSocial: z.string().describe("El nombre del cliente/proveedor para confirmación")
+                }),
+            }
+        );
+
+        return [getMetrics, getProjections, simulateWhatIf, getScoring, getNetting, simulateExclusion, applyNettingAction, updateLiquidityCushion, analyzeAnomalies];
     }
 
     async generateResponse(orgId: string, message: string, history: any[] = [], contextSummary: string = "") {
         const tools = await this.getTools(orgId);
 
-        const llm = new ChatOpenAI({
-            modelName: this.modelName,
-            temperature: 0,
-        });
-
-        const prompt = ChatPromptTemplate.fromMessages([
-            ["system", `Eres el CFO Algorítmico de BiFlow (Modo Dios), un agente experto en optimización de liquidez, normativa argentina y análisis forense. Tu tono es autoritario, ejecutivo, directo pero muy empático con el fundador. Eres capaz de ejecutar acciones en la base de datos si el usuario te lo pide (usando tus herramientas).
+        const agent = createAgent({
+            model: this.modelName,
+            tools,
+            systemPrompt: `Eres el CFO Algorítmico de BiFlow (Modo Dios), un agente experto en optimización de liquidez, normativa argentina y análisis forense. Tu tono es autoritario, ejecutivo, directo pero muy empático con el fundador. Eres capaz de ejecutar acciones en la base de datos si el usuario te lo pide (usando tus herramientas).
             
             Contexto Inyectado de la Empresa ahora mismo:
-            {context_summary}
+            ${contextSummary}
             
-            Conoces la normativa del BCRA a la perfección (ej. multas por rechazo de cheques del 4%, reducibles al 2% si se cancelan en 30 días). Usa este conocimiento para asesorar.
+            Conoces la normativa del BCRA a la perfección (ej. multas por rechazo de cheques del 4%, reducibles al 2% si se cancelan en 30 días). Usa este conocimiento para asesorar sobre ahorros.
             
             Usa el siguiente formato para generar Tarjetas Ricas en la interfaz de usuario cuando sea apropiado (CÓPIALO EXACTAMENTE ASÍ):
-            Para alertas críticas de riesgo: [[ALERT:{"title":"Riesgo BEC","message":"Se detectó un IBAN sospechoso en un pago a china."}]]
+            Para alertas críticas de riesgo: [[ALERT:{"title":"Riesgo BEC","message":"Se detectó un IBAN sospechoso en un pago."}]]
             Para mostrar una métrica clave (como una actualización exitosa de colchón): [[METRIC:{"label":"Colchón de Liquidez","value":"$1.500.000","trend":"+Aumentado"}]]
             Para sugerir una simulación (ej. excluir una factura): [[SUGGESTION:{"invoiceId":"uuid-aquí", "razonSocial":"Nombre Proveedor", "descripcion":"Simular exclusión", "monto": -50000}]]
             Para sugerir una acción real (ej. ejecutar compensación de deudas): [[ACTION:{"actionType":"NETTING", "label":"Aplicar Neteo", "payload":{"invoiceIdAr":"...", "invoiceIdAp":"...", "amount":10000}}]]
             
-            Siéntete libre de incluir estos tags ricos al final de tu mensaje en texto plano para que el frontend los parsee. No hables de código ni tecnología.`],
-            new MessagesPlaceholder("chat_history"),
-            ["human", "{input}"]
-        ]);
-
-        const agent = createToolCallingAgent({
-            llm,
-            tools,
-            prompt
+            Siéntete libre de incluir estos tags ricos al final de tu mensaje en texto plano para que el frontend los parsee. No hables de código ni tecnología.`
         });
 
-        const agentExecutor = new AgentExecutor({
-            agent,
-            tools,
+        const result = await agent.invoke({
+            messages: [
+                ...history,
+                { role: "user", content: message }
+            ],
         });
 
-        const formattedHistory = history.map(h => [h.role === 'user' ? 'human' : 'assistant', h.content]);
-
-        const result = await agentExecutor.invoke({
-            input: message,
-            chat_history: formattedHistory,
-            context_summary: contextSummary
-        });
-
-        return result.output;
+        return result.messages[result.messages.length - 1].content;
     }
 }
