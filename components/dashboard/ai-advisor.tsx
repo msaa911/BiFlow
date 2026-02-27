@@ -87,61 +87,132 @@ export function AIAdvisor() {
             {/* Chat Body */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
                 {messages.map(m => {
-                    const suggestionMatch = m.content.match(/\[\[SUGGESTION:(.*?)\]\]/)
-                    const displayContent = m.content.replace(/\[\[SUGGESTION:.*?\]\]/, '')
-                    const suggestionData = suggestionMatch ? JSON.parse(suggestionMatch[1]) : null
+                    let displayContent = m.content;
+
+                    // Parse God Mode tags Safely
+                    const parseTag = (regex: RegExp) => {
+                        const match = displayContent.match(regex);
+                        if (!match) return null;
+                        try {
+                            const data = JSON.parse(match[1]);
+                            displayContent = displayContent.replace(match[0], '');
+                            return data;
+                        } catch (e) {
+                            return null;
+                        }
+                    };
+
+                    const suggestionData = parseTag(/\[\[SUGGESTION:(.*?)\]\]/);
+                    const alertData = parseTag(/\[\[ALERT:(.*?)\]\]/);
+                    const metricData = parseTag(/\[\[METRIC:(.*?)\]\]/);
+                    const actionData = parseTag(/\[\[ACTION:(.*?)\]\]/);
 
                     return (
                         <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} gap-2`}>
                             <div className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`p-2 rounded-xl h-fit ${m.role === 'user' ? 'bg-blue-500/10' : 'bg-emerald-500/10'}`}>
+                                <div className={`p-2 rounded-xl h-fit w-8 h-8 flex items-center justify-center shrink-0 ${m.role === 'user' ? 'bg-blue-500/10' : 'bg-emerald-500/10'}`}>
                                     {m.role === 'user' ? <User className="w-4 h-4 text-blue-400" /> : <Bot className="w-4 h-4 text-emerald-400" />}
                                 </div>
-                                <div className={`p-3 rounded-2xl text-sm leading-relaxed ${m.role === 'user'
+                                <div className={`p-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${m.role === 'user'
                                     ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-600/10'
-                                    : 'bg-gray-900 text-gray-200 border border-gray-800 rounded-tl-none'
+                                    : 'bg-gray-900 border border-gray-800 text-gray-200 rounded-tl-none font-medium'
                                     }`}>
-                                    {displayContent}
+                                    {displayContent.trim()}
                                 </div>
                             </div>
 
-                            {suggestionData && (
-                                <div className="ml-11 mt-1 p-3 bg-gray-900 border border-emerald-500/30 rounded-2xl max-w-[80%] animate-in slide-in-from-left-2 duration-300">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="p-1 bg-emerald-500/20 rounded">
-                                            <Calculator className="w-3 h-3 text-emerald-400" />
+                            {/* RICH UI CARDS */}
+                            <div className="flex flex-col gap-2 w-full pl-11 pr-4">
+
+                                {/* 1. ALERT CARD */}
+                                {alertData && (
+                                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-2xl max-w-[90%] animate-in slide-in-from-left-2 duration-300">
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
+                                            <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Alerta Crítica</span>
                                         </div>
-                                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Simulación Disponible</span>
+                                        <p className="text-sm text-white font-bold mb-1">{alertData.title}</p>
+                                        <p className="text-xs text-red-200/80">{alertData.message}</p>
                                     </div>
-                                    <p className="text-xs text-white font-medium mb-1">{suggestionData.descripcion}</p>
-                                    <p className={`text-xs font-bold mb-3 ${suggestionData.monto > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        Impacto: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(suggestionData.monto)}
-                                    </p>
-                                    <div className="flex gap-2">
+                                )}
+
+                                {/* 2. METRIC CARD */}
+                                {metricData && (
+                                    <div className="p-3 bg-gray-900 border border-gray-800 rounded-2xl max-w-[90%] shadow-xl animate-in fade-in duration-500">
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">{metricData.label}</p>
+                                        <div className="flex items-end justify-between">
+                                            <p className="text-lg font-black text-white">{metricData.value}</p>
+                                            {metricData.trend && (
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${metricData.trend.includes('-') ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                    {metricData.trend}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 3. SUGGESTION CARD */}
+                                {suggestionData && (
+                                    <div className="p-3 bg-gray-900 border border-emerald-500/30 rounded-2xl max-w-[90%] animate-in slide-in-from-left-2 duration-300">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="p-1 bg-emerald-500/20 rounded">
+                                                <Calculator className="w-3 h-3 text-emerald-400" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Simulación Disponible</span>
+                                        </div>
+                                        <p className="text-xs text-white font-medium mb-1">{suggestionData.descripcion}</p>
+                                        <p className={`text-xs font-bold mb-3 ${suggestionData.monto > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            Impacto: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(suggestionData.monto)}
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    window.dispatchEvent(new CustomEvent('biflow-add-projection', { detail: suggestionData }));
+                                                    setMessages(prev => prev.map(msg => msg.id === m.id ? {
+                                                        ...msg,
+                                                        content: msg.content.replace(/\[\[SUGGESTION:.*?\]\]/, '\n\n✅ *Simulación Aplicada en el Gráfico*')
+                                                    } : msg));
+                                                }}
+                                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase rounded-lg transition-colors shadow-lg shadow-emerald-600/20"
+                                            >
+                                                Ver en Gráfico
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, content: msg.content.replace(/\[\[SUGGESTION:.*?\]\]/, '') } : msg));
+                                                }}
+                                                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-[10px] font-bold uppercase rounded-lg transition-colors"
+                                            >
+                                                Ignorar
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 4. ACTION CARD */}
+                                {actionData && (
+                                    <div className="p-3 bg-gradient-to-br from-indigo-900/40 to-purple-900/20 border border-indigo-500/30 rounded-2xl max-w-[90%] shadow-xl shadow-indigo-500/10 animate-in slide-in-from-bottom-2 duration-300">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="p-1 bg-indigo-500/20 rounded">
+                                                <Sparkles className="w-3 h-3 text-indigo-400" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Acción Sugerida</span>
+                                        </div>
                                         <button
                                             onClick={() => {
-                                                window.dispatchEvent(new CustomEvent('biflow-add-projection', { detail: suggestionData }));
-                                                setMessages(prev => prev.filter(msg => msg.id !== m.id).concat({
-                                                    ...m,
-                                                    id: m.id + '-done',
-                                                    content: m.content.replace(/\[\[SUGGESTION:.*?\]\]/, '[Sugerencia aplicada ✅]')
-                                                }));
+                                                // MOCK: in a real implementation this would trigger an API call to execute actionData.payload
+                                                setMessages(prev => prev.map(msg => msg.id === m.id ? {
+                                                    ...msg,
+                                                    content: msg.content.replace(/\[\[ACTION:.*?\]\]/, '\n\n⚡ *Acción en curso... El sistema está procesando la solicitud.*')
+                                                } : msg));
                                             }}
-                                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase rounded-lg transition-colors"
+                                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex inset-0 items-center justify-center gap-2"
                                         >
-                                            Aplicar Impacto
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setMessages(prev => prev.map(msg => msg.id === m.id ? { ...msg, content: msg.content.replace(/\[\[SUGGESTION:.*?\]\]/, '') } : msg));
-                                            }}
-                                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-[10px] font-bold uppercase rounded-lg transition-colors"
-                                        >
-                                            Ignorar
+                                            ⚡ {actionData.label}
                                         </button>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     )
                 })}

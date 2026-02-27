@@ -56,7 +56,23 @@ export async function POST(request: Request) {
         content: m.content
     })) || [];
 
-    const reply = await advisor.generateResponse(orgId, message, history);
+    // Fetch Context Summary for God Mode
+    const { data: trans } = await supabase.from('transacciones').select('monto, tags, fecha').eq('organization_id', orgId);
+    let totalBalance = 0;
+    let anomalyCount = 0;
+    if (trans) {
+        totalBalance = trans.reduce((acc: any, t: any) => acc + t.monto, 0);
+        anomalyCount = trans.filter((t: any) => t.tags && (t.tags.includes('alerta_precio') || t.tags.includes('posible_duplicado') || t.tags.includes('riesgo_bec'))).length;
+    }
+
+    const { count: pendingTaxesCount } = await supabase.from('tax_intelligence_rules').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('estado', 'PENDIENTE');
+
+    const contextSummary = `
+SALDO OPERATIVO ACTUAL: $${totalBalance.toFixed(2)}
+ANOMALÍAS ACTIVAS DETECTADAS: ${anomalyCount} (Reales alertas configuradas en transacciones!)
+REGLAS FISCALES PENDIENTES DE REVISIÓN: ${pendingTaxesCount || 0}`;
+
+    const reply = await advisor.generateResponse(orgId, message, history, contextSummary.trim());
 
     // 4. Persistence (Save to DB)
     if (sessionId) {
