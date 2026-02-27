@@ -226,7 +226,15 @@ export class ReconciliationEngine {
                 .from('comprobantes')
                 .update({
                     estado: 'pagado',
-                    monto_pendiente: 0 // Assume exact for subset sum
+                    monto_pendiente: 0, // Assume exact for subset sum
+                    metadata: {
+                        ...(inv.metadata || {}),
+                        reconciled_v2: true,
+                        reconciled_at: new Date().toISOString(),
+                        transaccion_id: transaction.id,
+                        banco_transaccion: transaction.banco,
+                        desc_transaccion: transaction.descripcion
+                    }
                 })
                 .eq('id', inv.id);
 

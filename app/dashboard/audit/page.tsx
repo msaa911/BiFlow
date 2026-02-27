@@ -43,6 +43,9 @@ interface AuditFinding {
         monto_esperado?: number
         monto_real?: number
         notas?: string
+        is_bec?: boolean
+        cbu_detectado?: string
+        cuits_conocidos?: string[]
     }
     created_at: string
     transaccion: {
@@ -342,6 +345,22 @@ export default function AuditCenterPage() {
                                                 </p>
                                             </div>
                                         </div>
+
+                                        {finding.detalle.is_bec && (
+                                            <div className="mt-4 bg-red-950/30 border border-red-900/50 rounded-xl p-4 flex gap-3">
+                                                <ShieldAlert className="h-5 w-5 text-red-500 shrink-0" />
+                                                <div className="space-y-1">
+                                                    <h5 className="font-bold tracking-widest text-red-500 text-sm uppercase">¡ALERTA DE FRAUDE BEC DETECTADA!</h5>
+                                                    <div className="text-red-400/90 text-xs leading-relaxed">
+                                                        Esta transacción involucra el CUIT de un proveedor conocido pero un <strong className="text-red-400">CBU desconocido</strong> para esa CUIT.
+                                                        <div className="mt-2 space-y-0.5">
+                                                            <p>CBU Detectado: <span className="font-mono bg-black/20 px-1 py-0.5 rounded text-white">{finding.detalle.cbu_detectado}</span></p>
+                                                            <p>CBU Conocidos: <span className="font-mono bg-black/20 px-1 py-0.5 rounded">{finding.detalle.cuits_conocidos?.length ? finding.detalle.cuits_conocidos.join(', ') : 'Ninguno registrado'}</span></p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="mt-6 pt-4 border-t border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                             <div className="flex items-center gap-6">

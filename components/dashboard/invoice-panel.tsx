@@ -212,10 +212,22 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     {inv.monto_pendiente > 0 ? (
                                         new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)
                                     ) : (
-                                        <div className="flex items-center justify-end gap-1">
-                                            <CheckCircle2 className="w-3 h-3" />
-                                            {view === 'AR' ? 'COBRADO' : 'PAGADO'}
-                                        </div>
+                                        inv.metadata?.reconciled_v2 ? (
+                                            <div className="flex flex-col items-end gap-1">
+                                                <div className="flex items-center justify-end gap-1 text-emerald-400 text-xs">
+                                                    <CheckCircle2 className="w-3 h-3" />
+                                                    AUTO-CONCILIADO
+                                                </div>
+                                                <span className="text-[9px] text-gray-500 font-normal max-w-[150px] truncate" title={inv.metadata?.desc_transaccion}>
+                                                    {inv.metadata?.banco_transaccion ? `${inv.metadata.banco_transaccion} • ` : ''} {inv.metadata?.desc_transaccion || 'Transacción Bancaria'}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-end gap-1 text-emerald-400 text-xs font-bold">
+                                                <CheckCircle2 className="w-3 h-3" />
+                                                {view === 'AR' ? 'COBRADO' : 'PAGADO'}
+                                            </div>
+                                        )
                                     )}
                                 </td>
                                 <td className="px-6 py-4">
