@@ -103,7 +103,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 }`}
                         >
                             <TrendingUp className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
-                            {reconciling ? 'Conciliando...' : 'Conciliación Automática'}
+                            {reconciling ? 'Cruzando Datos...' : '✨ Cruzar Extractos vs Facturas'}
                         </button>
                     </div>
                 </Card>
