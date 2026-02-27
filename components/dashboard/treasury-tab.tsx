@@ -84,20 +84,20 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
                 <Card className="p-6 bg-gray-900 border-gray-800">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col gap-4 h-full justify-center">
                         <div>
-                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <Wallet className="w-6 h-6 text-emerald-400" />
+                            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Wallet className="w-5 h-5 text-emerald-400 shrink-0" />
                                 Automatización Financiera
                             </h1>
-                            <p className="text-gray-400 text-sm mt-1">
+                            <p className="text-gray-400 text-xs mt-1">
                                 Cruce de extractos vs Ingresos/Egresos
                             </p>
                         </div>
                         <button
                             onClick={handleReconcile}
                             disabled={reconciling}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg ${reconciling
+                            className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-md ${reconciling
                                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
                                 }`}
