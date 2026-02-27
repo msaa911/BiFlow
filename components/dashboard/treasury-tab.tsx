@@ -88,10 +88,10 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                         <div>
                             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                                 <Wallet className="w-6 h-6 text-emerald-400" />
-                                Treasury Hub
+                                Centro de Inteligencia Financiera
                             </h1>
                             <p className="text-gray-400 text-sm mt-1">
-                                Gestión profesional de Ventas (A Cobrar) y Compras (A Pagar).
+                                Conciliación automatizada de tus flujos de cobros y pagos.
                             </p>
                         </div>
                         <button
@@ -103,7 +103,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 }`}
                         >
                             <TrendingUp className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
-                            {reconciling ? 'Cruzando Datos...' : '✨ Cruzar Extractos vs Facturas'}
+                            {reconciling ? 'Cruzando Datos...' : '✨ Cruzar Extractos vs Ingresos/Egresos'}
                         </button>
                     </div>
                 </Card>
