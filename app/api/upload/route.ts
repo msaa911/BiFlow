@@ -698,10 +698,27 @@ function parsePDF(text: string, orgId: string) {
 }
 
 function normalizeDate(str: string) {
-    const p = str.split(/[/-]/)
-    if (p.length !== 3) return null
-    let y = p[2].length === 2 ? `20${p[2]}` : p[2]
-    return `${y}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`
+    if (!str) return null;
+    let clean = String(str).replace(/[^\d/.-]/g, '');
+
+    // Soporte para YYYYMMDD
+    if (clean.length === 8 && /^\d{8}$/.test(clean)) {
+        return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}`;
+    }
+
+    const parts = clean.split(/[/-]/).filter(p => p.length > 0);
+    if (parts.length === 3) {
+        let [p1, p2, p3] = parts;
+        // Caso 1: AAAA-MM-DD
+        if (p1.length === 4) return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+
+        // Caso 2: DD/MM/AAAA o DD-MM-AA
+        if (p1.length <= 2 && p3.length >= 2) {
+            if (p3.length === 2) p3 = `20${p3}`;
+            return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+        }
+    }
+    return null;
 }
 
 async function getOrgId(supabase: any, userId: string) {

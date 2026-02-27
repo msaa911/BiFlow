@@ -436,7 +436,7 @@ export class UniversalTranslator {
 
     private static normalizeDate(raw: string): string | null {
         if (!raw) return null;
-        const clean = String(raw).replace(/[^\d/.-]/g, ''); // Limpiar caracteres invisibles
+        let clean = String(raw).replace(/[^\d/.-]/g, ''); // Limpiar caracteres invisibles
 
         // Soporte para YYYYMMDD (Sin separadores)
         if (clean.length === 8 && /^\d{8}$/.test(clean)) {
@@ -447,10 +447,12 @@ export class UniversalTranslator {
 
         if (parts.length === 3) {
             let [p1, p2, p3] = parts;
-            // Soporte YYYY-MM-DD
+            // Caso 1: AAAA-MM-DD (Estándar ISO)
             if (p1.length === 4) return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
-            // Soporte DD-MM-YY o DD-MM-YYYY
-            if (p1.length < 3 && p3.length >= 2) {
+
+            // Caso 2: DD/MM/AAAA o DD/MM/AA (Formato Argentino/Latinoamericano)
+            if (p1.length <= 2 && p3.length >= 2) {
+                // Si el año viene en 2 dígitos, asumimos 2000+
                 if (p3.length === 2) p3 = `20${p3}`;
                 return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
             }

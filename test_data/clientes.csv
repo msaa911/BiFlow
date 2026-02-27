@@ -1,0 +1,4 @@
+CUIT,Razón Social,Categoría,Dirección,Localidad,Departamento,Provincia,Teléfono 1,Teléfono 2,Email,CBU
+30-11111111-1,Tech Solutions SAS,Cliente,Av. Corrientes 1234 Piso 5,Ciudad Autónoma de Buenos Aires,Comuna 1,Ciudad Autónoma de Buenos Aires,1145678901,1145678902,pagos@techsolutions.com.ar,0140000000000000000001
+30-22222222-2,Innovaciones Digitales SRL,Cliente,Florida 860 Of. 12,Córdoba,Capital,Córdoba,1123456780,1123456781,administracion@innovaciones.srl,0720000000000000000002
+33-33333333-3,Constructora del Sur SA,Cliente,Av. Belgrano 500,Rosario,Rosario,Santa Fe,1198765432,,tesoreria@constructoradelsur.com.ar,0170000000000000000003
