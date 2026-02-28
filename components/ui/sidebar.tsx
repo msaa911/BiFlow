@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet } from 'lucide-react'
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Finanzas', href: '/dashboard/treasury?tab=cashflow', icon: Wallet },
+    { name: 'Finanzas', href: '/dashboard/treasury', icon: Wallet },
     { name: 'Cargar Archivos', href: '/dashboard/upload', icon: FileText },
     { name: 'Historial', href: '/dashboard/history', icon: Clock },
     { name: 'Transacciones Bancarias', href: '/dashboard/transactions', icon: List },
@@ -17,6 +17,17 @@ const navigation = [
 
 export function Sidebar({ userEmail }: { userEmail: string }) {
     const pathname = usePathname()
+    const router = useRouter()
+
+    const handleNavClick = (e: React.MouseEvent, item: typeof navigation[0]) => {
+        // For Finanzas: always force navigation to cashflow tab, even if already on treasury
+        if (item.href === '/dashboard/treasury') {
+            e.preventDefault()
+            // Use a unique timestamp to force Next.js to treat this as a new navigation
+            const t = Date.now()
+            router.push(`/dashboard/treasury?tab=cashflow&_t=${t}`)
+        }
+    }
 
     return (
         <aside className="hidden md:flex flex-col w-64 bg-gray-900 border-r border-gray-800 h-screen sticky top-0">
@@ -33,16 +44,12 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
 
             <nav className="flex-1 px-4 space-y-1">
                 {navigation.map((item) => {
-                    const isActive = pathname === item.href.split('?')[0]
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
                     return (
                         <Link
                             key={item.name}
                             href={item.href}
-                            onClick={() => {
-                                if (item.href.includes('/dashboard/treasury')) {
-                                    window.dispatchEvent(new CustomEvent('biflow-reset-treasury'));
-                                }
-                            }}
+                            onClick={(e) => handleNavClick(e, item)}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
                                 ? 'bg-emerald-500/10 text-emerald-400'
                                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'

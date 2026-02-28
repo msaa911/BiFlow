@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { InvoicePanel } from './invoice-panel'
 import { Card } from '@/components/ui/card'
@@ -21,11 +20,8 @@ interface TreasuryTabProps {
 }
 
 export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
-    const router = useRouter()
-    const pathname = usePathname()
-    const searchParams = useSearchParams()
-
-    // Active tab state (Controlled for manual resets)
+    // Active tab state - always starts on 'cashflow'
+    // Re-mount is forced by page.tsx key={componentKey} on sidebar navigation
     const [activeTab, setActiveTab] = useState('cashflow')
     const [invoices, setInvoices] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
@@ -96,22 +92,9 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         fetchData()
     }, [orgId])
 
-    useEffect(() => {
-        const handleReset = () => {
-            setActiveTab('cashflow')
-        }
-        window.addEventListener('biflow-reset-treasury', handleReset)
-
-        // Initial sync with URL
-        const tab = searchParams.get('tab')
-        if (tab) setActiveTab(tab)
-
-        return () => window.removeEventListener('biflow-reset-treasury', handleReset)
-    }, [searchParams])
-
+    // Simple tab change - no URL sync needed since page.tsx handles re-mount via key
     const handleTabChange = (value: string) => {
         setActiveTab(value)
-        router.push(`${pathname}?tab=${value}`, { scroll: false })
     }
 
     const handleReconcile = async () => {
@@ -217,7 +200,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 </Card>
             </div>
 
-            <Tabs key={activeTab} value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <TabsList className="bg-gray-900 border border-gray-800 p-1 rounded-xl mb-6">
                     <TabsTrigger value="cashflow" className="rounded-lg">
                         <Calculator className="w-3.5 h-3.5 mr-2" />

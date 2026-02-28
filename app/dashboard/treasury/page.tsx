@@ -22,9 +22,10 @@ export default async function TreasuryPage({
     const orgId = await getOrgId(supabase, user.id)
     const { data: orgConfig } = await supabase.from('configuracion_empresa').select('colchon_liquidez').eq('organization_id', orgId).single()
 
-    // Key calculation to force re-render when search parameters change (sidebar navigation)
-    // This solves the "Navegación Fantasma" issue.
-    const activeTab = (searchParams?.tab as string) || 'cashflow'
+    // Use timestamp + tab as key to force complete re-mount on sidebar click
+    const timestamp = (searchParams?._t as string) || '0'
+    const tab = (searchParams?.tab as string) || 'cashflow'
+    const componentKey = `treasury-${tab}-${timestamp}`
 
     return (
         <div className="space-y-8">
@@ -39,7 +40,7 @@ export default async function TreasuryPage({
                 </div>
             }>
                 <TreasuryTab
-                    key={activeTab}
+                    key={componentKey}
                     orgId={orgId}
                     liquidityCushion={orgConfig?.colchon_liquidez || 0}
                 />
