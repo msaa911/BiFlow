@@ -308,7 +308,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                             Factura (Original)
                                         </SelectItem>
                                         <SelectItem value={type.includes('venta') || type.includes('ingreso') ? 'ingreso_vario' : 'egreso_vario'} className="focus:bg-emerald-600 focus:text-white cursor-pointer">
-                                            {type.includes('venta') || type.includes('ingreso') ? 'Ingreso Vario' : 'Egreso Vario'}
+                                            {type.includes('venta') || type.includes('ingreso') ? 'Ingresos Varios' : 'Egresos Varios'}
                                         </SelectItem>
                                         <SelectItem value="nota_credito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Crédito</SelectItem>
                                         <SelectItem value="nota_debito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Débito</SelectItem>
