@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -48,6 +48,32 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
     const [availableInvoices, setAvailableInvoices] = useState<any[]>([])
     const [loadingInvoices, setLoadingInvoices] = useState(false)
 
+    // Quick Load States
+    const [isQuickLoading, setIsQuickLoading] = useState(false)
+    const [entities, setEntities] = useState<any[]>([])
+    const [loadingEntities, setLoadingEntities] = useState(false)
+    const [searchEntity, setSearchEntity] = useState('')
+    const [selectedEntityId, setSelectedEntityId] = useState('')
+    const [invoiceNumber, setInvoiceNumber] = useState('')
+
+    const fetchEntities = async () => {
+        setLoadingEntities(true)
+        try {
+            const { data, error } = await supabase
+                .from('entidades')
+                .select('*')
+                .eq('organization_id', (transactions[0] as any)?.organization_id)
+                .order('razon_social', { ascending: true })
+
+            if (error) throw error
+            setEntities(data || [])
+        } catch (error) {
+            console.error('Error fetching entities:', error)
+        } finally {
+            setLoadingEntities(false)
+        }
+    }
+
     const fetchInvoices = async (txToMatch: Transaction) => {
         setLoadingInvoices(true)
         try {
@@ -69,6 +95,105 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
             toast.error('Error al cargar comprobantes pendientes')
         } finally {
             setLoadingInvoices(false)
+        }
+    }
+
+    const handleQuickCreate = async () => {
+        if (!selectedTx || !selectedEntityId || !invoiceNumber) {
+            toast.error('Completa los datos requeridos')
+            return
+        }
+
+        setIsSubmitting(true)
+        try {
+            const orgId = (transactions[0] as any)?.organization_id
+            const isPago = selectedTx.monto < 0
+            const tipoComprobante = isPago ? 'factura_compra' : 'factura_venta'
+            const tipoTesoreria = isPago ? 'pago' : 'cobro'
+
+            // 1. Create Comprobante
+            const { data: comprobante, error: compError } = await supabase
+                .from('comprobantes')
+                .insert({
+                    organization_id: orgId,
+                    tipo: tipoComprobante,
+                    numero: invoiceNumber,
+                    cuit_socio: entities.find(e => e.id === selectedEntityId)?.cuit || '',
+                    razon_social_socio: entities.find(e => e.id === selectedEntityId)?.razon_social || '',
+                    fecha_emision: selectedTx.fecha,
+                    fecha_vencimiento: selectedTx.fecha,
+                    monto_total: Math.abs(selectedTx.monto),
+                    monto_pendiente: 0,
+                    estado: 'pagado'
+                })
+                .select()
+                .single()
+
+            if (compError) throw compError
+
+            // 2. Create Movimiento Tesoreria (OP/Recibo)
+            const { data: movimiento, error: movError } = await supabase
+                .from('movimientos_tesoreria')
+                .insert({
+                    organization_id: orgId,
+                    entidad_id: selectedEntityId,
+                    tipo: tipoTesoreria,
+                    fecha: selectedTx.fecha,
+                    monto_total: Math.abs(selectedTx.monto),
+                    observaciones: `Carga rápida desde Cuarentena: ${selectedTx.descripcion}`
+                })
+                .select()
+                .single()
+
+            if (movError) throw movError
+
+            // 3. Create Application (Link Invoice to OP)
+            const { error: appError } = await supabase
+                .from('aplicaciones_pago')
+                .insert({
+                    movimiento_id: movimiento.id,
+                    comprobante_id: comprobante.id,
+                    monto_aplicado: Math.abs(selectedTx.monto)
+                })
+
+            if (appError) throw appError
+
+            // 4. Create Instrument (The bank movement itself)
+            const { error: insError } = await supabase
+                .from('instrumentos_pago')
+                .insert({
+                    movimiento_id: movimiento.id,
+                    metodo: 'transferencia',
+                    monto: Math.abs(selectedTx.monto),
+                    fecha_disponibilidad: selectedTx.fecha,
+                    referencia: selectedTx.descripcion,
+                    estado: 'acreditado'
+                })
+
+            if (insError) throw insError
+
+            // 5. Update Bank Transaction
+            const { error: txError } = await supabase
+                .from('transacciones')
+                .update({
+                    comprobante_id: comprobante.id,
+                    estado: 'conciliado'
+                })
+                .eq('id', selectedTx.id)
+
+            if (txError) throw txError
+
+            toast.success(`${isPago ? 'Orden de Pago' : 'Recibo'} y Factura creados y conciliados`)
+            setIsQuickLoading(false)
+            setIsConciliating(false)
+            setInvoiceNumber('')
+            setSelectedEntityId('')
+            if (onRefresh) onRefresh()
+        } catch (error) {
+            console.error('Error in quick create:', error)
+            toast.error('Error al realizar la carga rápida')
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -372,13 +497,132 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                         </div>
                     </div>
 
-                    <DialogFooter>
+                    <DialogFooter className="flex justify-between items-center w-full">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsConciliating(false)
+                                setIsQuickLoading(true)
+                                fetchEntities()
+                            }}
+                            className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+                        >
+                            <PlusCircle className="w-4 h-4 mr-2" />
+                            Carga Rápida (Documentar Nuevo)
+                        </Button>
                         <Button
                             variant="ghost"
                             onClick={() => setIsConciliating(false)}
                             className="text-gray-400 hover:text-white"
                         >
                             Cerrar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Quick Load Dialog */}
+            <Dialog open={isQuickLoading} onOpenChange={setIsQuickLoading}>
+                <DialogContent className="max-w-xl bg-gray-950 border-gray-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-white flex items-center gap-2">
+                            <PlusCircle className="w-5 h-5 text-emerald-500" />
+                            Carga Rápida de Comprobante
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            Crea la factura y su {selectedTx?.monto ? (selectedTx.monto < 0 ? 'Orden de Pago' : 'Recibo') : 'documento'} en un solo paso.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedTx && (
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 my-2 flex justify-between items-center">
+                            <div>
+                                <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider mb-1">Monto a Documentar</p>
+                                <p className="text-sm font-bold text-white truncate max-w-[300px]">{selectedTx.descripcion}</p>
+                            </div>
+                            <p className={`text-xl font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="space-y-4 py-4">
+                        {/* Step 1: Select Entity */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">
+                                {selectedTx?.monto && selectedTx.monto < 0 ? 'Proveedor' : 'Cliente'}
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por nombre o CUIT..."
+                                    value={searchEntity}
+                                    onChange={(e) => setSearchEntity(e.target.value)}
+                                    className="w-full bg-gray-950 border border-gray-800 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                {loadingEntities ? (
+                                    <div className="py-8 text-center text-gray-600">
+                                        <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                                        Cargando agenda...
+                                    </div>
+                                ) : entities.filter(e =>
+                                    e.razon_social.toLowerCase().includes(searchEntity.toLowerCase()) ||
+                                    e.cuit.includes(searchEntity)
+                                ).slice(0, 10).map(entity => (
+                                    <button
+                                        key={entity.id}
+                                        onClick={() => setSelectedEntityId(entity.id)}
+                                        className={`flex items-center justify-between p-3 rounded-lg border text-left transition-all ${selectedEntityId === entity.id
+                                            ? 'border-emerald-500 bg-emerald-500/10'
+                                            : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
+                                            }`}
+                                    >
+                                        <div>
+                                            <p className="text-sm font-bold text-white">{entity.razon_social}</p>
+                                            <p className="text-[10px] text-gray-500">{entity.cuit}</p>
+                                        </div>
+                                        {selectedEntityId === entity.id && <Check className="w-4 h-4 text-emerald-500" />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Step 2: Invoice Number */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Número de Factura</label>
+                            <input
+                                type="text"
+                                placeholder="Ej: 0001-00001234"
+                                value={invoiceNumber}
+                                onChange={(e) => setInvoiceNumber(e.target.value)}
+                                className="w-full bg-gray-950 border border-gray-800 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsQuickLoading(false)}
+                            className="text-gray-400"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleQuickCreate}
+                            disabled={isSubmitting || !selectedEntityId || !invoiceNumber}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                        >
+                            {isSubmitting ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                            )}
+                            Confirmar Documentación
                         </Button>
                     </DialogFooter>
                 </DialogContent>
