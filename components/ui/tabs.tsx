@@ -3,8 +3,16 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-const Tabs = ({ children, defaultValue, className }: any) => {
-    const [activeTab, setActiveTab] = React.useState(defaultValue)
+const Tabs = ({ children, defaultValue, value, onValueChange, className }: any) => {
+    const [internalTab, setInternalTab] = React.useState(defaultValue || value || '')
+
+    // Use controlled value if provided, otherwise use internal state
+    const activeTab = value !== undefined ? value : internalTab
+    const setActiveTab = (newValue: string) => {
+        if (onValueChange) onValueChange(newValue)
+        if (value === undefined) setInternalTab(newValue)
+    }
+
     return (
         <div className={cn('w-full', className)}>
             {React.Children.map(children, (child) => {
