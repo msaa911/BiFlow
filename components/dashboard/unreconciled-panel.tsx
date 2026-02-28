@@ -299,7 +299,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                         variant="outline"
                         size="sm"
                         onClick={() => setShowAll(!showAll)}
-                        className={`border-gray-700 font-bold text-[10px] uppercase transition-all ${showAll ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'text-gray-400 hover:bg-gray-800'}`}
+                        className={`font-bold text-[10px] uppercase transition-all ${showAll ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-gray-800/50 text-gray-200 border-gray-700 hover:bg-gray-700'}`}
                     >
                         {showAll ? 'Viendo Todo' : 'Ver Solo Pendientes'}
                     </Button>
@@ -352,11 +352,11 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.monto)}
                                         </p>
                                         {tx.estado === 'conciliado' ? (
-                                            <Badge className="text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border-none px-2 mt-1">
+                                            <Badge className="text-[10px] font-bold uppercase bg-emerald-500/20 !text-emerald-400 border-none px-2 mt-1">
                                                 Conciliado
                                             </Badge>
                                         ) : (
-                                            <Badge variant="outline" className="text-[10px] font-bold uppercase border-amber-500/50 text-amber-400 bg-amber-500/10 px-2 mt-1 backdrop-blur-sm">
+                                            <Badge variant="outline" className="text-[10px] font-bold uppercase border-amber-500/50 !text-amber-400 bg-amber-500/10 px-2 mt-1 backdrop-blur-sm">
                                                 Pendiente
                                             </Badge>
                                         )}
