@@ -48,12 +48,11 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
     const [availableInvoices, setAvailableInvoices] = useState<any[]>([])
     const [loadingInvoices, setLoadingInvoices] = useState(false)
 
-    const fetchInvoices = async () => {
-        if (!selectedTx) return
+    const fetchInvoices = async (txToMatch: Transaction) => {
         setLoadingInvoices(true)
         try {
             // Filter by type: positive amount -> sales (venta), negative -> purchases (compra)
-            const typeFilter = selectedTx.monto > 0 ? 'factura_venta' : 'factura_compra'
+            const typeFilter = txToMatch.monto > 0 ? 'factura_venta' : 'factura_compra'
 
             const { data, error } = await supabase
                 .from('comprobantes')
@@ -227,7 +226,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                             onClick={() => {
                                                 setSelectedTx(tx)
                                                 setIsConciliating(true)
-                                                setTimeout(fetchInvoices, 0) // Fetch after state update
+                                                fetchInvoices(tx) // Pass directly to avoid state lag
                                             }}
                                         >
                                             <CheckCircle2 className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
