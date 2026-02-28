@@ -29,11 +29,69 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     const [searchTerm, setSearchTerm] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isPaymentWizardOpen, setIsPaymentWizardOpen] = useState(false)
+    const [isReconcileModalOpen, setIsReconcileModalOpen] = useState(false)
     const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
     const [importData, setImportData] = useState<any[]>([])
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
+    const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
+    const [loadingTransactions, setLoadingTransactions] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
+
+    const fetchPendingTransactions = async (inv: any) => {
+        setLoadingTransactions(true)
+        try {
+            // Buscamos transacciones pendientes que coincidan en monto o sean del mismo signo
+            const { data, error } = await supabase
+                .from('transacciones')
+                .select('*')
+                .eq('organization_id', orgId)
+                .eq('estado', 'pendiente')
+                .order('fecha', { ascending: false })
+
+            if (error) throw error
+            setPendingTransactions(data || [])
+        } catch (error) {
+            console.error('Error fetching transactions:', error)
+            toast.error('Error al cargar transacciones bancarias')
+        } finally {
+            setLoadingTransactions(false)
+        }
+    }
+
+    const handleConciliateReverse = async (txId: string) => {
+        if (!selectedInvoice) return
+
+        try {
+            // Actualizar transacción
+            const { error: txError } = await supabase
+                .from('transacciones')
+                .update({
+                    comprobante_id: selectedInvoice.id,
+                    estado: 'conciliado'
+                })
+                .eq('id', txId)
+
+            if (txError) throw txError
+
+            // Actualizar comprobante
+            const { error: invError } = await supabase
+                .from('comprobantes')
+                .update({
+                    estado: 'pagado'
+                })
+                .eq('id', selectedInvoice.id)
+
+            if (invError) throw invError
+
+            toast.success('Factura conciliada con éxito')
+            setIsReconcileModalOpen(false)
+            onRefresh()
+        } catch (error) {
+            console.error('Error in reverse conciliation:', error)
+            toast.error('Error al realizar la conciliación')
+        }
+    }
 
     const handleDelete = async (id: string) => {
         if (!confirm('¿Seguro que desea eliminar este comprobante?')) return
@@ -244,6 +302,19 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                             {view === 'AR' ? 'Cobrar' : 'Pagar'}
                                         </Button>
                                         <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10 font-bold"
+                                            disabled={inv.monto_pendiente <= 0}
+                                            onClick={() => {
+                                                setSelectedInvoice(inv)
+                                                setIsReconcileModalOpen(true)
+                                                fetchPendingTransactions(inv)
+                                            }}
+                                        >
+                                            Conciliar
+                                        </Button>
+                                        <Button
                                             variant="ghost"
                                             size="icon"
                                             className="h-8 w-8 text-gray-500 hover:text-white"
@@ -376,6 +447,86 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 tipo={view === 'AR' ? 'cobro' : 'pago'}
                 onSuccess={onRefresh}
             />
+
+            <Dialog open={isReconcileModalOpen} onOpenChange={setIsReconcileModalOpen}>
+                <DialogContent className="max-w-2xl bg-gray-950 border-gray-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">Conciliar con Banco</DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            Selecciona el movimiento bancario que cancela este comprobante.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedInvoice && (
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 my-2 flex justify-between items-center">
+                            <div>
+                                <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-1">Comprobante BiFlow</p>
+                                <p className="text-sm font-bold text-white leading-tight">{selectedInvoice.razon_social_socio}</p>
+                                <p className="text-[10px] text-gray-500">{selectedInvoice.tipo} • {selectedInvoice.numero}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-lg font-black text-white">
+                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedInvoice.monto_total)}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="py-4">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Movimientos Bancarios Pendientes</p>
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            {loadingTransactions ? (
+                                <div className="py-12 text-center text-gray-500">
+                                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                                    Buscando transacciones...
+                                </div>
+                            ) : pendingTransactions.length > 0 ? (
+                                pendingTransactions.map(tx => {
+                                    const diff = Math.abs(selectedInvoice?.monto_total || 0) === Math.abs(tx.monto)
+                                    return (
+                                        <button
+                                            key={tx.id}
+                                            onClick={() => handleConciliateReverse(tx.id)}
+                                            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group ${diff ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={`p-2 rounded-lg ${tx.monto < 0 ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                                    {tx.monto < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors truncate max-w-[300px]">{tx.descripcion}</p>
+                                                    <p className="text-[10px] text-gray-500">{new Date(tx.fecha).toLocaleDateString('es-AR')}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className={`text-sm font-black ${tx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.monto)}
+                                                </p>
+                                                {diff && <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-1.5 rounded uppercase">Monto Exacto</span>}
+                                            </div>
+                                        </button>
+                                    )
+                                })
+                            ) : (
+                                <div className="py-12 text-center text-gray-600 border border-dashed border-gray-800 rounded-xl">
+                                    No hay movimientos bancarios pendientes.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsReconcileModalOpen(false)}
+                            className="text-gray-400 hover:text-white"
+                        >
+                            Cerrar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     )
 }

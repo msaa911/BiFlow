@@ -30,6 +30,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [showAll, setShowAll] = useState(false)
     const supabase = createClient()
 
     const categories = [
@@ -233,10 +234,12 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
         }
     }
 
-    const filtered = transactions.filter(t =>
-        t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.monto.toString().includes(searchTerm)
-    )
+    const filtered = transactions
+        .filter(t => showAll || t.estado === 'pendiente')
+        .filter(t =>
+            t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            t.monto.toString().includes(searchTerm)
+        )
 
     const handleExport = () => {
         const dataToExport = filtered.map(t => ({
@@ -291,15 +294,25 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                     </CardTitle>
                     <p className="text-xs text-gray-400 mt-1">Movimientos bancarios sin respaldo documental identificado.</p>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExport}
-                    className="border-gray-700 text-gray-300 hover:bg-gray-800 flex items-center gap-2"
-                >
-                    <FileDown className="w-4 h-4" />
-                    Exportar Excel
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAll(!showAll)}
+                        className={`border-gray-700 font-bold text-[10px] uppercase transition-all ${showAll ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'text-gray-400 hover:bg-gray-800'}`}
+                    >
+                        {showAll ? 'Viendo Todo' : 'Ver Solo Pendientes'}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExport}
+                        className="border-gray-700 text-gray-300 hover:bg-gray-800 flex items-center gap-2"
+                    >
+                        <FileDown className="w-4 h-4" />
+                        Exportar Excel
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-6">
@@ -315,16 +328,16 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                     </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                     {filtered.length > 0 ? (
                         filtered.map(tx => (
-                            <div key={tx.id} className="group flex items-center justify-between p-4 bg-gray-950 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                            <div key={tx.id} className={`group flex items-center justify-between p-4 bg-gray-950 border rounded-xl transition-all ${tx.estado === 'conciliado' ? 'border-emerald-500/20 opacity-70' : 'border-gray-800 hover:border-gray-700'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`p-2 rounded-lg ${tx.monto < 0 ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                                         {tx.monto < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-sm font-bold text-white truncate max-w-[400px]">{tx.descripcion}</p>
+                                        <p className="text-sm font-bold text-white truncate max-w-[350px]">{tx.descripcion}</p>
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className="text-[10px] text-gray-500">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
                                             <span className="text-[10px] text-gray-500">•</span>
@@ -338,37 +351,52 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                         <p className={`text-sm font-black ${tx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.monto)}
                                         </p>
-                                        <Badge variant="outline" className="text-[10px] font-bold uppercase border-gray-700 text-gray-400 bg-gray-800/40 px-2 mt-1 backdrop-blur-sm">
-                                            Pendiente
-                                        </Badge>
+                                        {tx.estado === 'conciliado' ? (
+                                            <Badge className="text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border-none px-2 mt-1">
+                                                Conciliado
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="text-[10px] font-bold uppercase border-amber-500/50 text-amber-400 bg-amber-500/10 px-2 mt-1 backdrop-blur-sm">
+                                                Pendiente
+                                            </Badge>
+                                        )}
                                     </div>
 
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-9 px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 flex items-center gap-2 bg-emerald-500/5 group/btn"
-                                            onClick={() => {
-                                                setSelectedTx(tx)
-                                                setIsConciliating(true)
-                                                fetchInvoices(tx) // Pass directly to avoid state lag
-                                            }}
-                                        >
-                                            <CheckCircle2 className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
-                                            <span className="text-[10px] font-bold uppercase">Conciliar</span>
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-9 px-3 border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 flex items-center gap-2 bg-blue-500/5"
-                                            onClick={() => {
-                                                setSelectedTx(tx)
-                                                setIsCategorizing(true)
-                                            }}
-                                        >
-                                            <Tag className="w-3.5 h-3.5" />
-                                            <span className="text-[10px] font-bold uppercase">Categorizar</span>
-                                        </Button>
+                                    <div className="flex gap-2 min-w-[200px] justify-end">
+                                        {tx.estado === 'pendiente' && (
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-9 px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 flex items-center gap-2 bg-emerald-500/5 group/btn"
+                                                    onClick={() => {
+                                                        setSelectedTx(tx)
+                                                        setIsConciliating(true)
+                                                        fetchInvoices(tx)
+                                                    }}
+                                                >
+                                                    <CheckCircle2 className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
+                                                    <span className="text-[10px] font-bold uppercase">Conciliar</span>
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-9 px-3 border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 flex items-center gap-2 bg-blue-500/5"
+                                                    onClick={() => {
+                                                        setSelectedTx(tx)
+                                                        setIsCategorizing(true)
+                                                    }}
+                                                >
+                                                    <Tag className="w-3.5 h-3.5" />
+                                                    <span className="text-[10px] font-bold uppercase">Categorizar</span>
+                                                </Button>
+                                            </>
+                                        )}
+                                        {tx.estado === 'conciliado' && (
+                                            <div className="h-9 flex items-center text-emerald-500/50">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
