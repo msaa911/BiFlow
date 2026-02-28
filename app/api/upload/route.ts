@@ -609,7 +609,7 @@ function parseTreasuryExcelServer(buffer: Buffer, orgId: string, type: 'cobro' |
             transactions.push({
                 fecha,
                 monto,
-                numero,
+                numero: numero || null,
                 concepto: observaciones || razonSocial,
                 razon_social: razonSocial,
                 vencimiento: disponibilidad,

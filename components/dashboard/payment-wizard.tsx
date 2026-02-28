@@ -56,6 +56,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
     const [instruments, setInstruments] = useState<any[]>([
         { id: '1', metodo: 'efectivo', monto: 0, fecha_disponibilidad: new Date().toISOString().split('T')[0] }
     ])
+    const [numero, setNumero] = useState('')
 
     useEffect(() => {
         if (step === 2 && instruments.length === 1 && instruments[0].monto === 0) {
@@ -143,6 +144,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                     organization_id: orgId,
                     entidad_id: entidadId,
                     tipo: tipo,
+                    numero: numero || null,
                     monto_total: totalInstruments,
                     fecha: new Date().toISOString().split('T')[0],
                     observaciones: `Generado desde el asistente de ${tipo}`
@@ -234,14 +236,26 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
             <DialogContent className="max-w-4xl bg-gray-950 border-gray-800 text-white min-h-[600px] flex flex-col p-0 overflow-hidden">
                 <div className="p-6 border-b border-gray-800 bg-emerald-500/5">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                        <div className="flex-1">
+                            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
                                 {tipo === 'cobro' ? 'Nuevo Recibo' : 'Nueva Orden de Pago'}
-                                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                <Badge className="bg-emerald-600 text-white font-bold border-none px-3 py-1">
                                     Fase {step} de 2
                                 </Badge>
                             </DialogTitle>
-                            <p className="text-sm text-gray-500 mt-1">{razonSocial}</p>
+                            <div className="flex items-center gap-4 mt-2">
+                                <p className="text-sm text-gray-500 font-medium">{razonSocial}</p>
+                                <div className="h-4 w-px bg-gray-800" />
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-[10px] uppercase text-gray-400 font-bold whitespace-nowrap">Nro (Opcional)</Label>
+                                    <Input
+                                        placeholder={tipo === 'cobro' ? 'Ej: R-001' : 'Ej: OP-001'}
+                                        value={numero}
+                                        onChange={(e) => setNumero(e.target.value)}
+                                        className="h-8 w-36 bg-gray-950 border-gray-800 text-xs font-mono py-1 focus:ring-emerald-500/20 focus:border-emerald-500/50"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

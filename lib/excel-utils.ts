@@ -397,7 +397,7 @@ export async function parseTreasuryExcel(file: File, type: 'cobro' | 'pago'): Pr
                     results.push({
                         id: `treasury-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
                         fecha: fecha,
-                        numero: numero || (type === 'cobro' ? 'REC-S/N' : 'OP-S/N'),
+                        numero: numero || null, // Si está vacío, el trigger asigna uno (RC-000001, etc)
                         tipo: type,
                         razon_social: razonSocial,
                         monto_total: monto,
