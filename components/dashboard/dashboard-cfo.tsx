@@ -22,6 +22,7 @@ interface DashboardCFOProps {
     overdraftLimit: number
     liquidityBuffer?: number
     projectionData?: DailyBalance[]
+    scoreHistory?: { score: number, fecha: string }[]
     apBatch?: { descripcion: string, monto: number, fecha: string }[]
 }
 
@@ -36,6 +37,7 @@ export function DashboardCFO({
     overdraftLimit,
     liquidityBuffer = 0,
     projectionData = [],
+    scoreHistory = [],
     apBatch = []
 }: DashboardCFOProps) {
     const [isStressTestOpen, setIsStressTestOpen] = useState(false)
@@ -113,6 +115,7 @@ export function DashboardCFO({
                     anomalyCount={anomalyCount}
                     recoveryPotential={recoveryPotential}
                     opportunityCost={opportunityCost}
+                    history={scoreHistory}
                     onOpenStressTest={() => setIsStressTestOpen(true)}
                 />
             </div>

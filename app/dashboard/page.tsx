@@ -86,20 +86,34 @@ export default async function DashboardPage() {
     const { data: taxItems } = await supabase.from('transacciones').select('*').eq('organization_id', orgId).contains('tags', ['impuesto_recuperable']).order('fecha', { ascending: false })
     const totalRecoverable = taxItems?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
     const { data: anomalies } = await supabase.from('transacciones').select('*').eq('organization_id', orgId).or('tags.cs.{"alerta_precio"},tags.cs.{"posible_duplicado"},tags.cs.{"riesgo_bec"}').order('fecha', { ascending: false })
-    const anomalyCount = anomalies?.length || 0
+    const { data: findings } = await supabase.from('hallazgos').select('*, transacciones(*), comprobantes(*)').eq('organization_id', orgId).eq('estado', 'detectado')
+
+    // Unified Anomaly Count (Transactions with tags + Findings not linked to those transactions)
+    const anomalyCount = (anomalies?.length || 0) + (findings?.filter(f => !f.transaccion_id).length || 0)
+
     const { count: quarantineCount } = await supabase.from('transacciones_revision').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('estado', 'pendiente')
     const { count: pendingTaxesCount } = await supabase.from('tax_intelligence_rules').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('estado', 'PENDIENTE')
-    const { data: findings } = await supabase.from('hallazgos').select('tipo, severidad').eq('organization_id', orgId).eq('estado', 'detectado')
-
-    let healthScore = 100
-    if (findings) findings.forEach(f => {
-        if (f.severidad === 'critical') healthScore -= 20
-        else if (f.severidad === 'high') healthScore -= 10
-        else healthScore -= 3
-    })
-    healthScore = Math.max(15, healthScore)
 
     const opportunityCost = LiquidityEngine.calculateOpportunityCost(totalBalance, 30, tnaEfectiva, liquidityCushion)
+
+    // 5. Calculate Multidimensional Health Score
+    const healthScore = LiquidityEngine.calculateHealthScore(
+        totalBalance,
+        monthlyExpenses,
+        overdraftLimit,
+        findings || [],
+        totalRecoverable,
+        opportunityCost
+    )
+
+    // 6. Fetch / Save Score History
+    const { data: scoreHistory } = await supabase
+        .from('score_historial')
+        .select('score, fecha')
+        .eq('organization_id', orgId)
+        .order('fecha', { ascending: true })
+        .limit(30)
+
     const daysOfRunway = dailyBurn > 100 ? Math.min(365, Math.floor((totalBalance + overdraftLimit) / dailyBurn)) : 'stable'
 
     // Triple View Data
@@ -144,11 +158,23 @@ export default async function DashboardPage() {
                 overdraftLimit={overdraftLimit}
                 liquidityBuffer={liquidityCushion}
                 projectionData={projectionData}
+                scoreHistory={scoreHistory || []}
             />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <TaxRecoveryWidget totalRecoverable={totalRecoverable} taxItems={taxItems || []} />
-                <ExpenseGuardWidget anomalies={anomalies?.filter(a => a.tags?.includes('alerta_precio')) || []} />
+                <ExpenseGuardWidget
+                    anomalies={[
+                        ...(anomalies?.filter(a => a.tags?.includes('alerta_precio')) || []),
+                        ...(findings?.filter(f => f.tipo === 'monto_inusual' && f.comprobante_id).map(f => ({
+                            id: f.id,
+                            descripcion: `Factura ${f.comprobantes?.numero} - ${f.comprobantes?.razon_social_socio}`,
+                            monto: f.comprobantes?.monto_total,
+                            fecha: f.comprobantes?.fecha_emision,
+                            is_invoice: true
+                        })) || [])
+                    ]}
+                />
                 <DuplicateGuardWidget duplicates={anomalies?.filter(a => a.tags?.includes('posible_duplicado')) || []} />
                 <FeeAuditWidget />
             </div>

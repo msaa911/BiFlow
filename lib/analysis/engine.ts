@@ -9,6 +9,21 @@ interface Transaction {
     descripcion: string
     monto: number
     cuit_destino: string | null
+    tags?: string[]
+    metadata?: any
+}
+
+interface Invoice {
+    id: string
+    organization_id: string
+    tipo: string
+    numero: string
+    cuit_socio: string
+    razon_social_socio: string
+    fecha_emision: string
+    monto_total: number
+    estado: string
+    metadata?: any
 }
 
 interface TaxConfig {
@@ -21,8 +36,9 @@ interface TaxConfig {
 
 interface Finding {
     organization_id: string
-    transaccion_id: string
-    tipo: 'duplicado' | 'fuga_fiscal' | 'anomalia'
+    transaccion_id?: string
+    comprobante_id?: string
+    tipo: 'duplicado' | 'fuga_fiscal' | 'anomalia' | 'desvio_precio' | 'monto_inusual'
     severidad: 'low' | 'medium' | 'high' | 'critical'
     estado: 'detectado'
     monto_estimado_recupero: number
@@ -47,13 +63,21 @@ export async function runAnalysis(organizationId: string) {
         .eq('organization_id', organizationId)
         .order('fecha', { ascending: true })
 
+    // 1b. Fetch pending invoices (AP/AR)
+    const { data: invoices } = await supabase
+        .from('comprobantes')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .neq('estado', 'pagado')
+        .order('fecha_emision', { ascending: true })
+
     if (error) {
         console.error('[ANALYSIS] Error fetching transactions:', error.message)
         return { findings: 0 }
     }
 
-    if (!transactions || transactions.length === 0) {
-        console.log('[ANALYSIS] No transactions found')
+    if ((!transactions || transactions.length === 0) && (!invoices || invoices.length === 0)) {
+        console.log('[ANALYSIS] No data found for analysis')
         return { findings: 0 }
     }
 
@@ -81,6 +105,18 @@ export async function runAnalysis(organizationId: string) {
     const taxMap = new Map<string, TaxConfig>(
         (taxConfigs || []).map((c: any) => [c.patron_busqueda.toUpperCase(), c])
     )
+
+    // 3b. Statistical Calculations for Outlier Detection (Z-Score)
+    // Combine transactions and invoices for a broader context of "normal" amounts
+    const allAmounts = [
+        ...(transactions || []).map((t: any) => Math.abs(t.monto)),
+        ...(invoices || []).map((i: any) => Math.abs(i.monto_total))
+    ].filter(a => a > 0);
+
+    const mean = allAmounts.length > 0 ? allAmounts.reduce((a, b) => a + b, 0) / allAmounts.length : 0;
+    const stdDev = allAmounts.length > 0 ? Math.sqrt(allAmounts.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / allAmounts.length) : 0;
+
+    console.log(`[ANALYSIS] Stats: Mean=${mean.toFixed(2)}, StdDev=${stdDev.toFixed(2)}, SampleSize=${allAmounts.length}`);
 
     // 4. Run Centralized Analysis using AnomalyEngine
     const { processed } = AnomalyEngine.analyze(
@@ -228,6 +264,56 @@ export async function runAnalysis(organizationId: string) {
             })
             // Persist tags (e.g. 'posible_duplicado', 'alerta_precio') to the transacciones table
             transactionsToUpdate.push({ id: t.id, tags: t.tags })
+        } else if (stdDev > 0 && Math.abs(t.monto) > mean + (3 * stdDev)) {
+            // Statistical Outlier Detection (Z-Score > 3)
+            console.log(`[ANALYSIS] [OUTLIER] "${t.descripcion}" is a statistical outlier ($ID: ${t.id})`)
+            const zScore = (Math.abs(t.monto) - mean) / stdDev;
+            findings.push({
+                organization_id: organizationId,
+                transaccion_id: t.id,
+                tipo: 'monto_inusual',
+                severidad: zScore > 5 ? 'critical' : 'high',
+                estado: 'detectado',
+                monto_estimado_recupero: 0,
+                detalle: {
+                    razon: `Monto inusual detectado estadísticamente (Z-Score: ${zScore.toFixed(2)})`,
+                    monto: t.monto,
+                    promedio_empresa: mean,
+                    desviacion_estandar: stdDev
+                }
+            });
+            let tags = t.tags || [];
+            if (!tags.includes('alerta_precio')) {
+                tags.push('alerta_precio');
+                transactionsToUpdate.push({ id: t.id, tags });
+            }
+        }
+    }
+
+    // 6. Analyze Invoices for Anomalies
+    console.log(`[ANALYSIS] Auditing ${invoices?.length || 0} pending invoices...`);
+    if (invoices) {
+        for (const inv of invoices) {
+            const absMonto = Math.abs(inv.monto_total);
+            if (stdDev > 0 && absMonto > mean + (3 * stdDev)) {
+                const zScore = (absMonto - mean) / stdDev;
+                console.log(`[ANALYSIS] [INVOICE_OUTLIER] Factura ${inv.numero} is an outlier (${inv.razon_social_socio})`);
+                findings.push({
+                    organization_id: organizationId,
+                    comprobante_id: inv.id,
+                    tipo: 'monto_inusual',
+                    severidad: zScore > 5 ? 'critical' : 'high',
+                    estado: 'detectado',
+                    monto_estimado_recupero: 0,
+                    detalle: {
+                        razon: `Factura con monto inusual (Z-Score: ${zScore.toFixed(2)})`,
+                        monto: inv.monto_total,
+                        promedio_empresa: mean,
+                        desviacion_estandar: stdDev,
+                        entidad: inv.razon_social_socio
+                    }
+                });
+            }
         }
     }
 
@@ -288,8 +374,11 @@ export async function runAnalysis(organizationId: string) {
             .select('transaccion_id, tipo')
             .eq('organization_id', organizationId)
 
-        const existingSet = new Set(existingFindings?.map((f: any) => `${f.transaccion_id}-${f.tipo}`))
-        const newFindings = findings.filter((f: any) => !existingSet.has(`${f.transaccion_id}-${f.tipo}`))
+        const existingSet = new Set(existingFindings?.map((f: any) => f.transaccion_id ? `${f.transaccion_id}-${f.tipo}` : `${f.comprobante_id}-${f.tipo}`))
+        const newFindings = findings.filter((f: any) => {
+            const key = f.transaccion_id ? `${f.transaccion_id}-${f.tipo}` : `${f.comprobante_id}-${f.tipo}`;
+            return !existingSet.has(key);
+        })
 
         if (newFindings.length > 0) {
             console.log(`[ANALYSIS] Inserting ${newFindings.length} NEW findings...`)

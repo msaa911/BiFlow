@@ -21,13 +21,14 @@ interface TreasuryTabProps {
 export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     const [invoices, setInvoices] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
+    const [realBalance, setRealBalance] = useState(0)
     const [loading, setLoading] = useState(true)
     const [reconciling, setReconciling] = useState(false)
     const supabase = createClient()
 
     async function fetchData() {
         setLoading(true)
-        const [invRes, bankRes] = await Promise.all([
+        const [invRes, bankRes, txRes] = await Promise.all([
             supabase
                 .from('comprobantes')
                 .select('*')
@@ -36,11 +37,37 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             supabase
                 .from('cuentas_bancarias')
                 .select('saldo_inicial')
+                .eq('organization_id', orgId),
+            supabase
+                .from('transacciones')
+                .select('id, monto, metadata, fecha, created_at')
                 .eq('organization_id', orgId)
+                .order('fecha', { ascending: false })
         ])
 
         if (invRes.data) setInvoices(invRes.data)
         if (bankRes.data) setBankAccounts(bankRes.data)
+
+        // Calculate Real Balance (consistent with Dashboard)
+        if (txRes.data) {
+            const allTxs = txRes.data
+            const latestWithSaldo = allTxs.find(t => t.metadata?.saldo !== undefined)
+            let calculatedBalance = 0
+
+            if (latestWithSaldo) {
+                const baseBalance = Number(latestWithSaldo.metadata.saldo)
+                const moreRecent = allTxs.filter(t =>
+                    new Date(t.fecha) > new Date(latestWithSaldo.fecha) ||
+                    (t.fecha === latestWithSaldo.fecha && t.id !== latestWithSaldo.id && new Date(t.created_at || 0) > new Date(latestWithSaldo.created_at || 0))
+                ).reduce((acc: number, curr: any) => acc + (Number(curr.monto) || 0), 0)
+                calculatedBalance = baseBalance + moreRecent
+            } else {
+                const initialSum = bankRes.data?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
+                const txsSum = allTxs.reduce((acc, t) => acc + (Number(t.monto) || 0), 0)
+                calculatedBalance = initialSum + txsSum
+            }
+            setRealBalance(calculatedBalance)
+        }
         setLoading(false)
     }
 
@@ -78,7 +105,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         .reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
 
     // Valuation Logic
-    const valuation = TreasuryEngine.calculateEnterpriseValuation(0, totalAR, totalAP) // Mock balance 0 for now
+    const valuation = TreasuryEngine.calculateEnterpriseValuation(realBalance, totalAR, totalAP)
 
     return (
         <div className="space-y-6">
@@ -188,7 +215,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 </TabsList>
 
                 <TabsContent value="cashflow">
-                    <CashFlowHub invoices={invoices} currentBalance={initialBalancesSum} liquidityCushion={liquidityCushion} />
+                    <CashFlowHub invoices={invoices} currentBalance={realBalance} liquidityCushion={liquidityCushion} />
                 </TabsContent>
 
                 <TabsContent value="cartera">

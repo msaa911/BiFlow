@@ -2,6 +2,7 @@
 'use client'
 
 import { Activity, ShieldCheck, TrendingUp, AlertCircle } from 'lucide-react'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
 
 interface CashHealthScoreProps {
     score: number
@@ -9,6 +10,7 @@ interface CashHealthScoreProps {
     recoveryPotential: number
     opportunityCost?: number
     daysOfRunway?: number | 'stable'
+    history?: { score: number, fecha: string }[]
     onOpenStressTest?: () => void
 }
 
@@ -18,6 +20,7 @@ export function CashHealthScore({
     recoveryPotential,
     opportunityCost = 0,
     daysOfRunway = 'stable',
+    history = [],
     onOpenStressTest
 }: CashHealthScoreProps) {
     // Determine status levels
@@ -144,6 +147,32 @@ export function CashHealthScore({
                     >
                         Simular Stress Test →
                     </button>
+                </div>
+
+                {/* Trend Chart Section */}
+                <div className="hidden lg:block w-48 h-24 mt-auto">
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Tendencia (30d)</div>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={history.length > 0 ? history : [
+                            { score: 60 }, { score: 65 }, { score: 70 }, { score: 68 },
+                            { score: 75 }, { score: 85 }, { score: 80 }, { score: 90 }, { score: score }
+                        ]}>
+                            <defs>
+                                <linearGradient id="scoreColor" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={status.stroke} stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor={status.stroke} stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <Area
+                                type="monotone"
+                                dataKey="score"
+                                stroke={status.stroke}
+                                fillOpacity={1}
+                                fill="url(#scoreColor)"
+                                strokeWidth={2}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>

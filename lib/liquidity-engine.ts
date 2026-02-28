@@ -168,25 +168,54 @@ export class LiquidityEngine {
     }
 
     /**
-     * Calcula un Score de Salud de Caja (0-100)
+     * Calcula un Score de Salud de Caja (0-100) basado en tres pilares:
+     * 1. Liquidez (50%): Días de supervivencia proyectados.
+     * 2. Integridad (30%): Ausencia de anomalías y riesgos.
+     * 3. Eficiencia (20%): Gestión de impuestos y capital ocioso.
      */
     static calculateHealthScore(
         currentBalance: number,
-        monthlyAverageExpenses: number,
-        overdraftLimit: number = 0
+        monthlyExpenses: number,
+        overdraftLimit: number = 0,
+        anomalies: any[] = [],
+        taxPotential: number = 0,
+        opportunityCost: number = 0
     ): number {
         const totalLiquidity = currentBalance + overdraftLimit;
-        if (monthlyAverageExpenses <= 0) return totalLiquidity > 0 ? 100 : 0;
 
-        const monthsOfRunway = totalLiquidity / monthlyAverageExpenses;
+        // REGLA DE ORO: Insolvencia técnica
+        if (totalLiquidity < 0) return 15; // Score mínimo crítico
 
-        // Runway-based scoring:
-        // 1 month = 100 points
-        // 0.5 month = 50 points
-        // 0 months = 0 points
-        let score = Math.max(0, Math.min(100, monthsOfRunway * 100));
+        // 1. Pilar Liquidez (Máx 50 pts)
+        // Objetivo: 90 días de supervivencia.
+        if (monthlyExpenses <= 0) return 100; // Caso especial empresa sin gastos
+        const dailyBurn = monthlyExpenses / 30;
+        const daysOfRunway = totalLiquidity / dailyBurn;
+        const liquidityScore = Math.min(50, Math.max(0, (daysOfRunway / 90) * 50));
 
-        // Bonus for having overhead vs Monthly Average
-        return Math.round(score);
+        // 2. Pilar Integridad (Máx 30 pts)
+        let integrityScore = 30;
+        anomalies.forEach(a => {
+            if (a.severidad === 'critical') integrityScore -= 15;
+            else if (a.severidad === 'high') integrityScore -= 7;
+            else integrityScore -= 3;
+        });
+        integrityScore = Math.max(0, integrityScore);
+
+        // 3. Pilar Eficiencia (Máx 20 pts)
+        let efficiencyScore = 20;
+        // Penalización por costo de oportunidad (dinero ocioso)
+        if (opportunityCost > 50000) efficiencyScore -= 10;
+        // Premio por potencial de recuperación de impuestos (si es alto y está gestionado)
+        if (taxPotential > 1000000) efficiencyScore -= 5;
+
+        efficiencyScore = Math.max(0, efficiencyScore);
+
+        const totalScore = Math.round(liquidityScore + integrityScore + efficiencyScore);
+
+        // Si hay insolvencia proyectada en el corto plazo (< 7 días), CAP en 40
+        if (daysOfRunway < 7) return Math.min(40, totalScore);
+
+        return totalScore;
     }
 }
