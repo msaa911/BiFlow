@@ -196,7 +196,7 @@ export class CashFlowAdvisor {
             });
 
             const agent = createAgent({
-                llm,
+                model: llm,
                 tools,
                 systemPrompt
             });
