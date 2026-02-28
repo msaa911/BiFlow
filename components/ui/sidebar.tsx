@@ -33,7 +33,7 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
 
             <nav className="flex-1 px-4 space-y-1">
                 {navigation.map((item) => {
-                    const isActive = pathname === item.href
+                    const isActive = pathname === item.href.split('?')[0]
                     return (
                         <Link
                             key={item.name}
