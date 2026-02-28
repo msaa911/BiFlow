@@ -103,13 +103,12 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 type="monotone"
                                 dataKey="balance"
                                 stroke="#10b981"
-                                fillOpacity={0.6}
-                                fill="url(#colorBalance)"
+                                fill="#10b981"
+                                fillOpacity={0.15}
                                 strokeWidth={4}
                                 strokeLinecap="round"
-                                baseValue={-10000000} // Valor base extremadamente bajo para forzar relleno descendente
-                                isAnimationActive={true}
-                                animationDuration={2500}
+                                baseValue={-10000000} // Forzar relleno hacia abajo
+                                isAnimationActive={false} // Desactivar animación para depuración de visibilidad
                                 dot={(props: any) => {
                                     if (props.payload.isAlert) {
                                         return (

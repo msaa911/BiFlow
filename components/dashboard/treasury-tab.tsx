@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { InvoicePanel } from './invoice-panel'
 import { Card } from '@/components/ui/card'
@@ -21,8 +21,12 @@ interface TreasuryTabProps {
 }
 
 export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
+    const router = useRouter()
+    const pathname = usePathname()
     const searchParams = useSearchParams()
-    const [activeTab, setActiveTab] = useState('cashflow')
+
+    // URL-driven state (Single Source of Truth)
+    const activeTab = searchParams.get('tab') || 'cashflow'
     const [invoices, setInvoices] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
@@ -92,14 +96,9 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         fetchData()
     }, [orgId])
 
-    useEffect(() => {
-        const tab = searchParams.get('tab')
-        if (tab) {
-            setActiveTab(tab)
-        } else {
-            setActiveTab('cashflow')
-        }
-    }, [searchParams])
+    const handleTabChange = (value: string) => {
+        router.push(`${pathname}?tab=${value}`, { scroll: false })
+    }
 
     const handleReconcile = async () => {
         setReconciling(true)
@@ -204,7 +203,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 </Card>
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <TabsList className="bg-gray-900 border border-gray-800 p-1 rounded-xl mb-6">
                     <TabsTrigger value="cashflow" className="rounded-lg">
                         <Calculator className="w-3.5 h-3.5 mr-2" />
@@ -245,7 +244,13 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 </TabsList>
 
                 <TabsContent value="cashflow">
-                    <CashFlowHub invoices={invoices} currentBalance={realBalance} liquidityCushion={liquidityCushion} />
+                    {loading ? (
+                        <div className="flex items-center justify-center p-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
+                        </div>
+                    ) : (
+                        <CashFlowHub invoices={invoices} currentBalance={realBalance} liquidityCushion={liquidityCushion} />
+                    )}
                 </TabsContent>
 
                 <TabsContent value="cartera">
