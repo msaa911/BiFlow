@@ -33,14 +33,13 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                         <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
-                                    <stop offset="80%" stopColor="#10b981" stopOpacity={0.1} />
-                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                                    <stop offset="50%" stopColor="#10b981" stopOpacity={0.1} />
+                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="colorAlert" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#ef4444" stopOpacity={0.4} />
-                                    <stop offset="80%" stopColor="#ef4444" stopOpacity={0.1} />
-                                    <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
+                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
+                                    <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <XAxis
@@ -59,17 +58,17 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 axisLine={false}
                                 tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                                 tick={{ fill: '#6b7280' }}
-                                domain={['auto', 'auto']}
+                                domain={[(dataMin: number) => dataMin * 1.1, (dataMax: number) => dataMax * 1.1]} // Padding para evitar cortes
                             />
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} opacity={0.4} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} opacity={0.2} />
                             <Tooltip
                                 contentStyle={{
                                     backgroundColor: 'rgba(3, 7, 18, 0.9)',
                                     border: '1px solid #374151',
                                     borderRadius: '12px',
                                     fontSize: '12px',
-                                    backdropFilter: 'blur(8px)',
-                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                                    backdropFilter: 'blur(10px)',
+                                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)'
                                 }}
                                 itemStyle={{ fontWeight: 'bold' }}
                                 cursor={{ stroke: '#374151', strokeWidth: 1 }}
@@ -99,17 +98,17 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                     }}
                                 />
                             )}
-                            <ReferenceLine y={0} stroke="#374151" strokeOpacity={0.5} />
+                            <ReferenceLine y={0} stroke="#374151" strokeOpacity={0.5} strokeWidth={2} />
                             <Area
                                 type="monotone"
                                 dataKey="balance"
                                 stroke="#10b981"
-                                fill="#10b981"
-                                fillOpacity={0.15}
-                                strokeWidth={4}
+                                fill="url(#colorBalance)"
+                                strokeWidth={3}
                                 strokeLinecap="round"
-                                baseValue={-10000000} // Forzar relleno hacia abajo
-                                isAnimationActive={false} // Desactivar animación para depuración de visibilidad
+                                baseValue="dataMin"
+                                isAnimationActive={true}
+                                animationDuration={1000}
                                 dot={(props: any) => {
                                     if (props.payload.isAlert) {
                                         return (
