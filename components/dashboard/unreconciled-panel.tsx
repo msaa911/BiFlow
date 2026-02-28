@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 interface Transaction {
     id: string
@@ -29,6 +30,22 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
         t.monto.toString().includes(searchTerm)
     )
 
+    const handleExport = () => {
+        const dataToExport = filtered.map(t => ({
+            Fecha: new Date(t.fecha).toLocaleDateString('es-AR'),
+            Descripción: t.descripcion,
+            Monto: t.monto,
+            Estado: 'Pendiente',
+            'CUIT Origen': t.cuit_origen || 'No Identificado',
+            'CUIT Destino': t.cuit_destino || 'No Identificado'
+        }))
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport)
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, "Cuarentena")
+        XLSX.writeFile(wb, `BiFlow_Cuarentena_${new Date().toISOString().split('T')[0]}.xlsx`)
+    }
+
     return (
         <Card className="bg-gray-900 border-gray-800 animate-in fade-in duration-500">
             <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800 px-6 py-4">
@@ -39,6 +56,15 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                     </CardTitle>
                     <p className="text-xs text-gray-400 mt-1">Movimientos bancarios sin respaldo documental identificado.</p>
                 </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExport}
+                    className="border-gray-700 text-gray-300 hover:bg-gray-800 flex items-center gap-2"
+                >
+                    <FileDown className="w-4 h-4" />
+                    Exportar Excel
+                </Button>
             </CardHeader>
             <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-6">
