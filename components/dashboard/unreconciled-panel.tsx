@@ -90,7 +90,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
             const { error: invError } = await supabase
                 .from('comprobantes')
                 .update({
-                    estado: 'cobrado' // o 'pagado' dependiendo del tipo, pero 'conciliado' o 'cobrado' es estandar
+                    estado: 'pagado'
                 })
                 .eq('id', invoiceId)
 
