@@ -40,8 +40,74 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
         "Sueldos y Jornales",
         "Mantenimiento",
         "Honorarios Profesionales",
-        "Otros Gastos Operativos"
+        "Otros Gastos Operativos",
+        "Otros"
     ]
+
+    const [isConciliating, setIsConciliating] = useState(false)
+    const [availableInvoices, setAvailableInvoices] = useState<any[]>([])
+    const [loadingInvoices, setLoadingInvoices] = useState(false)
+
+    const fetchInvoices = async () => {
+        if (!selectedTx) return
+        setLoadingInvoices(true)
+        try {
+            // Filter by type: positive amount -> sales (venta), negative -> purchases (compra)
+            const typeFilter = selectedTx.monto > 0 ? 'factura_venta' : 'factura_compra'
+
+            const { data, error } = await supabase
+                .from('comprobantes')
+                .select('*')
+                .eq('organization_id', (transactions[0] as any)?.organization_id)
+                .eq('estado', 'pendiente')
+                .eq('tipo', typeFilter)
+                .order('fecha_vencimiento', { ascending: true })
+
+            if (error) throw error
+            setAvailableInvoices(data || [])
+        } catch (error) {
+            console.error('Error fetching invoices:', error)
+            toast.error('Error al cargar comprobantes pendientes')
+        } finally {
+            setLoadingInvoices(false)
+        }
+    }
+
+    const handleConciliate = async (invoiceId: string) => {
+        setIsSubmitting(true)
+        try {
+            // Update transaction
+            const { error: txError } = await supabase
+                .from('transacciones')
+                .update({
+                    comprobante_id: invoiceId,
+                    estado: 'conciliado'
+                })
+                .eq('id', selectedTx?.id)
+
+            if (txError) throw txError
+
+            // Update invoice (comprobante)
+            const { error: invError } = await supabase
+                .from('comprobantes')
+                .update({
+                    estado: 'cobrado' // o 'pagado' dependiendo del tipo, pero 'conciliado' o 'cobrado' es estandar
+                })
+                .eq('id', invoiceId)
+
+            if (invError) throw invError
+
+            toast.success('Conciliación realizada con éxito')
+            setIsConciliating(false)
+            setSelectedTx(null)
+            if (onRefresh) onRefresh()
+        } catch (error) {
+            console.error('Error in conciliation:', error)
+            toast.error('Error al realizar la conciliación')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
 
     const filtered = transactions.filter(t =>
         t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -148,7 +214,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                         <p className={`text-sm font-black ${tx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.monto)}
                                         </p>
-                                        <Badge variant="secondary" className="text-[10px] font-black uppercase bg-amber-500 text-black px-2 mt-1 hover:bg-amber-400 border-none shadow-lg shadow-amber-500/20">
+                                        <Badge variant="outline" className="text-[10px] font-bold uppercase border-gray-700 text-gray-400 bg-gray-800/40 px-2 mt-1 backdrop-blur-sm">
                                             Pendiente
                                         </Badge>
                                     </div>
@@ -157,10 +223,14 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-9 px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 flex items-center gap-2 bg-emerald-500/5"
-                                            onClick={() => { }}
+                                            className="h-9 px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 flex items-center gap-2 bg-emerald-500/5 group/btn"
+                                            onClick={() => {
+                                                setSelectedTx(tx)
+                                                setIsConciliating(true)
+                                                setTimeout(fetchInvoices, 0) // Fetch after state update
+                                            }}
                                         >
-                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            <CheckCircle2 className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
                                             <span className="text-[10px] font-bold uppercase">Conciliar</span>
                                         </Button>
                                         <Button
@@ -229,6 +299,87 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                             className="text-gray-400 hover:text-white"
                         >
                             Cancelar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Conciliation Dialog */}
+            <Dialog open={isConciliating} onOpenChange={setIsConciliating}>
+                <DialogContent className="max-w-2xl bg-gray-950 border-gray-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">Conciliación Bancaria</DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            Busca el comprobante (Factura/Recibo) que respalda este movimiento.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedTx && (
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 my-2 flex justify-between items-center">
+                            <div>
+                                <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-1">Movimiento Bancario</p>
+                                <p className="text-sm font-bold text-white leading-tight">{selectedTx.descripcion}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className={`text-lg font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="py-4">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Comprobantes Sugeridos</p>
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            {loadingInvoices ? (
+                                <div className="py-12 text-center text-gray-500">
+                                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                                    Buscando coincidencias...
+                                </div>
+                            ) : availableInvoices.length > 0 ? (
+                                availableInvoices.map(inv => {
+                                    const diff = Math.abs(selectedTx?.monto || 0) === Math.abs(inv.monto_total)
+                                    return (
+                                        <button
+                                            key={inv.id}
+                                            onClick={() => handleConciliate(inv.id)}
+                                            disabled={isSubmitting}
+                                            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group ${diff ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={`p-2 rounded-lg ${diff ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>
+                                                    <FileDown className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">{inv.razon_social_socio}</p>
+                                                    <p className="text-[10px] text-gray-500">{inv.tipo} • {inv.numero} • Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-black text-white">
+                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_total)}
+                                                </p>
+                                                {diff && <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-1.5 rounded uppercase">Monto Exacto</span>}
+                                            </div>
+                                        </button>
+                                    )
+                                })
+                            ) : (
+                                <div className="py-12 text-center text-gray-600 border border-dashed border-gray-800 rounded-xl">
+                                    No hay comprobantes pendientes que coincidan con este flujo.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsConciliating(false)}
+                            className="text-gray-400 hover:text-white"
+                        >
+                            Cerrar
                         </Button>
                     </DialogFooter>
                 </DialogContent>
