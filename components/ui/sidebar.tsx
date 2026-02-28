@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet } from 'lucide-react'
 
 const navigation = [
@@ -17,16 +17,11 @@ const navigation = [
 
 export function Sidebar({ userEmail }: { userEmail: string }) {
     const pathname = usePathname()
-    const router = useRouter()
 
-    const handleNavClick = (e: React.MouseEvent, item: typeof navigation[0]) => {
-        // For Finanzas: always force navigation to cashflow tab, even if already on treasury
-        if (item.href === '/dashboard/treasury') {
-            e.preventDefault()
-            // Use a unique timestamp to force Next.js to treat this as a new navigation
-            const t = Date.now()
-            router.push(`/dashboard/treasury?tab=cashflow&_t=${t}`)
-        }
+    const handleFinanzasClick = (e: React.MouseEvent) => {
+        e.preventDefault()
+        // Full page reload to /dashboard/treasury — bypasses ALL Next.js caching
+        window.location.href = '/dashboard/treasury'
     }
 
     return (
@@ -45,11 +40,12 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
             <nav className="flex-1 px-4 space-y-1">
                 {navigation.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                    const isFinanzas = item.name === 'Finanzas'
                     return (
                         <Link
                             key={item.name}
                             href={item.href}
-                            onClick={(e) => handleNavClick(e, item)}
+                            onClick={isFinanzas ? handleFinanzasClick : undefined}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
                                 ? 'bg-emerald-500/10 text-emerald-400'
                                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
