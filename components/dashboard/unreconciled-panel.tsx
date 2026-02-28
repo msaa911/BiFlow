@@ -77,7 +77,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                         <p className={`text-sm font-black ${tx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.monto)}
                                         </p>
-                                        <Badge variant="outline" className="text-[8px] uppercase border-amber-500/20 text-amber-500 mt-1">
+                                        <Badge variant="outline" className="text-[10px] font-bold uppercase border-amber-500/40 text-amber-400 bg-amber-500/10 px-2 mt-1">
                                             Pendiente
                                         </Badge>
                                     </div>
