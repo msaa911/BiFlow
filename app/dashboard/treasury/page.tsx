@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { TreasuryTab } from '@/components/dashboard/treasury-tab'
 import { getOrgId } from '@/lib/supabase/utils'
+import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,13 @@ export default async function TreasuryPage() {
                 <p className="text-gray-400">Gestión avanzada de cobros, pagos y simulaciones de caja.</p>
             </div>
 
-            <TreasuryTab orgId={orgId} liquidityCushion={orgConfig?.colchon_liquidez || 0} />
+            <Suspense fallback={
+                <div className="flex items-center justify-center p-20">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
+                </div>
+            }>
+                <TreasuryTab orgId={orgId} liquidityCushion={orgConfig?.colchon_liquidez || 0} />
+            </Suspense>
         </div>
     )
 }

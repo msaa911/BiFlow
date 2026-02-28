@@ -212,8 +212,8 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                         <div className="space-y-4">
                             <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
                                 <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Saldo Final Proyectado</p>
-                                <p className={`text-xl font-black ${projection[29].balance < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(projection[29].balance)}
+                                <p className={`text-xl font-black ${projection.length > 0 && projection[projection.length - 1].balance < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    {projection.length > 0 ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(projection[projection.length - 1].balance) : '$0'}
                                 </p>
                             </div>
                             <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
