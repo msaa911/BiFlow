@@ -25,8 +25,8 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     const pathname = usePathname()
     const searchParams = useSearchParams()
 
-    // URL-driven state (Single Source of Truth)
-    const activeTab = searchParams.get('tab') || 'cashflow'
+    // Active tab state (Controlled for manual resets)
+    const [activeTab, setActiveTab] = useState('cashflow')
     const [invoices, setInvoices] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
@@ -96,7 +96,21 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         fetchData()
     }, [orgId])
 
+    useEffect(() => {
+        const handleReset = () => {
+            setActiveTab('cashflow')
+        }
+        window.addEventListener('biflow-reset-treasury', handleReset)
+
+        // Initial sync with URL
+        const tab = searchParams.get('tab')
+        if (tab) setActiveTab(tab)
+
+        return () => window.removeEventListener('biflow-reset-treasury', handleReset)
+    }, [searchParams])
+
     const handleTabChange = (value: string) => {
+        setActiveTab(value)
         router.push(`${pathname}?tab=${value}`, { scroll: false })
     }
 
@@ -203,7 +217,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 </Card>
             </div>
 
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <Tabs key={activeTab} value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <TabsList className="bg-gray-900 border border-gray-800 p-1 rounded-xl mb-6">
                     <TabsTrigger value="cashflow" className="rounded-lg">
                         <Calculator className="w-3.5 h-3.5 mr-2" />

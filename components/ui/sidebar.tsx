@@ -38,6 +38,11 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
                         <Link
                             key={item.name}
                             href={item.href}
+                            onClick={() => {
+                                if (item.href.includes('/dashboard/treasury')) {
+                                    window.dispatchEvent(new CustomEvent('biflow-reset-treasury'));
+                                }
+                            }}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
                                 ? 'bg-emerald-500/10 text-emerald-400'
                                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'

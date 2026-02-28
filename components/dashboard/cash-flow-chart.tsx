@@ -59,6 +59,7 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 axisLine={false}
                                 tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                                 tick={{ fill: '#6b7280' }}
+                                domain={['auto', 'auto']}
                             />
                             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} opacity={0.4} />
                             <Tooltip
