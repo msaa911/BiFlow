@@ -4,8 +4,11 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 interface Transaction {
     id: string
@@ -24,6 +27,21 @@ interface UnreconciledPanelProps {
 
 export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanelProps) {
     const [searchTerm, setSearchTerm] = useState('')
+    const [isCategorizing, setIsCategorizing] = useState(false)
+    const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const supabase = createClient()
+
+    const categories = [
+        "Gastos Bancarios",
+        "Impuestos y Tasas",
+        "Servicios Públicos",
+        "Retiro de Socios",
+        "Sueldos y Jornales",
+        "Mantenimiento",
+        "Honorarios Profesionales",
+        "Otros Gastos Operativos"
+    ]
 
     const filtered = transactions.filter(t =>
         t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -44,6 +62,33 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, "Cuarentena")
         XLSX.writeFile(wb, `BiFlow_Cuarentena_${new Date().toISOString().split('T')[0]}.xlsx`)
+    }
+
+    const handleQuickCategorize = async (category: string) => {
+        if (!selectedTx) return
+
+        setIsSubmitting(true)
+        try {
+            const { error } = await supabase
+                .from('transacciones')
+                .update({
+                    categoria: category,
+                    estado: 'conciliado'
+                })
+                .eq('id', selectedTx.id)
+
+            if (error) throw error
+
+            toast.success('Transacción categorizada y conciliada correctamente')
+            setIsCategorizing(false)
+            setSelectedTx(null)
+            if (onRefresh) onRefresh()
+        } catch (error) {
+            console.error('Error categorizing:', error)
+            toast.error('Error al categorizar la transacción')
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     return (
@@ -103,7 +148,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                         <p className={`text-sm font-black ${tx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.monto)}
                                         </p>
-                                        <Badge variant="outline" className="text-[10px] font-bold uppercase border-amber-500/40 text-amber-400 bg-amber-500/10 px-2 mt-1">
+                                        <Badge variant="secondary" className="text-[10px] font-black uppercase bg-amber-500 text-black px-2 mt-1 hover:bg-amber-400 border-none shadow-lg shadow-amber-500/20">
                                             Pendiente
                                         </Badge>
                                     </div>
@@ -122,7 +167,10 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                             variant="outline"
                                             size="sm"
                                             className="h-9 px-3 border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 flex items-center gap-2 bg-blue-500/5"
-                                            onClick={() => { }}
+                                            onClick={() => {
+                                                setSelectedTx(tx)
+                                                setIsCategorizing(true)
+                                            }}
                                         >
                                             <Tag className="w-3.5 h-3.5" />
                                             <span className="text-[10px] font-bold uppercase">Categorizar</span>
@@ -139,6 +187,52 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                     )}
                 </div>
             </CardContent>
+
+            {/* Categorization Dialog */}
+            <Dialog open={isCategorizing} onOpenChange={setIsCategorizing}>
+                <DialogContent className="max-w-md bg-gray-950 border-gray-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">Asignar Categoría</DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            Categorizar este movimiento lo marcará como conciliado automáticamente.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedTx && (
+                        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 my-2">
+                            <p className="text-xs text-gray-500 uppercase font-bold tracking-widest mb-1">Transacción Seleccionada</p>
+                            <p className="text-sm font-bold text-white mb-1">{selectedTx.descripcion}</p>
+                            <p className={`text-sm font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-2 py-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                        {categories.map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => handleQuickCategorize(cat)}
+                                disabled={isSubmitting}
+                                className="flex items-center justify-between p-3 rounded-xl border border-gray-800 bg-gray-900/40 text-left hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group disabled:opacity-50"
+                            >
+                                <span className="text-sm text-gray-300 group-hover:text-emerald-400">{cat}</span>
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+                        ))}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsCategorizing(false)}
+                            className="text-gray-400 hover:text-white"
+                        >
+                            Cancelar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     )
 }
