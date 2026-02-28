@@ -20,7 +20,7 @@ export default async function TreasuryPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h2 className="text-2xl font-bold tracking-tight">Tesorería Inteligente</h2>
+                <h2 className="text-2xl font-bold tracking-tight">Finanzas</h2>
                 <p className="text-gray-400">Gestión avanzada de cobros, pagos y simulaciones de caja.</p>
             </div>
 

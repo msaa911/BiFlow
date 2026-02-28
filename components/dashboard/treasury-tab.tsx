@@ -200,7 +200,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 <TabsList className="bg-gray-900 border border-gray-800 p-1 rounded-xl mb-6">
                     <TabsTrigger value="cashflow" className="rounded-lg">
                         <Calculator className="w-3.5 h-3.5 mr-2" />
-                        Tesorería
+                        Finanzas
                     </TabsTrigger>
                     <TabsTrigger value="ingresos" className="rounded-lg">
                         <TrendingUp className="w-3.5 h-3.5 mr-2 text-emerald-400" />
