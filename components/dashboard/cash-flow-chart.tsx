@@ -33,12 +33,14 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                         <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.2} />
-                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
+                                    <stop offset="80%" stopColor="#10b981" stopOpacity={0.1} />
+                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
                                 </linearGradient>
                                 <linearGradient id="colorAlert" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
-                                    <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                                    <stop offset="0%" stopColor="#ef4444" stopOpacity={0.4} />
+                                    <stop offset="80%" stopColor="#ef4444" stopOpacity={0.1} />
+                                    <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
                                 </linearGradient>
                             </defs>
                             <XAxis
@@ -105,6 +107,7 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 fill="url(#colorBalance)"
                                 strokeWidth={4}
                                 strokeLinecap="round"
+                                baseValue="dataMin"
                                 animationDuration={2000}
                                 dot={(props: any) => {
                                     if (props.payload.isAlert) {

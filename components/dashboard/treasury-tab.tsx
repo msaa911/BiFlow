@@ -93,6 +93,11 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         fetchData()
     }, [orgId])
 
+    useEffect(() => {
+        const tab = searchParams.get('tab') || 'cashflow'
+        setActiveTab(tab)
+    }, [searchParams])
+
     const handleReconcile = async () => {
         setReconciling(true)
         try {
@@ -214,7 +219,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                         <Users className="w-3.5 h-3.5 mr-2 text-blue-400" />
                         Clientes
                     </TabsTrigger>
-                    <TabsTrigger value="proveedores" className="rounded-lg text-emerald-400">
+                    <TabsTrigger value="proveedores" className="rounded-lg">
                         <BookUser className="w-3.5 h-3.5 mr-2" />
                         Proveedores
                     </TabsTrigger>
