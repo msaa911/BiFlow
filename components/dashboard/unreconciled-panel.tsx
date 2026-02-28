@@ -178,6 +178,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                 .from('transacciones')
                 .update({
                     comprobante_id: comprobante.id,
+                    movimiento_id: movimiento.id,
                     estado: 'conciliado'
                 })
                 .eq('id', selectedTx.id)

@@ -64,33 +64,95 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
         if (!selectedInvoice) return
 
         try {
-            // Actualizar transacción
-            const { error: txError } = await supabase
+            // 1. Fetch transaction to get details
+            const { data: tx, error: txFetchError } = await supabase
                 .from('transacciones')
-                .update({
-                    comprobante_id: selectedInvoice.id,
-                    estado: 'conciliado'
-                })
+                .select('*')
                 .eq('id', txId)
+                .single()
 
-            if (txError) throw txError
+            if (txFetchError) throw txFetchError
 
-            // Actualizar comprobante
+            const isCobro = tx.monto > 0
+            const amount = Math.abs(tx.monto)
+
+            // 2. Create Movimiento Tesoreria (Header)
+            const { data: movimiento, error: movError } = await supabase
+                .from('movimientos_tesoreria')
+                .insert({
+                    organization_id: orgId,
+                    entidad_id: selectedInvoice.entidad_id,
+                    tipo: isCobro ? 'cobro' : 'pago',
+                    fecha: tx.fecha,
+                    monto_total: amount,
+                    observaciones: `CONCILIACIÓN MANUAL (Desde Comprobante): ${tx.descripcion}`,
+                    metadata: { transaccion_id: txId, manual: true }
+                })
+                .select()
+                .single()
+
+            if (movError) throw movError
+
+            // 3. Create Instrument (The bank movement)
+            const { error: insError } = await supabase
+                .from('instrumentos_pago')
+                .insert({
+                    movimiento_id: movimiento.id,
+                    metodo: 'transferencia',
+                    monto: amount,
+                    fecha_disponibilidad: tx.fecha,
+                    referencia: tx.descripcion,
+                    estado: 'acreditado'
+                })
+
+            if (insError) throw insError
+
+            // 4. Create Application (Link Invoice to OP)
+            const amountToApply = Math.min(Number(selectedInvoice.monto_pendiente), amount)
+            const { error: appError } = await supabase
+                .from('aplicaciones_pago')
+                .insert({
+                    movimiento_id: movimiento.id,
+                    comprobante_id: selectedInvoice.id,
+                    monto_aplicado: amountToApply
+                })
+
+            if (appError) throw appError
+
+            // 5. Update Invoice (comprobante)
+            const newPendiente = Number(selectedInvoice.monto_pendiente) - amountToApply
             const { error: invError } = await supabase
                 .from('comprobantes')
                 .update({
-                    estado: 'pagado'
+                    monto_pendiente: Math.max(0, newPendiente),
+                    estado: newPendiente <= 0.05 ? 'pagado' : 'parcial',
+                    metadata: {
+                        ...(selectedInvoice.metadata || {}),
+                        reconciled_at: new Date().toISOString(),
+                        transaccion_id: txId
+                    }
                 })
                 .eq('id', selectedInvoice.id)
 
             if (invError) throw invError
 
-            toast.success('Factura conciliada con éxito')
+            // 6. Update Bank Transaction
+            const { error: txUpdError } = await supabase
+                .from('transacciones')
+                .update({
+                    movimiento_id: movimiento.id,
+                    estado: 'conciliado'
+                })
+                .eq('id', txId)
+
+            if (txUpdError) throw txUpdError
+
+            toast.success('Factura conciliada con éxito y circuito administrativo registrado')
             setIsReconcileModalOpen(false)
             onRefresh()
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error in reverse conciliation:', error)
-            toast.error('Error al realizar la conciliación')
+            toast.error('Error al realizar la conciliación: ' + error.message)
         }
     }
 
