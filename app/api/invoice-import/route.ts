@@ -101,7 +101,7 @@ export async function POST(request: Request) {
         // 3. Handle 'contado' automated payments
         const contadoComps = insertedComps?.filter((c: any) => c.condicion === 'contado') || []
         for (const inv of contadoComps) {
-            const isCobro = inv.tipo === 'factura_venta'
+            const isCobro = inv.tipo === 'factura_venta' || inv.tipo === 'ingreso_vario'
             const { data: mov } = await admin.from('movimientos_tesoreria').insert({
                 organization_id: orgId,
                 entidad_id: inv.entidad_id,

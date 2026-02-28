@@ -16,7 +16,7 @@ export class ReconciliationEngine {
             .from('comprobantes')
             .select('*')
             .eq('organization_id', organizationId)
-            .in('tipo', ['factura_venta', 'factura_compra', 'nota_debito', 'nota_credito'])
+            .in('tipo', ['factura_venta', 'factura_compra', 'nota_debito', 'nota_credito', 'ingreso_vario', 'egreso_vario'])
             .neq('estado', 'pagado')
             .order('fecha_vencimiento', { ascending: true })
 
@@ -57,7 +57,9 @@ export class ReconciliationEngine {
         for (const trans of pendingTrans) {
             const transAmount = Math.abs(Number(trans.monto));
             const isCobro = trans.monto > 0;
-            const targetTipos = isCobro ? ['factura_venta', 'nota_debito'] : ['factura_compra', 'nota_credito'];
+            const targetTipos = isCobro
+                ? ['factura_venta', 'nota_debito', 'ingreso_vario']
+                : ['factura_compra', 'nota_credito', 'egreso_vario'];
 
             let targetInvoices: any[] = pendingInvoices.filter(i => targetTipos.includes(i.tipo));
             let matchLevel = 0;

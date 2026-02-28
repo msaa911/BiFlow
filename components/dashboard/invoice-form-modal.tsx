@@ -15,7 +15,7 @@ interface InvoiceFormModalProps {
     isOpen: boolean
     onClose: () => void
     orgId: string
-    type: 'factura_venta' | 'factura_compra'
+    type: 'factura_venta' | 'factura_compra' | 'ingreso_vario' | 'egreso_vario'
     invoice?: any // If editing
     onSuccess: () => void
 }
@@ -136,7 +136,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
         try {
             if (!formData.socio_id || formData.socio_id === 'none') {
-                toast.error(`Debe seleccionar un ${type === 'factura_venta' ? 'Cliente' : 'Proveedor'}`)
+                toast.error(`Debe seleccionar un ${(type === 'factura_venta' || type === 'ingreso_vario') ? 'Cliente' : 'Proveedor'}`)
                 setLoading(false)
                 return
             }
@@ -156,6 +156,8 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 setLoading(false)
                 return
             }
+
+            if (!selectedSocio) return
 
             console.log('[InvoiceForm] Socio validado:', selectedSocio.razon_social)
 
@@ -227,7 +229,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 const { data: mov, error: movErr } = await supabase.from('movimientos_tesoreria').insert({
                     organization_id: orgId,
                     entidad_id: formData.socio_id,
-                    tipo: type === 'factura_venta' ? 'cobro' : 'pago',
+                    tipo: (type === 'factura_venta' || type === 'ingreso_vario') ? 'cobro' : 'pago',
                     monto_total: formData.monto_total,
                     fecha: formData.fecha_emision,
                     observaciones: `Cierre automático: Pago Contado ${savedInvoice.numero || ''}`
@@ -302,7 +304,12 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                         <SelectValue placeholder="Seleccione el tipo..." />
                                     </SelectTrigger>
                                     <SelectContent className="bg-gray-950 border-gray-800 text-white z-[200]" position="popper" sideOffset={5}>
-                                        <SelectItem value={type} className="focus:bg-emerald-600 focus:text-white cursor-pointer">Factura (Original)</SelectItem>
+                                        <SelectItem value={type.includes('venta') || type.includes('ingreso') ? 'factura_venta' : 'factura_compra'} className="focus:bg-emerald-600 focus:text-white cursor-pointer">
+                                            Factura (Original)
+                                        </SelectItem>
+                                        <SelectItem value={type.includes('venta') || type.includes('ingreso') ? 'ingreso_vario' : 'egreso_vario'} className="focus:bg-emerald-600 focus:text-white cursor-pointer">
+                                            {type.includes('venta') || type.includes('ingreso') ? 'Ingreso Vario' : 'Egreso Vario'}
+                                        </SelectItem>
                                         <SelectItem value="nota_credito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Crédito</SelectItem>
                                         <SelectItem value="nota_debito" className="focus:bg-emerald-600 focus:text-white cursor-pointer">Nota de Débito</SelectItem>
                                     </SelectContent>
@@ -355,7 +362,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                                 }
 
                                                 const supabase = createClient()
-                                                const targetCat = type === 'factura_venta' ? 'cliente' : 'proveedor'
+                                                const targetCat = (type === 'factura_venta' || type === 'ingreso_vario') ? 'cliente' : 'proveedor'
 
                                                 setSearchingSocio(true)
                                                 const { data } = await supabase

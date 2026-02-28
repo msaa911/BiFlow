@@ -170,17 +170,17 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     const filteredInvoices = invoices.filter(inv => {
         let typeMatch = false
         if (view === 'AR') {
-            if (inv.tipo === 'factura_venta') typeMatch = true
-            // NC/ND: mostrar en AR si está vinculada a una factura_venta, o si la entidad es cliente
+            if (['factura_venta', 'ingreso_vario'].includes(inv.tipo)) typeMatch = true
+            // NC/ND: mostrar en AR si está vinculada a una factura_venta/ingreso_vario, o si la entidad es cliente
             else if (['nota_credito', 'nota_debito'].includes(inv.tipo)) {
                 const vinculado = inv.vinculado_id ? invoices.find(i => i.id === inv.vinculado_id) : null
-                typeMatch = vinculado ? vinculado.tipo === 'factura_venta' : !inv.tipo.includes('compra')
+                typeMatch = vinculado ? ['factura_venta', 'ingreso_vario'].includes(vinculado.tipo) : (!inv.tipo.includes('compra') && !inv.tipo.includes('egreso'))
             }
         } else {
-            if (inv.tipo === 'factura_compra') typeMatch = true
+            if (['factura_compra', 'egreso_vario'].includes(inv.tipo)) typeMatch = true
             else if (['nota_credito', 'nota_debito'].includes(inv.tipo)) {
                 const vinculado = inv.vinculado_id ? invoices.find(i => i.id === inv.vinculado_id) : null
-                typeMatch = vinculado ? vinculado.tipo === 'factura_compra' : !inv.tipo.includes('venta')
+                typeMatch = vinculado ? ['factura_compra', 'egreso_vario'].includes(vinculado.tipo) : (!inv.tipo.includes('venta') && !inv.tipo.includes('ingreso'))
             }
         }
 
