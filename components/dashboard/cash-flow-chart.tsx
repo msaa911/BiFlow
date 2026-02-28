@@ -58,7 +58,7 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 axisLine={false}
                                 tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                                 tick={{ fill: '#6b7280' }}
-                                domain={[(dataMin: number) => dataMin * 1.1, (dataMax: number) => dataMax * 1.1]} // Padding para evitar cortes
+                                domain={[(dataMin: number) => dataMin - Math.abs(dataMin * 0.1), (dataMax: number) => dataMax + Math.abs(dataMax * 0.1)]}
                             />
                             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} opacity={0.2} />
                             <Tooltip
@@ -106,7 +106,7 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 fill="url(#colorBalance)"
                                 strokeWidth={3}
                                 strokeLinecap="round"
-                                baseValue="dataMin"
+                                baseValue={-100000000} // Valor muy bajo para forzar siempre el relleno hacia abajo
                                 isAnimationActive={true}
                                 animationDuration={1000}
                                 dot={(props: any) => {
