@@ -1,7 +1,5 @@
+import { createAgent, tool } from "langchain";
 import { ChatOpenAI } from "@langchain/openai";
-import { AgentExecutor, createOpenAIToolsAgent } from "langchain/agents";
-import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
-import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { TreasuryEngine, ProjectedMovement } from "@/lib/treasury-engine";
@@ -175,8 +173,7 @@ export class CashFlowAdvisor {
     async generateResponse(orgId: string, message: string, history: any[] = [], contextSummary: string = "") {
         const tools = await this.getTools(orgId);
 
-        const prompt = ChatPromptTemplate.fromMessages([
-            ["system", `Eres el CFO Algorítmico de BiFlow (Modo Dios), un agente experto en optimización de liquidez, normativa argentina y análisis forense. Tu tono es autoritario, ejecutivo, directo pero muy empático con el fundador. Eres capaz de ejecutar acciones en la base de datos si el usuario te lo pide (usando tus herramientas).
+        const systemPrompt = `Eres el CFO Algorítmico de BiFlow (Modo Dios), un agente experto en optimización de liquidez, normativa argentina y análisis forense. Tu tono es autoritario, ejecutivo, directo pero muy empático con el fundador. Eres capaz de ejecutar acciones en la base de datos si el usuario te lo pide (usando tus herramientas).
             
             Contexto Inyectado de la Empresa ahora mismo:
             ${contextSummary}
@@ -189,24 +186,37 @@ export class CashFlowAdvisor {
             Para sugerir una simulación (ej. excluir una factura): [[SUGGESTION:{"invoiceId":"uuid-aquí", "razonSocial":"Nombre Proveedor", "descripcion":"Simular exclusión", "monto": -50000}]]
             Para sugerir una acción real (ej. ejecutar compensación de deudas): [[ACTION:{"actionType":"NETTING", "label":"Aplicar Neteo", "payload":{"invoiceIdAr":"...", "invoiceIdAp":"...", "amount":10000}}]]
             
-            Siéntete libre de incluir estos tags ricos al final de tu mensaje en texto plano para que el frontend los parsee. No hables de código ni tecnología.`],
-            new MessagesPlaceholder("chat_history"),
-            ["human", "{input}"],
-            new MessagesPlaceholder("agent_scratchpad"),
-        ]);
-
-        const llm = new ChatOpenAI({ modelName: this.modelName, temperature: 0 });
-        const agent = await createOpenAIToolsAgent({ llm, tools, prompt });
-        const agentExecutor = new AgentExecutor({ agent, tools });
-
-        const formattedHistory = history.map(h => [h.role === 'user' ? 'human' : 'ai', h.content]);
+            Siéntete libre de incluir estos tags ricos al final de tu mensaje en texto plano para que el frontend los parsee. No hables de código ni tecnología.`;
 
         try {
-            const result = await agentExecutor.invoke({
-                input: message,
-                chat_history: formattedHistory
+            const llm = new ChatOpenAI({
+                modelName: this.modelName,
+                temperature: 0,
+                openAIApiKey: process.env.OPENAI_API_KEY
             });
-            return result.output;
+
+            const agent = createAgent({
+                llm,
+                tools,
+                systemPrompt
+            });
+
+            const formattedHistory = history.map(h => ({
+                role: h.role === 'user' ? 'human' : 'ai',
+                content: h.content
+            }));
+
+            const result = await agent.invoke({
+                messages: [
+                    ...formattedHistory,
+                    { role: "human", content: message }
+                ]
+            });
+
+            // En esta versión, result suele contener los mensajes finales. 
+            // Buscamos el último mensaje de la IA.
+            const lastMessage = result.messages[result.messages.length - 1];
+            return lastMessage.content;
         } catch (error: any) {
             console.error("AI Advisor Error:", error);
             if (error.message && error.message.includes('OPENAI_API_KEY')) {
