@@ -55,10 +55,10 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             const data = await res.json()
             if (data.matched > 0) {
                 alert(`¡Éxito! Se conciliaron ${data.matched} comprobantes automáticamente.`)
-                await fetchData()
             } else {
                 alert('No se encontraron nuevos matches para conciliar.')
             }
+            await fetchData()
         } catch (error) {
             console.error('Reconciliation failed:', error)
             alert('Error al ejecutar la conciliación.')

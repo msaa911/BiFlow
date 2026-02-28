@@ -36,7 +36,7 @@ export class ReconciliationEngine {
             return { matched: 0, actions: [] }
         }
 
-        // 3. Fetch Trust Ledger (CBU -> CUIT mapping) via RPC
+        // 3. Fetch Trust Ledger
         let trustLedgerMap = new Map<string, string>();
         try {
             const { data: pastMatches } = await supabase
@@ -46,7 +46,7 @@ export class ReconciliationEngine {
                 pastMatches.forEach((m: any) => trustLedgerMap.set(m.cbu, m.cuit));
             }
         } catch (e) {
-            console.warn('[RECONCILIATION] Trust Ledger RPC failed or not present. Fallback to CUIT only.');
+            console.warn('[RECONCILIATION] Trust Ledger RPC failed.');
         }
 
         let matchedCount = 0
@@ -54,51 +54,41 @@ export class ReconciliationEngine {
         const usedInvIds = new Set<string>()
         const results: any[] = []
 
+        // Collector for bulk updates
+        const transUpdates: any[] = []
+        const invUpdates: any[] = []
+
         for (const trans of pendingTrans) {
             if (usedTransIds.has(trans.id)) continue;
 
             const transAmount = Math.abs(Number(trans.monto));
             let targetInvoices: any[] = [];
-            let matchLevel = 0; // 1-2: Auto, 3-4: Suggested
+            let matchLevel = 0;
 
-            // ==========================================
-            // 🚨 DETECCIÓN DE ANOMALÍAS Y ETIQUETADO DE RIESGO
-            // ==========================================
-            let tags: string[] = [];
+            // Anomalies
+            let tags: string[] = trans.tags || [];
+            let anomalyFound = false;
 
-            // Regla 1: Alerta de Precio (> $5M en una sola transacción)
-            if (transAmount > 5000000) {
+            if (transAmount > 5000000 && !tags.includes('alerta_precio')) {
                 tags.push('alerta_precio');
+                anomalyFound = true;
             }
 
-            // Regla 2: Posible Fraude BEC (Si la descripción dice CBU y no está en el Trust Ledger)
             const mentionCBU = trans.descripcion?.match(/CBU\s*(\d{22})/i);
-            if (mentionCBU && mentionCBU[1] && !trustLedgerMap.has(mentionCBU[1])) {
+            if (mentionCBU && mentionCBU[1] && !trustLedgerMap.has(mentionCBU[1]) && !tags.includes('riesgo_bec')) {
                 tags.push('riesgo_bec');
+                anomalyFound = true;
             }
 
-            // Persistir los tags encontrados si existen
-            if (tags.length > 0) {
-                await supabase.from('transacciones').update({ tags }).eq('id', trans.id);
-            }
-
-            // ==========================================
-            // 🌪️ EL EMBUDO DE FILTRADO (Filtro por Entidad)
-            // ==========================================
-
-            // Nivel 1: Match por CUIT directo
+            // Funnel
             if (trans.cuit) {
                 targetInvoices = pendingInvoices.filter(i => i.cuit_socio === trans.cuit && !usedInvIds.has(i.id));
                 matchLevel = 1;
-            }
-            // Nivel 2: Match por CBU (Trust Ledger)
-            else if (trans.metadata?.cbu && trustLedgerMap.has(trans.metadata.cbu)) {
+            } else if (trans.metadata?.cbu && trustLedgerMap.has(trans.metadata.cbu)) {
                 const deducedCuit = trustLedgerMap.get(trans.metadata.cbu);
                 targetInvoices = pendingInvoices.filter(i => i.cuit_socio === deducedCuit && !usedInvIds.has(i.id));
                 matchLevel = 2;
-            }
-            // Nivel 3: Fuzzy Matching por Razón Social (Solo si no hay CUIT/CBU)
-            else {
+            } else {
                 const fuzzyClientCuit = this.findClientByFuzzy(trans.descripcion || '', pendingInvoices.filter(i => !usedInvIds.has(i.id)));
                 if (fuzzyClientCuit) {
                     targetInvoices = pendingInvoices.filter(i => i.cuit_socio === fuzzyClientCuit && !usedInvIds.has(i.id));
@@ -106,79 +96,114 @@ export class ReconciliationEngine {
                 }
             }
 
-            // ==========================================
-            // 🧮 ESTRATEGIA DE MATCHING (1-a-1 vs 1-a-N)
-            // ==========================================
+            let finalMatch: any[] | null = null;
             if (targetInvoices.length > 0) {
-                // A. Intento 1-a-1 Exacto
+                // 1-a-1
                 const singleMatch = targetInvoices.find(i => Math.abs(Number(i.monto_pendiente) - transAmount) < 0.05);
-
                 if (singleMatch) {
-                    if (matchLevel <= 2) {
-                        await this.executeReconciliation(supabase, [singleMatch], trans);
-                        matchedCount++;
+                    finalMatch = [singleMatch];
+                }
+                // 1-a-N
+                else if (targetInvoices.length <= 20) {
+                    finalMatch = this.findSubsetSum(targetInvoices, transAmount);
+                }
+            }
+
+            if (finalMatch && matchLevel <= 2) {
+                // AUTO-RECONCILE COLLECT
+                matchedCount++;
+                usedTransIds.add(trans.id);
+                finalMatch.forEach(m => usedInvIds.add(m.id));
+
+                transUpdates.push({
+                    id: trans.id,
+                    comprobante_id: finalMatch[0].id,
+                    estado: 'conciliado',
+                    tags,
+                    metadata: {
+                        ...trans.metadata,
+                        reconciled_v2: true,
+                        reconciled_at: new Date().toISOString(),
+                        invoice_ids: finalMatch.map(i => i.id)
                     }
+                });
+
+                finalMatch.forEach(inv => {
+                    invUpdates.push({
+                        id: inv.id,
+                        estado: 'pagado',
+                        monto_pendiente: 0,
+                        metadata: {
+                            ...(inv.metadata || {}),
+                            reconciled_v2: true,
+                            reconciled_at: new Date().toISOString(),
+                            transaccion_id: trans.id,
+                            banco_transaccion: trans.banco,
+                            desc_transaccion: trans.descripcion
+                        }
+                    });
+                });
+
+                results.push({
+                    transId: trans.id,
+                    transDesc: trans.descripcion,
+                    monto: transAmount,
+                    invoiceIds: finalMatch.map(i => i.id),
+                    level: matchLevel,
+                    auto: true
+                });
+            } else {
+                // No auto-match, but maybe anomaly or level 3/4
+                if (anomalyFound) {
+                    transUpdates.push({ id: trans.id, tags });
+                }
+
+                if (finalMatch) {
+                    // Level 3 Suggestion
                     results.push({
                         transId: trans.id,
                         transDesc: trans.descripcion,
                         monto: transAmount,
-                        invoiceIds: [singleMatch.id],
+                        invoiceIds: finalMatch.map(i => i.id),
                         level: matchLevel,
-                        auto: matchLevel <= 2
+                        auto: false
                     });
-                    usedTransIds.add(trans.id);
-                    usedInvIds.add(singleMatch.id);
-                    continue;
-                }
-
-                // B. Intento 1-a-N Exacto (Subset Sum)
-                // Limitamos a 20 facturas por cliente para evitar explosión combinatoria
-                if (targetInvoices.length <= 20) {
-                    const combination = this.findSubsetSum(targetInvoices, transAmount);
-                    if (combination && combination.length > 0) {
-                        if (matchLevel <= 2) {
-                            await this.executeReconciliation(supabase, combination, trans);
-                            matchedCount++;
-                        }
+                } else {
+                    // Level 4 Suggestion
+                    const timeMatch = this.findMatchByProximity(trans, pendingInvoices.filter(i => !usedInvIds.has(i.id)));
+                    if (timeMatch) {
                         results.push({
                             transId: trans.id,
                             transDesc: trans.descripcion,
                             monto: transAmount,
-                            invoiceIds: combination.map(c => c.id),
-                            level: matchLevel,
-                            auto: matchLevel <= 2
+                            invoiceIds: [timeMatch.id],
+                            level: 4,
+                            auto: false
                         });
-                        usedTransIds.add(trans.id);
-                        combination.forEach(c => usedInvIds.add(c.id));
-                        continue;
                     }
-                }
-            }
-
-            // Nivel 4: Proximidad Temporal (Ventana 3 días + Monto exacto en toda la org)
-            if (matchLevel === 0) {
-                const timeMatch = this.findMatchByProximity(trans, pendingInvoices.filter(i => !usedInvIds.has(i.id)));
-                if (timeMatch) {
-                    results.push({
-                        transId: trans.id,
-                        transDesc: trans.descripcion,
-                        monto: transAmount,
-                        invoiceIds: [timeMatch.id],
-                        level: 4,
-                        auto: false
-                    });
-                    // No ejecutamos automático en nivel 4
                 }
             }
         }
 
-        console.log(`[RECONCILIATION] Finished. Total Matched (Auto): ${matchedCount}. Potential suggestions: ${results.length - matchedCount}`);
+        // EXECUTE BATCH UPDATES
+        if (transUpdates.length > 0) {
+            console.log(`[RECONCILIATION] Batch updating ${transUpdates.length} transactions...`)
+            const { error: tErr } = await supabase.from('transacciones').upsert(transUpdates);
+            if (tErr) console.error('[RECONCILIATION] Bulk Trans Error:', tErr);
+        }
+
+        if (invUpdates.length > 0) {
+            console.log(`[RECONCILIATION] Batch updating ${invUpdates.length} invoices...`)
+            const { error: iErr } = await supabase.from('comprobantes').upsert(invUpdates);
+            if (iErr) console.error('[RECONCILIATION] Bulk Inv Error:', iErr);
+        }
+
+        console.log(`[RECONCILIATION] Finished. Matched: ${matchedCount}. Results: ${results.length}`);
         return { matched: matchedCount, actions: results };
     }
 
     private static findClientByFuzzy(desc: string, invoices: any[]): string | null {
         const normalizedDesc = desc.toLowerCase();
-        // Simple keyword match: check if the first word of any provider is in the transaction description
         for (const inv of invoices) {
             if (inv.razon_social_socio) {
                 const words = inv.razon_social_socio.toLowerCase().split(' ').filter((w: string) => w.length > 3);
@@ -197,7 +222,6 @@ export class ReconciliationEngine {
         return invoices.find(inv => {
             const invDate = new Date(inv.fecha_vencimiento || inv.fecha_emision);
             const diffDays = Math.abs(invDate.getTime() - transDate.getTime()) / (1000 * 3600 * 24);
-            // Window of 3 days
             return diffDays <= 3 && Math.abs(Number(inv.monto_pendiente) - transAmount) < 0.05;
         });
     }
@@ -206,7 +230,6 @@ export class ReconciliationEngine {
         const tolerance = 0.05;
         const n = invoices.length;
 
-        // Recursion with memoization or just backtracking for small n
         function backtrack(idx: number, currentSum: number, selected: any[]): any[] | null {
             if (Math.abs(currentSum - target) < tolerance) return selected;
             if (currentSum > target + tolerance || idx >= n) return null;
@@ -219,47 +242,5 @@ export class ReconciliationEngine {
         }
 
         return backtrack(0, 0, []);
-    }
-
-    private static async executeReconciliation(supabase: any, invoices: any[], transaction: any) {
-        // Standard reconciliation writes
-
-        // 1. Update Transaction
-        const { error: tErr } = await supabase
-            .from('transacciones')
-            .update({
-                comprobante_id: invoices[0].id, // Primary link
-                estado: 'conciliado',
-                metadata: {
-                    ...transaction.metadata,
-                    reconciled_v2: true,
-                    reconciled_at: new Date().toISOString(),
-                    invoice_ids: invoices.map(i => i.id)
-                }
-            })
-            .eq('id', transaction.id)
-
-        if (tErr) throw tErr;
-
-        // 2. Update Invoices
-        for (const inv of invoices) {
-            const { error: iErr } = await supabase
-                .from('comprobantes')
-                .update({
-                    estado: 'pagado',
-                    monto_pendiente: 0, // Assume exact for subset sum
-                    metadata: {
-                        ...(inv.metadata || {}),
-                        reconciled_v2: true,
-                        reconciled_at: new Date().toISOString(),
-                        transaccion_id: transaction.id,
-                        banco_transaccion: transaction.banco,
-                        desc_transaccion: transaction.descripcion
-                    }
-                })
-                .eq('id', inv.id);
-
-            if (iErr) console.error(`[RECONCILIATION] Error updating inv ${inv.id}:`, iErr);
-        }
     }
 }
