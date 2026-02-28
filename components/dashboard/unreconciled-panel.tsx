@@ -82,12 +82,24 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                         </Badge>
                                     </div>
 
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10" title="Conciliar Manualmente">
-                                            <CheckCircle2 className="w-4 h-4" />
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 flex items-center gap-2 bg-emerald-500/5"
+                                            onClick={() => { }}
+                                        >
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            <span className="text-[10px] font-bold uppercase">Conciliar</span>
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10" title="Asignar Categoría">
-                                            <Tag className="w-4 h-4" />
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 px-3 border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 flex items-center gap-2 bg-blue-500/5"
+                                            onClick={() => { }}
+                                        >
+                                            <Tag className="w-3.5 h-3.5" />
+                                            <span className="text-[10px] font-bold uppercase">Categorizar</span>
                                         </Button>
                                     </div>
                                 </div>
