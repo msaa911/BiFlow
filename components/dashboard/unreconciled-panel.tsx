@@ -331,7 +331,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                     {filtered.length > 0 ? (
                         filtered.map(tx => (
-                            <div key={tx.id} className={`group flex items-center justify-between p-4 bg-gray-950 border rounded-xl transition-all ${tx.estado === 'conciliado' ? 'border-emerald-500/20 opacity-70' : 'border-gray-800 hover:border-gray-700'}`}>
+                            <div key={tx.id} className={`group flex items-center justify-between p-4 bg-gray-950 border rounded-xl transition-all ${tx.estado === 'conciliado' ? 'border-emerald-500/10 opacity-60 grayscale-[0.8] bg-gray-950/50' : 'border-gray-800 hover:border-gray-700 shadow-sm'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`p-2 rounded-lg ${tx.monto < 0 ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                                         {tx.monto < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
