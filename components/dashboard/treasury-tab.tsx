@@ -75,15 +75,16 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             setRealBalance(calculatedBalance)
         }
 
-        // Fetch Pending (Unreconciled) Transactions
-        const { data: pendingData } = await supabase
+        // Fetch Transactions for Quarantine (Pending + Conciliado for "Ver Todo" toggle)
+        const { data: qData } = await supabase
             .from('transacciones')
             .select('*')
             .eq('organization_id', orgId)
-            .eq('estado', 'pendiente')
+            .in('estado', ['pendiente', 'conciliado'])
             .order('fecha', { ascending: false })
+            .limit(200)
 
-        if (pendingData) setPendingTransactions(pendingData)
+        if (qData) setPendingTransactions(qData)
 
         setLoading(false)
     }

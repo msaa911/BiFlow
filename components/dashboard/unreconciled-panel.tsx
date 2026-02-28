@@ -199,36 +199,110 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
     }
 
     const handleConciliate = async (invoiceId: string) => {
+        if (!selectedTx) return
         setIsSubmitting(true)
         try {
-            // Update transaction
-            const { error: txError } = await supabase
-                .from('transacciones')
-                .update({
-                    comprobante_id: invoiceId,
-                    estado: 'conciliado'
+            const orgId = (transactions[0] as any)?.organization_id
+            const isCobro = selectedTx.monto > 0
+            const amount = Math.abs(selectedTx.monto)
+
+            // 1. Fetch invoice to get entity and current balance
+            const { data: invoice, error: invFetchError } = await supabase
+                .from('comprobantes')
+                .select('*')
+                .eq('id', invoiceId)
+                .single()
+
+            if (invFetchError) throw invFetchError
+
+            // Get Entity ID (Mandatory for Movimiento)
+            const { data: entity } = await supabase
+                .from('entidades')
+                .select('id')
+                .eq('organization_id', orgId)
+                .eq('cuit', invoice.cuit_socio)
+                .single();
+
+            if (!entity) throw new Error(`Entidad no encontrada para CUIT ${invoice.cuit_socio}`)
+
+            // 2. Create Movimiento Tesoreria (Header)
+            const { data: movimiento, error: movError } = await supabase
+                .from('movimientos_tesoreria')
+                .insert({
+                    organization_id: orgId,
+                    entidad_id: entity.id,
+                    tipo: isCobro ? 'cobro' : 'pago',
+                    fecha: selectedTx.fecha,
+                    monto_total: amount,
+                    observaciones: `CONCILIACIÓN MANUAL Cuarentena: ${selectedTx.descripcion}`,
+                    metadata: { transaccion_id: selectedTx.id, manual: true }
                 })
-                .eq('id', selectedTx?.id)
+                .select()
+                .single()
 
-            if (txError) throw txError
+            if (movError) throw movError
 
-            // Update invoice (comprobante)
+            // 3. Create Instrument (The bank movement)
+            const { error: insError } = await supabase
+                .from('instrumentos_pago')
+                .insert({
+                    movimiento_id: movimiento.id,
+                    metodo: 'transferencia',
+                    monto: amount,
+                    fecha_disponibilidad: selectedTx.fecha,
+                    referencia: selectedTx.descripcion,
+                    estado: 'acreditado'
+                })
+
+            if (insError) throw insError
+
+            // 4. Create Application (Link Invoice to OP)
+            const amountToApply = Math.min(Number(invoice.monto_pendiente), amount)
+            const { error: appError } = await supabase
+                .from('aplicaciones_pago')
+                .insert({
+                    movimiento_id: movimiento.id,
+                    comprobante_id: invoice.id,
+                    monto_aplicado: amountToApply
+                })
+
+            if (appError) throw appError
+
+            // 5. Update Invoice (comprobante)
+            const newPendiente = Number(invoice.monto_pendiente) - amountToApply
             const { error: invError } = await supabase
                 .from('comprobantes')
                 .update({
-                    estado: 'pagado'
+                    monto_pendiente: Math.max(0, newPendiente),
+                    estado: newPendiente <= 0.05 ? 'pagado' : 'parcial',
+                    metadata: {
+                        ...(invoice.metadata || {}),
+                        reconciled_at: new Date().toISOString(),
+                        transaccion_id: selectedTx.id
+                    }
                 })
                 .eq('id', invoiceId)
 
             if (invError) throw invError
 
-            toast.success('Conciliación realizada con éxito')
+            // 6. Update Bank Transaction
+            const { error: txError } = await supabase
+                .from('transacciones')
+                .update({
+                    movimiento_id: movimiento.id,
+                    estado: 'conciliado'
+                })
+                .eq('id', selectedTx.id)
+
+            if (txError) throw txError
+
+            toast.success('Conciliación manual exitosa (Circuito Completo registrado)')
             setIsConciliating(false)
             setSelectedTx(null)
             if (onRefresh) onRefresh()
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error in conciliation:', error)
-            toast.error('Error al realizar la conciliación')
+            toast.error('Error al realizar la conciliación: ' + error.message)
         } finally {
             setIsSubmitting(false)
         }

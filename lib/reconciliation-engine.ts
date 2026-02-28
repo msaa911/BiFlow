@@ -7,17 +7,18 @@ import { createClient } from '@/lib/supabase/server'
  */
 export class ReconciliationEngine {
     static async matchAndReconcile(organizationId: string) {
-        console.log(`[RECONCILIATION v2.0] Starting auto-match for org: ${organizationId}`)
+        console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId}`)
 
         const supabase = await createClient()
 
-        // 1. Fetch pending invoices (AP/AR)
+        // 1. Fetch pending invoices (AP/AR) -> Order by due date to apply FIFO if multiple
         const { data: pendingInvoices, error: invError } = await supabase
             .from('comprobantes')
             .select('*')
             .eq('organization_id', organizationId)
-            .in('tipo', ['factura_venta', 'factura_compra'])
+            .in('tipo', ['factura_venta', 'factura_compra', 'nota_debito', 'nota_credito'])
             .neq('estado', 'pagado')
+            .order('fecha_vencimiento', { ascending: true })
 
         if (invError || !pendingInvoices || pendingInvoices.length === 0) {
             console.log(`[RECONCILIATION] No pending invoices found.`)
@@ -29,6 +30,7 @@ export class ReconciliationEngine {
             .from('transacciones')
             .select('*')
             .eq('organization_id', organizationId)
+            .is('movimiento_id', null)
             .is('comprobante_id', null)
 
         if (transError || !pendingTrans || pendingTrans.length === 0) {
@@ -50,19 +52,14 @@ export class ReconciliationEngine {
         }
 
         let matchedCount = 0
-        const usedTransIds = new Set<string>()
-        const usedInvIds = new Set<string>()
         const results: any[] = []
 
-        // Collector for bulk updates
-        const transUpdates: any[] = []
-        const invUpdates: any[] = []
-
         for (const trans of pendingTrans) {
-            if (usedTransIds.has(trans.id)) continue;
-
             const transAmount = Math.abs(Number(trans.monto));
-            let targetInvoices: any[] = [];
+            const isCobro = trans.monto > 0;
+            const targetTipos = isCobro ? ['factura_venta', 'nota_debito'] : ['factura_compra', 'nota_credito'];
+
+            let targetInvoices: any[] = pendingInvoices.filter(i => targetTipos.includes(i.tipo));
             let matchLevel = 0;
 
             // Anomalies
@@ -82,84 +79,158 @@ export class ReconciliationEngine {
 
             // Funnel
             if (trans.cuit) {
-                targetInvoices = pendingInvoices.filter(i => i.cuit_socio === trans.cuit && !usedInvIds.has(i.id));
+                targetInvoices = targetInvoices.filter(i => i.cuit_socio === trans.cuit);
                 matchLevel = 1;
             } else if (trans.metadata?.cbu && trustLedgerMap.has(trans.metadata.cbu)) {
                 const deducedCuit = trustLedgerMap.get(trans.metadata.cbu);
-                targetInvoices = pendingInvoices.filter(i => i.cuit_socio === deducedCuit && !usedInvIds.has(i.id));
+                targetInvoices = targetInvoices.filter(i => i.cuit_socio === deducedCuit);
                 matchLevel = 2;
             } else {
-                const fuzzyClientCuit = this.findClientByFuzzy(trans.descripcion || '', pendingInvoices.filter(i => !usedInvIds.has(i.id)));
+                const fuzzyClientCuit = this.findClientByFuzzy(trans.descripcion || '', targetInvoices);
                 if (fuzzyClientCuit) {
-                    targetInvoices = pendingInvoices.filter(i => i.cuit_socio === fuzzyClientCuit && !usedInvIds.has(i.id));
+                    targetInvoices = targetInvoices.filter(i => i.cuit_socio === fuzzyClientCuit);
                     matchLevel = 3;
                 }
             }
 
             let finalMatch: any[] | null = null;
             if (targetInvoices.length > 0) {
-                // 1-a-1
+                // 1-a-1 Exact Match
                 const singleMatch = targetInvoices.find(i => Math.abs(Number(i.monto_pendiente) - transAmount) < 0.05);
                 if (singleMatch) {
                     finalMatch = [singleMatch];
                 }
                 // 1-a-N
-                else if (targetInvoices.length <= 20) {
+                else if (targetInvoices.length <= 15) {
                     finalMatch = this.findSubsetSum(targetInvoices, transAmount);
+                }
+                // Partial Pay Match Level 1/2 (Single Invoice)
+                if (!finalMatch && matchLevel <= 2 && targetInvoices.length === 1) {
+                    finalMatch = [targetInvoices[0]];
                 }
             }
 
             if (finalMatch && matchLevel <= 2) {
-                // AUTO-RECONCILE COLLECT
-                matchedCount++;
-                usedTransIds.add(trans.id);
-                finalMatch.forEach(m => usedInvIds.add(m.id));
+                console.log(`[RECONCILIATION] Match Level ${matchLevel} found for trans ${trans.id} (${transAmount})`);
 
-                transUpdates.push({
-                    id: trans.id,
-                    comprobante_id: finalMatch[0].id,
-                    estado: 'conciliado',
-                    tags,
-                    metadata: {
-                        ...trans.metadata,
-                        reconciled_v2: true,
-                        reconciled_at: new Date().toISOString(),
-                        invoice_ids: finalMatch.map(i => i.id)
-                    }
-                });
+                try {
+                    // --- CIRCUIT EXECUTION START ---
+                    // 0. Get Entity ID (Mandatory for Movimiento)
+                    const { data: entity } = await supabase
+                        .from('entidades')
+                        .select('id')
+                        .eq('organization_id', organizationId)
+                        .eq('cuit', finalMatch[0].cuit_socio)
+                        .single();
 
-                finalMatch.forEach(inv => {
-                    invUpdates.push({
-                        id: inv.id,
-                        estado: 'pagado',
-                        monto_pendiente: 0,
-                        metadata: {
-                            ...(inv.metadata || {}),
-                            reconciled_v2: true,
-                            reconciled_at: new Date().toISOString(),
-                            transaccion_id: trans.id,
-                            banco_transaccion: trans.banco,
-                            desc_transaccion: trans.descripcion
+                    if (!entity) throw new Error(`Entity not found for CUIT ${finalMatch[0].cuit_socio}`);
+
+                    // 1. Create Movimiento Tesoreria (Header)
+                    const { data: movimiento, error: movError } = await supabase
+                        .from('movimientos_tesoreria')
+                        .insert({
+                            organization_id: organizationId,
+                            entidad_id: entity.id,
+                            tipo: isCobro ? 'cobro' : 'pago',
+                            fecha: trans.fecha,
+                            monto_total: transAmount,
+                            observaciones: `AUTO: ${trans.descripcion}`,
+                            metadata: { transaccion_id: trans.id, auto: true, level: matchLevel }
+                        })
+                        .select()
+                        .single();
+
+                    if (movError) throw movError;
+
+                    // 2. Create Instrument (The bank movement)
+                    const { error: insError } = await supabase
+                        .from('instrumentos_pago')
+                        .insert({
+                            movimiento_id: movimiento.id,
+                            metodo: 'transferencia',
+                            monto: transAmount,
+                            fecha_disponibilidad: trans.fecha,
+                            banco: trans.banco,
+                            referencia: trans.descripcion,
+                            estado: 'acreditado'
+                        });
+
+                    if (insError) throw insError;
+
+                    // 3. Create Applications & Update Invoices
+                    let remainingTransAmount = transAmount;
+                    for (const inv of finalMatch) {
+                        const amountToApply = Math.min(Number(inv.monto_pendiente), remainingTransAmount);
+                        if (amountToApply <= 0) continue;
+
+                        const { error: appError } = await supabase
+                            .from('aplicaciones_pago')
+                            .insert({
+                                movimiento_id: movimiento.id,
+                                comprobante_id: inv.id,
+                                monto_aplicado: amountToApply
+                            });
+
+                        if (appError) throw appError;
+
+                        const newPendiente = Number(inv.monto_pendiente) - amountToApply;
+                        const newEstado = newPendiente <= 0.05 ? 'pagado' : 'parcial';
+
+                        const { error: invErr } = await supabase
+                            .from('comprobantes')
+                            .update({
+                                monto_pendiente: Math.max(0, newPendiente),
+                                estado: newEstado,
+                                metadata: {
+                                    ...(inv.metadata || {}),
+                                    last_auto_reconciled: new Date().toISOString(),
+                                    transaccion_id: trans.id
+                                }
+                            })
+                            .eq('id', inv.id);
+
+                        if (invErr) throw invErr;
+
+                        remainingTransAmount -= amountToApply;
+                        // Update local pendingInvoices to avoid double-dipping in the same run
+                        const localInv = pendingInvoices.find(i => i.id === inv.id);
+                        if (localInv) {
+                            localInv.monto_pendiente = Math.max(0, newPendiente);
+                            localInv.estado = newEstado;
                         }
-                    });
-                });
+                    }
 
-                results.push({
-                    transId: trans.id,
-                    transDesc: trans.descripcion,
-                    monto: transAmount,
-                    invoiceIds: finalMatch.map(i => i.id),
-                    level: matchLevel,
-                    auto: true
-                });
+                    // 4. Update Bank Transaction
+                    const { error: txError } = await supabase
+                        .from('transacciones')
+                        .update({
+                            movimiento_id: movimiento.id,
+                            estado: 'conciliado',
+                            tags
+                        })
+                        .eq('id', trans.id);
+
+                    if (txError) throw txError;
+
+                    matchedCount++;
+                    results.push({
+                        transId: trans.id,
+                        monto: transAmount,
+                        movimientoId: movimiento.id,
+                        level: matchLevel,
+                        auto: true
+                    });
+
+                } catch (err: any) {
+                    console.error(`[RECONCILIATION] Failed to execute circuit for trans ${trans.id}:`, err.message);
+                }
             } else {
-                // No auto-match, but maybe anomaly or level 3/4
+                // SUGGESTIONS OR ANOMALIES
                 if (anomalyFound) {
-                    transUpdates.push({ id: trans.id, tags });
+                    await supabase.from('transacciones').update({ tags }).eq('id', trans.id);
                 }
 
                 if (finalMatch) {
-                    // Level 3 Suggestion
                     results.push({
                         transId: trans.id,
                         transDesc: trans.descripcion,
@@ -169,8 +240,7 @@ export class ReconciliationEngine {
                         auto: false
                     });
                 } else {
-                    // Level 4 Suggestion
-                    const timeMatch = this.findMatchByProximity(trans, pendingInvoices.filter(i => !usedInvIds.has(i.id)));
+                    const timeMatch = this.findMatchByProximity(trans, targetInvoices);
                     if (timeMatch) {
                         results.push({
                             transId: trans.id,
@@ -185,20 +255,7 @@ export class ReconciliationEngine {
             }
         }
 
-        // EXECUTE BATCH UPDATES
-        if (transUpdates.length > 0) {
-            console.log(`[RECONCILIATION] Batch updating ${transUpdates.length} transactions...`)
-            const { error: tErr } = await supabase.from('transacciones').upsert(transUpdates);
-            if (tErr) console.error('[RECONCILIATION] Bulk Trans Error:', tErr);
-        }
-
-        if (invUpdates.length > 0) {
-            console.log(`[RECONCILIATION] Batch updating ${invUpdates.length} invoices...`)
-            const { error: iErr } = await supabase.from('comprobantes').upsert(invUpdates);
-            if (iErr) console.error('[RECONCILIATION] Bulk Inv Error:', iErr);
-        }
-
-        console.log(`[RECONCILIATION] Finished. Matched: ${matchedCount}. Results: ${results.length}`);
+        console.log(`[RECONCILIATION] Finished. Matched: ${matchedCount}. Total Results: ${results.length}`);
         return { matched: matchedCount, actions: results };
     }
 
