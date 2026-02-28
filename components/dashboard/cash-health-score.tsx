@@ -1,7 +1,8 @@
 
 'use client'
 
-import { Activity, ShieldCheck, TrendingUp, AlertCircle } from 'lucide-react'
+import { Activity, ShieldCheck, TrendingUp, AlertCircle, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
 
 interface CashHealthScoreProps {
@@ -141,12 +142,23 @@ export function CashHealthScore({
                         </div>
                     </div>
 
-                    <button
-                        onClick={onOpenStressTest}
-                        className="ml-4 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors border-b border-blue-400/30 pb-0.5"
-                    >
-                        Simular Stress Test →
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={onOpenStressTest}
+                            className="text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors border-b border-blue-400/30 pb-0.5"
+                        >
+                            Simular Stress Test →
+                        </button>
+
+                        {anomalyCount > 0 && (
+                            <Link
+                                href="/dashboard/treasury?tab=cuarentena"
+                                className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-amber-500 hover:text-amber-400 transition-colors border-b border-amber-500/30 pb-0.5"
+                            >
+                                Revisar Cuarentena <ExternalLink className="w-2.5 h-2.5" />
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 {/* Trend Chart Section */}

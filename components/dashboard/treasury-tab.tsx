@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { InvoicePanel } from './invoice-panel'
 import { Card } from '@/components/ui/card'
@@ -10,8 +11,9 @@ import { TreasuryEngine } from '@/lib/treasury-engine'
 import { CashFlowHub } from './cash-flow-hub'
 import { SuppliersTab } from './suppliers-tab'
 import { TreasuryHistory } from './treasury-history'
-import { Shield, BookUser, History, Landmark } from 'lucide-react'
+import { Shield, BookUser, History, Landmark, AlertCircle } from 'lucide-react'
 import { CheckPortfolio } from './check-portfolio'
+import { UnreconciledPanel } from './unreconciled-panel'
 
 interface TreasuryTabProps {
     orgId: string
@@ -19,8 +21,12 @@ interface TreasuryTabProps {
 }
 
 export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
+    const searchParams = useSearchParams()
+    const defaultTab = searchParams.get('tab') || 'cashflow'
+    const [activeTab, setActiveTab] = useState(defaultTab)
     const [invoices, setInvoices] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
+    const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
     const [realBalance, setRealBalance] = useState(0)
     const [loading, setLoading] = useState(true)
     const [reconciling, setReconciling] = useState(false)
@@ -68,6 +74,17 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             }
             setRealBalance(calculatedBalance)
         }
+
+        // Fetch Pending (Unreconciled) Transactions
+        const { data: pendingData } = await supabase
+            .from('transacciones')
+            .select('*')
+            .eq('organization_id', orgId)
+            .eq('estado', 'pendiente')
+            .order('fecha', { ascending: false })
+
+        if (pendingData) setPendingTransactions(pendingData)
+
         setLoading(false)
     }
 
@@ -178,7 +195,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 </Card>
             </div>
 
-            <Tabs defaultValue="cashflow" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="bg-gray-900 border border-gray-800 p-1 rounded-xl mb-6">
                     <TabsTrigger value="cashflow" className="rounded-lg">
                         <Calculator className="w-3.5 h-3.5 mr-2" />
@@ -212,6 +229,10 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                         <Landmark className="w-3.5 h-3.5 mr-2 text-blue-400" />
                         Cartera
                     </TabsTrigger>
+                    <TabsTrigger value="cuarentena" className="rounded-lg">
+                        <AlertCircle className="w-3.5 h-3.5 mr-2 text-amber-500" />
+                        Cuarentena
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="cashflow">
@@ -244,6 +265,10 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
 
                 <TabsContent value="ordenes">
                     <TreasuryHistory orgId={orgId} typeFilter="pago" />
+                </TabsContent>
+
+                <TabsContent value="cuarentena">
+                    <UnreconciledPanel transactions={pendingTransactions} onRefresh={fetchData} />
                 </TabsContent>
 
                 <TabsContent value="advisor">
