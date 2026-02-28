@@ -62,6 +62,27 @@ export class ReconciliationEngine {
             let matchLevel = 0; // 1-2: Auto, 3-4: Suggested
 
             // ==========================================
+            // 🚨 DETECCIÓN DE ANOMALÍAS Y ETIQUETADO DE RIESGO
+            // ==========================================
+            let tags: string[] = [];
+
+            // Regla 1: Alerta de Precio (> $5M en una sola transacción)
+            if (transAmount > 5000000) {
+                tags.push('alerta_precio');
+            }
+
+            // Regla 2: Posible Fraude BEC (Si la descripción dice CBU y no está en el Trust Ledger)
+            const mentionCBU = trans.descripcion?.match(/CBU\s*(\d{22})/i);
+            if (mentionCBU && mentionCBU[1] && !trustLedgerMap.has(mentionCBU[1])) {
+                tags.push('riesgo_bec');
+            }
+
+            // Persistir los tags encontrados si existen
+            if (tags.length > 0) {
+                await supabase.from('transacciones').update({ tags }).eq('id', trans.id);
+            }
+
+            // ==========================================
             // 🌪️ EL EMBUDO DE FILTRADO (Filtro por Entidad)
             // ==========================================
 
