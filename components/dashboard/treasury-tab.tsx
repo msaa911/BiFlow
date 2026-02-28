@@ -22,8 +22,7 @@ interface TreasuryTabProps {
 
 export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     const searchParams = useSearchParams()
-    const defaultTab = searchParams.get('tab') || 'cashflow'
-    const [activeTab, setActiveTab] = useState(defaultTab)
+    const [activeTab, setActiveTab] = useState('cashflow')
     const [invoices, setInvoices] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
@@ -94,8 +93,12 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     }, [orgId])
 
     useEffect(() => {
-        const tab = searchParams.get('tab') || 'cashflow'
-        setActiveTab(tab)
+        const tab = searchParams.get('tab')
+        if (tab) {
+            setActiveTab(tab)
+        } else {
+            setActiveTab('cashflow')
+        }
     }, [searchParams])
 
     const handleReconcile = async () => {
