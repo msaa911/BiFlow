@@ -2,16 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet } from 'lucide-react'
+import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet, Landmark } from 'lucide-react'
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Finanzas', href: '/dashboard/treasury', icon: Wallet },
-    { name: 'Cargar Archivos', href: '/dashboard/upload', icon: FileText },
+    { name: 'Bancos', href: '/dashboard/banks', icon: Landmark },
     { name: 'Historial', href: '/dashboard/history', icon: Clock },
-    { name: 'Transacciones Bancarias', href: '/dashboard/transactions', icon: List },
-    { name: 'Auditoría AI', href: '/dashboard/audit', icon: Shield },
+    { name: 'Auditoría IA', href: '/dashboard/audit', icon: Shield },
     { name: 'Reportes', href: '/dashboard/reports', icon: FileText },
+    { name: 'Carga de Documentos', href: '/dashboard/upload', icon: FileText },
     { name: 'Configuración', href: '/dashboard/settings', icon: Settings },
 ]
 

@@ -178,69 +178,6 @@ export default async function DashboardPage() {
                 <DuplicateGuardWidget duplicates={anomalies?.filter(a => a.tags?.includes('posible_duplicado')) || []} />
                 <FeeAuditWidget />
             </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[400px] flex flex-col">
-                    <div className="p-4 border-b border-gray-800 flex justify-between bg-gray-800/20">
-                        <h3 className="font-bold text-white text-xs flex items-center gap-2"><List className="w-4 h-4 text-emerald-500" /> Transacciones Recientes</h3>
-                        <Link href="/dashboard/transactions" className="text-[10px] text-emerald-500 uppercase font-black">Ver todas</Link>
-                    </div>
-                    <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                        <table className="w-full text-left text-xs text-gray-400">
-                            <tbody className="divide-y divide-gray-800">
-                                {bankTransactions.map((t: any) => (
-                                    <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
-                                        <td className="px-4 py-3 font-mono text-gray-500">{new Date(t.fecha).toLocaleDateString('es-AR')}</td>
-                                        <td className="px-4 py-3 text-white font-medium truncate max-w-[150px]">{t.descripcion}</td>
-                                        <td className={`px-4 py-3 text-right font-black ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div className="grid grid-rows-2 gap-6 h-[400px]">
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-                        <div className="p-3 border-b border-gray-800 bg-emerald-500/5">
-                            <h3 className="font-bold text-white text-[11px] uppercase flex items-center gap-2"><TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos</h3>
-                        </div>
-                        <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                            <table className="w-full text-left text-[10px] text-gray-400">
-                                <tbody className="divide-y divide-gray-800">
-                                    {incomes.map((t: any) => (
-                                        <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
-                                            <td className="px-4 py-2 font-mono">{new Date(t.fecha).toLocaleDateString('es-AR')}</td>
-                                            <td className="px-4 py-2 text-white truncate max-w-[120px]">{t.descripcion}</td>
-                                            <td className="px-4 py-2 text-right font-black text-emerald-400">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-                        <div className="p-3 border-b border-gray-800 bg-red-500/5">
-                            <h3 className="font-bold text-white text-[11px] uppercase flex items-center gap-2"><TrendingDown className="w-3 h-3 text-red-500" /> Egresos</h3>
-                        </div>
-                        <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                            <table className="w-full text-left text-[10px] text-gray-400">
-                                <tbody className="divide-y divide-gray-800">
-                                    {expenses.map((t: any) => (
-                                        <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
-                                            <td className="px-4 py-2 font-mono">{new Date(t.fecha).toLocaleDateString('es-AR')}</td>
-                                            <td className="px-4 py-2 text-white truncate max-w-[120px]">{t.descripcion}</td>
-                                            <td className="px-4 py-2 text-right font-black text-red-400">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     )
 }
