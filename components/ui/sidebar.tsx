@@ -6,7 +6,7 @@ import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet } from 'l
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Finanzas', href: '/dashboard/treasury', icon: Wallet },
+    { name: 'Finanzas', href: '/dashboard/treasury?tab=cashflow', icon: Wallet },
     { name: 'Cargar Archivos', href: '/dashboard/upload', icon: FileText },
     { name: 'Historial', href: '/dashboard/history', icon: Clock },
     { name: 'Transacciones Bancarias', href: '/dashboard/transactions', icon: List },

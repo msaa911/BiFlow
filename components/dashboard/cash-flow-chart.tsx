@@ -107,7 +107,7 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 fill="url(#colorBalance)"
                                 strokeWidth={4}
                                 strokeLinecap="round"
-                                baseValue="dataMin"
+                                baseValue={-1000000000} // Forzar relleno hacia abajo incluso con saldos negativos
                                 animationDuration={2000}
                                 dot={(props: any) => {
                                     if (props.payload.isAlert) {
