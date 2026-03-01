@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 /**
  * RECONCILIATION ENGINE v2.0
@@ -9,7 +9,10 @@ export class ReconciliationEngine {
     static async matchAndReconcile(organizationId: string) {
         console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId}`)
 
-        const supabase = await createClient()
+        const supabase = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_KEY!
+        )
 
         // 1. Fetch pending invoices (AP/AR) -> Order by due date to apply FIFO if multiple
         const { data: pendingInvoices, error: invError } = await supabase
