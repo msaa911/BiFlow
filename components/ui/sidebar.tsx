@@ -6,11 +6,11 @@ import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet, Landmark
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Finanzas', href: '/dashboard/treasury', icon: Wallet },
     { name: 'Bancos', href: '/dashboard/banks', icon: Landmark },
-    { name: 'Historial', href: '/dashboard/history', icon: Clock },
+    { name: 'Finanzas', href: '/dashboard/treasury', icon: Wallet },
     { name: 'Auditoría IA', href: '/dashboard/audit', icon: Shield },
     { name: 'Reportes', href: '/dashboard/reports', icon: FileText },
+    { name: 'Historial', href: '/dashboard/history', icon: Clock },
     { name: 'Carga de Documentos', href: '/dashboard/upload', icon: FileText },
     { name: 'Configuración', href: '/dashboard/settings', icon: Settings },
 ]
