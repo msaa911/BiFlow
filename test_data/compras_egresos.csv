@@ -1,21 +1,21 @@
 fecha,numero,concepto,cuit,razon_social,monto,vencimiento,moneda
-22/02/2026,FAC-C-0002-5000,Gastos operativos comunes,30-66666666-6,Alquileres de Oficinas SA,35107,24/03/2026,ARS
-12/01/2026,FAC-C-0002-5001,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,174374,11/02/2026,ARS
-21/02/2026,FAC-C-0002-5002,Gastos operativos comunes,33-55555555-5,Cloud Hosting Providers INC,101679,23/03/2026,ARS
-16/01/2026,FAC-C-0002-5003,Gastos operativos comunes,30-66666666-6,Alquileres de Oficinas SA,183498,15/02/2026,ARS
-15/02/2026,FAC-C-0002-5004,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,50558,17/03/2026,ARS
-15/02/2026,FAC-C-0002-5005,Implementación de licencias anuales,30-66666666-6,Alquileres de Oficinas SA,8500000,17/03/2026,ARS
-08/02/2026,FAC-C-0002-5006,Gastos operativos comunes,33-55555555-5,Cloud Hosting Providers INC,60717,10/03/2026,ARS
-04/01/2026,FAC-C-0002-5007,Gastos operativos comunes,33-55555555-5,Cloud Hosting Providers INC,175926,03/02/2026,ARS
-07/01/2026,FAC-C-0002-5008,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,212493,06/02/2026,ARS
-21/01/2026,FAC-C-0002-5009,Gastos operativos comunes,30-66666666-6,Alquileres de Oficinas SA,169665,20/02/2026,ARS
-28/01/2026,FAC-C-0002-5010,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,294027,27/02/2026,ARS
-10/01/2026,FAC-C-0002-5011,Gastos operativos comunes,33-55555555-5,Cloud Hosting Providers INC,93364,09/02/2026,ARS
-09/02/2026,FAC-C-0002-5012,Gastos operativos comunes,30-66666666-6,Alquileres de Oficinas SA,266389,11/03/2026,ARS
-08/02/2026,FAC-C-0002-5013,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,51075,10/03/2026,ARS
-18/01/2026,FAC-C-0002-5014,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,216793,17/02/2026,ARS
-26/02/2026,FAC-C-0002-5015,Gastos operativos comunes,30-66666666-6,Alquileres de Oficinas SA,221815,28/03/2026,ARS
-05/01/2026,FAC-C-0002-5016,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,38450,04/02/2026,ARS
-17/01/2026,FAC-C-0002-5017,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,275116,16/02/2026,ARS
-27/02/2026,FAC-C-0002-5018,Gastos operativos comunes,33-55555555-5,Cloud Hosting Providers INC,222333,29/03/2026,ARS
-09/02/2026,FAC-C-0002-5019,Gastos operativos comunes,30-44444444-4,Servicios de Limpieza Estrella,225437,11/03/2026,ARS
+15/02/2026,FAC-C-0002-5000,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,137274,17/03/2026,ARS
+12/01/2026,FAC-C-0002-5001,Suministros y gastos operativos,30-44444444-4,Servicios de Limpieza Estrella,248035,11/02/2026,ARS
+22/01/2026,FAC-C-0002-5002,Suministros y gastos operativos,33-55555555-5,Cloud Hosting Providers INC,187234,21/02/2026,ARS
+04/02/2026,FAC-C-0002-5003,Suministros y gastos operativos,30-44444444-4,Servicios de Limpieza Estrella,93111,06/03/2026,ARS
+24/02/2026,FAC-C-0002-5004,Suministros y gastos operativos,30-44444444-4,Servicios de Limpieza Estrella,180273,26/03/2026,ARS
+13/02/2026,FAC-C-0002-5005,Mantenimiento infraestructura servidores,30-44444444-4,Servicios de Limpieza Estrella,1200000,15/03/2026,ARS
+15/01/2026,FAC-C-0002-5006,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,56118,14/02/2026,ARS
+13/02/2026,FAC-C-0002-5007,Suministros y gastos operativos,33-55555555-5,Cloud Hosting Providers INC,90944,15/03/2026,ARS
+01/01/2026,FAC-C-0002-5008,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,107623,31/01/2026,ARS
+13/02/2026,FAC-C-0002-5009,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,119402,15/03/2026,ARS
+11/01/2026,FAC-C-0002-5010,Suministros y gastos operativos,30-44444444-4,Servicios de Limpieza Estrella,71714,10/02/2026,ARS
+16/01/2026,FAC-C-0002-5011,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,57333,15/02/2026,ARS
+17/02/2026,FAC-C-0002-5012,Suministros y gastos operativos,33-55555555-5,Cloud Hosting Providers INC,67906,19/03/2026,ARS
+25/01/2026,FAC-C-0002-5013,Suministros y gastos operativos,33-55555555-5,Cloud Hosting Providers INC,151064,24/02/2026,ARS
+17/02/2026,FAC-C-0002-5014,Suministros y gastos operativos,33-55555555-5,Cloud Hosting Providers INC,34112,19/03/2026,ARS
+15/02/2026,FAC-C-0002-5015,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,84773,17/03/2026,ARS
+19/02/2026,FAC-C-0002-5016,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,219277,21/03/2026,ARS
+20/02/2026,FAC-C-0002-5017,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,75250,22/03/2026,ARS
+10/02/2026,FAC-C-0002-5018,Suministros y gastos operativos,33-55555555-5,Cloud Hosting Providers INC,143445,12/03/2026,ARS
+05/02/2026,FAC-C-0002-5019,Suministros y gastos operativos,30-44444444-4,Servicios de Limpieza Estrella,99456,07/03/2026,ARS

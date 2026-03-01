@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock } from 'lucide-react'
+import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown } from 'lucide-react'
 import { CheckPortfolio } from './check-portfolio'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import { SmartFormatBuilder } from './smart-format-builder'
 
 interface BanksTabProps {
     orgId: string
@@ -16,35 +19,102 @@ const formatDate = (dateStr: string) => {
 
 export function BanksTab({ orgId, initialTransactions }: BanksTabProps) {
     const [activeTab, setActiveTab] = useState('summary')
+    const [showFormatBuilder, setShowFormatBuilder] = useState(false)
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
 
     const incomes = initialTransactions.filter(t => t.monto > 0)
     const expenses = initialTransactions.filter(t => t.monto < 0)
 
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="bg-gray-900 border border-gray-800 p-1 h-12 gap-1">
-                <TabsTrigger
-                    value="summary"
-                    className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
-                >
-                    <LayoutDashboard className="w-4 h-4" />
-                    Resumen
-                </TabsTrigger>
-                <TabsTrigger
-                    value="transactions"
-                    className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 gap-2 px-6"
-                >
-                    <List className="w-4 h-4" />
-                    Transacciones
-                </TabsTrigger>
-                <TabsTrigger
-                    value="portfolio"
-                    className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400 gap-2 px-6"
-                >
-                    <Banknote className="w-4 h-4" />
-                    Cartera
-                </TabsTrigger>
-            </TabsList>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <TabsList className="bg-gray-900 border border-gray-800 p-1 h-12 gap-1 w-full md:w-auto">
+                    <TabsTrigger
+                        value="summary"
+                        className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
+                    >
+                        <LayoutDashboard className="w-4 h-4" />
+                        Resumen
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="transactions"
+                        className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 gap-2 px-6"
+                    >
+                        <List className="w-4 h-4" />
+                        Transacciones
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="portfolio"
+                        className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400 gap-2 px-6"
+                    >
+                        <Banknote className="w-4 h-4" />
+                        Cartera
+                    </TabsTrigger>
+                </TabsList>
+
+                <div className="relative">
+                    <Button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6 px-6 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-3 transition-all active:scale-95"
+                    >
+                        <FileUp className="w-5 h-5" />
+                        CARGA DE EXTRACTO
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
+                    </Button>
+
+                    {isMenuOpen && (
+                        <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                            <div className="absolute right-0 mt-3 w-64 bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl z-50 py-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                                <div className="px-4 py-2 mb-1">
+                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">Opciones de Entrada</p>
+                                </div>
+                                <Link
+                                    href="/dashboard/upload?context=bank"
+                                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-900 hover:text-emerald-400 transition-all group"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    <div className="p-2 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                                        <FileUp className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold">Carga Tradicional</span>
+                                        <span className="text-[10px] text-gray-500">Detección Inteligente v4.0</span>
+                                    </div>
+                                </Link>
+
+                                <div className="h-px bg-gray-900 my-2 mx-3" />
+
+                                <button
+                                    onClick={() => {
+                                        setShowFormatBuilder(true)
+                                        setIsMenuOpen(false)
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-900 hover:text-blue-400 transition-all group"
+                                >
+                                    <div className="p-2 bg-blue-500/10 rounded-lg group-hover:bg-blue-500 group-hover:text-white transition-all">
+                                        <Settings className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex flex-col text-left">
+                                        <span className="font-bold">Formato Manual</span>
+                                        <span className="text-[10px] text-gray-500">Para extractos no reconocidos</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {showFormatBuilder && (
+                <SmartFormatBuilder
+                    onClose={() => setShowFormatBuilder(false)}
+                    onFormatSaved={() => {
+                        setShowFormatBuilder(false)
+                        window.location.reload() // Refresh to show new data
+                    }}
+                />
+            )}
 
             <TabsContent value="summary" className="space-y-6 animate-in fade-in duration-500">
                 <div className="grid gap-6 md:grid-cols-2">

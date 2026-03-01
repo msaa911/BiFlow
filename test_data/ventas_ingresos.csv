@@ -1,16 +1,26 @@
 fecha,numero,concepto,cuit,razon_social,monto,vencimiento,moneda
-14/01/2026,FAC-A-0001-1000,Servicios de Consultoría,33-33333333-3,Constructora del Sur SA,155770,29/01/2026,ARS
-28/01/2026,FAC-A-0001-1001,Servicios de Consultoría,33-33333333-3,Constructora del Sur SA,397712,12/02/2026,ARS
-23/02/2026,FAC-A-0001-1002,Servicios de Consultoría,30-11111111-1,Tech Solutions SAS,423168,10/03/2026,ARS
-01/01/2026,FAC-A-0001-1003,Servicios de Consultoría,30-22222222-2,Innovaciones Digitales SRL,239587,16/01/2026,ARS
-10/02/2026,FAC-A-0001-1004,Servicios de Consultoría,30-22222222-2,Innovaciones Digitales SRL,325971,25/02/2026,ARS
-21/01/2026,FAC-A-0001-1005,Servicios de Consultoría,30-22222222-2,Innovaciones Digitales SRL,168912,05/02/2026,ARS
-20/02/2026,FAC-A-0001-1006,Servicios de Consultoría,30-11111111-1,Tech Solutions SAS,117157,07/03/2026,ARS
-06/02/2026,FAC-A-0001-1007,Servicios de Consultoría,30-22222222-2,Innovaciones Digitales SRL,140694,21/02/2026,ARS
-19/01/2026,FAC-A-0001-1008,Servicios de Consultoría,30-11111111-1,Tech Solutions SAS,131032,03/02/2026,ARS
-20/02/2026,FAC-A-0001-1009,Servicios de Consultoría,33-33333333-3,Constructora del Sur SA,375477,07/03/2026,ARS
-02/01/2026,FAC-A-0001-1010,Servicios de Consultoría,30-22222222-2,Innovaciones Digitales SRL,141832,17/01/2026,ARS
-06/02/2026,FAC-A-0001-1011,Servicios de Consultoría,30-11111111-1,Tech Solutions SAS,452164,21/02/2026,ARS
-21/02/2026,FAC-A-0001-1012,Servicios de Consultoría,33-33333333-3,Constructora del Sur SA,401134,08/03/2026,ARS
-21/02/2026,FAC-A-0001-1013,Servicios de Consultoría,33-33333333-3,Constructora del Sur SA,300963,08/03/2026,ARS
-11/02/2026,FAC-A-0001-1014,Servicios de Consultoría,30-11111111-1,Tech Solutions SAS,329223,26/02/2026,ARS
+26/01/2026,FAC-A-0001-1000,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,238669,10/02/2026,ARS
+15/02/2026,FAC-A-0001-1001,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,370830,02/03/2026,ARS
+03/01/2026,FAC-A-0001-1002,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,541530,18/01/2026,ARS
+02/02/2026,FAC-A-0001-1003,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,339238,17/02/2026,ARS
+17/01/2026,FAC-A-0001-1004,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,294277,01/02/2026,ARS
+24/02/2026,FAC-A-0001-1005,Servicios Profesionales de Consultoría,30-22222222-2,Innovaciones Digitales SRL,227756,11/03/2026,ARS
+03/01/2026,FAC-A-0001-1006,Servicios Profesionales de Consultoría,30-22222222-2,Innovaciones Digitales SRL,309024,18/01/2026,ARS
+15/02/2026,FAC-A-0001-1007,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,84657,02/03/2026,ARS
+05/01/2026,FAC-A-0001-1008,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,118098,20/01/2026,ARS
+19/01/2026,FAC-A-0001-1009,Servicios Profesionales de Consultoría,30-22222222-2,Innovaciones Digitales SRL,155890,03/02/2026,ARS
+22/01/2026,FAC-A-0001-1010,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,205047,06/02/2026,ARS
+15/01/2026,FAC-A-0001-1011,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,132119,30/01/2026,ARS
+18/01/2026,FAC-A-0001-1012,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,126359,02/02/2026,ARS
+25/02/2026,FAC-A-0001-1013,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,250978,12/03/2026,ARS
+25/01/2026,FAC-A-0001-1014,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,366720,09/02/2026,ARS
+08/01/2026,FAC-A-0001-1015,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,80524,23/01/2026,ARS
+06/01/2026,FAC-A-0001-1016,Servicios Profesionales de Consultoría,30-22222222-2,Innovaciones Digitales SRL,96826,21/01/2026,ARS
+15/02/2026,FAC-A-0001-1017,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,491097,02/03/2026,ARS
+13/01/2026,FAC-A-0001-1018,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,510178,28/01/2026,ARS
+03/02/2026,FAC-A-0001-1019,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,495859,18/02/2026,ARS
+21/01/2026,FAC-A-0001-1020,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,580436,05/02/2026,ARS
+19/02/2026,FAC-A-0001-1021,Servicios Profesionales de Consultoría,30-22222222-2,Innovaciones Digitales SRL,586289,06/03/2026,ARS
+16/02/2026,FAC-A-0001-1022,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,204583,03/03/2026,ARS
+09/01/2026,FAC-A-0001-1023,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,251451,24/01/2026,ARS
+05/02/2026,FAC-A-0001-1024,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,583338,20/02/2026,ARS

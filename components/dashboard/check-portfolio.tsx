@@ -22,7 +22,9 @@ import {
     Calendar,
     AlertTriangle,
     Wallet,
-    Ban
+    Ban,
+    History,
+    Download
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,6 +33,7 @@ import { toast } from 'sonner'
 import { KPICard } from '@/components/ui/kpi-card'
 import { CheckDepositModal } from './check-deposit-modal'
 import { CheckRejectionModal } from './check-rejection-modal'
+import { CheckHistoryModal } from './check-history-modal'
 
 interface CheckPortfolioProps {
     orgId: string
@@ -46,6 +49,8 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
     // Modals state
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
     const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false)
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+    const [selectedCheckForHistory, setSelectedCheckForHistory] = useState<any | null>(null)
     const [checkToReject, setCheckToReject] = useState<any | null>(null)
 
     const supabase = createClient()
@@ -122,15 +127,53 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                 .eq('id', checkId)
 
             if (error) throw error
-
-            toast.success(`Cheque actualizado a ${newStatus}`)
+            toast.success(`Estado actualizado a ${newStatus}`)
             fetchChecks()
-        } catch (err: any) {
-            console.error('Error updating check status:', err)
-            toast.error('Error al actualizar cheque')
+        } catch (error) {
+            console.error('Error updating status:', error)
+            toast.error("Error al actualizar estado")
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleRejectClick = (check: any) => {
+        setCheckToReject(check)
+        setIsRejectionModalOpen(true)
+    }
+
+    const handleHistoryClick = (check: any) => {
+        setSelectedCheckForHistory(check)
+        setIsHistoryModalOpen(true)
+    }
+
+    const downloadCSV = () => {
+        if (checks.length === 0) return
+
+        const headers = ["Numero", "Banco", "Monto", "Fecha Emision", "Fecha Vencimiento", "Estado", "Socio"]
+        const csvContent = [
+            headers.join(","),
+            ...checks.map(c => [
+                c.numero,
+                c.banco,
+                c.monto,
+                c.fecha_emision,
+                c.fecha_disponibilidad,
+                c.estado,
+                c.movimientos_tesoreria?.entidades?.razon_social || "N/A"
+            ].join(","))
+        ].join("\n")
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement("a")
+        const url = URL.createObjectURL(blob)
+        link.setAttribute("href", url)
+        link.setAttribute("download", `cartera_cheques_${new Date().toISOString().split('T')[0]}.csv`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success("Cartera exportada correctamente")
     }
 
     const toggleSelectAll = () => {
@@ -197,6 +240,15 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-gray-900 border-gray-800 hover:bg-gray-800 text-gray-300 font-bold text-xs"
+                            onClick={downloadCSV}
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Exportar CSV
+                        </Button>
                         {selectedChecks.length > 0 && (
                             <Button
                                 variant="default"
@@ -332,6 +384,15 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex justify-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 transition-all rounded-lg"
+                                                title="Ver Historial"
+                                                onClick={() => handleHistoryClick(check)}
+                                            >
+                                                <History className="w-4 h-4" />
+                                            </Button>
                                             {check.estado === 'pendiente' && (
                                                 <>
                                                     <Button
@@ -410,6 +471,13 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                 orgId={orgId}
                 check={checkToReject}
                 onSuccess={fetchChecks}
+            />
+
+            <CheckHistoryModal
+                isOpen={isHistoryModalOpen}
+                onClose={() => setIsHistoryModalOpen(false)}
+                checkId={selectedCheckForHistory?.id}
+                checkNumero={selectedCheckForHistory?.numero}
             />
         </div>
     )

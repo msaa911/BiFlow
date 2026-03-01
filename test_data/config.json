@@ -1,0 +1,14 @@
+{
+    "saldos_iniciales": {
+        "Banco Galicia": 15000000
+    },
+    "costo_oportunidad": {
+        "tna": 0.65,
+        "colchon_liquidez": 1500000
+    },
+    "acuerdos_bancarios": {
+        "limite_descubierto_total": 5000000,
+        "mantenimiento_pactado": 15500,
+        "comision_cheque_porcentaje": 0.015
+    }
+}

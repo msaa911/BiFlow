@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain, AlertTriangle, RotateCcw } from 'lucide-react'
+import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain, AlertTriangle, RotateCcw, RefreshCw } from 'lucide-react'
 
 // Interfaces actualizadas
 interface BankAccount {
@@ -57,6 +57,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [success, setSuccess] = useState(false)
+    const [syncingRate, setSyncingRate] = useState(false)
 
     const supabase = createClient()
 
@@ -145,6 +146,26 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         const { error } = await supabase.from('tax_intelligence_rules').delete().eq('id', ruleId)
         if (!error) {
             setTaxRules(prev => prev.filter(r => r.id !== ruleId))
+        }
+    }
+
+    const handleSyncMarketRate = async () => {
+        setSyncingRate(true)
+        try {
+            const res = await fetch('/api/market/sync', { method: 'POST' })
+            const data = await res.json()
+            if (data.success) {
+                setMarketRate(data.tasa)
+                setConfig(prev => ({ ...prev, tna: data.tasa, modo_tasa: 'AUTOMATICO' }))
+                alert(`Tasa actualizada: ${(data.tasa * 100).toFixed(2)}%`)
+            } else {
+                throw new Error(data.error || 'Error al sincronizar tasa')
+            }
+        } catch (err: any) {
+            console.error(err)
+            alert("No se pudo obtener la tasa del mercado: " + err.message)
+        } finally {
+            setSyncingRate(false)
         }
     }
 
@@ -428,8 +449,15 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                             <div className="flex justify-between items-center">
                                 <Label className="text-xs font-bold uppercase text-gray-400">Tasa Nominal Anual (TNA)</Label>
                                 <div className="flex bg-gray-950 rounded-lg p-1 border border-gray-800">
-                                    <button onClick={() => setConfig({ ...config, modo_tasa: 'AUTOMATICO' })} className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}>AUTO</button>
-                                    <button onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })} className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500'}`}>MANUAL</button>
+                                    <button
+                                        onClick={handleSyncMarketRate}
+                                        disabled={syncingRate}
+                                        className={`px-3 py-1 text-[10px] font-black rounded transition-all flex items-center gap-1.5 ${config.modo_tasa === 'AUTOMATICO' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}
+                                    >
+                                        {syncingRate ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                        AUTO
+                                    </button>
+                                    <button onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })} className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}>MANUAL</button>
                                 </div>
                             </div>
                             <div className="relative">

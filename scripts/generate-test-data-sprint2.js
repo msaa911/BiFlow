@@ -38,19 +38,33 @@ let recibos = [];
 let ops = [];
 let banco = [];
 
-let saldoBancario = 5000000; // Starting with 5M
+// Load Config if exists
+const configPath = path.join(outDir, 'config.json');
+let config = {
+    saldos_iniciales: { "Banco Galicia": 15000000 },
+    acuerdos_bancarios: { mantenimiento_pactado: 15500, comision_cheque_porcentaje: 0.015 }
+};
+if (fs.existsSync(configPath)) {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+}
+
+let saldoBancario = config.saldos_iniciales["Banco Galicia"] || 15000000;
+const comisionChequePct = config.acuerdos_bancarios.comision_cheque_porcentaje || 0;
+const mantenimientoMensual = config.acuerdos_bancarios.mantenimiento_pactado || 0;
+
+const bancosAR = ['Banco Galicia', 'Santander', 'BBVA', 'ICBC', 'Banco Nación', 'Macro'];
 
 // Generate Ventas & Recibos
-for (let i = 0; i < 15; i++) {
+for (let i = 0; i < 25; i++) {
     const fechaEmision = randomDate(startJan, endFeb);
     const cliente = clientes[randomInt(0, clientes.length - 1)];
-    const monto = randomInt(50000, 500000);
+    const monto = randomInt(80000, 600000);
     const numeroFac = `FAC-A-0001-${idVentas++}`;
 
     ventas.push({
         fecha: formatDate(fechaEmision),
         numero: numeroFac,
-        concepto: `Servicios de Consultoría`,
+        concepto: `Servicios Profesionales de Consultoría`,
         cuit: cliente.cuit,
         razon_social: cliente.razon,
         monto: monto,
@@ -58,11 +72,20 @@ for (let i = 0; i < 15; i++) {
         moneda: 'ARS'
     });
 
-    if (Math.random() > 0.3) {
+    if (Math.random() > 0.2) {
         const fechaPago = new Date(fechaEmision.getTime() + randomInt(2, 10) * 864e5);
         if (fechaPago <= endFeb) {
             const numeroRecibo = `REC-${idRecibos++}`;
-            const refTx = `TRF-${randomInt(100000, 999999)}`;
+            const esCheque = Math.random() > 0.6; // 40% Cheques
+            const medio = esCheque ? 'Cheque' : 'Transferencia';
+            const bancoNombre = bancosAR[randomInt(0, bancosAR.length - 1)];
+            const refTx = esCheque ? randomInt(10000000, 99999999).toString() : `TRF-${randomInt(100000, 999999)}`;
+
+            // Si es cheque, la disponibilidad puede ser diferida. Forzamos 0 en algunos casos para ver comisiones.
+            let diasDiferimiento = esCheque ? randomInt(0, 45) : 0;
+            if (esCheque && i % 3 === 0) diasDiferimiento = 0; // Forzamos 1 de cada 3 cheques al día
+
+            const fechaDisponibilidad = new Date(fechaPago.getTime() + diasDiferimiento * 864e5);
 
             recibos.push({
                 fecha: formatDate(fechaPago),
@@ -70,24 +93,41 @@ for (let i = 0; i < 15; i++) {
                 cliente: cliente.razon,
                 cuit: cliente.cuit,
                 importe: monto,
-                medio: 'Transferencia',
-                banco: 'Banco Galicia',
+                medio: medio,
+                banco: bancoNombre,
                 referencia: refTx,
-                disponibilidad: formatDate(fechaPago),
-                cbu: cliente.cbu
+                disponibilidad: formatDate(fechaDisponibilidad),
+                cbu: esCheque ? '' : cliente.cbu
             });
 
-            // Bank gets the money
-            banco.push({
-                fechaRaw: fechaPago,
-                fecha: formatDate(fechaPago),
-                concepto: `Acreditacion Transf. ${cliente.razon} Ref ${refTx} CBU ${cliente.cbu}`,
-                debito: '',
-                credito: monto.toFixed(2),
-                cuit: cliente.cuit,
-                referencia: refTx,
-                banco: 'Banco Galicia'
-            });
+            // Solo impacta en banco si es Transferencia o Cheque al día
+            if (medio === 'Transferencia' || (esCheque && diasDiferimiento === 0)) {
+                banco.push({
+                    fechaRaw: fechaPago,
+                    fecha: formatDate(fechaPago),
+                    concepto: `Acreditacion ${medio} ${cliente.razon} Ref ${refTx}`,
+                    debito: '',
+                    credito: monto.toFixed(2),
+                    cuit: cliente.cuit,
+                    referencia: refTx,
+                    banco: 'Banco Galicia'
+                });
+
+                // AUDITORÍA: Inyectar comisión de cheque si aplica
+                if (esCheque && comisionChequePct > 0) {
+                    const comision = monto * comisionChequePct;
+                    banco.push({
+                        fechaRaw: fechaPago,
+                        fecha: formatDate(fechaPago),
+                        concepto: `Comisión s/Depósito de Valores - Cheque ${refTx}`,
+                        debito: comision.toFixed(2),
+                        credito: '',
+                        cuit: '',
+                        referencia: `COM-${refTx}`,
+                        banco: 'Banco Galicia'
+                    });
+                }
+            }
         }
     }
 }
@@ -97,13 +137,13 @@ for (let i = 0; i < 20; i++) {
     const fechaEmision = randomDate(startJan, endFeb);
     const prov = proveedores[randomInt(0, proveedores.length - 1)];
 
-    let monto = randomInt(20000, 300000);
-    let concepto = `Gastos operativos comunes`;
+    let monto = randomInt(30000, 250000);
+    let concepto = `Suministros y gastos operativos`;
 
-    // ANOMALÍA 1: Alerta de Precio (Gasto inusualmente alto)
+    // ANOMALÍA 1: Gasto inusualmente alto pero controlado para el saldo
     if (i === 5) {
-        monto = 8500000; // 8.5 Millones!
-        concepto = `Implementación de licencias anuales`;
+        monto = 1200000;
+        concepto = `Mantenimiento infraestructura servidores`;
     }
 
     const numeroFac = `FAC-C-0002-${idCompras++}`;
@@ -119,7 +159,7 @@ for (let i = 0; i < 20; i++) {
         moneda: 'ARS'
     });
 
-    if (Math.random() > 0.2 || i === 5) { // Ensure the anomaly gets paid
+    if (Math.random() > 0.1 || i === 5) {
         const fechaPago = new Date(fechaEmision.getTime() + randomInt(5, 20) * 864e5);
         if (fechaPago <= endFeb) {
             const numeroOP = `OP-${idOP++}`;
@@ -130,8 +170,8 @@ for (let i = 0; i < 20; i++) {
 
             // ANOMALÍA 2: Fraude BEC (CBU Interceptado)
             if (i === 10) {
-                pagoCBU = '1430000000000000000888'; // CBU completamente distinto!
-                notaAdicional = ' - ALERTA: CBU MODIFICADO';
+                pagoCBU = '1430000000000000000888'; // CBU ajeno al proveedor
+                notaAdicional = ' - [ALERTA] Destino no habitual';
             }
 
             ops.push({
@@ -162,6 +202,88 @@ for (let i = 0; i < 20; i++) {
     }
 }
 
+// ANOMALÍA 3: Alerta de Descubierto (Pago masivo que consume liquidez)
+const fechaGranPago = new Date('2026-02-20T10:00:00');
+banco.push({
+    fechaRaw: fechaGranPago,
+    fecha: '20/02/2026',
+    concepto: 'Debito Transf. AFIP - Pago Moratoria Extraordinaria',
+    debito: '12500000.00', // 12.5 Millones de golpe
+    credito: '',
+    cuit: '33-69345023-9',
+    referencia: 'Vep-992323',
+    banco: 'Banco Galicia'
+});
+
+// ANOMALÍA 4: Cheque Rechazado (Para testear flujo de rechezo y multa)
+const fechaRechazo = new Date('2026-02-25T09:00:00');
+banco.push({
+    fechaRaw: fechaRechazo,
+    fecha: '25/02/2026',
+    concepto: 'Rechazo de Valor Depositado - Ch 48052799 (Sin Fondos)',
+    debito: '533594.00', // El mismo importe que entró en la línea 2
+    credito: '',
+    cuit: '',
+    referencia: 'RECH-48052799',
+    banco: 'Banco Galicia'
+});
+banco.push({
+    fechaRaw: new Date(fechaRechazo.getTime() + 1000), // Segundo después
+    fecha: '25/02/2026',
+    concepto: 'Gasto Bancario s/Valor Rechazado',
+    debito: '12500.00',
+    credito: '',
+    cuit: '',
+    referencia: 'MULTA-48052799',
+    banco: 'Banco Galicia'
+});
+
+// Inyectar Mantenimiento Mensual (Fin de Mes)
+if (mantenimientoMensual > 0) {
+    banco.push({
+        fechaRaw: new Date('2026-01-31T23:59:59'),
+        fecha: '31/01/2026',
+        concepto: 'Mantenimiento Cuenta Pactado',
+        debito: mantenimientoMensual.toFixed(2),
+        credito: '',
+        cuit: '',
+        referencia: 'MANT-01',
+        banco: 'Banco Galicia'
+    });
+    banco.push({
+        fechaRaw: new Date('2026-02-28T23:59:59'),
+        fecha: '28/02/2026',
+        concepto: 'Mantenimiento Cuenta Pactado',
+        debito: mantenimientoMensual.toFixed(2),
+        credito: '',
+        cuit: '',
+        referencia: 'MANT-02',
+        banco: 'Banco Galicia'
+    });
+}
+
+// Inyectar Auditoría de Descuento de Cheques (Factoring)
+banco.push({
+    fechaRaw: new Date('2026-02-10T11:00:00'),
+    fecha: '10/02/2026',
+    concepto: 'Acreditación neta Descuento de Valores (Lote #492)',
+    debito: '',
+    credito: '850000.00',
+    cuit: '',
+    referencia: 'DESC-492',
+    banco: 'Banco Galicia'
+});
+banco.push({
+    fechaRaw: new Date('2026-02-10T11:01:00'),
+    fecha: '10/02/2026',
+    concepto: 'Intereses / Gastos s/Descuento de Valores',
+    debito: '42500.00',
+    credito: '',
+    cuit: '',
+    referencia: 'INT-492',
+    banco: 'Banco Galicia'
+});
+
 // Insertar pagos huérfanos
 banco.push({
     fechaRaw: new Date('2026-02-15T10:00:00'),
@@ -176,7 +298,7 @@ banco.push({
 
 // Sort Bank by Date and Recalculate Saldos sequentially
 banco.sort((a, b) => a.fechaRaw - b.fechaRaw);
-let currentBalance = 5000000;
+let currentBalance = saldoBancario;
 banco = banco.map(tx => {
     if (tx.credito) currentBalance += parseFloat(tx.credito);
     if (tx.debito) currentBalance -= parseFloat(tx.debito);
