@@ -1,12 +1,18 @@
-import { createClient } from '@/lib/supabase/server'
+
+        const { createClient } = require('@supabase/supabase-js');
+        const supabase = createClient(
+            'https://bnlmoupgzbtgfgominzd.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG1vdXBnemJ0Z2Znb21pbnpkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTExMzgxNywiZXhwIjoyMDg2Njg5ODE3fQ.EtWUj0RXD6k2WpRKO426r39q4GQ3RI5enfeRZQU0PCQ'
+        );
+        
 
 /**
  * RECONCILIATION ENGINE v2.0
  * Purpose: Smart matching of bank transactions with pending treasury invoices.
  * Strategy: Funnel (Reduction) + Subset Sum (1-a-N).
  */
-export class ReconciliationEngine {
-    static async matchAndReconcile(organizationId: string) {
+class ReconciliationEngine {
+    static async matchAndReconcile(organizationId) {
         console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId}`)
 
         const supabase = await createClient()
@@ -38,20 +44,20 @@ export class ReconciliationEngine {
         }
 
         // 3. Fetch Trust Ledger
-        let trustLedgerMap = new Map<string, string>();
+        let trustLedgerMap = new Map();
         try {
             const { data: pastMatches } = await supabase
                 .rpc('get_trust_ledger', { org_id: organizationId });
 
             if (pastMatches) {
-                pastMatches.forEach((m: any) => trustLedgerMap.set(m.cbu, m.cuit));
+                pastMatches.forEach((m) => trustLedgerMap.set(m.cbu, m.cuit));
             }
         } catch (e) {
             console.warn('[RECONCILIATION] Trust Ledger RPC failed.');
         }
 
         let matchedCount = 0
-        const results: any[] = []
+        const results = []
 
         for (const trans of pendingTrans) {
             const transAmount = Math.abs(Number(trans.monto));
@@ -60,11 +66,11 @@ export class ReconciliationEngine {
                 ? ['factura_venta', 'nota_debito', 'ingreso_vario']
                 : ['factura_compra', 'nota_credito', 'egreso_vario'];
 
-            let targetInvoices: any[] = pendingInvoices.filter(i => targetTipos.includes(i.tipo));
+            let targetInvoices = pendingInvoices.filter(i => targetTipos.includes(i.tipo));
             let matchLevel = 0;
 
             // Anomalies
-            let tags: string[] = trans.tags || [];
+            let tags = trans.tags || [];
             let anomalyFound = false;
 
             if (transAmount > 5000000 && !tags.includes('alerta_precio')) {
@@ -94,7 +100,7 @@ export class ReconciliationEngine {
                 }
             }
 
-            let finalMatch: any[] | null = null;
+            let finalMatch | null = null;
             if (targetInvoices.length > 0) {
                 // 1-a-1 Exact Match
                 const singleMatch = targetInvoices.find(i => Math.abs(Number(i.monto_pendiente) - transAmount) < 0.05);
@@ -240,7 +246,7 @@ export class ReconciliationEngine {
                         auto: true
                     });
 
-                } catch (err: any) {
+                } catch (err) {
                     console.error(`[RECONCILIATION] Failed to execute circuit for trans ${trans.id}:`, err.message);
                 }
             } else {
@@ -278,11 +284,11 @@ export class ReconciliationEngine {
         return { matched: matchedCount, actions: results };
     }
 
-    private static findClientByFuzzy(desc: string, invoices: any[]): string | null {
+    private static findClientByFuzzy(desc, invoices) | null {
         const normalizedDesc = desc.toLowerCase();
         for (const inv of invoices) {
             if (inv.razon_social_socio) {
-                const words = inv.razon_social_socio.toLowerCase().split(' ').filter((w: string) => w.length > 3);
+                const words = inv.razon_social_socio.toLowerCase().split(' ').filter((w) => w.length > 3);
                 if (words.length > 0 && normalizedDesc.includes(words[0])) {
                     return inv.cuit_socio;
                 }
@@ -291,7 +297,7 @@ export class ReconciliationEngine {
         return null;
     }
 
-    private static findMatchByProximity(trans: any, invoices: any[]) {
+    private static findMatchByProximity(trans, invoices) {
         const transDate = new Date(trans.fecha);
         const transAmount = Math.abs(Number(trans.monto));
 
@@ -302,11 +308,11 @@ export class ReconciliationEngine {
         });
     }
 
-    private static findSubsetSum(invoices: any[], target: number): any[] | null {
+    private static findSubsetSum(invoices, target) | null {
         const tolerance = 0.05;
         const n = invoices.length;
 
-        function backtrack(idx: number, currentSum: number, selected: any[]): any[] | null {
+        function backtrack(idx, currentSum, selected) | null {
             if (Math.abs(currentSum - target) < tolerance) return selected;
             if (currentSum > target + tolerance || idx >= n) return null;
 
@@ -320,3 +326,22 @@ export class ReconciliationEngine {
         return backtrack(0, 0, []);
     }
 }
+
+        
+        // Mock createClient
+        class MockEngine extends ReconciliationEngine {
+             // Override just to use our local supabase instance
+        }
+        
+        async function run() {
+            try {
+                // Hardcode org ID
+                const result = await ReconciliationEngine.matchAndReconcile.toString().replace('await createClient()', 'supabase');
+                eval(`ReconciliationEngine.matchAndReconcile = ${result}`);
+                console.log(await ReconciliationEngine.matchAndReconcile('8bca8172-b23f-4da7-b50c-ba2fd78187ac'));
+            } catch(e) {
+                console.error(e);
+            }
+        }
+        run();
+    
