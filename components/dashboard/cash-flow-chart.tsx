@@ -41,6 +41,10 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                     <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
                                     <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
                                 </linearGradient>
+                                <linearGradient id="colorChecks" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                                </linearGradient>
                             </defs>
                             <XAxis
                                 dataKey="displayDate"
@@ -58,7 +62,7 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 axisLine={false}
                                 tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                                 tick={{ fill: '#6b7280' }}
-                                domain={[(dataMin: number) => dataMin - Math.abs(dataMin * 0.1), (dataMax: number) => dataMax + Math.abs(dataMax * 0.1)]}
+                                domain={[(dataMin: number) => Math.min(dataMin, 0) * 1.2, (dataMax: number) => dataMax * 1.2]}
                             />
                             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} opacity={0.2} />
                             <Tooltip
@@ -74,11 +78,13 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 cursor={{ stroke: '#374151', strokeWidth: 1 }}
                                 formatter={(value: any, name: string, props: any) => {
                                     const isAlert = props.payload.isAlert;
+                                    const color = name === 'balance' ? (isAlert ? '#f87171' : '#10b981') : '#3b82f6';
+                                    const label = name === 'balance' ? 'Caja Real/Proyectada' : 'Caja + Cheques';
                                     return [
-                                        <span key="val" style={{ color: isAlert ? '#f87171' : '#10b981' }}>
+                                        <span key="val" style={{ color }}>
                                             ${Number(value).toLocaleString('es-AR')}
                                         </span>,
-                                        'Saldo Proyectado'
+                                        label
                                     ]
                                 }}
                             />
@@ -99,6 +105,22 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 />
                             )}
                             <ReferenceLine y={0} stroke="#374151" strokeOpacity={0.5} strokeWidth={2} />
+
+                            {/* Area con Cheques (debajo de la caja real si se desea visualmente, o encima) */}
+                            <Area
+                                type="monotone"
+                                dataKey="balanceWithChecks"
+                                stroke="#3b82f6"
+                                fill="url(#colorChecks)"
+                                strokeWidth={2}
+                                strokeDasharray="5 5"
+                                strokeLinecap="round"
+                                connectNulls
+                                isAnimationActive={true}
+                                animationDuration={1200}
+                                activeDot={{ r: 4, fill: '#3b82f6' }}
+                            />
+
                             <Area
                                 type="monotone"
                                 dataKey="balance"

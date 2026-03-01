@@ -21,6 +21,7 @@ export interface ProjectedMovement {
 export interface DailyBalance {
     date: string;
     balance: number;
+    balanceWithChecks?: number;
     isProjected: boolean;
     isAlert?: boolean;
 }

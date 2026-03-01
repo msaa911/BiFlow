@@ -10,6 +10,7 @@ import { FeeAuditWidget } from '@/components/dashboard/fee-audit-widget'
 import { TaxLearningWidget } from '@/components/dashboard/tax-learning-widget'
 import { LiquidityEngine } from '@/lib/liquidity-engine'
 import { TreasuryEngine } from '@/lib/treasury-engine'
+import { PortfolioEngine } from '@/lib/portfolio-engine'
 import { getOrgId } from '@/lib/supabase/utils'
 import { ScrollToFocus } from '@/components/dashboard/scroll-to-focus'
 import { Suspense } from 'react'
@@ -68,7 +69,14 @@ export default async function DashboardPage() {
     const overdraftLimit = orgConfig?.limite_descubierto || 0
     const tnaEfectiva = orgConfig?.tna || 0.70
 
-    // 3. Process Projection Data
+    // 3. Fetch Checks for Portfolio Projection
+    const { data: checks } = await supabase
+        .from('instrumentos_pago')
+        .select('*')
+        .eq('metodo', 'cheque_terceros')
+        .in('estado', ['pendiente', 'depositado', 'rechazado'])
+
+    // 4. Process Projection Data
     const invoicesForProjection = (pendingInvoices || []).map(i => ({
         id: i.id,
         tipo: i.tipo,
@@ -80,9 +88,14 @@ export default async function DashboardPage() {
         monto_pendiente: i.monto_pendiente,
         estado: i.estado
     }))
-    const projectionData = TreasuryEngine.projectDailyBalance(totalBalance, invoicesForProjection as any, [], liquidityCushion)
 
-    // 4. Fetch Other Widgets Data
+    // Base projection from Liquidity Engine
+    const baseProjection = TreasuryEngine.projectDailyBalance(totalBalance, invoicesForProjection as any, [], liquidityCushion)
+
+    // Enrich with Checks Projection from Portfolio Engine
+    const projectionDataWithChecks = PortfolioEngine.projectWithChecks(baseProjection, checks || [])
+
+    // 5. Fetch Other Widgets Data
     const { data: taxItems } = await supabase.from('transacciones').select('*').eq('organization_id', orgId).contains('tags', ['impuesto_recuperable']).order('fecha', { ascending: false })
     const totalRecoverable = taxItems?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
     const { data: anomalies } = await supabase.from('transacciones').select('*').eq('organization_id', orgId).or('tags.cs.{"alerta_precio"},tags.cs.{"posible_duplicado"},tags.cs.{"riesgo_bec"}').order('fecha', { ascending: false })
@@ -121,6 +134,9 @@ export default async function DashboardPage() {
     const expenses = allTransactions?.filter(t => t.monto < 0).slice(0, 20) || []
     const bankTransactions = allTransactions?.slice(0, 20) || []
 
+    // 7. Portfolio KPIs for Alertas
+    const portfolioKPIs = PortfolioEngine.calculateKPIs(checks || [])
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -130,6 +146,20 @@ export default async function DashboardPage() {
                     <p className="text-gray-400">Todo el poder de la inteligencia financiera en tu mano.</p>
                 </div>
             </div>
+
+            {/* Check Portfolio Alerts */}
+            {portfolioKPIs.toExpireSoon > 0 && (
+                <div className="bg-amber-900/20 border border-amber-500/30 rounded-2xl p-6 flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-amber-500/20 rounded-full"><TrendingUp className="w-6 h-6 text-amber-400" /></div>
+                        <div>
+                            <h3 className="text-lg font-bold text-white uppercase tracking-tight">Vencimientos Inminentes: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(portfolioKPIs.toExpireSoon)}</h3>
+                            <p className="text-sm text-gray-400">Hay cheques en cartera que vencen en los próximos 7 días e impactarán en tu liquidez.</p>
+                        </div>
+                    </div>
+                    <a href="/dashboard/banks?tab=cartera" className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-amber-500/20 whitespace-nowrap">Gestionar valores</a>
+                </div>
+            )}
 
             {quarantineCount && quarantineCount > 0 ? (
                 <div className="bg-purple-900/20 border border-purple-500/30 rounded-2xl p-6 flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
@@ -157,7 +187,7 @@ export default async function DashboardPage() {
                 daysOfRunway={daysOfRunway}
                 overdraftLimit={overdraftLimit}
                 liquidityBuffer={liquidityCushion}
-                projectionData={projectionData}
+                projectionData={projectionDataWithChecks}
                 scoreHistory={scoreHistory || []}
             />
 
