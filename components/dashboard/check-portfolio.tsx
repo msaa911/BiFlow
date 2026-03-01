@@ -91,7 +91,7 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
     }, [orgId, statusFilter])
 
     const filteredChecks = checks.filter(c =>
-        c.movimientos_tesoreria?.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.movimientos_tesoreria?.entidades?.razon_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.referencia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.banco || '').toLowerCase().includes(searchTerm.toLowerCase())
     )

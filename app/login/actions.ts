@@ -16,7 +16,7 @@ export async function login(formData: FormData) {
     })
 
     if (error) {
-        return redirect('/login?error=true')
+        redirect('/login?error=true')
     }
 
     revalidatePath('/', 'layout')
@@ -35,7 +35,7 @@ export async function signup(formData: FormData) {
     })
 
     if (error) {
-        return redirect('/login?error=true')
+        redirect('/login?error=true')
     }
 
     revalidatePath('/', 'layout')

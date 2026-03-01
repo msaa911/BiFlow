@@ -210,14 +210,14 @@ export function BanksTab({ orgId, initialTransactions }: BanksTabProps) {
                                 {initialTransactions.map((t) => (
                                     <tr key={t.id} className="hover:bg-gray-800/50 transition-all group">
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-300">
-                                            {new Date(t.fecha).toLocaleDateString('es-AR')}
+                                            {formatDate(t.fecha)}
                                         </td>
                                         <td className="px-6 py-4 text-white font-medium max-w-[300px] truncate">
                                             {t.descripcion}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700">
-                                                {t.metadata?.categoria || 'OTROS'}
+                                                {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : 'OTROS'}
                                             </span>
                                         </td>
                                         <td className={`px-6 py-4 text-right font-bold tabular-nums ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
