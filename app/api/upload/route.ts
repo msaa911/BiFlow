@@ -468,9 +468,6 @@ export async function POST(request: Request) {
             if (uploadContext === 'bank') {
                 console.log(`[UPLOAD] Triggering unified analysis for org: ${orgId}`)
                 analysisResult = await runAnalysis(orgId)
-
-                console.log(`[UPLOAD] Triggering automatic reconciliation engine for org: ${orgId}`)
-                await ReconciliationEngine.matchAndReconcile(orgId)
             }
 
             return NextResponse.json({

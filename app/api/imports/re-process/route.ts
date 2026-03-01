@@ -130,7 +130,6 @@ export async function POST(request: Request) {
 
         // 7. Re-run analysis
         await runAnalysis(orgId)
-        await ReconciliationEngine.matchAndReconcile(orgId)
 
         return NextResponse.json({ success: true, count: res.transactions.length })
 
