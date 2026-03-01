@@ -114,7 +114,7 @@ export class ReconciliationEngine {
                 }
             }
 
-            if (finalMatch && matchLevel <= 2) {
+            if (finalMatch && matchLevel <= 4) {
                 console.log(`[RECONCILIATION] Match Level ${matchLevel} found for trans ${trans.id} (${transAmount})`);
 
                 try {

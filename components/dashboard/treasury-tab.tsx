@@ -102,10 +102,16 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         try {
             const res = await fetch('/api/reconcile/auto', { method: 'POST' })
             const data = await res.json()
+
+            if (!res.ok) {
+                alert(`Error del servidor: ${data.error || 'Autenticación fallida.'}`)
+                return
+            }
+
             if (data.matched > 0) {
                 alert(`¡Éxito! Se conciliaron ${data.matched} comprobantes automáticamente.`)
             } else {
-                alert('No se encontraron nuevos matches para conciliar.')
+                alert(`Proceso finalizado. No se encontraron nuevos matches (0 coincidencias).`)
             }
             await fetchData()
         } catch (error) {
