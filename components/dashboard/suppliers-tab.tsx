@@ -25,6 +25,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     const [selectedEntity, setSelectedEntity] = useState<any>(null)
     const [importData, setImportData] = useState<any[]>([])
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
+    const [currentFileName, setCurrentFileName] = useState<string>('')
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
@@ -114,6 +115,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
         if (!file) return
 
         console.log('[Import] Starting parse for file:', file.name)
+        setCurrentFileName(file.name)
         const loadingToast = toast.loading('Procesando archivo Excel...')
 
         try {
@@ -348,6 +350,24 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                     console.error('[ConfirmImport] Error in chunk upsert:', upsertError)
                     throw new Error(`Error en lote ${i / CHUNK_SIZE + 1}: ${upsertError.message}`)
                 }
+            }
+
+            // Log explicitly to import history to surface in the UI
+            const { error: historyError } = await supabase
+                .from('archivos_importados')
+                .insert({
+                    organization_id: orgId,
+                    nombre_archivo: currentFileName || `importacion_${category}.xlsx`,
+                    estado: 'completado',
+                    metadata: {
+                        context: category,
+                        processed: validData.length,
+                        inserted: validData.length
+                    }
+                })
+
+            if (historyError) {
+                console.error('[ConfirmImport] Failed to log import history:', historyError)
             }
 
             console.log('[ConfirmImport] SUCCESS. Process finished.')
