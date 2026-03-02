@@ -240,10 +240,6 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                         <Landmark className="w-3.5 h-3.5 mr-2 text-blue-400" />
                         Cartera
                     </TabsTrigger>
-                    <TabsTrigger value="cuarentena" className="rounded-lg">
-                        <AlertCircle className="w-3.5 h-3.5 mr-2 text-amber-500" />
-                        Cuarentena
-                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="cashflow">
@@ -284,8 +280,8 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                     <TreasuryHistory orgId={orgId} typeFilter="pago" />
                 </TabsContent>
 
-                <TabsContent value="cuarentena">
-                    <UnreconciledPanel transactions={pendingTransactions} onRefresh={fetchData} />
+                <TabsContent value="cartera">
+                    <CheckPortfolio orgId={orgId} />
                 </TabsContent>
 
                 <TabsContent value="advisor">

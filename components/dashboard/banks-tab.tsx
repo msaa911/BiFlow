@@ -2,22 +2,25 @@
 
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown } from 'lucide-react'
+import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle } from 'lucide-react'
 import { CheckPortfolio } from './check-portfolio'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { SmartFormatBuilder } from './smart-format-builder'
+import { UnreconciledPanel } from './unreconciled-panel'
 
 interface BanksTabProps {
     orgId: string
     initialTransactions: any[]
+    pendingTransactions?: any[]
+    onRefresh?: () => void
 }
 
 const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
 }
 
-export function BanksTab({ orgId, initialTransactions }: BanksTabProps) {
+export function BanksTab({ orgId, initialTransactions, pendingTransactions = [], onRefresh }: BanksTabProps) {
     const [activeTab, setActiveTab] = useState('summary')
     const [showFormatBuilder, setShowFormatBuilder] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -49,6 +52,13 @@ export function BanksTab({ orgId, initialTransactions }: BanksTabProps) {
                     >
                         <Banknote className="w-4 h-4" />
                         Cartera
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="reconciliation"
+                        className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400 gap-2 px-6"
+                    >
+                        <AlertCircle className="w-4 h-4" />
+                        Pendientes de Conciliación
                     </TabsTrigger>
                 </TabsList>
 
@@ -233,6 +243,10 @@ export function BanksTab({ orgId, initialTransactions }: BanksTabProps) {
 
             <TabsContent value="portfolio" className="animate-in fade-in duration-500">
                 <CheckPortfolio orgId={orgId} />
+            </TabsContent>
+
+            <TabsContent value="reconciliation" className="animate-in fade-in duration-500">
+                <UnreconciledPanel transactions={pendingTransactions} onRefresh={onRefresh} />
             </TabsContent>
         </Tabs>
     )

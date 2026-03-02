@@ -74,10 +74,10 @@ export default function QuarantinePage() {
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                         <AlertTriangle className="w-6 h-6 text-yellow-500" />
-                        Cuarentena de Datos
+                        Revisión de Datos Pendientes
                     </h1>
                     <p className="text-gray-400 text-sm">
-                        {items.length} transacciones requieren tu revisión manual.
+                        {items.length} movimientos requieren tu revisión manual.
                     </p>
                 </div>
             </div>

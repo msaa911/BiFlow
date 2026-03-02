@@ -161,7 +161,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                     tipo: tipoTesoreria,
                     fecha: selectedTx.fecha,
                     monto_total: Math.abs(selectedTx.monto),
-                    observaciones: `Carga rápida desde Cuarentena: ${selectedTx.descripcion}`
+                    observaciones: `CONCILIACIÓN MANUAL Pendientes: ${selectedTx.descripcion}`
                 })
                 .select()
                 .single()
@@ -286,7 +286,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                     tipo: isCobro ? 'cobro' : 'pago',
                     fecha: selectedTx.fecha,
                     monto_total: totalAppliedInOperation,
-                    observaciones: `CONCILIACIÓN MANUAL Cuarentena: ${selectedTx.descripcion}`,
+                    observaciones: `CONCILIACIÓN MANUAL Pendientes: ${selectedTx.descripcion}`,
                     metadata: { transaccion_id: selectedTx.id, manual: true, partial: invoicesToApply.length > 1 }
                 })
                 .select()
@@ -386,8 +386,8 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
 
         const ws = XLSX.utils.json_to_sheet(dataToExport)
         const wb = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(wb, ws, "Cuarentena")
-        XLSX.writeFile(wb, `BiFlow_Cuarentena_${new Date().toISOString().split('T')[0]}.xlsx`)
+        XLSX.utils.book_append_sheet(wb, ws, "Pendientes")
+        XLSX.writeFile(wb, `BiFlow_Pendientes_Conciliacion_${new Date().toISOString().split('T')[0]}.xlsx`)
     }
 
     const handleQuickCategorize = async (category: string) => {
@@ -423,9 +423,9 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                 <div>
                     <CardTitle className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-500" />
-                        Transacciones en Cuarentena ({transactions.length})
+                        Pendientes de Conciliación ({transactions.length})
                     </CardTitle>
-                    <p className="text-xs text-gray-400 mt-1">Movimientos bancarios sin respaldo documental identificado.</p>
+                    <p className="text-xs text-gray-400 mt-1">Movimientos bancarios pendientes de vinculación con comprobantes.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button

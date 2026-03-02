@@ -157,7 +157,7 @@ export default async function DashboardPage() {
                             <p className="text-sm text-gray-400">Hay cheques en cartera que vencen en los próximos 7 días e impactarán en tu liquidez.</p>
                         </div>
                     </div>
-                    <a href="/dashboard/banks?tab=cartera" className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-amber-500/20 whitespace-nowrap">Gestionar valores</a>
+                    <a href="/dashboard/banks?tab=reconciliation" className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-amber-500/20 whitespace-nowrap">Gestionar valores</a>
                 </div>
             )}
 
@@ -166,7 +166,7 @@ export default async function DashboardPage() {
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-purple-500/20 rounded-full"><AlertTriangle className="w-6 h-6 text-purple-400" /></div>
                         <div>
-                            <h3 className="text-lg font-bold text-white">Tienes {quarantineCount} transacciones en revisión</h3>
+                            <h3 className="text-lg font-bold text-white">Tienes {quarantineCount} movimientos pendientes de conciliación</h3>
                         </div>
                     </div>
                     <a href="/dashboard/quarantine" className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition-colors shadow-lg shadow-purple-500/20 whitespace-nowrap">Revisar</a>

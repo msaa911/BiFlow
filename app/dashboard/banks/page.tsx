@@ -5,6 +5,8 @@ import { BanksTab } from '@/components/dashboard/banks-tab'
 
 export const dynamic = 'force-dynamic'
 
+import { BanksClientPage } from '@/components/dashboard/banks-client-page'
+
 export default async function BanksPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -15,7 +17,7 @@ export default async function BanksPage() {
 
     const orgId = await getOrgId(supabase, user.id)
 
-    // Fetch transactions for the Summary and Transaction list
+    // Initial fetch for SSR hydration
     const { data: transactions } = await supabase
         .from('transacciones')
         .select('*')
@@ -26,10 +28,10 @@ export default async function BanksPage() {
         <div className="space-y-6">
             <div>
                 <h2 className="text-2xl font-bold tracking-tight text-white">Bancos</h2>
-                <p className="text-gray-400">Estado consolidado de cuentas, movimientos e instrumentos de cobro.</p>
+                <p className="text-gray-400">Estado consolidado de cuentas, movimientos y conciliaciones pendientes.</p>
             </div>
 
-            <BanksTab
+            <BanksClientPage
                 orgId={orgId}
                 initialTransactions={transactions || []}
             />
