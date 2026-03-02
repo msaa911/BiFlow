@@ -228,6 +228,7 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Fecha</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Número</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Entidad</TableHead>
+                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Categoría</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-right">Monto Total</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Detalle</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-center">Acciones</TableHead>
@@ -255,6 +256,11 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
                                     </TableCell>
                                     <TableCell className="font-bold text-gray-200 text-xs text-ellipsis overflow-hidden whitespace-nowrap max-w-[200px]">
                                         {mov.entidades?.razon_social}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline" className={`text-[9px] uppercase font-bold border-gray-700 bg-gray-800 text-gray-400 ${mov.categoria ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' : ''}`}>
+                                            {mov.categoria || 'S/C'}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell className="text-right font-mono font-bold text-white text-xs">
                                         {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}

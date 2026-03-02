@@ -38,6 +38,9 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const categories = [
         "Gastos Bancarios",
         "Impuestos y Tasas",
+        "Intereses Pagados",
+        "Intereses Ganados",
+        "Comisiones Bancarias",
         "Servicios Públicos",
         "Retiro de Socios",
         "Sueldos y Jornales",
@@ -431,6 +434,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     organization_id: orgId,
                     entidad_id: entity.id,
                     tipo: isIngreso ? 'cobro' : 'pago',
+                    categoria: category, // New column
                     fecha: selectedTx.fecha,
                     monto_total: Math.abs(selectedTx.monto),
                     observaciones: `CATEGORIZACIÓN DIRECTA: ${category} - ${selectedTx.descripcion}`,
