@@ -352,22 +352,23 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 }
             }
 
-            // Log explicitly to import history to surface in the UI
-            const { error: historyError } = await supabase
-                .from('archivos_importados')
-                .insert({
-                    organization_id: orgId,
-                    nombre_archivo: currentFileName || `importacion_${category}.xlsx`,
-                    estado: 'completado',
-                    metadata: {
-                        context: category,
-                        processed: validData.length,
-                        inserted: validData.length
-                    }
+            // Log explicitly to import history via API to bypass RLS
+            try {
+                await fetch('/api/imports/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        organization_id: orgId,
+                        nombre_archivo: currentFileName || `importacion_${category}.xlsx`,
+                        metadata: {
+                            context: category,
+                            processed: validData.length,
+                            inserted: validData.length
+                        }
+                    })
                 })
-
-            if (historyError) {
-                console.error('[ConfirmImport] Failed to log import history:', historyError)
+            } catch (historyErr) {
+                console.error('[ConfirmImport] Failed to log import history:', historyErr)
             }
 
             console.log('[ConfirmImport] SUCCESS. Process finished.')
