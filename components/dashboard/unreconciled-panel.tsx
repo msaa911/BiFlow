@@ -368,7 +368,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
     }
 
     const filtered = transactions
-        .filter(t => showAll || t.estado === 'pendiente' || t.estado === 'parcial')
+        .filter(t => showAll || (t.estado === 'pendiente' || t.estado === 'parcial'))
         .filter(t =>
             t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
             t.monto.toString().includes(searchTerm)
@@ -432,7 +432,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                         variant="outline"
                         size="sm"
                         onClick={() => setShowAll(!showAll)}
-                        className={`font-bold text-[10px] uppercase transition-all ${showAll ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-gray-800/50 text-gray-200 border-gray-700 hover:bg-gray-700'}`}
+                        className={`font-bold text-[10px] uppercase transition-all ${showAll ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-gray-800/50 text-gray-200 border-gray-700 hover:bg-gray-700'}`}
                     >
                         {showAll ? 'Viendo Todo' : 'Ver Solo Pendientes'}
                     </Button>

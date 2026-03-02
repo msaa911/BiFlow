@@ -27,7 +27,7 @@ export function BanksClientPage({ orgId, initialTransactions }: BanksClientPageP
                 .from('transacciones')
                 .select('*')
                 .eq('organization_id', orgId)
-                .in('estado', ['pendiente', 'parcial'])
+                // Removed filter for 'pendiente' and 'parcial' as per instruction
                 .order('fecha', { ascending: false })
                 .limit(200)
         ])
