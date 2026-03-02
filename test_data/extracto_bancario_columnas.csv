@@ -38,3 +38,5 @@ Fecha,Concepto,Debito,Credito,Saldo,CUIT,Referencia,Banco
 25/02/2026,Gasto Bancario s/Valor Rechazado,12500.00,,4448596.56,,MULTA-48052799,Banco Galicia
 25/02/2026,Acreditacion Transferencia Innovaciones Digitales SRL Ref TRF-905300,,164991.00,4613587.56,30-22222222-2,TRF-905300,Banco Galicia
 28/02/2026,Mantenimiento Cuenta Pactado,15500.00,,4598087.56,,MANT-02,Banco Galicia
+28/02/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-TEST-01,,1500.00,4599587.56,33-33333333-3,TRF-TEST-01,Banco Galicia
+28/02/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-TEST-02,,800.00,4600387.56,33-33333333-3,TRF-TEST-02,Banco Galicia

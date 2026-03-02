@@ -24,3 +24,6 @@ fecha,numero,concepto,cuit,razon_social,monto,vencimiento,moneda
 14/02/2026,FAC-A-0001-1022,Servicios Profesionales de Consultoría,33-33333333-3,Constructora del Sur SA,166040,01/03/2026,ARS
 16/02/2026,FAC-A-0001-1023,Servicios Profesionales de Consultoría,30-22222222-2,Innovaciones Digitales SRL,113179,03/03/2026,ARS
 26/02/2026,FAC-A-0001-1024,Servicios Profesionales de Consultoría,30-22222222-2,Innovaciones Digitales SRL,392286,13/03/2026,ARS
+27/02/2026,FAC-A-0001-1025,Servicios de Prueba 1 - Caso 1N,33-33333333-3,Constructora del Sur SA,1000,10/03/2026,ARS
+27/02/2026,FAC-A-0001-1026,Servicios de Prueba 2 - Caso 1N,33-33333333-3,Constructora del Sur SA,500,10/03/2026,ARS
+28/02/2026,FAC-A-0001-1027,Servicios de Prueba 3 - Caso Parcial,33-33333333-3,Constructora del Sur SA,1000,10/03/2026,ARS
