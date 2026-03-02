@@ -16,11 +16,11 @@ export async function GET() {
 
         const orgId = await getOrgId(supabase, user.id)
 
-        // Execute the engine (Nivel 1 & 2 are auto-reconciled on DB)
-        // results contains Nivel 3 & 4 (Suggestions)
-        const { matched, actions } = await ReconciliationEngine.matchAndReconcile(orgId)
+        // Execute the engine in DRY RUN mode (read-only, no DB writes)
+        // This allows us to show suggestions without consuming the matches
+        const { matched, actions } = await ReconciliationEngine.matchAndReconcile(orgId, { dryRun: true })
 
-        // Filter for suggestions only (Nivel 3: Fuzzy, Nivel 4: Proximity)
+        // Return ALL potential matches (Level 1-4) as suggestions for the UI
         const suggestions = actions.filter((a: any) => a.level >= 3)
 
         return NextResponse.json({

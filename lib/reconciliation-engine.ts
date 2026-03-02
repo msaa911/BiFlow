@@ -6,8 +6,9 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
  * Strategy: Funnel (Reduction) + Subset Sum (1-a-N).
  */
 export class ReconciliationEngine {
-    static async matchAndReconcile(organizationId: string) {
-        console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId}`)
+    static async matchAndReconcile(organizationId: string, options?: { dryRun?: boolean }) {
+        const dryRun = options?.dryRun ?? false;
+        console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
 
         const supabase = createSupabaseClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -124,6 +125,20 @@ export class ReconciliationEngine {
 
             if (finalMatch && matchLevel <= 4) {
                 console.log(`[RECONCILIATION] Match Level ${matchLevel} found for trans ${trans.id} (${availableTransAmount} avail., ${totalBankAmount} total)`);
+
+                // In dryRun mode, just record the match without writing to DB
+                if (dryRun) {
+                    matchedCount++;
+                    results.push({
+                        transId: trans.id,
+                        transDesc: trans.descripcion,
+                        monto: availableTransAmount,
+                        invoiceIds: finalMatch.map((i: any) => i.id),
+                        level: matchLevel,
+                        auto: true
+                    });
+                    continue;
+                }
 
                 try {
                     // --- CIRCUIT EXECUTION START ---
@@ -271,7 +286,7 @@ export class ReconciliationEngine {
                 }
             } else {
                 // SUGGESTIONS OR ANOMALIES
-                if (anomalyFound) {
+                if (anomalyFound && !dryRun) {
                     await supabase.from('transacciones').update({ tags }).eq('id', trans.id);
                 }
 
