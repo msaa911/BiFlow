@@ -86,18 +86,21 @@ export class ReconciliationEngine {
                 anomalyFound = true;
             }
 
+            const normalizeCuit = (cuit: string | undefined | null) => cuit ? cuit.replace(/\D/g, '') : '';
+            const txCuitNormalized = normalizeCuit(trans.cuit);
+
             // Funnel
-            if (trans.cuit) {
-                targetInvoices = targetInvoices.filter(i => i.cuit_socio === trans.cuit);
+            if (txCuitNormalized) {
+                targetInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === txCuitNormalized);
                 matchLevel = 1;
             } else if (trans.metadata?.cbu && trustLedgerMap.has(trans.metadata.cbu)) {
-                const deducedCuit = trustLedgerMap.get(trans.metadata.cbu);
-                targetInvoices = targetInvoices.filter(i => i.cuit_socio === deducedCuit);
+                const deducedCuit = normalizeCuit(trustLedgerMap.get(trans.metadata.cbu));
+                targetInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === deducedCuit);
                 matchLevel = 2;
             } else {
                 const fuzzyClientCuit = this.findClientByFuzzy(trans.descripcion || '', targetInvoices);
                 if (fuzzyClientCuit) {
-                    targetInvoices = targetInvoices.filter(i => i.cuit_socio === fuzzyClientCuit);
+                    targetInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === normalizeCuit(fuzzyClientCuit));
                     matchLevel = 3;
                 }
             }
