@@ -6,14 +6,9 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
  * Strategy: Funnel (Reduction) + Subset Sum (1-a-N).
  */
 export class ReconciliationEngine {
-    static async matchAndReconcile(organizationId: string, options?: { dryRun?: boolean }) {
+    static async matchAndReconcile(supabase: any, organizationId: string, options?: { dryRun?: boolean }) {
         const dryRun = options?.dryRun ?? false;
         console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
-
-        const supabase = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY)!
-        )
 
         // 1. Fetch pending invoices (AP/AR) -> Order by due date to apply FIFO if multiple
         const { data: pendingInvoices, error: invError } = await supabase
