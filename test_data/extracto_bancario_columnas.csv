@@ -1,36 +1,40 @@
 Fecha,Concepto,Debito,Credito,Saldo,CUIT,Referencia,Banco
-10/01/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-449460 CBU 0170000000000000000006,107623.00,,14892377.00,30-66666666-6,TRF-449460,Banco Galicia
-11/01/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-788127,,251451.00,15143828.00,30-11111111-1,TRF-788127,Banco Galicia
-13/01/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-853020,,80524.00,15224352.00,30-11111111-1,TRF-853020,Banco Galicia
-23/01/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-584611,,294277.00,15518629.00,30-11111111-1,TRF-584611,Banco Galicia
-23/01/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-838561,,126359.00,15644988.00,30-11111111-1,TRF-838561,Banco Galicia
-23/01/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-519968,,510178.00,16155166.00,33-33333333-3,TRF-519968,Banco Galicia
-23/01/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-291246 CBU 1430000000000000000888 - [ALERTA] Destino no habitual,71714.00,,16083452.00,30-44444444-4,TRF-291246,Banco Galicia
-25/01/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-983574 CBU 0170000000000000000006,57333.00,,16026119.00,30-66666666-6,TRF-983574,Banco Galicia
-27/01/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-485009 CBU 0140000000000000000004,248035.00,,15778084.00,30-44444444-4,TRF-485009,Banco Galicia
-28/01/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-456834,,580436.00,16358520.00,33-33333333-3,TRF-456834,Banco Galicia
-29/01/2026,Acreditacion Cheque Constructora del Sur SA Ref 98959995,,238669.00,16597189.00,33-33333333-3,98959995,Banco Galicia
-29/01/2026,Comisión s/Depósito de Valores - Cheque 98959995,3580.03,,16593608.97,,COM-98959995,Banco Galicia
-31/01/2026,Mantenimiento Cuenta Pactado,15500.00,,16578108.97,,MANT-01,Banco Galicia
-02/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-712722 CBU 0170000000000000000006,56118.00,,16521990.97,30-66666666-6,TRF-712722,Banco Galicia
-05/02/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-531312,,495859.00,17017849.97,30-11111111-1,TRF-531312,Banco Galicia
-09/02/2026,Debito Transf. Cloud Hosting Providers INC Ref TRF-972705 CBU 0720000000000000000005,187234.00,,16830615.97,33-55555555-5,TRF-972705,Banco Galicia
-09/02/2026,Debito Transf. Cloud Hosting Providers INC Ref TRF-531543 CBU 0720000000000000000005,151064.00,,16679551.97,33-55555555-5,TRF-531543,Banco Galicia
-10/02/2026,Acreditación neta Descuento de Valores (Lote #492),,850000.00,17529551.97,,DESC-492,Banco Galicia
-10/02/2026,Intereses / Gastos s/Descuento de Valores,42500.00,,17487051.97,,INT-492,Banco Galicia
-14/02/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-263435 CBU 0140000000000000000004,99456.00,,17387595.97,30-44444444-4,TRF-263435,Banco Galicia
-15/02/2026,Debito Transf. Desconocido Ref TRF-999999 CBU 0140000000000000000999,150000.00,,17237595.97,,TRF-999999,Banco Galicia
-20/02/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-183336,,491097.00,17728692.97,33-33333333-3,TRF-183336,Banco Galicia
-20/02/2026,Debito Transf. AFIP - Pago Moratoria Extraordinaria,12500000.00,,5228692.97,33-69345023-9,Vep-992323,Banco Galicia
-20/02/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-825155 CBU 0140000000000000000004,93111.00,,5135581.97,30-44444444-4,TRF-825155,Banco Galicia
-23/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-140959 CBU 0170000000000000000006,137274.00,,4998307.97,30-66666666-6,TRF-140959,Banco Galicia
-24/02/2026,Debito Transf. Cloud Hosting Providers INC Ref TRF-543239 CBU 0720000000000000000005,143445.00,,4854862.97,33-55555555-5,TRF-543239,Banco Galicia
-24/02/2026,Acreditacion Cheque Innovaciones Digitales SRL Ref 67090148,,586289.00,5441151.97,30-22222222-2,67090148,Banco Galicia
-24/02/2026,Comisión s/Depósito de Valores - Cheque 67090148,8794.33,,5432357.64,,COM-67090148,Banco Galicia
-25/02/2026,Rechazo de Valor Depositado - Ch 48052799 (Sin Fondos),533594.00,,4898763.64,,RECH-48052799,Banco Galicia
-25/02/2026,Gasto Bancario s/Valor Rechazado,12500.00,,4886263.64,,MULTA-48052799,Banco Galicia
-25/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-233444 CBU 0170000000000000000006,219277.00,,4666986.64,30-66666666-6,TRF-233444,Banco Galicia
-25/02/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-747646,,370830.00,5037816.64,30-11111111-1,TRF-747646,Banco Galicia
-25/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-140237 CBU 0170000000000000000006,75250.00,,4962566.64,30-66666666-6,TRF-140237,Banco Galicia
-26/02/2026,Debito Transf. Cloud Hosting Providers INC Ref TRF-746175 CBU 0720000000000000000005,34112.00,,4928454.64,33-55555555-5,TRF-746175,Banco Galicia
-28/02/2026,Mantenimiento Cuenta Pactado,15500.00,,4912954.64,,MANT-02,Banco Galicia
+12/01/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-128893,,462214.00,15462214.00,33-33333333-3,TRF-128893,Banco Galicia
+15/01/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-541854 CBU 0170000000000000000006,65040.00,,15397174.00,30-66666666-6,TRF-541854,Banco Galicia
+20/01/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-317619,,296980.00,15694154.00,30-11111111-1,TRF-317619,Banco Galicia
+21/01/2026,Debito Transf. Cloud Hosting Providers INC Ref TRF-999139 CBU 0720000000000000000005,212867.00,,15481287.00,33-55555555-5,TRF-999139,Banco Galicia
+22/01/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-220719 CBU 0140000000000000000004,241378.00,,15239909.00,30-44444444-4,TRF-220719,Banco Galicia
+25/01/2026,Acreditacion Cheque Constructora del Sur SA Ref 12608089,,183945.00,15423854.00,33-33333333-3,12608089,Banco Galicia
+25/01/2026,Comisión s/Depósito de Valores - Cheque 12608089,2759.17,,15421094.83,,COM-12608089,Banco Galicia
+27/01/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-785255,,445350.00,15866444.83,33-33333333-3,TRF-785255,Banco Galicia
+27/01/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-701421 CBU 0140000000000000000004,162678.00,,15703766.83,30-44444444-4,TRF-701421,Banco Galicia
+28/01/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-709848 CBU 0140000000000000000004,36159.00,,15667607.83,30-44444444-4,TRF-709848,Banco Galicia
+28/01/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-734401 CBU 0140000000000000000004,221097.00,,15446510.83,30-44444444-4,TRF-734401,Banco Galicia
+31/01/2026,Mantenimiento Cuenta Pactado,15500.00,,15431010.83,,MANT-01,Banco Galicia
+01/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-314946 CBU 0170000000000000000006,235832.00,,15195178.83,30-66666666-6,TRF-314946,Banco Galicia
+01/02/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-187072,,364047.00,15559225.83,33-33333333-3,TRF-187072,Banco Galicia
+02/02/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-917511,,286238.00,15845463.83,33-33333333-3,TRF-917511,Banco Galicia
+05/02/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-565147 CBU 0140000000000000000004,32534.00,,15812929.83,30-44444444-4,TRF-565147,Banco Galicia
+05/02/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-161257,,442858.00,16255787.83,30-11111111-1,TRF-161257,Banco Galicia
+06/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-259221 CBU 0170000000000000000006,209406.00,,16046381.83,30-66666666-6,TRF-259221,Banco Galicia
+06/02/2026,Acreditacion Cheque Constructora del Sur SA Ref 24091118,,367430.00,16413811.83,33-33333333-3,24091118,Banco Galicia
+06/02/2026,Comisión s/Depósito de Valores - Cheque 24091118,5511.45,,16408300.38,,COM-24091118,Banco Galicia
+07/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-512048 CBU 0170000000000000000006,94094.00,,16314206.38,30-66666666-6,TRF-512048,Banco Galicia
+08/02/2026,Acreditacion Transferencia Innovaciones Digitales SRL Ref TRF-541571,,140236.00,16454442.38,30-22222222-2,TRF-541571,Banco Galicia
+09/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-365405 CBU 0170000000000000000006,161675.00,,16292767.38,30-66666666-6,TRF-365405,Banco Galicia
+10/02/2026,Acreditación neta Descuento de Valores (Lote #492),,850000.00,17142767.38,,DESC-492,Banco Galicia
+10/02/2026,Intereses / Gastos s/Descuento de Valores,42500.00,,17100267.38,,INT-492,Banco Galicia
+11/02/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-216187,,354005.00,17454272.38,30-11111111-1,TRF-216187,Banco Galicia
+12/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-764011 CBU 0170000000000000000006,125153.00,,17329119.38,30-66666666-6,TRF-764011,Banco Galicia
+15/02/2026,Debito Transf. Desconocido Ref TRF-999999 CBU 0140000000000000000999,150000.00,,17179119.38,,TRF-999999,Banco Galicia
+18/02/2026,Acreditacion Transferencia Tech Solutions SAS Ref TRF-605238,,231216.00,17410335.38,30-11111111-1,TRF-605238,Banco Galicia
+19/02/2026,Acreditacion Cheque Constructora del Sur SA Ref 51967475,,101521.00,17511856.38,33-33333333-3,51967475,Banco Galicia
+19/02/2026,Comisión s/Depósito de Valores - Cheque 51967475,1522.82,,17510333.56,,COM-51967475,Banco Galicia
+20/02/2026,Debito Transf. AFIP - Pago Moratoria Extraordinaria,12500000.00,,5010333.56,33-69345023-9,Vep-992323,Banco Galicia
+21/02/2026,Acreditacion Transferencia Constructora del Sur SA Ref TRF-157250,,177691.00,5188024.56,33-33333333-3,TRF-157250,Banco Galicia
+23/02/2026,Debito Transf. Servicios de Limpieza Estrella Ref TRF-964420 CBU 0140000000000000000004,161346.00,,5026678.56,30-44444444-4,TRF-964420,Banco Galicia
+24/02/2026,Debito Transf. Alquileres de Oficinas SA Ref TRF-613437 CBU 0170000000000000000006,31988.00,,4994690.56,30-66666666-6,TRF-613437,Banco Galicia
+25/02/2026,Rechazo de Valor Depositado - Ch 48052799 (Sin Fondos),533594.00,,4461096.56,,RECH-48052799,Banco Galicia
+25/02/2026,Gasto Bancario s/Valor Rechazado,12500.00,,4448596.56,,MULTA-48052799,Banco Galicia
+25/02/2026,Acreditacion Transferencia Innovaciones Digitales SRL Ref TRF-905300,,164991.00,4613587.56,30-22222222-2,TRF-905300,Banco Galicia
+28/02/2026,Mantenimiento Cuenta Pactado,15500.00,,4598087.56,,MANT-02,Banco Galicia

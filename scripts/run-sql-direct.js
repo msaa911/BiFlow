@@ -1,11 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
 
-export const dynamic = 'force-dynamic'
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY
+);
 
-export async function GET(request: Request) {
-    const supabase = await createClient()
-
+async function run() {
     const query = `
     ALTER TABLE public.transacciones ADD COLUMN IF NOT EXISTS monto_usado numeric(12,2) NOT NULL DEFAULT 0;
 
@@ -25,13 +26,17 @@ export async function GET(request: Request) {
     END $$;
 
     ALTER TABLE public.transacciones ADD CONSTRAINT transacciones_estado_check CHECK (estado IN ('pendiente', 'conciliado', 'anulado', 'parcial'));
-    `
-    // We try to execute this using rpc
-    const { data, error } = await supabase.rpc('exec_sql', { query })
+  `;
 
-    return NextResponse.json({
-        message: 'SQL execution attempt',
-        error: error ? error.message : null,
-        data
-    })
+    // Standard RPC execution if RPC exists
+    const { data, error } = await supabase.rpc('exec_sql', { query });
+
+    if (error) {
+        console.error('RPC exec_sql failed:', error.message);
+        console.log('Since exec_sql might not exist, you must run this manually in the Supabase SQL editor:');
+        console.log(query);
+    } else {
+        console.log('Success:', data);
+    }
 }
+run();

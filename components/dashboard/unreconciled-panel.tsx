@@ -18,6 +18,7 @@ interface Transaction {
     estado: string
     cuit_origen?: string
     cuit_destino?: string
+    monto_usado?: number
 }
 
 interface UnreconciledPanelProps {
@@ -48,6 +49,8 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
     const [isConciliating, setIsConciliating] = useState(false)
     const [availableInvoices, setAvailableInvoices] = useState<any[]>([])
     const [loadingInvoices, setLoadingInvoices] = useState(false)
+    const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
+    const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
 
     // Quick Load States
     const [isQuickLoading, setIsQuickLoading] = useState(false)
@@ -75,8 +78,10 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
         }
     }
 
-    const fetchInvoices = async (txToMatch: Transaction) => {
+    const fetchInvoicesAndSuggestions = async (txToMatch: Transaction) => {
         setLoadingInvoices(true)
+        setSelectedInvoiceIds([])
+        setAiSuggestions([])
         try {
             // Filter by type: positive amount -> sales (venta), negative -> purchases (compra)
             const typeFilter = txToMatch.monto > 0 ? 'factura_venta' : 'factura_compra'
@@ -85,12 +90,27 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                 .from('comprobantes')
                 .select('*')
                 .eq('organization_id', (transactions[0] as any)?.organization_id)
-                .eq('estado', 'pendiente')
+                .in('estado', ['pendiente', 'parcial'])
                 .eq('tipo', typeFilter)
                 .order('fecha_vencimiento', { ascending: true })
 
             if (error) throw error
             setAvailableInvoices(data || [])
+
+            // Fetch AI Suggestions
+            try {
+                const res = await fetch('/api/reconcile/suggestions')
+                if (res.ok) {
+                    const suggData = await res.json()
+                    // Filter suggestions for THIS specific transaction
+                    const txSuggestions = (suggData.suggestions || []).filter((s: any) => s.transId === txToMatch.id)
+                    // Extract the invoice IDs suggested
+                    const suggestedIds = txSuggestions.flatMap((s: any) => s.invoiceIds || [])
+                    setAiSuggestions(suggestedIds)
+                }
+            } catch (sgErr) {
+                console.warn('Error fetching suggestions:', sgErr)
+            }
         } catch (error) {
             console.error('Error fetching invoices:', error)
             toast.error('Error al cargar comprobantes pendientes')
@@ -199,32 +219,63 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
         }
     }
 
-    const handleConciliate = async (invoiceId: string) => {
-        if (!selectedTx) return
+    const handleConciliate = async () => {
+        if (!selectedTx || selectedInvoiceIds.length === 0) return
         setIsSubmitting(true)
         try {
             const orgId = (transactions[0] as any)?.organization_id
             const isCobro = selectedTx.monto > 0
-            const amount = Math.abs(selectedTx.monto)
 
-            // 1. Fetch invoice to get entity and current balance
-            const { data: invoice, error: invFetchError } = await supabase
+            // Available to apply (total minus amount already used in previous partial reconciliations)
+            const totalBankAmount = Math.abs(selectedTx.monto)
+            const previouslyUsed = Number(selectedTx.monto_usado || 0)
+            const availableAmount = totalBankAmount - previouslyUsed
+
+            if (availableAmount <= 0) {
+                throw new Error("La transacción ya ha sido utilizada en su totalidad.")
+            }
+
+            // 1. Fetch selected invoices to get their current balances
+            const { data: invoices, error: invFetchError } = await supabase
                 .from('comprobantes')
                 .select('*')
-                .eq('id', invoiceId)
-                .single()
+                .in('id', selectedInvoiceIds)
 
             if (invFetchError) throw invFetchError
+            if (!invoices || invoices.length === 0) throw new Error("No se encontraron las facturas seleccionadas.")
+
+            // Verify they belong to the same entity
+            const entityCuit = invoices[0].cuit_socio
+            const allSameEntity = invoices.every(i => i.cuit_socio === entityCuit)
+            if (!allSameEntity) {
+                throw new Error("No puedes conciliar facturas de múltiples entidades en un solo movimiento.")
+            }
 
             // Get Entity ID (Mandatory for Movimiento)
             const { data: entity } = await supabase
                 .from('entidades')
                 .select('id')
                 .eq('organization_id', orgId)
-                .eq('cuit', invoice.cuit_socio)
+                .eq('cuit', entityCuit)
                 .single();
 
-            if (!entity) throw new Error(`Entidad no encontrada para CUIT ${invoice.cuit_socio}`)
+            if (!entity) throw new Error(`Entidad no encontrada para CUIT ${entityCuit}`)
+
+            // Calculate total applied in this operation
+            let remainingBankToApply = availableAmount
+            let totalAppliedInOperation = 0
+
+            // We do a pre-calculation to know how much we are applying
+            const invoicesToApply = invoices.map(inv => {
+                const amountToApply = Math.min(Number(inv.monto_pendiente), remainingBankToApply)
+                remainingBankToApply -= amountToApply
+                totalAppliedInOperation += amountToApply
+                return { ...inv, amountToApply }
+            }).filter(i => i.amountToApply > 0)
+
+            if (totalAppliedInOperation <= 0) {
+                throw new Error("No hay monto pendiente a cubrir en las facturas seleccionadas.")
+            }
 
             // 2. Create Movimiento Tesoreria (Header)
             const { data: movimiento, error: movError } = await supabase
@@ -234,9 +285,9 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                     entidad_id: entity.id,
                     tipo: isCobro ? 'cobro' : 'pago',
                     fecha: selectedTx.fecha,
-                    monto_total: amount,
+                    monto_total: totalAppliedInOperation,
                     observaciones: `CONCILIACIÓN MANUAL Cuarentena: ${selectedTx.descripcion}`,
-                    metadata: { transaccion_id: selectedTx.id, manual: true }
+                    metadata: { transaccion_id: selectedTx.id, manual: true, partial: invoicesToApply.length > 1 }
                 })
                 .select()
                 .single()
@@ -249,7 +300,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                 .insert({
                     movimiento_id: movimiento.id,
                     metodo: 'transferencia',
-                    monto: amount,
+                    monto: totalAppliedInOperation,
                     fecha_disponibilidad: selectedTx.fecha,
                     referencia: selectedTx.descripcion,
                     estado: 'acreditado'
@@ -257,41 +308,47 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
 
             if (insError) throw insError
 
-            // 4. Create Application (Link Invoice to OP)
-            const amountToApply = Math.min(Number(invoice.monto_pendiente), amount)
-            const { error: appError } = await supabase
-                .from('aplicaciones_pago')
-                .insert({
-                    movimiento_id: movimiento.id,
-                    comprobante_id: invoice.id,
-                    monto_aplicado: amountToApply
-                })
+            // Apply to each invoice
+            for (const invoice of invoicesToApply) {
+                // 4. Create Application (Link Invoice to OP)
+                const { error: appError } = await supabase
+                    .from('aplicaciones_pago')
+                    .insert({
+                        movimiento_id: movimiento.id,
+                        comprobante_id: invoice.id,
+                        monto_aplicado: invoice.amountToApply
+                    })
 
-            if (appError) throw appError
+                if (appError) throw appError
 
-            // 5. Update Invoice (comprobante)
-            const newPendiente = Number(invoice.monto_pendiente) - amountToApply
-            const { error: invError } = await supabase
-                .from('comprobantes')
-                .update({
-                    monto_pendiente: Math.max(0, newPendiente),
-                    estado: newPendiente <= 0.05 ? 'pagado' : 'parcial',
-                    metadata: {
-                        ...(invoice.metadata || {}),
-                        reconciled_at: new Date().toISOString(),
-                        transaccion_id: selectedTx.id
-                    }
-                })
-                .eq('id', invoiceId)
+                // 5. Update Invoice (comprobante)
+                const newPendiente = Number(invoice.monto_pendiente) - invoice.amountToApply
+                const { error: invError } = await supabase
+                    .from('comprobantes')
+                    .update({
+                        monto_pendiente: Math.max(0, newPendiente),
+                        estado: newPendiente <= 0.05 ? 'pagado' : 'parcial',
+                        metadata: {
+                            ...(invoice.metadata || {}),
+                            reconciled_at: new Date().toISOString(),
+                            transaccion_id: selectedTx.id
+                        }
+                    })
+                    .eq('id', invoice.id)
 
-            if (invError) throw invError
+                if (invError) throw invError
+            }
 
             // 6. Update Bank Transaction
+            const newMontoUsado = previouslyUsed + totalAppliedInOperation
+            const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05
+
             const { error: txError } = await supabase
                 .from('transacciones')
                 .update({
                     movimiento_id: movimiento.id,
-                    estado: 'conciliado'
+                    estado: isFullyUsed ? 'conciliado' : 'parcial',
+                    monto_usado: newMontoUsado
                 })
                 .eq('id', selectedTx.id)
 
@@ -300,6 +357,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
             toast.success('Conciliación manual exitosa (Circuito Completo registrado)')
             setIsConciliating(false)
             setSelectedTx(null)
+            setSelectedInvoiceIds([])
             if (onRefresh) onRefresh()
         } catch (error: any) {
             console.error('Error in conciliation:', error)
@@ -310,7 +368,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
     }
 
     const filtered = transactions
-        .filter(t => showAll || t.estado === 'pendiente')
+        .filter(t => showAll || t.estado === 'pendiente' || t.estado === 'parcial')
         .filter(t =>
             t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
             t.monto.toString().includes(searchTerm)
@@ -430,6 +488,10 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                             <Badge className="text-[10px] font-bold uppercase bg-emerald-500/20 !text-emerald-400 border-none px-2 mt-1">
                                                 Conciliado
                                             </Badge>
+                                        ) : tx.estado === 'parcial' ? (
+                                            <Badge variant="outline" className="text-[10px] font-bold uppercase border-blue-500/50 !text-blue-400 bg-blue-500/10 px-2 mt-1 backdrop-blur-sm">
+                                                Parcial ({new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.abs(tx.monto) - (tx.monto_usado || 0))} req.)
+                                            </Badge>
                                         ) : (
                                             <Badge variant="outline" className="text-[10px] font-bold uppercase border-amber-500/50 !text-amber-400 bg-amber-500/10 px-2 mt-1 backdrop-blur-sm">
                                                 Pendiente
@@ -438,7 +500,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                     </div>
 
                                     <div className="flex gap-2 min-w-[200px] justify-end">
-                                        {tx.estado === 'pendiente' && (
+                                        {(tx.estado === 'pendiente' || tx.estado === 'parcial') && (
                                             <>
                                                 <Button
                                                     variant="outline"
@@ -447,7 +509,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                                     onClick={() => {
                                                         setSelectedTx(tx)
                                                         setIsConciliating(true)
-                                                        fetchInvoices(tx)
+                                                        fetchInvoicesAndSuggestions(tx)
                                                     }}
                                                 >
                                                     <CheckCircle2 className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
@@ -542,21 +604,32 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                     </DialogHeader>
 
                     {selectedTx && (
-                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 my-2 flex justify-between items-center">
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 my-2 flex justify-between items-center shadow-inner">
                             <div>
-                                <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-1">Movimiento Bancario</p>
+                                <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-1 flex items-center gap-1">
+                                    <Tag className="w-3 h-3" /> Movimiento Bancario {selectedTx.estado === 'parcial' && ' (Saldo Remanente)'}
+                                </p>
                                 <p className="text-sm font-bold text-white leading-tight">{selectedTx.descripcion}</p>
                             </div>
                             <div className="text-right">
                                 <p className={`text-lg font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
+                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.abs(selectedTx.monto) - (selectedTx.monto_usado || 0))}
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    <div className="py-4">
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Comprobantes Sugeridos</p>
+                    <div className="py-2">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                Comprobantes Sugeridos {aiSuggestions.length > 0 && <span className="ml-2 text-amber-500">✨ IA Sugiere {aiSuggestions.length} match(es)</span>}
+                            </p>
+                            {selectedInvoiceIds.length > 0 && (
+                                <p className="text-xs text-blue-400 font-bold uppercase mr-2">
+                                    {selectedInvoiceIds.length} seleccionado(s)
+                                </p>
+                            )}
+                        </div>
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                             {loadingInvoices ? (
                                 <div className="py-12 text-center text-gray-500">
@@ -565,29 +638,51 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                                 </div>
                             ) : availableInvoices.length > 0 ? (
                                 availableInvoices.map(inv => {
-                                    const diff = Math.abs(selectedTx?.monto || 0) === Math.abs(inv.monto_total)
+                                    const requiredAmount = Math.abs(selectedTx?.monto || 0) - (selectedTx?.monto_usado || 0)
+                                    const isExactMatch = requiredAmount === Math.abs(inv.monto_pendiente)
+                                    const isSuggested = aiSuggestions.includes(inv.id)
+                                    const isSelected = selectedInvoiceIds.includes(inv.id)
+
                                     return (
                                         <button
                                             key={inv.id}
-                                            onClick={() => handleConciliate(inv.id)}
+                                            onClick={() => {
+                                                if (isSelected) {
+                                                    setSelectedInvoiceIds(prev => prev.filter(id => id !== inv.id))
+                                                } else {
+                                                    setSelectedInvoiceIds(prev => [...prev, inv.id])
+                                                }
+                                            }}
                                             disabled={isSubmitting}
-                                            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group ${diff ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
+                                            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group
+                                                ${isSelected ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10'
+                                                    : isSuggested ? 'border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10'
+                                                        : isExactMatch ? 'border-emerald-500/50 bg-emerald-500/5 hover:bg-emerald-500/10'
+                                                            : 'border-gray-800 bg-gray-900/40 hover:border-gray-700 hover:bg-gray-800/60'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className={`p-2 rounded-lg ${diff ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>
+                                                <div className={`flex items-center justify-center w-5 h-5 rounded-md border ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-600 bg-gray-900 group-hover:border-gray-500'}`}>
+                                                    {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                                                </div>
+                                                <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-500/20 text-blue-400' : isSuggested ? 'bg-amber-500/20 text-amber-500' : 'bg-gray-800 text-gray-500'}`}>
                                                     <FileDown className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">{inv.razon_social_socio}</p>
-                                                    <p className="text-[10px] text-gray-500">{inv.tipo} • {inv.numero} • Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</p>
+                                                    <p className={`text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
+                                                        {inv.razon_social_socio} {isSuggested && <span className="ml-2 text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Sugerencia IA</span>}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-500">
+                                                        {inv.tipo} • {inv.numero} • Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}
+                                                        {inv.estado === 'parcial' && <span className="ml-2 text-blue-400 bg-blue-500/10 px-1 rounded">Pago Parcial</span>}
+                                                    </p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-sm font-black text-white">
-                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_total)}
+                                                <p className={`text-sm font-black ${isSelected ? 'text-blue-400' : 'text-white'}`}>
+                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
                                                 </p>
-                                                {diff && <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-1.5 rounded uppercase">Monto Exacto</span>}
+                                                {isExactMatch && !isSuggested && <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-1.5 rounded uppercase mt-1 inline-block">Monto Exacto</span>}
                                             </div>
                                         </button>
                                     )
@@ -600,7 +695,7 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                         </div>
                     </div>
 
-                    <DialogFooter className="flex justify-between items-center w-full">
+                    <DialogFooter className="flex justify-between items-center w-full mt-4">
                         <Button
                             variant="outline"
                             onClick={() => {
@@ -611,15 +706,29 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
                             className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
                         >
                             <PlusCircle className="w-4 h-4 mr-2" />
-                            Carga Rápida (Documentar Nuevo)
+                            Documentar Nuevo
                         </Button>
-                        <Button
-                            variant="ghost"
-                            onClick={() => setIsConciliating(false)}
-                            className="text-gray-400 hover:text-white"
-                        >
-                            Cerrar
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setIsConciliating(false)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={handleConciliate}
+                                disabled={isSubmitting || selectedInvoiceIds.length === 0}
+                                className="bg-blue-600 hover:bg-blue-500 text-white font-bold"
+                            >
+                                {isSubmitting ? (
+                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                ) : (
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                )}
+                                Conciliar Seleccionados
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

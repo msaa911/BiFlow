@@ -10,7 +10,10 @@ class ReconciliationEngine {
     static async matchAndReconcile(organizationId) {
         console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId}`)
 
-        const supabase = await createClient()
+        const supabase = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY)!
+        )
 
         // 1. Fetch pending invoices (AP/AR) -> Order by due date to apply FIFO if multiple
         const { data: pendingInvoices, error: invError } = await supabase
@@ -112,7 +115,7 @@ class ReconciliationEngine {
                 }
             }
 
-            if (finalMatch && matchLevel <= 2) {
+            if (finalMatch && matchLevel <= 4) {
                 console.log(`[RECONCILIATION] Match Level ${matchLevel} found for trans ${trans.id} (${transAmount})`);
 
                 try {

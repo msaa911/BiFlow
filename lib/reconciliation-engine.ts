@@ -33,7 +33,7 @@ export class ReconciliationEngine {
             .from('transacciones')
             .select('*')
             .eq('organization_id', organizationId)
-            .eq('estado', 'pendiente')
+            .in('estado', ['pendiente', 'parcial'])
 
         if (transError || !pendingTrans || pendingTrans.length === 0) {
             console.log(`[RECONCILIATION] No unlinked transactions found.`)
@@ -57,7 +57,12 @@ export class ReconciliationEngine {
         const results: any[] = []
 
         for (const trans of pendingTrans) {
-            const transAmount = Math.abs(Number(trans.monto));
+            const totalBankAmount = Math.abs(Number(trans.monto));
+            const previouslyUsed = Number(trans.monto_usado || 0);
+            const availableTransAmount = totalBankAmount - previouslyUsed;
+
+            if (availableTransAmount <= 0.05) continue;
+
             const isCobro = trans.monto > 0;
             const targetTipos = isCobro
                 ? ['factura_venta', 'nota_debito', 'ingreso_vario']
@@ -70,7 +75,7 @@ export class ReconciliationEngine {
             let tags: string[] = trans.tags || [];
             let anomalyFound = false;
 
-            if (transAmount > 5000000 && !tags.includes('alerta_precio')) {
+            if (totalBankAmount > 5000000 && !tags.includes('alerta_precio')) {
                 tags.push('alerta_precio');
                 anomalyFound = true;
             }
@@ -100,13 +105,13 @@ export class ReconciliationEngine {
             let finalMatch: any[] | null = null;
             if (targetInvoices.length > 0) {
                 // 1-a-1 Exact Match
-                const singleMatch = targetInvoices.find(i => Math.abs(Number(i.monto_pendiente) - transAmount) < 0.05);
+                const singleMatch = targetInvoices.find(i => Math.abs(Number(i.monto_pendiente) - availableTransAmount) < 0.05);
                 if (singleMatch) {
                     finalMatch = [singleMatch];
                 }
                 // 1-a-N
                 else if (targetInvoices.length <= 15) {
-                    finalMatch = this.findSubsetSum(targetInvoices, transAmount);
+                    finalMatch = this.findSubsetSum(targetInvoices, availableTransAmount);
                 }
                 // Partial Pay Match Level 1/2 (Single Invoice)
                 if (!finalMatch && matchLevel <= 2 && targetInvoices.length === 1) {
@@ -115,7 +120,7 @@ export class ReconciliationEngine {
             }
 
             if (finalMatch && matchLevel <= 4) {
-                console.log(`[RECONCILIATION] Match Level ${matchLevel} found for trans ${trans.id} (${transAmount})`);
+                console.log(`[RECONCILIATION] Match Level ${matchLevel} found for trans ${trans.id} (${availableTransAmount} avail., ${totalBankAmount} total)`);
 
                 try {
                     // --- CIRCUIT EXECUTION START ---
@@ -132,6 +137,22 @@ export class ReconciliationEngine {
                         throw new Error(`Entity not found for CUIT ${finalMatch[0].cuit_socio}`);
                     }
 
+                    // Calculate actual allocation
+                    let remainingAvailableAmount = availableTransAmount;
+                    let totalAppliedInOperation = 0;
+
+                    const invoicesToApply = finalMatch.map(inv => {
+                        const amountToApply = Math.min(Number(inv.monto_pendiente), remainingAvailableAmount);
+                        remainingAvailableAmount -= amountToApply;
+                        totalAppliedInOperation += amountToApply;
+                        return { ...inv, amountToApply };
+                    }).filter(i => i.amountToApply > 0);
+
+                    if (totalAppliedInOperation <= 0) {
+                        console.warn(`[RECONCILIATION] Computed 0 total applied for trans ${trans.id}`);
+                        continue;
+                    }
+
                     // 1. Create Movimiento Tesoreria (Header)
                     const { data: movimiento, error: movError } = await supabase
                         .from('movimientos_tesoreria')
@@ -140,9 +161,9 @@ export class ReconciliationEngine {
                             entidad_id: entity.id,
                             tipo: isCobro ? 'cobro' : 'pago',
                             fecha: trans.fecha,
-                            monto_total: transAmount,
+                            monto_total: totalAppliedInOperation,
                             observaciones: `AUTO: ${trans.descripcion}`,
-                            metadata: { transaccion_id: trans.id, auto: true, level: matchLevel }
+                            metadata: { transaccion_id: trans.id, auto: true, level: matchLevel, partial: invoicesToApply.length > 1 }
                         })
                         .select()
                         .single();
@@ -158,7 +179,7 @@ export class ReconciliationEngine {
                         .insert({
                             movimiento_id: movimiento.id,
                             metodo: 'transferencia',
-                            monto: transAmount,
+                            monto: totalAppliedInOperation,
                             fecha_disponibilidad: trans.fecha,
                             banco: trans.banco,
                             referencia: trans.descripcion,
@@ -171,17 +192,13 @@ export class ReconciliationEngine {
                     }
 
                     // 3. Create Applications & Update Invoices
-                    let remainingTransAmount = transAmount;
-                    for (const inv of finalMatch) {
-                        const amountToApply = Math.min(Number(inv.monto_pendiente), remainingTransAmount);
-                        if (amountToApply <= 0) continue;
-
+                    for (const inv of invoicesToApply) {
                         const { error: appError } = await supabase
                             .from('aplicaciones_pago')
                             .insert({
                                 movimiento_id: movimiento.id,
                                 comprobante_id: inv.id,
-                                monto_aplicado: amountToApply
+                                monto_aplicado: inv.amountToApply
                             });
 
                         if (appError) {
@@ -189,7 +206,7 @@ export class ReconciliationEngine {
                             throw appError;
                         }
 
-                        const newPendiente = Number(inv.monto_pendiente) - amountToApply;
+                        const newPendiente = Number(inv.monto_pendiente) - inv.amountToApply;
                         const newEstado = newPendiente <= 0.05 ? 'pagado' : 'parcial';
 
                         const { error: invErr } = await supabase
@@ -210,7 +227,6 @@ export class ReconciliationEngine {
                             throw invErr;
                         }
 
-                        remainingTransAmount -= amountToApply;
                         // Update local pendingInvoices to avoid double-dipping in the same run
                         const localInv = pendingInvoices.find(i => i.id === inv.id);
                         if (localInv) {
@@ -220,11 +236,15 @@ export class ReconciliationEngine {
                     }
 
                     // 4. Update Bank Transaction
+                    const newMontoUsado = previouslyUsed + totalAppliedInOperation;
+                    const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05;
+
                     const { error: txError } = await supabase
                         .from('transacciones')
                         .update({
-                            comprobante_id: finalMatch[0].id,
-                            estado: 'conciliado',
+                            movimiento_id: movimiento.id,
+                            estado: isFullyUsed ? 'conciliado' : 'parcial',
+                            monto_usado: newMontoUsado,
                             tags
                         })
                         .eq('id', trans.id);
@@ -237,7 +257,7 @@ export class ReconciliationEngine {
                     matchedCount++;
                     results.push({
                         transId: trans.id,
-                        monto: transAmount,
+                        monto: availableTransAmount,
                         movimientoId: movimiento.id,
                         level: matchLevel,
                         auto: true
@@ -256,7 +276,7 @@ export class ReconciliationEngine {
                     results.push({
                         transId: trans.id,
                         transDesc: trans.descripcion,
-                        monto: transAmount,
+                        monto: availableTransAmount,
                         invoiceIds: finalMatch.map(i => i.id),
                         level: matchLevel,
                         auto: false
@@ -267,7 +287,7 @@ export class ReconciliationEngine {
                         results.push({
                             transId: trans.id,
                             transDesc: trans.descripcion,
-                            monto: transAmount,
+                            monto: availableTransAmount,
                             invoiceIds: [timeMatch.id],
                             level: 4,
                             auto: false
@@ -296,7 +316,7 @@ export class ReconciliationEngine {
 
     private static findMatchByProximity(trans: any, invoices: any[]) {
         const transDate = new Date(trans.fecha);
-        const transAmount = Math.abs(Number(trans.monto));
+        const transAmount = Math.abs(Number(trans.monto)) - Number(trans.monto_usado || 0);
 
         return invoices.find(inv => {
             const invDate = new Date(inv.fecha_vencimiento || inv.fecha_emision);
