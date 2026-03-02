@@ -41,6 +41,7 @@ export async function POST(request: Request) {
         .insert({
             organization_id,
             nombre_archivo,
+            storage_path: `local_import/${organization_id}/${Date.now()}_${nombre_archivo}`,
             estado: 'completado',
             metadata
         })
