@@ -108,7 +108,7 @@ export async function DELETE(request: Request) {
         const { data: treasuryMovs } = await adminClient
             .from('movimientos_tesoreria')
             .select('id')
-            .contains('metadata', { archivo_importacion_id: id })
+            .eq('metadata->>archivo_importacion_id', id)
 
         if (treasuryMovs && treasuryMovs.length > 0) {
             const movIds = treasuryMovs.map((m: any) => m.id)
