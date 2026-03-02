@@ -64,7 +64,7 @@ export class ReconciliationEngine {
                 ? ['factura_venta', 'nota_debito', 'ingreso_vario']
                 : ['factura_compra', 'nota_credito', 'egreso_vario'];
 
-            let targetInvoices: any[] = pendingInvoices.filter(i => targetTipos.includes(i.tipo));
+            let targetInvoices: any[] = pendingInvoices.filter((i: any) => targetTipos.includes(i.tipo));
             let matchLevel = 0;
 
             // Anomalies
@@ -241,7 +241,7 @@ export class ReconciliationEngine {
                         }
 
                         // Update local pendingInvoices to avoid double-dipping in the same run
-                        const localInv = pendingInvoices.find(i => i.id === inv.id);
+                        const localInv = pendingInvoices.find((i: any) => i.id === inv.id);
                         if (localInv) {
                             localInv.monto_pendiente = Math.max(0, newPendiente);
                             localInv.estado = newEstado;
