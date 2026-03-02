@@ -22,11 +22,12 @@ interface Transaction {
 }
 
 interface UnreconciledPanelProps {
+    orgId: string
     transactions: Transaction[]
     onRefresh?: () => void
 }
 
-export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanelProps) {
+export function UnreconciledPanel({ orgId, transactions, onRefresh }: UnreconciledPanelProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
@@ -395,17 +396,78 @@ export function UnreconciledPanel({ transactions, onRefresh }: UnreconciledPanel
 
         setIsSubmitting(true)
         try {
-            const { error } = await supabase
+            // 1. Ensure "Gastos Varios / Banco" entity exists
+            let { data: entity } = await supabase
+                .from('entidades')
+                .select('id')
+                .eq('organization_id', orgId)
+                .eq('razon_social', 'Gastos Varios / Otros')
+                .single()
+
+            if (!entity) {
+                const { data: newEntity, error: entError } = await supabase
+                    .from('entidades')
+                    .insert({
+                        organization_id: orgId,
+                        razon_social: 'Gastos Varios / Otros',
+                        cuit: '00000000000',
+                        categoria: 'proveedor'
+                    })
+                    .select()
+                    .single()
+
+                if (entError) throw entError
+                if (!newEntity) throw new Error("No se pudo crear la entidad de Gastos Varios")
+                entity = newEntity
+            }
+
+            if (!entity) throw new Error("Entidad de cobro/pago no disponible")
+
+            // 2. Create Movimiento Tesoreria
+            const isIngreso = selectedTx.monto > 0
+            const { data: movimiento, error: movError } = await supabase
+                .from('movimientos_tesoreria')
+                .insert({
+                    organization_id: orgId,
+                    entidad_id: entity.id,
+                    tipo: isIngreso ? 'cobro' : 'pago',
+                    fecha: selectedTx.fecha,
+                    monto_total: Math.abs(selectedTx.monto),
+                    observaciones: `CATEGORIZACIÓN DIRECTA: ${category} - ${selectedTx.descripcion}`,
+                    metadata: { transaccion_id: selectedTx.id, categoria: category }
+                })
+                .select()
+                .single()
+
+            if (movError) throw movError
+
+            // 3. Create Instrument (The bank movement)
+            const { error: insError } = await supabase
+                .from('instrumentos_pago')
+                .insert({
+                    movimiento_id: movimiento.id,
+                    metodo: 'transferencia',
+                    monto: Math.abs(selectedTx.monto),
+                    fecha_disponibilidad: selectedTx.fecha,
+                    referencia: selectedTx.descripcion,
+                    estado: 'acreditado'
+                })
+
+            if (insError) throw insError
+
+            // 4. Update Bank Transaction
+            const { error: txError } = await supabase
                 .from('transacciones')
                 .update({
                     categoria: category,
+                    movimiento_id: movimiento.id,
                     estado: 'conciliado'
                 })
                 .eq('id', selectedTx.id)
 
-            if (error) throw error
+            if (txError) throw txError
 
-            toast.success('Transacción categorizada y conciliada correctamente')
+            toast.success('Transacción categorizada y registrada en tesorería')
             setIsCategorizing(false)
             setSelectedTx(null)
             if (onRefresh) onRefresh()

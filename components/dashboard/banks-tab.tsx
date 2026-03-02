@@ -246,7 +246,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
             </TabsContent>
 
             <TabsContent value="reconciliation" className="animate-in fade-in duration-500">
-                <UnreconciledPanel transactions={pendingTransactions} onRefresh={onRefresh} />
+                <UnreconciledPanel orgId={orgId} transactions={pendingTransactions} onRefresh={onRefresh} />
             </TabsContent>
         </Tabs>
     )
