@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -664,8 +664,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                         setIsCategorizing(true)
                                                     }}
                                                 >
-                                                    <Tag className="w-3.5 h-3.5" />
-                                                    <span className="text-[10px] font-bold uppercase">Categorizar</span>
+                                                    <FileText className="w-3.5 h-3.5" />
+                                                    <span className="text-[10px] font-bold uppercase">Contabilizar Nota</span>
                                                 </Button>
                                             </>
                                         )}
@@ -695,11 +695,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 <DialogContent className="max-w-md bg-gray-950 border-gray-800">
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
-                            <Tag className="w-5 h-5 text-blue-400" />
-                            Generar Nota Bancaria (NDB/NCB)
+                            <FileText className="w-5 h-5 text-blue-400" />
+                            Contabilizar Nota Bancaria (NDB/NCB)
                         </DialogTitle>
                         <DialogDescription className="text-gray-400 text-xs">
-                            Selecciona el concepto principal para registrar el movimiento directo en el banco.
+                            Identifica el concepto para generar el comprobante legal y su pago automáticamente.
                         </DialogDescription>
                     </DialogHeader>
 
