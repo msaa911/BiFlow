@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -64,7 +64,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     const [inviteEmail, setInviteEmail] = useState('')
     const [inviting, setInviting] = useState(false)
 
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     useEffect(() => {
         async function loadData() {
@@ -76,60 +76,69 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
             setLoading(true)
 
-            // 1. Cargar Configuración General
-            const { data: conf } = await supabase.from('configuracion_empresa').select('*').eq('organization_id', organizationId).maybeSingle()
-            if (conf) {
-                setConfig({
-                    tna: conf.tna,
-                    limite_descubierto: conf.limite_descubierto,
-                    modo_tasa: conf.modo_tasa || 'AUTOMATICO',
-                    colchon_liquidez: conf.colchon_liquidez || 0
-                })
+            try {
+                // Ejecutar todas las consultas en paralelo
+                const [
+                    confRes,
+                    agreeRes,
+                    accsRes,
+                    marketRes,
+                    rulesRes,
+                    teamRes
+                ] = await Promise.all([
+                    supabase.from('configuracion_empresa').select('*').eq('organization_id', organizationId).maybeSingle(),
+                    supabase.from('convenios_bancarios').select('*').eq('organization_id', organizationId).maybeSingle(),
+                    supabase.from('cuentas_bancarias').select('*').eq('organization_id', organizationId),
+                    supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo').order('fecha', { ascending: false }).limit(1).maybeSingle(),
+                    supabase.from('tax_intelligence_rules').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }),
+                    supabase.from('organization_members').select('id, role, user_id, created_at').eq('organization_id', organizationId)
+                ])
+
+                // 1. Procesar Configuración General
+                if (confRes.data) {
+                    setConfig({
+                        tna: confRes.data.tna,
+                        limite_descubierto: confRes.data.limite_descubierto,
+                        modo_tasa: confRes.data.modo_tasa || 'AUTOMATICO',
+                        colchon_liquidez: confRes.data.colchon_liquidez || 0
+                    })
+                }
+
+                // 2. Procesar Acuerdos
+                if (agreeRes.data) {
+                    setAgreement({
+                        mantenimiento_mensual_pactado: Number(agreeRes.data.mantenimiento_mensual_pactado) || 0,
+                        comision_cheque_porcentaje: Number(agreeRes.data.comision_cheque_porcentaje) || 0
+                    })
+                }
+
+                // 3. Procesar Cuentas Bancarias
+                if (accsRes.data && accsRes.data.length > 0) {
+                    setAccounts(accsRes.data)
+                } else {
+                    setAccounts([{ banco_nombre: 'Banco Principal', cbu: '', saldo_inicial: 0 }])
+                }
+
+                // 4. Procesar Tasas Mercado
+                if (marketRes.data) {
+                    setMarketRate(marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo)
+                }
+
+                // 5. Procesar Reglas de Impuestos
+                if (rulesRes.data) {
+                    setTaxRules(rulesRes.data)
+                }
+
+                // 6. Procesar Miembros del Equipo
+                if (teamRes.data) {
+                    setMembers(teamRes.data)
+                }
+
+            } catch (err) {
+                console.error("Error loading settings data:", err)
+            } finally {
+                setLoading(false)
             }
-
-            // 2. Cargar Acuerdos
-            const { data: agree } = await supabase.from('convenios_bancarios').select('*').eq('organization_id', organizationId).maybeSingle()
-            if (agree) {
-                setAgreement({
-                    mantenimiento_mensual_pactado: Number(agree.mantenimiento_mensual_pactado) || 0,
-                    comision_cheque_porcentaje: Number(agree.comision_cheque_porcentaje) || 0
-                })
-            }
-
-            // 3. CARGAR CUENTAS BANCARIAS
-            const { data: accs } = await supabase.from('cuentas_bancarias').select('*').eq('organization_id', organizationId)
-            if (accs && accs.length > 0) {
-                setAccounts(accs)
-            } else {
-                setAccounts([{ banco_nombre: 'Banco Principal', cbu: '', saldo_inicial: 0 }])
-            }
-
-            // 4. Cargar Tasas Mercado
-            const { data: market } = await supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo').order('fecha', { ascending: false }).limit(1).maybeSingle()
-            if (market) {
-                setMarketRate(market.tasa_plazo_fijo_30d || market.tasa_plazo_fijo)
-            }
-
-            // 5. Cargar Reglas de Impuestos
-            const { data: rulesData } = await supabase
-                .from('tax_intelligence_rules')
-                .select('*')
-                .eq('organization_id', organizationId)
-                .order('created_at', { ascending: false })
-
-            if (rulesData) setTaxRules(rulesData)
-
-            // 6. Cargar Miembros del Equipo
-            const { data: team } = await supabase
-                .from('organization_members')
-                .select('id, role, user_id, created_at')
-                .eq('organization_id', organizationId)
-
-            // Note: In a real app we'd join with profiles, here we might just have IDs
-            // For now let's just show what we have.
-            if (team) setMembers(team)
-
-            setLoading(false)
         }
 
         loadData()

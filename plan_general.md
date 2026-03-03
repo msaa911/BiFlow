@@ -50,6 +50,12 @@ Este documento es la **única fuente de verdad** del proyecto. Integra la visió
 - **Scenario Planning**: Simulador de pagos diferidos, cobros adelantados y versiones de caja.
 - **Chat Advisor (360°)**: Preguntas directas a la IA sobre liquidez y riesgos.
 
+### Fase 8: Monetización & Multi-usuario (SaaS)
+- **Gestión de Equipos**: Invitaciones por email, roles (Admin/Member) y auditoría de accesos.
+- **Billing Automático**: Integración con Mercado Pago (Local) o Stripe (Global).
+- **Facturación AFIP**: Generación automática de comprobantes legales y portal de descarga para clientes.
+- **Lógica de Asientos (Seats)**: Cobro dinámico por usuario adicional a partir del 6to integrante.
+
 ---
 
 ## 📱 Fase 9: Ecosistema "Cash Flow 360°"
@@ -60,5 +66,6 @@ Este documento es la **única fuente de verdad** del proyecto. Integra la visió
 ## ⚙️ STACK TÉCNICO & INFRAESTRUCTURA
 - **Frontend**: Next.js 14+ (App Router).
 - **Backend**: Supabase (PG + Auth + RLS).
-- **Admin Access**: `createAdminClient` (Service Role) para operaciones críticas/contables.
+- **E-mails**: Resend (Invitaciones y alertas de cobro).
+- **Pagos (Roadmap)**: Mercado Pago / Mobbex / Stripe.
 - **Motores**: AnomalyEngine, LiquidityEngine, TrustLedger.
