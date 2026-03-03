@@ -35,8 +35,6 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
-    const [isSubmitting, setIsSubmitting] = useState(false)
     const [categorizedTxIds, setCategorizedTxIds] = useState<string[]>([])
     const supabase = createClient()
 
