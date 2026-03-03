@@ -28,9 +28,9 @@ export async function getOrgId(supabase: any, userId: string): Promise<string> {
         if (adminMember) return adminMember.organization_id
 
         // Hard fallback to first org (for demo/onboarding)
-        const { data: orgs } = await adminClient.from('organizations').select('id').limit(1)
         if (orgs && orgs.length > 0) return orgs[0].id
     }
 
-    throw new Error('Organization not found for user. Please ensure the user is linked to an organization.')
+    console.warn(`Organization not found for user ${userId}. Returning first available if possible.`)
+    return '' // Return empty instead of crashing layout
 }

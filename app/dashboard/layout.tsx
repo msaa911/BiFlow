@@ -13,6 +13,14 @@ export default async function DashboardLayout({ children }: PropsWithChildren) {
         redirect('/login')
     }
 
+    let orgId = ''
+    try {
+        const { getOrgId } = await import('@/lib/supabase/utils')
+        orgId = await getOrgId(supabase, user.id)
+    } catch (e) {
+        console.error('Error fetching orgId in layout:', e)
+    }
+
     return (
         <div className="flex h-screen bg-gray-950 text-white overflow-hidden">
             <Sidebar userEmail={user.email || 'Usuario'} />
