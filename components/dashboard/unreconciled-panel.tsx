@@ -20,6 +20,8 @@ interface Transaction {
     cuit_origen?: string
     cuit_destino?: string
     monto_usado?: number
+    categoria?: string
+    movimiento_id?: string
 }
 
 interface UnreconciledPanelProps {
@@ -543,6 +545,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 .eq('id', selectedTx.id)
 
             if (txError) throw txError
+
+            // Update local state to reflect conciliation immediately in UI
+            selectedTx.estado = 'conciliado'
+            selectedTx.movimiento_id = movimiento.id
+            selectedTx.categoria = category
 
             toast.success(`${claseDoc} generada y registrada en bancos`)
             setIsCategorizing(false)

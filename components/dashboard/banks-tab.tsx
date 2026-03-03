@@ -66,7 +66,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
                     >
                         <FileText className="w-4 h-4" />
-                        Auditoría Notas Bancarias
+                        Notas Bancarias
                     </TabsTrigger>
                 </TabsList>
 
@@ -265,7 +265,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 <FileText className="w-5 h-5 text-emerald-400" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-white">Auditoría de Notas Bancarias (NDB/NCB)</h3>
+                                <h3 className="text-lg font-bold text-white">Notas Bancarias (NDB/NCB)</h3>
                                 <p className="text-xs text-gray-400">Consulta y exporta los movimientos generados directamente desde el extracto (Impuestos, Comisiones, Intereses).</p>
                             </div>
                         </div>
