@@ -28,6 +28,7 @@ export async function getOrgId(supabase: any, userId: string): Promise<string> {
         if (adminMember) return adminMember.organization_id
 
         // Hard fallback to first org (for demo/onboarding)
+        const { data: orgs } = await adminClient.from('organizations').select('id').limit(1)
         if (orgs && orgs.length > 0) return orgs[0].id
     }
 
