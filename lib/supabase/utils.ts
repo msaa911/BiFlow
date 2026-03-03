@@ -15,7 +15,7 @@ export async function getOrgId(supabase: any, userId: string): Promise<string> {
 
     // 2. Fallback: Use service role if available (Server-only)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_KEY // Secure server-side key
+    const serviceRoleKey = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY // Support both common naming conventions
 
     if (supabaseUrl && serviceRoleKey) {
         const adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey)

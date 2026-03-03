@@ -63,6 +63,12 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
     useEffect(() => {
         async function loadData() {
+            if (!organizationId) {
+                console.warn("CompanySettingsTab: No organizationId provided")
+                setLoading(false)
+                return
+            }
+
             setLoading(true)
 
             // 1. Cargar Configuración General
@@ -111,7 +117,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             setLoading(false)
         }
 
-        if (organizationId) loadData()
+        loadData()
     }, [organizationId, supabase])
 
     const toggleTaxRule = async (ruleId: string, currentStatus: boolean) => {
@@ -372,9 +378,9 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     }
 
     if (loading) return <div className="p-8 text-center text-gray-500">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500 mb-4" />
+        < Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500 mb-4" />
         Cargando configuración...
-    </div>
+    </div >
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto pb-20">
