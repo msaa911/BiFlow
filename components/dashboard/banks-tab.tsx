@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { CheckPortfolio } from './check-portfolio'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
