@@ -35,7 +35,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [showAll, setShowAll] = useState(false)
+    const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const [categorizedTxIds, setCategorizedTxIds] = useState<string[]>([])
     const supabase = createClient()
 
@@ -216,6 +217,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     estado: 'conciliado'
                 })
                 .eq('id', selectedTx.id)
+                .eq('organization_id', orgId)
 
             if (txError) throw txError
 
@@ -365,6 +367,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     monto_usado: newMontoUsado
                 })
                 .eq('id', selectedTx.id)
+                .eq('organization_id', orgId)
 
             if (txError) throw txError
 
@@ -382,7 +385,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     }
 
     const filtered = transactions
-        .filter(t => (showAll || (t.estado === 'pendiente' || t.estado === 'parcial')) && !categorizedTxIds.includes(t.id))
+        .filter(t => (t.estado === 'pendiente' || t.estado === 'parcial') && !categorizedTxIds.includes(t.id))
         .filter(t =>
             t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
             t.monto.toString().includes(searchTerm)
@@ -547,6 +550,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     estado: 'conciliado'
                 })
                 .eq('id', selectedTx.id)
+                .eq('organization_id', orgId)
 
             if (txError) throw txError
 
@@ -576,19 +580,10 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 <div>
                     <CardTitle className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-500" />
-                        Pendientes de Conciliación ({filtered.length})
                     </CardTitle>
                     <p className="text-xs text-gray-400 mt-1">Movimientos bancarios pendientes de vinculación con comprobantes.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowAll(!showAll)}
-                        className={`font-bold text-[10px] uppercase transition-all ${showAll ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-gray-800/50 text-gray-200 border-gray-700 hover:bg-gray-700'}`}
-                    >
-                        {showAll ? 'Viendo Todo' : 'Ver Solo Pendientes'}
-                    </Button>
                     <Button
                         variant="outline"
                         size="sm"

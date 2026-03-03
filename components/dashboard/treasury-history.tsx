@@ -148,6 +148,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         await supabase.from('comprobantes')
                             .update({ monto_pendiente: restoredMonto, estado: newEstado })
                             .eq('id', app.comprobante_id)
+                            .eq('organization_id', orgId)
                     }
                 }
             }
@@ -156,7 +157,10 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
             const isBancaria = mov.clase_documento === 'NDB' || mov.clase_documento === 'NCB'
             if (isBancaria && mov.aplicaciones_pago?.length > 0) {
                 const voucherIds = mov.aplicaciones_pago.map((a: any) => a.comprobante_id)
-                await supabase.from('comprobantes').delete().in('id', voucherIds)
+                await supabase.from('comprobantes')
+                    .delete()
+                    .in('id', voucherIds)
+                    .eq('organization_id', orgId)
             }
 
             // 3. Reset Bank Transaction status if linked
@@ -170,6 +174,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         monto_usado: 0
                     })
                     .eq('id', linkedTxId)
+                    .eq('organization_id', orgId)
             }
 
             // 4. Delete children (aplicaciones + instrumentos)
@@ -177,7 +182,10 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
             await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
 
             // 5. Hard-delete the movement row
-            const { error: delErr } = await supabase.from('movimientos_tesoreria').delete().eq('id', movId)
+            const { error: delErr } = await supabase.from('movimientos_tesoreria')
+                .delete()
+                .eq('id', movId)
+                .eq('organization_id', orgId)
 
             if (delErr) throw delErr
 

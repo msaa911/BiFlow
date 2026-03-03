@@ -75,7 +75,6 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             }
 
             setLoading(true)
-            console.log("DEBUG: Iniciando carga paralela de configuración...")
 
             try {
                 // Ejecutar todas las consultas en paralelo
@@ -95,7 +94,6 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     supabase.from('organization_members').select('id, role, user_id, created_at').eq('organization_id', organizationId)
                 ])
 
-                console.log("DEBUG: Consultas terminadas. Procesando resultados...")
                 if (confRes.data) {
                     setConfig({
                         tna: confRes.data.tna,

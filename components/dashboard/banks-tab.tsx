@@ -25,6 +25,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [activeTab, setActiveTab] = useState('summary')
     const [showFormatBuilder, setShowFormatBuilder] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'reconciled'>('all')
 
     const incomes = initialTransactions.filter(t => t.monto > 0)
     const expenses = initialTransactions.filter(t => t.monto < 0)
@@ -220,29 +221,77 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 <tr>
                                     <th className="px-6 py-4">Fecha</th>
                                     <th className="px-6 py-4">Descripción</th>
+                                    <th className="px-6 py-4">Estado</th>
                                     <th className="px-6 py-4">Categoría</th>
                                     <th className="px-6 py-4 text-right">Monto</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                {initialTransactions.map((t) => (
-                                    <tr key={t.id} className="hover:bg-gray-800/50 transition-all group">
-                                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">
-                                            {formatDate(t.fecha)}
-                                        </td>
-                                        <td className="px-6 py-4 text-white font-medium max-w-[300px] truncate">
-                                            {t.descripcion}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700">
-                                                {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : 'OTROS'}
-                                            </span>
-                                        </td>
-                                        <td className={`px-6 py-4 text-right font-bold tabular-nums ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
-                                        </td>
-                                    </tr>
-                                ))}
+                                <div className="p-4 bg-gray-900 border-b border-gray-800 flex gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFilterStatus('all')}
+                                        className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'all' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        Todos ({initialTransactions.length})
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFilterStatus('pending')}
+                                        className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        Pendientes ({initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length})
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFilterStatus('reconciled')}
+                                        className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'reconciled' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        Conciliados ({initialTransactions.filter(t => t.estado === 'conciliado').length})
+                                    </Button>
+                                </div>
+                                {initialTransactions
+                                    .filter(t => {
+                                        if (filterStatus === 'pending') return t.estado === 'pendiente' || t.estado === 'parcial'
+                                        if (filterStatus === 'reconciled') return t.estado === 'conciliado'
+                                        return true
+                                    })
+                                    .map((t) => (
+                                        <tr key={t.id} className="hover:bg-gray-800/50 transition-all group">
+                                            <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                                                {formatDate(t.fecha)}
+                                            </td>
+                                            <td className="px-6 py-4 text-white font-medium max-w-[300px] truncate">
+                                                {t.descripcion}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {t.estado === 'conciliado' ? (
+                                                    <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase">
+                                                        Conciliado
+                                                    </Badge>
+                                                ) : t.estado === 'parcial' ? (
+                                                    <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] font-bold uppercase">
+                                                        Parcial
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] font-bold uppercase">
+                                                        Pendiente
+                                                    </Badge>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700">
+                                                    {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
+                                                </span>
+                                            </td>
+                                            <td className={`px-6 py-4 text-right font-bold tabular-nums ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
+                                            </td>
+                                        </tr>
+                                    ))}
                             </tbody>
                         </table>
                     </div>
