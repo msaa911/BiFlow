@@ -143,9 +143,22 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     }
 
     const deleteTaxRule = async (ruleId: string) => {
-        const { error } = await supabase.from('tax_intelligence_rules').delete().eq('id', ruleId)
-        if (!error) {
+        if (!confirm('¿Seguro que quieres eliminar esta regla? El sistema volverá a detectarla si las transacciones siguen presentes.')) return
+
+        setSaving(true)
+        try {
+            const { error } = await supabase.from('tax_intelligence_rules').delete().eq('id', ruleId)
+            if (error) {
+                console.error("Error eliminando regla:", error)
+                alert("No se pudo eliminar la regla: " + error.message)
+                return
+            }
             setTaxRules(prev => prev.filter(r => r.id !== ruleId))
+        } catch (err: any) {
+            console.error(err)
+            alert("Error de conexión al eliminar la regla.")
+        } finally {
+            setSaving(false)
         }
     }
 

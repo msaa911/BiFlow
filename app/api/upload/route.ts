@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 // BI-FLOW ENGINE v5.1 - Intelligence Unified - Forensic Sync
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
@@ -16,12 +17,8 @@ export async function POST(request: Request) {
     let fileName = 'unknown_file'
     let currentSupabase: any = null
 
-    // Service role client for archivos_importados state updates (bypasses RLS)
-    const { createClient: createServiceClient } = require('@supabase/supabase-js')
-    const adminSupabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use Admin client for archivos_importados state updates (bypasses RLS)
+    const adminSupabase = createAdminClient()
 
     try {
         console.log('1. Parsing Form Data')

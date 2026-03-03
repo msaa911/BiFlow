@@ -1,5 +1,6 @@
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -20,13 +21,14 @@ export async function POST(request: Request) {
 
     try {
         if (mode === 'full_reset') {
-            await performFullReset(supabase, orgId);
+            await performFullReset(orgId);
             return NextResponse.json({ success: true, message: 'Todos los datos han sido eliminados.' })
         }
 
         if (mode === 'delete_clients') {
+            const adminSupabase = createAdminClient()
             // 1. Delete records that are only clients
-            const { error: delErr } = await supabase
+            const { error: delErr } = await adminSupabase
                 .from('entidades')
                 .delete()
                 .eq('organization_id', orgId)
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
             if (delErr) throw delErr
 
             // 2. Downgrade 'ambos' to 'proveedor'
-            const { error: updErr } = await supabase
+            const { error: updErr } = await adminSupabase
                 .from('entidades')
                 .update({ categoria: 'proveedor' })
                 .eq('organization_id', orgId)
@@ -45,8 +47,9 @@ export async function POST(request: Request) {
         }
 
         if (mode === 'delete_suppliers') {
+            const adminSupabase = createAdminClient()
             // 1. Delete records that are only suppliers
-            const { error: delErr } = await supabase
+            const { error: delErr } = await adminSupabase
                 .from('entidades')
                 .delete()
                 .eq('organization_id', orgId)
@@ -54,7 +57,7 @@ export async function POST(request: Request) {
             if (delErr) throw delErr
 
             // 2. Downgrade 'ambos' to 'cliente'
-            const { error: updErr } = await supabase
+            const { error: updErr } = await adminSupabase
                 .from('entidades')
                 .update({ categoria: 'cliente' })
                 .eq('organization_id', orgId)
@@ -65,7 +68,8 @@ export async function POST(request: Request) {
         }
 
         // 1. Delete transactions with null archivo_importacion_id (orphans that cause duplicates)
-        const { error: transErr } = await supabase
+        const adminSupabase = createAdminClient()
+        const { error: transErr } = await adminSupabase
             .from('transacciones')
             .delete()
             .eq('organization_id', orgId)
@@ -91,21 +95,17 @@ export async function DELETE(request: Request) {
     const orgId = member.organization_id
 
     try {
-        await performFullReset(supabase, orgId);
+        await performFullReset(orgId);
         return NextResponse.json({ success: true, message: 'Entorno reiniciado con éxito.' })
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 })
     }
 }
 
-async function performFullReset(supabase: any, orgId: string) {
+async function performFullReset(orgId: string) {
     console.log(`[PURGE] Starting full reset for org: ${orgId}`);
 
-    const { createClient: createServiceClient } = require('@supabase/supabase-js');
-    const adminSupabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const adminSupabase = createAdminClient();
 
     const results: { table: string, success: boolean, count?: number, error?: string, ignored?: boolean }[] = [];
 
@@ -127,7 +127,10 @@ async function performFullReset(supabase: any, orgId: string) {
         'trust_ledger',
         'entidades',
         'cuentas_bancarias',
-        'financial_thesaurus'
+        'financial_thesaurus',
+        'score_historial',
+        'chat_sessions',
+        'chat_messages'
     ];
 
     for (const table of tables) {

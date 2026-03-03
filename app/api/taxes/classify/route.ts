@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -17,11 +18,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: true, action: 'later' })
         }
 
-        const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
-        const serviceSupabase = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        )
+        const serviceSupabase = createAdminClient()
 
         // Fetch the pattern
         const { data: rule } = await serviceSupabase

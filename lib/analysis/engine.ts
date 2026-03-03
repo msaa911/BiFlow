@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { AnomalyEngine } from '@/lib/anomaly-engine'
 import { LiquidityEngine } from '@/lib/liquidity-engine'
 
@@ -46,13 +47,8 @@ interface Finding {
 }
 
 export async function runAnalysis(organizationId: string) {
-    const { createClient: createServiceRoleClient } = require('@supabase/supabase-js')
-
-    // Use Service Role to bypass RLS and ensure complete analysis
-    const supabase = createServiceRoleClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use Admin Client to bypass RLS and ensure complete analysis
+    const supabase = createAdminClient()
 
     console.log(`[ANALYSIS] Starting analysis for org: ${organizationId}`)
 

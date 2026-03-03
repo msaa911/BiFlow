@@ -1,5 +1,6 @@
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -53,12 +54,8 @@ export async function POST(request: Request) {
     const { nombre_archivo, metadata } = await request.json()
     if (!nombre_archivo) return NextResponse.json({ error: 'Missing nombre_archivo' }, { status: 400 })
 
-    // Use service role to bypass RLS
-    const { createClient: createServiceClient } = require('@supabase/supabase-js')
-    const adminClient = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use Admin client to bypass RLS
+    const adminClient = createAdminClient()
 
     const { data: importLog, error } = await adminClient
         .from('archivos_importados')
@@ -87,12 +84,8 @@ export async function DELETE(request: Request) {
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Use service role client to bypass RLS for admin delete operations
-    const { createClient: createServiceClient } = require('@supabase/supabase-js')
-    const adminClient = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use Admin client to bypass RLS for admin delete operations
+    const adminClient = createAdminClient()
 
     try {
         // 1. Delete associated bank transactions
@@ -155,12 +148,8 @@ export async function PATCH(request: Request) {
     const { id, estado, metadata } = await request.json()
     if (!id || !estado) return NextResponse.json({ error: 'Missing id or estado' }, { status: 400 })
 
-    // Use service role to bypass RLS for state updates
-    const { createClient: createServiceClient } = require('@supabase/supabase-js')
-    const adminClient = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use Admin client to bypass RLS for state updates
+    const adminClient = createAdminClient()
 
     const { error } = await adminClient
         .from('archivos_importados')
