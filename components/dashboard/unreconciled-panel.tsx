@@ -471,7 +471,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     organization_id: orgId,
                     entidad_id: entity.id, // Linked to entity
                     tipo: voucherType,
-                    numero: selectedTx.referencia || `BANK-${selectedTx.id.slice(0, 8)}`,
+                    numero: selectedTx.referencia || null, // Allow DB or correlative trigger to handle it
                     cuit_socio: entity.cuit,
                     razon_social_socio: entity.razon_social,
                     fecha_emision: selectedTx.fecha,
@@ -495,7 +495,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     entidad_id: entity.id,
                     tipo: isIngreso ? 'cobro' : 'pago',
                     clase_documento: claseDoc,
-                    numero: voucher.numero, // Sync with voucher number
+                    numero: voucher.numero || null, // Will trigger get_next_treasury_number if null
                     categoria: category,
                     fecha: selectedTx.fecha,
                     monto_total: totalMonto,
