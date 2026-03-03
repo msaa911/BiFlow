@@ -174,6 +174,7 @@ export async function runAnalysis(organizationId: string) {
                 console.log(`[ANALYSIS] [NEW_TAX] No config found for "${t.descripcion}". Creating PENDIENTE rule.`)
                 // First time seeing this patron in this org
                 if (!seenNewPatrons.has(descUpper)) {
+                    console.log(`[ANALYSIS] [LEGAL_LEARNING] Registering new rule for patron: "${t.descripcion}"`);
                     newTaxConfigs.push({
                         organization_id: organizationId,
                         patron_busqueda: t.descripcion,

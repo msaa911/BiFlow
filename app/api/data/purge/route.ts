@@ -100,6 +100,13 @@ export async function DELETE(request: Request) {
 
 async function performFullReset(supabase: any, orgId: string) {
     console.log(`[PURGE] Starting full reset for org: ${orgId}`);
+
+    const { createClient: createServiceClient } = require('@supabase/supabase-js');
+    const adminSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     const results: { table: string, success: boolean, count?: number, error?: string, ignored?: boolean }[] = [];
 
     const tables = [
@@ -125,7 +132,7 @@ async function performFullReset(supabase: any, orgId: string) {
 
     for (const table of tables) {
         try {
-            const { error, count } = await supabase
+            const { error, count } = await adminSupabase
                 .from(table)
                 .delete({ count: 'exact' })
                 .eq('organization_id', orgId);
