@@ -467,6 +467,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 .from('comprobantes')
                 .insert({
                     organization_id: orgId,
+                    entidad_id: entity.id, // Linked to entity
                     tipo: voucherType,
                     numero: selectedTx.referencia || `BANK-${selectedTx.id.slice(0, 8)}`,
                     cuit_socio: entity.cuit,
@@ -549,9 +550,9 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             setSplitAmount('0')
             setSelectedTx(null)
             if (onRefresh) onRefresh()
-        } catch (error) {
-            console.error('Error categorizing:', error)
-            toast.error('Error al generar la nota bancaria')
+        } catch (error: any) {
+            console.error('Error in direct banking accounting:', error)
+            toast.error('Error al generar la nota bancaria: ' + (error.message || 'Error desconocido'))
         } finally {
             setIsSubmitting(false)
         }
@@ -665,7 +666,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                     }}
                                                 >
                                                     <FileText className="w-3.5 h-3.5" />
-                                                    <span className="text-[10px] font-bold uppercase">Contabilizar Nota</span>
+                                                    <span className="text-[10px] font-bold uppercase">Nota Bancaria</span>
                                                 </Button>
                                             </>
                                         )}
@@ -696,10 +697,12 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
                             <FileText className="w-5 h-5 text-blue-400" />
-                            Contabilizar Nota Bancaria (NDB/NCB)
+                            {selectedTx?.monto && selectedTx.monto > 0 ? 'Nota de Crédito Bancaria (NCB)' : 'Nota de Débito Bancaria (NDB)'}
                         </DialogTitle>
-                        <DialogDescription className="text-gray-400 text-xs">
-                            Identifica el concepto para generar el comprobante legal y su pago automáticamente.
+                        <DialogDescription className="text-gray-400 text-xs text-balance">
+                            {selectedTx?.monto && selectedTx.monto > 0
+                                ? 'Genera el comprobante de ingreso bancario y su cobro automáticamente.'
+                                : 'Genera el comprobante de egreso bancario y su pago automáticamente.'}
                         </DialogDescription>
                     </DialogHeader>
 
