@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle } from 'lucide-react'
+import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText } from 'lucide-react'
 import { CheckPortfolio } from './check-portfolio'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { SmartFormatBuilder } from './smart-format-builder'
 import { UnreconciledPanel } from './unreconciled-panel'
+import { TreasuryHistory } from './treasury-history'
 
 interface BanksTabProps {
     orgId: string
@@ -59,6 +60,13 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                     >
                         <AlertCircle className="w-4 h-4" />
                         Pendientes de Conciliación
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="audit"
+                        className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
+                    >
+                        <FileText className="w-4 h-4" />
+                        Auditoría Notas Bancarias
                     </TabsTrigger>
                 </TabsList>
 
@@ -247,6 +255,26 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
 
             <TabsContent value="reconciliation" className="animate-in fade-in duration-500">
                 <UnreconciledPanel orgId={orgId} transactions={pendingTransactions} onRefresh={onRefresh} />
+            </TabsContent>
+
+            <TabsContent value="audit" className="animate-in fade-in duration-500">
+                <div className="space-y-6">
+                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-6">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-emerald-500/20 rounded-lg">
+                                <FileText className="w-5 h-5 text-emerald-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">Auditoría de Notas Bancarias (NDB/NCB)</h3>
+                                <p className="text-xs text-gray-400">Consulta y exporta los movimientos generados directamente desde el extracto (Impuestos, Comisiones, Intereses).</p>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Reuse TreasuryHistory with filter for NDB/NCB */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
+                        <TreasuryHistory orgId={orgId} claseDocumentoFilter={['NDB', 'NCB']} />
+                    </div>
+                </div>
             </TabsContent>
         </Tabs>
     )

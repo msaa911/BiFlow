@@ -21,7 +21,10 @@ import {
     Search,
     RefreshCcw,
     Upload,
-    DownloadCloud
+    DownloadCloud,
+    Tag,
+    TrendingUp,
+    TrendingDown
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,9 +35,10 @@ import { exportTreasuryMovementToExcel, downloadTreasuryTemplate } from '@/lib/e
 interface TreasuryHistoryProps {
     orgId: string
     typeFilter?: 'cobro' | 'pago'
+    claseDocumentoFilter?: string[]
 }
 
-export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
+export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: TreasuryHistoryProps) {
     const [movements, setMovements] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [expandedMov, setExpandedMov] = useState<string | null>(null)
@@ -63,6 +67,10 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
 
         if (typeFilter) {
             query = query.eq('tipo', typeFilter)
+        }
+
+        if (claseDocumentoFilter && claseDocumentoFilter.length > 0) {
+            query = query.in('clase_documento', claseDocumentoFilter)
         }
 
         const { data, error } = await query
@@ -226,10 +234,11 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
                     <TableHeader className="bg-gray-900">
                         <TableRow className="hover:bg-transparent border-gray-800">
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Fecha</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Número</TableHead>
+                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Doc.</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Entidad</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Categoría</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-right">Monto Total</TableHead>
+                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Clase</TableHead>
+                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Concepto</TableHead>
+                            <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-right">Total</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Detalle</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-center">Acciones</TableHead>
                         </TableRow>
@@ -258,9 +267,26 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
                                         {mov.entidades?.razon_social}
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className={`text-[9px] uppercase font-bold border-gray-700 bg-gray-800 text-gray-400 ${mov.categoria ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' : ''}`}>
-                                            {mov.categoria || 'S/C'}
+                                        <Badge variant="outline" className={`text-[9px] font-black tracking-widest px-1.5 py-0.5 flex items-center gap-1 w-fit
+                                            ${mov.clase_documento === 'NDB' ? 'border-red-500/30 text-red-400 bg-red-500/5' :
+                                                mov.clase_documento === 'NCB' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' :
+                                                    'border-blue-500/20 bg-blue-500/5 text-blue-400'}`}>
+                                            {mov.clase_documento === 'NDB' && <TrendingDown className="w-2.5 h-2.5" />}
+                                            {mov.clase_documento === 'NCB' && <TrendingUp className="w-2.5 h-2.5" />}
+                                            {mov.clase_documento || (mov.tipo === 'cobro' ? 'Recibo' : 'OP')}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col gap-1">
+                                            <Badge variant="outline" className={`text-[9px] uppercase font-bold border-gray-700 bg-gray-800 text-gray-400 ${mov.categoria ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : ''}`}>
+                                                {mov.categoria || 'S/C'}
+                                            </Badge>
+                                            {mov.metadata?.desglose && (
+                                                <Badge variant="outline" className="text-[8px] font-black border-amber-500/20 text-amber-500 bg-amber-500/5 uppercase w-fit">
+                                                    CON DESGLOSE
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-right font-mono font-bold text-white text-xs">
                                         {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}
@@ -330,22 +356,51 @@ export function TreasuryHistory({ orgId, typeFilter }: TreasuryHistoryProps) {
                                                     </div>
                                                 </div>
 
-                                                {/* Aplicaciones */}
+                                                {/* Aplicaciones o Desglose */}
                                                 <div>
-                                                    <h4 className="text-[10px] uppercase font-bold text-gray-500 mb-3 tracking-widest">Facturas Canceladas / Imputadas</h4>
-                                                    <div className="space-y-2">
-                                                        {mov.aplicaciones_pago.map((app: any, idx: number) => (
-                                                            <div key={idx} className="flex justify-between items-center p-3 bg-gray-950 border border-gray-800 rounded-lg text-xs">
-                                                                <div>
-                                                                    <p className="font-bold text-gray-300">{app.comprobantes?.numero}</p>
-                                                                    <p className="text-[10px] text-gray-500 uppercase">{app.comprobantes?.tipo.replace('_', ' ')}</p>
-                                                                </div>
-                                                                <p className="font-mono font-bold text-blue-400">
-                                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(app.monto_aplicado)}
-                                                                </p>
+                                                    {mov.metadata?.desglose ? (
+                                                        <>
+                                                            <h4 className="text-[10px] uppercase font-bold text-amber-500 mb-3 tracking-widest flex items-center gap-2">
+                                                                <Tag className="w-3 h-3" /> Desglose Administrativo (Split)
+                                                            </h4>
+                                                            <div className="space-y-2">
+                                                                {mov.metadata.desglose.map((item: any, idx: number) => (
+                                                                    <div key={idx} className="flex justify-between items-center p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg text-xs">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Badge variant="outline" className={`text-[8px] uppercase ${item.tipo === 'activo' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}`}>
+                                                                                {item.tipo}
+                                                                            </Badge>
+                                                                            <p className="font-bold text-gray-300">{item.concepto}</p>
+                                                                        </div>
+                                                                        <p className="font-mono font-bold text-white">
+                                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(item.monto)}
+                                                                        </p>
+                                                                    </div>
+                                                                ))}
                                                             </div>
-                                                        ))}
-                                                    </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <h4 className="text-[10px] uppercase font-bold text-gray-500 mb-3 tracking-widest">Facturas Canceladas / Imputadas</h4>
+                                                            <div className="space-y-2">
+                                                                {mov.aplicaciones_pago.length > 0 ? (
+                                                                    mov.aplicaciones_pago.map((app: any, idx: number) => (
+                                                                        <div key={idx} className="flex justify-between items-center p-3 bg-gray-950 border border-gray-800 rounded-lg text-xs">
+                                                                            <div>
+                                                                                <p className="font-bold text-gray-300">{app.comprobantes?.numero}</p>
+                                                                                <p className="text-[10px] text-gray-500 uppercase">{app.comprobantes?.tipo.replace('_', ' ')}</p>
+                                                                            </div>
+                                                                            <p className="font-mono font-bold text-blue-400">
+                                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(app.monto_aplicado)}
+                                                                            </p>
+                                                                        </div>
+                                                                    ))
+                                                                ) : (
+                                                                    <p className="text-[10px] text-gray-600 italic">Movimiento directo sin imputación de facturas.</p>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </TableCell>

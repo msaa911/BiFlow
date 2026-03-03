@@ -14,6 +14,7 @@ interface Transaction {
     id: string
     fecha: string
     descripcion: string
+    referencia?: string
     monto: number
     estado: string
     cuit_origen?: string
@@ -63,6 +64,12 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [searchEntity, setSearchEntity] = useState('')
     const [selectedEntityId, setSelectedEntityId] = useState('')
     const [invoiceNumber, setInvoiceNumber] = useState('')
+
+    // Split States
+    const [isSplitting, setIsSplitting] = useState(false)
+    const [splitConcept, setSplitConcept] = useState('IVA Crédito Fiscal')
+    const [splitAmount, setSplitAmount] = useState('0')
+    const [splitType, setSplitType] = useState<'activo' | 'gasto'>('activo')
 
     const fetchEntities = async () => {
         setLoadingEntities(true)
@@ -402,7 +409,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             // 1. Ensure "Gastos Varios / Banco" entity exists
             let { data: entity } = await supabase
                 .from('entidades')
-                .select('id')
+                .select('id, cuit, razon_social')
                 .eq('organization_id', orgId)
                 .eq('razon_social', 'Gastos Varios / Otros')
                 .single()
@@ -426,32 +433,97 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             if (!entity) throw new Error("Entidad de cobro/pago no disponible")
 
-            // 2. Create Movimiento Tesoreria
+            // 2. Determine Clase de Documento (NDB/NCB) and Voucher Type
             const isIngreso = selectedTx.monto > 0
+            const claseDoc = isIngreso ? 'NCB' : 'NDB'
+            const voucherType = isIngreso ? 'ncb_bancaria' : 'ndb_bancaria'
+
+            // 3. Prepare Metadata with Splits (if applicable)
+            const totalMonto = Math.abs(selectedTx.monto)
+            const parsedSplitAmount = parseFloat(splitAmount) || 0
+
+            const metadata: any = {
+                transaccion_id: selectedTx.id,
+                categoria_principal: category
+            }
+
+            if (isSplitting && parsedSplitAmount > 0) {
+                metadata.desglose = [
+                    {
+                        concepto: category,
+                        monto: totalMonto - parsedSplitAmount,
+                        tipo: category.includes('Impuestos') || category.includes('Intereses') ? 'activo' : 'gasto'
+                    },
+                    {
+                        concepto: splitConcept,
+                        monto: parsedSplitAmount,
+                        tipo: splitType
+                    }
+                ]
+            }
+
+            // 4. Create Comprobante (Voucher) - The supporting document
+            const { data: voucher, error: vError } = await supabase
+                .from('comprobantes')
+                .insert({
+                    organization_id: orgId,
+                    tipo: voucherType,
+                    numero: selectedTx.referencia || `BANK-${selectedTx.id.slice(0, 8)}`,
+                    cuit_socio: entity.cuit,
+                    razon_social_socio: entity.razon_social,
+                    fecha_emision: selectedTx.fecha,
+                    fecha_vencimiento: selectedTx.fecha,
+                    monto_total: totalMonto,
+                    monto_pendiente: 0,
+                    estado: 'pagado',
+                    moneda: 'ARS',
+                    metadata: metadata // Store split info in voucher too
+                })
+                .select()
+                .single()
+
+            if (vError) throw vError
+
+            // 5. Create Movimiento Tesoreria (NDB/NCB) - The financial event
             const { data: movimiento, error: movError } = await supabase
                 .from('movimientos_tesoreria')
                 .insert({
                     organization_id: orgId,
                     entidad_id: entity.id,
                     tipo: isIngreso ? 'cobro' : 'pago',
-                    categoria: category, // New column
+                    clase_documento: claseDoc,
+                    numero: voucher.numero, // Sync with voucher number
+                    categoria: category,
                     fecha: selectedTx.fecha,
-                    monto_total: Math.abs(selectedTx.monto),
-                    observaciones: `CATEGORIZACIÓN DIRECTA: ${category} - ${selectedTx.descripcion}`,
-                    metadata: { transaccion_id: selectedTx.id, categoria: category }
+                    monto_total: totalMonto,
+                    observaciones: isSplitting
+                        ? `[${claseDoc}] VOUCHER: ${voucher.numero} | DESGLOSE: ${category} / ${splitConcept}`
+                        : `[${claseDoc}] VOUCHER: ${voucher.numero} | CATEGORIZACIÓN: ${category}`,
+                    metadata: metadata
                 })
                 .select()
                 .single()
 
             if (movError) throw movError
 
-            // 3. Create Instrument (The bank movement)
+            // 6. Link Movement to Voucher (Aplicacion)
+            const { error: appError } = await supabase
+                .from('aplicaciones_pago')
+                .insert({
+                    movimiento_id: movimiento.id,
+                    comprobante_id: voucher.id,
+                    monto_aplicado: totalMonto
+                })
+
+            if (appError) throw appError
+
+            // 7. Create Instrument (The bank payment)
             const { error: insError } = await supabase
                 .from('instrumentos_pago')
                 .insert({
                     movimiento_id: movimiento.id,
                     metodo: 'transferencia',
-                    monto: Math.abs(selectedTx.monto),
+                    monto: totalMonto,
                     fecha_disponibilidad: selectedTx.fecha,
                     referencia: selectedTx.descripcion,
                     estado: 'acreditado'
@@ -459,7 +531,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             if (insError) throw insError
 
-            // 4. Update Bank Transaction
+            // 8. Update Bank Transaction
             const { error: txError } = await supabase
                 .from('transacciones')
                 .update({
@@ -471,13 +543,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             if (txError) throw txError
 
-            toast.success('Transacción categorizada y registrada en tesorería')
+            toast.success(`${claseDoc} generada y registrada en bancos`)
             setIsCategorizing(false)
+            setIsSplitting(false)
+            setSplitAmount('0')
             setSelectedTx(null)
             if (onRefresh) onRefresh()
         } catch (error) {
             console.error('Error categorizing:', error)
-            toast.error('Error al categorizar la transacción')
+            toast.error('Error al generar la nota bancaria')
         } finally {
             setIsSubmitting(false)
         }
@@ -614,35 +688,109 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             </CardContent>
 
             {/* Categorization Dialog */}
-            <Dialog open={isCategorizing} onOpenChange={setIsCategorizing}>
+            <Dialog open={isCategorizing} onOpenChange={(open) => {
+                setIsCategorizing(open)
+                if (!open) setIsSplitting(false)
+            }}>
                 <DialogContent className="max-w-md bg-gray-950 border-gray-800">
                     <DialogHeader>
-                        <DialogTitle className="text-white">Asignar Categoría</DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Categorizar este movimiento lo marcará como conciliado automáticamente.
+                        <DialogTitle className="text-white flex items-center gap-2">
+                            <Tag className="w-5 h-5 text-blue-400" />
+                            Generar Nota Bancaria (NDB/NCB)
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400 text-xs">
+                            Selecciona el concepto principal para registrar el movimiento directo en el banco.
                         </DialogDescription>
                     </DialogHeader>
 
                     {selectedTx && (
                         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 my-2">
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-widest mb-1">Transacción Seleccionada</p>
-                            <p className="text-sm font-bold text-white mb-1">{selectedTx.descripcion}</p>
-                            <p className={`text-sm font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
-                            </p>
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">Monto del Banco</p>
+                                    <p className="text-sm font-bold text-white mb-1 leading-tight">{selectedTx.descripcion}</p>
+                                </div>
+                                <p className={`text-base font-black tabular-nums ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
+                                </p>
+                            </div>
+
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsSplitting(!isSplitting)}
+                                className={`w-full justify-start text-[10px] h-7 font-bold uppercase tracking-wider ${isSplitting ? 'text-amber-400 bg-amber-400/10' : 'text-gray-500 hover:text-gray-300'}`}
+                            >
+                                <PlusCircle className="w-3 h-3 mr-2" />
+                                {isSplitting ? 'Cancelar Desglose' : 'Realizar Desglose (Split)'}
+                            </Button>
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 gap-2 py-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {isSplitting && (
+                        <div className="space-y-3 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl animate-in zoom-in-95 duration-200">
+                            <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Configuración de Desglose</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-gray-500 font-bold uppercase">Concepto Secundario</label>
+                                    <select
+                                        value={splitConcept}
+                                        onChange={(e) => setSplitConcept(e.target.value)}
+                                        className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                    >
+                                        <option value="IVA Crédito Fiscal">IVA Crédito Fiscal</option>
+                                        <option value="Anticipo Ganancias">Anticipo Ganancias</option>
+                                        <option value="Percepción SIRCREB">Percepción SIRCREB</option>
+                                        <option value="Retención IIBB">Retención IIBB</option>
+                                        <option value="Gastos Administrativos">Gastos Administrativos</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-gray-500 font-bold uppercase">Monto Secundario</label>
+                                    <input
+                                        type="number"
+                                        value={splitAmount}
+                                        onChange={(e) => setSplitAmount(e.target.value)}
+                                        className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        checked={splitType === 'activo'}
+                                        onChange={() => setSplitType('activo')}
+                                        className="w-3 h-3 accent-emerald-500"
+                                    />
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">A favor (Activo)</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        checked={splitType === 'gasto'}
+                                        onChange={() => setSplitType('gasto')}
+                                        className="w-3 h-3 accent-red-500"
+                                    />
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Gasto (Pérdida)</span>
+                                </label>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-2 py-4 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1 mb-1">
+                            {isSplitting ? 'Selecciona Concepto Principal' : 'Selecciona Concepto'}
+                        </p>
                         {categories.map((cat) => (
                             <button
                                 key={cat}
                                 onClick={() => handleQuickCategorize(cat)}
                                 disabled={isSubmitting}
-                                className="flex items-center justify-between p-3 rounded-xl border border-gray-800 bg-gray-900/40 text-left hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group disabled:opacity-50"
+                                className="flex items-center justify-between p-3 rounded-xl border border-gray-800 bg-gray-900/40 text-left hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group disabled:opacity-50"
                             >
-                                <span className="text-sm text-gray-300 group-hover:text-emerald-400">{cat}</span>
-                                <CheckCircle2 className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <span className={`text-sm font-medium ${isSplitting ? 'text-white' : 'text-gray-300'} group-hover:text-blue-400`}>{cat}</span>
+                                <CheckCircle2 className="w-4 h-4 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         ))}
                     </div>
