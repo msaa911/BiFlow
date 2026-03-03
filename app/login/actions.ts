@@ -36,8 +36,11 @@ async function ensureOrganization(userId: string, email: string) {
         // Marcar invitación como aceptada
         await admin.from('organization_invitations').update({ status: 'accepted' }).eq('id', invite.id)
     } else {
-        // 3. Crear organización personal por defecto
-        await admin.rpc('create_new_organization', { org_name: `Mi Empresa` })
+        // 3. Crear organización personal por defecto pasándole el ID
+        await admin.rpc('create_new_organization', {
+            org_name: `Mi Empresa`,
+            user_id_param: userId
+        })
     }
 }
 
