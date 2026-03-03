@@ -152,11 +152,31 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 }
             }
 
-            // 2. Delete children first (aplicaciones + instrumentos)
+            // 2. Specialized Cleanup for NDB/NCB (Delete associated vouchers)
+            const isBancaria = mov.clase_documento === 'NDB' || mov.clase_documento === 'NCB'
+            if (isBancaria && mov.aplicaciones_pago?.length > 0) {
+                const voucherIds = mov.aplicaciones_pago.map((a: any) => a.comprobante_id)
+                await supabase.from('comprobantes').delete().in('id', voucherIds)
+            }
+
+            // 3. Reset Bank Transaction status if linked
+            // The movement metadata might store the original bank tx id
+            const linkedTxId = mov.metadata?.transaccion_id
+            if (linkedTxId) {
+                await supabase.from('transacciones')
+                    .update({
+                        estado: 'pendiente',
+                        movimiento_id: null,
+                        monto_usado: 0
+                    })
+                    .eq('id', linkedTxId)
+            }
+
+            // 4. Delete children (aplicaciones + instrumentos)
             await supabase.from('aplicaciones_pago').delete().eq('movimiento_id', movId)
             await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
 
-            // 3. Hard-delete the movement row
+            // 5. Hard-delete the movement row
             const { error: delErr } = await supabase.from('movimientos_tesoreria').delete().eq('id', movId)
 
             if (delErr) throw delErr

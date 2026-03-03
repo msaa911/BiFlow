@@ -576,7 +576,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 <div>
                     <CardTitle className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-500" />
-                        Pendientes de Conciliación ({transactions.length})
+                        Pendientes de Conciliación ({filtered.length})
                     </CardTitle>
                     <p className="text-xs text-gray-400 mt-1">Movimientos bancarios pendientes de vinculación con comprobantes.</p>
                 </div>
