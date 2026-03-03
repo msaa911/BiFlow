@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain, AlertTriangle, RotateCcw, RefreshCw } from 'lucide-react'
+import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain, AlertTriangle, RotateCcw, RefreshCw, User } from 'lucide-react'
 
 // Interfaces actualizadas
 interface BankAccount {
@@ -59,6 +59,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     const [success, setSuccess] = useState(false)
     const [syncingRate, setSyncingRate] = useState(false)
 
+    // Estado para equipo
+    const [members, setMembers] = useState<any[]>([])
+    const [inviteEmail, setInviteEmail] = useState('')
+    const [inviting, setInviting] = useState(false)
+
     const supabase = createClient()
 
     useEffect(() => {
@@ -106,13 +111,23 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             }
 
             // 5. Cargar Reglas de Impuestos
-            const { data: rules } = await supabase
+            const { data: rulesData } = await supabase
                 .from('tax_intelligence_rules')
                 .select('*')
                 .eq('organization_id', organizationId)
                 .order('created_at', { ascending: false })
 
-            if (rules) setTaxRules(rules)
+            if (rulesData) setTaxRules(rulesData)
+
+            // 6. Cargar Miembros del Equipo
+            const { data: team } = await supabase
+                .from('organization_members')
+                .select('id, role, user_id, created_at')
+                .eq('organization_id', organizationId)
+
+            // Note: In a real app we'd join with profiles, here we might just have IDs
+            // For now let's just show what we have.
+            if (team) setMembers(team)
 
             setLoading(false)
         }
@@ -377,6 +392,47 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         }
     }
 
+    const handleInvite = async () => {
+        if (!inviteEmail.trim()) return
+        setInviting(true)
+        try {
+            const res = await fetch('/api/orgs/invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: inviteEmail,
+                    organizationId: organizationId,
+                    role: 'member'
+                })
+            })
+            const data = await res.json()
+            if (res.ok) {
+                alert('Invitación enviada con éxito a ' + inviteEmail)
+                setInviteEmail('')
+            } else {
+                alert('Error: ' + data.error)
+            }
+        } catch (err) {
+            alert('Error de conexión al enviar invitación')
+        } finally {
+            setInviting(false)
+        }
+    }
+
+    const removeMember = async (memberId: string) => {
+        if (!confirm('¿Seguro que quieres quitar a este miembro de la organización?')) return
+        setSaving(true)
+        try {
+            const { error } = await supabase.from('organization_members').delete().eq('id', memberId)
+            if (error) throw error
+            setMembers(prev => prev.filter(m => m.id !== memberId))
+        } catch (err: any) {
+            alert('Error al eliminar miembro: ' + err.message)
+        } finally {
+            setSaving(false)
+        }
+    }
+
     if (loading) return <div className="p-8 text-center text-gray-500">
         < Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500 mb-4" />
         Cargando configuración...
@@ -627,6 +683,69 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 No hay reglas guardadas aún. El sistema aprenderá a medida que clasifiques impuestos en el Centro de Auditoría.
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+
+                {/* NUEVA TARJETA: GESTIÓN DE EQUIPO */}
+                <Card className="bg-gray-900 border-gray-800 md:col-span-2 border-l-4 border-l-orange-500">
+                    <CardHeader className="bg-orange-500/5">
+                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter uppercase">
+                            <User className="h-5 w-5 text-orange-500" />
+                            Gestión de Equipo
+                        </CardTitle>
+                        <CardDescription className="text-gray-400">
+                            Invita a otros usuarios a colaborar en esta organización.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-6">
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <Input
+                                    type="email"
+                                    placeholder="email@colega.com"
+                                    value={inviteEmail}
+                                    onChange={(e) => setInviteEmail(e.target.value)}
+                                    className="bg-gray-950 border-gray-800 text-white"
+                                />
+                            </div>
+                            <Button
+                                onClick={handleInvite}
+                                disabled={inviting || !inviteEmail}
+                                className="bg-orange-600 hover:bg-orange-500 text-white font-bold"
+                            >
+                                {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                                INVITAR
+                            </Button>
+                        </div>
+
+                        <div className="mt-6">
+                            <h4 className="text-xs font-bold uppercase text-gray-500 mb-4 tracking-widest">Miembros Actuales</h4>
+                            <div className="grid gap-2">
+                                {members.map((member) => (
+                                    <div key={member.id} className="flex items-center justify-between p-3 bg-gray-950/50 rounded-lg border border-gray-800 group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-400">
+                                                {member.role === 'owner' ? '★' : 'U'}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-white">Usuario ID: {member.user_id.substring(0, 8)}...</p>
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">{member.role}</p>
+                                            </div>
+                                        </div>
+                                        {member.role !== 'owner' && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => removeMember(member.id)}
+                                                className="h-8 w-8 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
