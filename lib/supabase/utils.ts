@@ -15,7 +15,7 @@ export async function getOrgId(supabase: any, userId: string): Promise<string> {
 
     // 2. Fallback: Use service role if available (Server-only)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY // Support both common naming conventions
+    const serviceRoleKey = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (supabaseUrl && serviceRoleKey) {
         const adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey)
@@ -26,12 +26,8 @@ export async function getOrgId(supabase: any, userId: string): Promise<string> {
             .single()
 
         if (adminMember) return adminMember.organization_id
-
-        // Hard fallback to first org (for demo/onboarding)
-        const { data: orgs } = await adminClient.from('organizations').select('id').limit(1)
-        if (orgs && orgs.length > 0) return orgs[0].id
     }
 
-    console.warn(`Organization not found for user ${userId}. Returning first available if possible.`)
-    return '' // Return empty instead of crashing layout
+    console.warn(`No organization linked to user ${userId}. Returning empty.`)
+    return '' // Return empty to force a clean slate for new users
 }
