@@ -1,69 +1,64 @@
-# 🗺️ BiFlow: Hoja de Ruta de Desarrollo Consolidada
+# 🗺️ BiFlow: Hoja de Ruta de Desarrollo Consolidada (Fuente de Verdad)
 
-Este documento es la fuente de verdad del proyecto. Integra la visión macro de lanzamiento con el **Sprint 2: Inteligencia de Anomalías y Liquidez**.
+Este documento es la **única fuente de verdad** del proyecto. Integra la visión macro de lanzamiento, el estado de los Sprints y las tareas inmediatas.
 
 ---
 
 ## 🏁 ESTADO DEL PROYECTO
 - **Fase 1: Core & Estabilidad** 🟢 *Terminado*
-- **Fase 2: El Motor de Importación (Universal Translator v6.0)** 🟢 *Terminado*
-- **Fase 3: Robustez Enterprise & Tesorería (AR/AP)** 🟢 *Terminado* (Arquitectura desacoplada, CUIT/Cheque integrado)
-- **Fase 7: CFO Algorítmico (Motor de Anomalías)** 🔵 *En curso (Refinamiento)*
-- **Fase 8: Dashboard de Salud de Caja** 🟢 *Terminado* (Treasury Hub v2 operativo)
+- **Fase 2: Motor de Importación (Universal Translator)** 🟢 *Terminado*
+- **Fase 3: Robustez Enterprise & Tesorería (AR/AP)** 🟢 *Terminado*
+- **Sprint 2: Inteligencia & Liquidez** 🔵 **En curso (Cierre y Validación)**
+- **Cash Flow Avanzado (Scenarios/AI)** 🟡 *Planificado*
 
 ---
 
-## 📅 PLAN DETALLADO POR FASES
+## 📅 SPRINT 2: INTELIGENCIA & LIQUIDEZ (PRIORIDAD ACTUAL)
 
-### ✅ Fase 1 a 3: Cimientos (COMPLETADO)
-- Setup Infraestructura, Supabase y Auth.
-- Soporte Excel/CSV/TXT con lógica de signos.
-- Extractor de CUITs y detector de separadores.
+### Módulo 1: Core de Detección (Precisión) 🟢 COMPLETADO
+- Ventanas dinámicas (+/- 30 días), Tesauro Financiero y Re-ensamblado Multilínea.
 
-### 🧠 SPRINT 2: Inteligencia & Liquidez (PRIORIDAD ACTUAL)
-*Este sprint cierra la brecha entre el motor actual y la promesa de la IA.*
+### Módulo 2: Liquidez y Tesorería 🟢 COMPLETADO
+- Stress Test de saldo, Costo de Oportunidad y Rediseño Treasury Hub v2.0.
 
-#### Módulo 1: CORE DE DETECCIÓN (Precisión) 🟢 COMPLETADO & AUDITADO
-- [x] **1.1 Ventanas Dinámicas:** Detección de duplicados en +/- 30 días (Sincronizado en Engine).
-- [x] **1.2 Tesauro Financiero:** Normalización semántica de conceptos bancarios (Setup SQL operativo).
-- [x] **1.3 Re-ensamblado Multilínea:** "Pegado" de descripciones fragmentadas (Implementado).
-
-#### Módulo 2: MOTOR DE LIQUIDEZ Y TESORERÍA 🟢 COMPLETADO
-- [x] **2.1 Stress Test:** Simulador de saldo post-lote y alertas de descubierto.
-- [x] **2.2 Costo de Oportunidad:** Dinero ocioso vs tasas de mercado.
-- [x] **2.3 Rediseño Treasury Hub (v2.0):** Gestión de AR/AP con Banco, CUIT y Cheque.
-
-#### Módulo 3: SEGURIDAD Y CONCILIACIÓN (Trust Ledger) 🔵 PRÓXIMO PASO
-- [ ] **3.1 Conciliación Automática:** Match entre Movimientos Bancarios y Facturas (vía Cheque/CUIT).
-- [ ] **3.2 Trust Ledger:** Validación CUIT vs CBU para prevenir fraude (BEC).
-
-#### Módulo 3: SEGURIDAD Y ANTI-FRAUDE (Trust Ledger)
-- [ ] **3.1 Extracción de CBU:** Captura de 22 dígitos en parsers.
-- [ ] **3.2 Trust Ledger:** Validación CUIT vs CBU para prevenir fraude (BEC).
+### Módulo 3: Seguridad y Conciliación (TRUST LEDGER) 🔵 EN CURSO
+- [ ] **3.1 Conciliación Automática**: Match real entre Bancos y Comprobantes vía CUIT/Cheque.
+- [ ] **3.2 Trust Ledger**: Validación CUIT vs CBU para prevención de fraudes (BEC).
+- [ ] **3.3 Extracción de CBU**: Captura de 22 dígitos en parsers bancarios.
 
 ---
 
-## 🚀 HOJA DE RUTA FUTURA (Próximos Pasos)
-
-### 📂 Fase 4 & 5: Memoria de Formatos
-- **Plantillas & Memoria:** Reconocimiento de archivos por "huella digital".
-- **Visual Mapper:** Interfaz Drag & Drop para mapear columnas desconocidas.
-
-### 📊 Fase 6: Excel Sync Loop (The Diff-Engine)
-- **Motor de Diferencias:** Detectar cambios al re-subir un Excel editado.
-- **Asesor de Impacto:** IA que explica cómo los cambios afectan la caja.
-
-### 🧪 Fase 7.5: Validación & Stress Testing
-- Pruebas de carga con 500+ transacciones reales.
-- Auditoría cruzada saldo BiFlow vs Extracto bancario.
-
-### 📱 Fase 9: Ecosistema "Cash Flow 360°"
-- Alertas Push (Mobile) sobre eficiencia financiera.
-- Integración con ERPs (Tango, Colppy, Bejerman).
+## 🛠️ PRÓXIMA SESIÓN (Mañana - Marzo 4)
+- [ ] **Punto de Partida**: Cargar archivos desde cero para validar integraciones.
+- [ ] **Test NDB/NCB**: Validar que las Notas Bancarias se emitan y dejen de estar "Pendientes".
+- [ ] **Impuestos**: Verificar persistencia de reglas de impuestos en extractos.
+- [ ] **UI Sidebar**: Actualizar navegación lateral.
 
 ---
 
-## 🛠️ STACK TÉCNICO
-- **Frontend:** Next.js 14 (App Router).
-- **Backend:** Supabase (PG + Auth + RLS).
-- **Motores:** AnomalyEngine, LiquidityEngine (NEW), TrustLedger (NEW).
+## 📊 ROADMAP: CASH FLOW AVANZADO
+
+### Fase 4 & 5: Memoria de Formatos (Q2 2026)
+- **Plantillas & Huella Digital**: Reconocimiento automático de archivos conocidos.
+- **Visual Mapper**: Interfaz Drag & Drop para mapeo manual de columnas desconocidas.
+
+### Fase 6: The Diff-Engine (Executive View)
+- **Motor de Diferencias**: Sincronización bidireccional entre Excel y BiFlow.
+- **Asesor de Impacto (IA)**: Explicación de cómo los cambios manuales afectan la caja.
+
+### Fase 7: AI Advisor & Escenarios
+- **Scenario Planning**: Simulador de pagos diferidos, cobros adelantados y versiones de caja.
+- **Chat Advisor (360°)**: Preguntas directas a la IA sobre liquidez y riesgos.
+
+---
+
+## 📱 Fase 9: Ecosistema "Cash Flow 360°"
+- Alertas Push móviles e integración directa con ERPs (Tango, Colppy, Bejerman).
+
+---
+
+## ⚙️ STACK TÉCNICO & INFRAESTRUCTURA
+- **Frontend**: Next.js 14+ (App Router).
+- **Backend**: Supabase (PG + Auth + RLS).
+- **Admin Access**: `createAdminClient` (Service Role) para operaciones críticas/contables.
+- **Motores**: AnomalyEngine, LiquidityEngine, TrustLedger.
