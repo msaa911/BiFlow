@@ -61,7 +61,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 aplicaciones_pago (
                     monto_aplicado,
                     comprobante_id,
-                    comprobantes (nro_factura, tipo)
+                    comprobantes (numero, tipo)
                 )
             `)
             .eq('organization_id', orgId)
@@ -125,7 +125,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
 
     const filteredMovements = movements.filter(m =>
         m.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (m.nro_comprobante || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -272,16 +272,18 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                 <TableRow key={mov.id} className="border-gray-800 hover:bg-gray-800/30">
                                     <TableCell><input type="checkbox" checked={selectedIds.has(mov.id)} onChange={() => toggleSelect(mov.id)} /></TableCell>
                                     <TableCell className="font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</TableCell>
-                                    <TableCell><Badge className="text-[9px] uppercase">{mov.nro_comprobante || 'S/N'}</Badge></TableCell>
+                                    <TableCell><Badge className="text-[9px] uppercase">{mov.numero || 'S/N'}</Badge></TableCell>
                                     <TableCell className="font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</TableCell>
                                     <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            {mov.aplicaciones_pago?.map((app: any, idx: number) => (
+                                        {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
+                                            mov.aplicaciones_pago.map((app: any, idx: number) => (
                                                 <Badge key={idx} variant="outline" className="text-[10px] border-emerald-500/20 text-emerald-400">
-                                                    {app.comprobantes?.nro_factura}
+                                                    {app.comprobantes?.numero}
                                                 </Badge>
-                                            )) || <span className="text-[10px] text-gray-500">{mov.concepto}</span>}
-                                        </div>
+                                            ))
+                                        ) : (
+                                            <span className="text-[10px] text-gray-500">{mov.categoria}</span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right font-mono font-bold text-white text-xs">
                                         {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}
@@ -306,6 +308,6 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 tipo={typeFilter === 'cobro' ? 'cobro' : 'pago'}
                 onSuccess={() => { fetchMovements(); setIsManualEntryOpen(false); }}
             />
-        </Card>
+        </Card >
     )
 }

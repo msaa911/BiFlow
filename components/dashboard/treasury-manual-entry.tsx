@@ -167,7 +167,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                     tipo: tipo,
                     fecha: new Date().toISOString().split('T')[0],
                     monto_total: totalInstruments,
-                    concepto: `Pago/Cobro manual - ${selectedSocio.razon_social}`,
+                    categoria: `Pago/Cobro manual - ${selectedSocio.razon_social}`,
                     observaciones: Object.keys(selectedInvoices).length > 0
                         ? `Aplica a ${Object.keys(selectedInvoices).length} comprobantes`
                         : 'Pago a cuenta'
@@ -184,7 +184,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                 metodo: ins.metodo,
                 monto: ins.monto,
                 banco: ins.banco || null,
-                detalle_referencia: ins.detalle_referencia || null,
+                referencia: ins.detalle_referencia || null,
                 fecha_disponibilidad: ins.fecha_disponibilidad,
                 estado: ins.metodo === 'efectivo' ? 'conciliado' : 'pendiente'
             }))
@@ -201,7 +201,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                 await supabase.from('aplicaciones_pago').insert({
                     movimiento_id: mov.id,
                     comprobante_id: invId,
-                    monto_applied: montoApli
+                    monto_aplicado: montoApli
                 })
 
                 // Update Comprobante
@@ -344,7 +344,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                                     {selectedInvoices[inv.id] && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-xs font-bold text-white uppercase">{inv.tipo.replace('_', ' ')} {inv.nro_factura}</p>
+                                                                    <p className="text-xs font-bold text-white uppercase">{inv.tipo.replace('_', ' ')} {inv.numero}</p>
                                                                     <p className="text-[10px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
                                                                 </div>
                                                             </div>

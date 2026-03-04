@@ -427,7 +427,7 @@ export function exportTreasuryMovementToExcel(movement: any) {
 
     // 1. Header Information
     const headerData = [
-        { label: 'Comprobante', value: movement.nro_comprobante },
+        { label: 'Comprobante', value: movement.numero },
         { label: 'Fecha', value: new Date(movement.fecha).toLocaleDateString('es-AR') },
         { label: 'Entidad', value: movement.entidades?.razon_social || 'N/A' },
         { label: 'Monto Total', value: movement.monto_total },
@@ -448,7 +448,7 @@ export function exportTreasuryMovementToExcel(movement: any) {
     const applicationsHeaders = ['Tipo Factura', 'Número', 'Monto Aplicado']
     const applicationsData = movement.aplicaciones_pago.map((app: any) => ({
         'Tipo Factura': app.comprobantes?.tipo.replace('_', ' ').toUpperCase(),
-        'Número': app.comprobantes?.nro_factura,
+        'Número': app.comprobantes?.numero,
         'Monto Aplicado': app.monto_aplicado
     }))
 
@@ -467,6 +467,6 @@ export function exportTreasuryMovementToExcel(movement: any) {
     const wsApp = XLSX.utils.json_to_sheet(applicationsData, { header: applicationsHeaders })
     XLSX.utils.book_append_sheet(wb, wsApp, 'Imputaciones')
 
-    const filename = `${movement.nro_comprobante}_${movement.entidades?.razon_social.replace(/\s/g, '_')}.xlsx`
+    const filename = `${movement.numero}_${movement.entidades?.razon_social.replace(/\s/g, '_')}.xlsx`
     XLSX.writeFile(wb, filename)
 }

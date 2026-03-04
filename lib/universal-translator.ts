@@ -8,10 +8,8 @@ export interface Transaction {
     numero?: string;
     razon_social?: string;
     banco?: string;
-    nro_factura?: string;
-    nro_comprobante?: string;
     vencimiento?: string | null;
-    detalle_referencia?: string;
+    referencia?: string;
     tipo: 'ingreso' | 'egreso' | 'factura_venta' | 'factura_compra' | 'DEBITO' | 'CREDITO';
     tags?: string[];
     raw?: any[];
@@ -320,10 +318,10 @@ export class UniversalTranslator {
                     cuit: cuit || undefined,
                     razon_social: idx.razon_social !== -1 ? row[idx.razon_social] : '',
                     banco: idx.banco !== -1 ? row[idx.banco] : '',
-                    // numero_cheque and cbu are now part of metadata or handled via nro_comprobante / referencia
-                    detalle_referencia: referencia || undefined,
+                    // numero_cheque and cbu are now part of metadata or handled via numero / referencia
+                    referencia: referencia || undefined,
                     vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
-                    nro_factura: idx.nro_factura !== -1 ? row[idx.nro_factura] : undefined,
+                    numero: idx.nro_factura !== -1 ? row[idx.nro_factura] : undefined,
                     tipo: tipo,
                     tags: [],
                     raw: row,
@@ -580,13 +578,17 @@ export class UniversalTranslator {
                     if (cbuMatch) cbu = cbuMatch[0];
                 }
 
-                let numero_cheque = (reglas.cheque !== null && reglas.cheque !== undefined) ? (row[reglas.cheque] || '') : '';
-                if (!numero_cheque || reglas.cheque === conceptoIdx) {
+                let num = (reglas.numero !== null && reglas.numero !== undefined) ? (row[reglas.numero] || '') : '';
+                let ref = (reglas.referencia !== null && reglas.referencia !== undefined) ? (row[reglas.referencia] || '') : '';
+                if (!ref || reglas.referencia === conceptoIdx) {
                     const chMatch = String(conceptoRaw).match(/\b(?:CH|CHEQUE|PAGO CH|VALOR)\s?(\d{6,10})\b/i);
-                    if (chMatch) numero_cheque = chMatch[1];
+                    if (chMatch) {
+                        const numero_cheque_val = chMatch[1];
+                        ref = numero_cheque_val;
+                    }
                 }
 
-                const category = this.categorizeTransaction(conceptoRaw, monto, numero_cheque || undefined);
+                const category = this.categorizeTransaction(conceptoRaw, monto, ref || undefined);
 
                 if (monto !== 0 || true) {
                     transactions.push({
@@ -595,10 +597,12 @@ export class UniversalTranslator {
                         monto,
                         tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any,
                         cuit: cuit || undefined,
+                        numero: num,
+                        referencia: ref,
                         metadata: {
                             categoria: category,
                             cbu: cbu || undefined,
-                            numero_cheque: numero_cheque || undefined
+                            numero_cheque: ref || undefined
                         }
                     });
                 }
