@@ -526,6 +526,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         </TableBody>
                     </Table>
                 </div>
+            </div>
         </Card>
     )
 }
