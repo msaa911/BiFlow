@@ -386,23 +386,22 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
-                                                {mov.categoria ? (
-                                                    <Badge variant="outline" className="text-[9px] uppercase font-bold border-emerald-500/30 text-emerald-400 bg-emerald-500/10 whitespace-nowrap w-fit">
-                                                        {mov.categoria.replace('Aplica a ', '')}
-                                                    </Badge>
-                                                ) : mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
+                                                {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
                                                     mov.aplicaciones_pago.map((app: any, idx: number) => {
                                                         const tipoLabel = app.comprobantes?.tipo === 'factura_venta' || app.comprobantes?.tipo === 'factura_compra' ? 'Factura' :
                                                             app.comprobantes?.tipo === 'nota_credito' ? 'N. Crédito' : 'N. Débito';
                                                         return (
-                                                            <Badge key={idx} variant="outline" className="text-[9px] uppercase font-bold border-emerald-500/30 text-emerald-400 bg-emerald-500/10 whitespace-nowrap w-fit">
+                                                            <Badge key={idx} variant="outline" className="text-[10px] uppercase font-bold border-emerald-500/40 text-emerald-100 bg-emerald-500/20 whitespace-nowrap w-fit">
                                                                 {tipoLabel} {app.comprobantes?.numero}
                                                             </Badge>
                                                         );
                                                     })
                                                 ) : (
-                                                    <Badge variant="outline" className="text-[9px] uppercase font-bold border-gray-700 bg-gray-800 text-gray-400">
-                                                        {mov.observaciones || 'S/C'}
+                                                    <Badge variant="outline" className="text-[10px] uppercase font-bold border-gray-700 bg-gray-800 text-gray-100 whitespace-nowrap w-fit px-2 py-0.5">
+                                                        {(mov.observaciones || mov.categoria || 'S/C')
+                                                            .replace('Aplica a ', '')
+                                                            .replace('OTROS', '')
+                                                            .trim() || 'S/C'}
                                                     </Badge>
                                                 )}
                                             </div>
