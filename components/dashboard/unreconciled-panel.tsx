@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -60,6 +60,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
     const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
     const [residualCategory, setResidualCategory] = useState('Gastos Bancarios')
+
+    // Mixed Payment States
+    const [secondaryPaymentEnabled, setSecondaryPaymentEnabled] = useState(false)
+    const [secondaryPaymentMethod, setSecondaryPaymentMethod] = useState<'efectivo' | 'cheque' | 'retencion'>('efectivo')
+    const [secondaryCheckData, setSecondaryCheckData] = useState({ numero: '', banco: '', vencimiento: '' })
 
     // Quick Load States
     const [isQuickLoading, setIsQuickLoading] = useState(false)
@@ -278,22 +283,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             if (!entity) throw new Error(`Entidad no encontrada para CUIT ${entityCuit}`)
 
             // Calculate total applied in this operation
-            let remainingBankToApply = availableAmount
-            let totalAppliedInOperation = 0
-
-            // We do a pre-calculation to know how much we are applying
-            const invoicesToApply = invoices.map(inv => {
-                const amountToApply = Math.min(Number(inv.monto_pendiente), remainingBankToApply)
-                remainingBankToApply -= amountToApply
-                totalAppliedInOperation += amountToApply
-                return { ...inv, amountToApply }
-            }).filter(i => i.amountToApply > 0)
-
-            if (totalAppliedInOperation <= 0) {
-                throw new Error("No hay monto pendiente a cubrir en las facturas seleccionadas.")
-            }
+            let totalToPayInInvoices = invoices.reduce((acc, inv) => acc + Number(inv.monto_pendiente), 0)
+            let totalAppliedFromBank = Math.min(availableAmount, totalToPayInInvoices)
 
             // 2. Create Movimiento Tesoreria (Header)
+            // Total should be the SUM of all instruments (Bank + Secondary)
+            const shortfall = totalToPayInInvoices - availableAmount
+            const secondaryAmount = secondaryPaymentEnabled && shortfall > 0.05 ? shortfall : 0
+            const totalMovementMonto = totalAppliedFromBank + secondaryAmount
+
             const { data: movimiento, error: movError } = await supabase
                 .from('movimientos_tesoreria')
                 .insert({
@@ -301,22 +299,27 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     entidad_id: entity.id,
                     tipo: isCobro ? 'cobro' : 'pago',
                     fecha: selectedTx.fecha,
-                    monto_total: totalAppliedInOperation,
-                    observaciones: `CONCILIACIÓN MANUAL Pendientes: ${selectedTx.descripcion}`,
-                    metadata: { transaccion_id: selectedTx.id, manual: true, partial: invoicesToApply.length > 1 }
+                    monto_total: totalMovementMonto,
+                    observaciones: `CONCILIACIÓN MANUAL MIXTA: ${selectedTx.descripcion}${secondaryPaymentEnabled ? ' (+ ' + secondaryPaymentMethod.toUpperCase() + ')' : ''}`,
+                    metadata: {
+                        transaccion_id: selectedTx.id,
+                        manual: true,
+                        mixed: secondaryPaymentEnabled,
+                        secondary_method: secondaryPaymentEnabled ? secondaryPaymentMethod : null
+                    }
                 })
                 .select()
                 .single()
 
             if (movError) throw movError
 
-            // 3. Create Instrument (The bank movement)
+            // 3. Create Instrument 1 (The bank movement)
             const { error: insError } = await supabase
                 .from('instrumentos_pago')
                 .insert({
                     movimiento_id: movimiento.id,
                     metodo: 'transferencia',
-                    monto: totalAppliedInOperation,
+                    monto: totalAppliedFromBank,
                     fecha_disponibilidad: selectedTx.fecha,
                     referencia: selectedTx.descripcion,
                     estado: 'acreditado'
@@ -324,21 +327,41 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             if (insError) throw insError
 
+            // 3.1. Create Instrument 2 (Secondary Method if enabled)
+            if (secondaryPaymentEnabled && secondaryAmount > 0) {
+                const { error: secInsError } = await supabase
+                    .from('instrumentos_pago')
+                    .insert({
+                        movimiento_id: movimiento.id,
+                        metodo: secondaryPaymentMethod,
+                        monto: secondaryAmount,
+                        fecha_disponibilidad: selectedTx.fecha,
+                        banco: secondaryPaymentMethod === 'cheque' ? secondaryCheckData.banco : null,
+                        referencia: secondaryPaymentMethod === 'cheque' ? `CH-${secondaryCheckData.numero}` : 'PAGO MIXTO',
+                        estado: (secondaryPaymentMethod === 'efectivo' || secondaryPaymentMethod === 'retencion') ? 'acreditado' : 'pendiente'
+                    })
+                if (secInsError) throw secInsError
+            }
+
             // Apply to each invoice
-            for (const invoice of invoicesToApply) {
+            let remainingToApply = totalMovementMonto
+            for (const invoice of invoices) {
+                const amountToApply = Math.min(Number(invoice.monto_pendiente), remainingToApply)
+                if (amountToApply <= 0) continue
+
                 // 4. Create Application (Link Invoice to OP)
                 const { error: appError } = await supabase
                     .from('aplicaciones_pago')
                     .insert({
                         movimiento_id: movimiento.id,
                         comprobante_id: invoice.id,
-                        monto_aplicado: invoice.amountToApply
+                        monto_aplicado: amountToApply
                     })
 
                 if (appError) throw appError
 
                 // 5. Update Invoice (comprobante)
-                const newPendiente = Number(invoice.monto_pendiente) - invoice.amountToApply
+                const newPendiente = Number(invoice.monto_pendiente) - amountToApply
                 const { error: invError } = await supabase
                     .from('comprobantes')
                     .update({
@@ -347,17 +370,20 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                         metadata: {
                             ...(invoice.metadata || {}),
                             reconciled_at: new Date().toISOString(),
-                            transaccion_id: selectedTx.id
+                            transaccion_id: selectedTx.id,
+                            is_mixed: secondaryPaymentEnabled
                         }
                     })
                     .eq('id', invoice.id)
 
                 if (invError) throw invError
+                remainingToApply -= amountToApply
             }
 
-            // 6. Handle Residual (If requested)
-            if (processResidualAsGasto && Math.abs(remainingBankToApply) > 0.05) {
-                const residualAmount = Math.abs(remainingBankToApply)
+            // 6. Handle Residual (If requested and NOT already using a secondary payment)
+            const finalShortfall = totalToPayInInvoices - availableAmount
+            if (!secondaryPaymentEnabled && processResidualAsGasto && finalShortfall < -0.05) {
+                const residualAmount = Math.abs(finalShortfall)
                 const isIngreso = selectedTx.monto > 0
                 const claseDoc = isIngreso ? 'NCB' : 'NDB'
                 const voucherType = isIngreso ? 'ncb_bancaria' : 'ndb_bancaria'
@@ -438,12 +464,12 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             })
                         }
                     }
-                    totalAppliedInOperation += residualAmount
+                    totalAppliedFromBank += residualAmount
                 }
             }
 
             // 7. Update Bank Transaction
-            const newMontoUsado = previouslyUsed + totalAppliedInOperation
+            const newMontoUsado = previouslyUsed + totalAppliedFromBank
             const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05
 
             const { error: txError } = await supabase
@@ -1008,67 +1034,151 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
                     {/* Summary and Residual Assistant */}
                     {selectedInvoiceIds.length > 0 && selectedTx && (
-                        <div className="mt-4 p-4 bg-gray-900/60 border border-gray-800 rounded-xl animate-in slide-in-from-bottom-2 duration-300">
-                            <div className="flex justify-between items-center mb-3">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Resumen de Selección</p>
-                                    <div className="flex items-center gap-4">
-                                        <div>
-                                            <p className="text-[10px] text-gray-400">Banco</p>
-                                            <p className="text-sm font-bold text-white">
-                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(availableAmount)}
-                                            </p>
-                                        </div>
-                                        <div className="text-gray-700">-</div>
-                                        <div>
-                                            <p className="text-[10px] text-gray-400">Seleccionado</p>
-                                            <p className="text-sm font-bold text-blue-400">
-                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
-                                                    availableInvoices.filter(i => selectedInvoiceIds.includes(i.id)).reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
-                                                )}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="mt-4 p-4 bg-gray-900/60 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            {(() => {
+                                const selectedTotal = availableInvoices
+                                    .filter(i => selectedInvoiceIds.includes(i.id))
+                                    .reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
+                                const difference = availableAmount - selectedTotal
+                                const shortfall = selectedTotal - availableAmount
+                                const isGastoCase = difference > 0.05
+                                const isMixedCase = shortfall > 0.05
 
-                                {Math.abs(availableAmount - availableInvoices.filter(i => selectedInvoiceIds.includes(i.id)).reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)) > 0.05 && (
-                                    <div className="text-right">
-                                        <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">Diferencia (Residual)</p>
-                                        <p className="text-sm font-black text-amber-500">
-                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
-                                                availableAmount - availableInvoices.filter(i => selectedInvoiceIds.includes(i.id)).reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
+                                return (
+                                    <>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Resumen de Selección</p>
+                                                <div className="flex items-center gap-4">
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-400">Banco</p>
+                                                        <p className="text-sm font-bold text-white">
+                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(availableAmount)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-gray-700">-</div>
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-400">Seleccionado</p>
+                                                        <p className={`text-sm font-bold ${isMixedCase ? 'text-amber-400' : 'text-blue-400'}`}>
+                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTotal)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {Math.abs(difference) > 0.05 && (
+                                                <div className="text-right">
+                                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isGastoCase ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        {isGastoCase ? 'Diferencia a categorizar' : 'Monto faltante'}
+                                                    </p>
+                                                    <p className={`text-sm font-black ${isGastoCase ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.abs(difference))}
+                                                    </p>
+                                                </div>
                                             )}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Residual Assistant UI */}
-                            {Math.abs(availableAmount - availableInvoices.filter(i => selectedInvoiceIds.includes(i.id)).reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)) > 0.05 && (
-                                <div className="pt-3 border-t border-gray-800 flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            onClick={() => setProcessResidualAsGasto(!processResidualAsGasto)}
-                                            className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-colors ${processResidualAsGasto ? 'bg-amber-500 border-amber-500' : 'border-gray-600 bg-gray-950'}`}
-                                        >
-                                            {processResidualAsGasto && <Check className="w-3 h-3 text-black font-bold" />}
                                         </div>
-                                        <span className="text-[10px] text-gray-300 font-bold uppercase cursor-pointer" onClick={() => setProcessResidualAsGasto(!processResidualAsGasto)}>
-                                            Liquidar diferencia como gasto bancario
-                                        </span>
-                                    </div>
 
-                                    {processResidualAsGasto && (
-                                        <select
-                                            value={residualCategory}
-                                            onChange={(e) => setResidualCategory(e.target.value)}
-                                            className="bg-gray-950 border border-gray-800 rounded h-7 px-2 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                        >
-                                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    )}
-                                </div>
-                            )}
+                                        {/* CASE 1: Residual as expense/tax (Gasto Bancario) */}
+                                        {isGastoCase && (
+                                            <div className="pt-3 border-t border-gray-800 flex items-center justify-between gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        onClick={() => setProcessResidualAsGasto(!processResidualAsGasto)}
+                                                        className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-colors ${processResidualAsGasto ? 'bg-emerald-500 border-emerald-500' : 'border-gray-600 bg-gray-950'}`}
+                                                    >
+                                                        {processResidualAsGasto && <Check className="w-3 h-3 text-black font-bold" />}
+                                                    </div>
+                                                    <span className="text-[10px] text-gray-300 font-bold uppercase cursor-pointer" onClick={() => setProcessResidualAsGasto(!processResidualAsGasto)}>
+                                                        Liquidar diferencia como gasto bancario
+                                                    </span>
+                                                </div>
+
+                                                {processResidualAsGasto && (
+                                                    <select
+                                                        value={residualCategory}
+                                                        onChange={(e) => setResidualCategory(e.target.value)}
+                                                        className="bg-gray-950 border border-gray-800 rounded h-7 px-2 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                    >
+                                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    </select>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* CASE 2: Mixed Payment (Efectivo/Cheque/Retencion) */}
+                                        {isMixedCase && (
+                                            <div className="pt-3 border-t border-gray-800 space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            onClick={() => setSecondaryPaymentEnabled(!secondaryPaymentEnabled)}
+                                                            className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-colors ${secondaryPaymentEnabled ? 'bg-amber-500 border-amber-500' : 'border-gray-600 bg-gray-950'}`}
+                                                        >
+                                                            {secondaryPaymentEnabled && <Check className="w-3 h-3 text-black font-bold" />}
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-300 font-bold uppercase cursor-pointer" onClick={() => setSecondaryPaymentEnabled(!secondaryPaymentEnabled)}>
+                                                            Completar pago con otro medio (Efectivo/Cheque)
+                                                        </span>
+                                                    </div>
+
+                                                    {secondaryPaymentEnabled && (
+                                                        <div className="flex gap-2">
+                                                            {['efectivo', 'cheque', 'retencion'].map(method => (
+                                                                <Button
+                                                                    key={method}
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => setSecondaryPaymentMethod(method as any)}
+                                                                    className={`h-7 px-2 text-[10px] font-bold uppercase transition-all ${secondaryPaymentMethod === method ? 'bg-amber-500 text-black border-amber-500' : 'bg-gray-900 border-gray-800 p-0 text-gray-400'}`}
+                                                                >
+                                                                    {method === 'efectivo' && <DollarSign className="w-3 h-3 mr-1" />}
+                                                                    {method === 'cheque' && <Pencil className="w-3 h-3 mr-1" />}
+                                                                    {method === 'retencion' && <Tag className="w-3 h-3 mr-1" />}
+                                                                    {method}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {secondaryPaymentEnabled && secondaryPaymentMethod === 'cheque' && (
+                                                    <div className="grid grid-cols-3 gap-2 p-3 bg-gray-950 border border-gray-800 rounded-lg animate-in zoom-in-95 duration-200">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[9px] text-gray-500 uppercase font-black">Banco Emisor</label>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Nombre del banco"
+                                                                value={secondaryCheckData.banco}
+                                                                onChange={(e) => setSecondaryCheckData(prev => ({ ...prev, banco: e.target.value }))}
+                                                                className="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1 text-xs text-white"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[9px] text-gray-500 uppercase font-black">Número</label>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="00000000"
+                                                                value={secondaryCheckData.numero}
+                                                                onChange={(e) => setSecondaryCheckData(prev => ({ ...prev, numero: e.target.value }))}
+                                                                className="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1 text-xs text-white"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[9px] text-gray-500 uppercase font-black">Vencimiento</label>
+                                                            <input
+                                                                type="date"
+                                                                value={secondaryCheckData.vencimiento}
+                                                                onChange={(e) => setSecondaryCheckData(prev => ({ ...prev, vencimiento: e.target.value }))}
+                                                                className="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1 text-xs text-white"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                )
+                            })()}
                         </div>
                     )}
 
