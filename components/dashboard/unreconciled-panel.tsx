@@ -115,37 +115,38 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             const desc = txToMatch.descripcion.toUpperCase()
 
             // 1. Fetch Invoices
-            let { data: invoices, error: invError } = await supabase
+            const { data: invoices, error: invError } = await supabase
                 .from('comprobantes')
                 .select('*')
                 .eq('organization_id', orgId)
                 .in('estado', ['pendiente', 'parcial'])
-                .eq('tipo', typeFilter)
+                .in('tipo', txToMatch.monto > 0 ? ['factura_venta', 'nota_debito', 'ingreso_vario'] : ['factura_compra', 'nota_credito', 'egreso_vario'])
                 .order('fecha_vencimiento', { ascending: true })
 
             if (invError) throw invError
 
-            setAllFetchedInvoices(invoices || [])
+            let activeInvoices = invoices || []
+            setAllFetchedInvoices(activeInvoices)
 
             // Extract meaningful words from description (e.g., "CONSTRUCTORA DEL SUR")
             const skipWords = ['ACREDITACION', 'TRANSFERENCIA', 'REF', 'TRF-', 'PAGO', 'COBRO', 'ESTO', 'TEST-']
             const words = desc.split(/\s+/).filter(w => w.length > 3 && !skipWords.some(s => w.includes(s)))
 
-            if (!showAllInvoices && invoices && words.length > 0) {
+            if (!showAllInvoices && activeInvoices.length > 0 && words.length > 0) {
                 // Try to see if any invoice belongs to an entity mentioned in the description
-                const filtered = invoices.filter(inv => {
+                const filtered = activeInvoices.filter(inv => {
                     const razonSocial = (inv.razon_social_socio || '').toUpperCase()
                     return words.some(word => razonSocial.includes(word))
                 })
 
                 // If we found specific matches, we ONLY show those to avoid clutter
                 if (filtered.length > 0) {
-                    invoices = filtered
+                    activeInvoices = filtered
                     setIsFiltered(true)
                 }
             }
 
-            setAvailableInvoices(invoices || [])
+            setAvailableInvoices(activeInvoices)
 
             // 2. Fetch Orphan Movements (Recibos/OPs already created but unlinked)
             const { data: linkedTx } = await supabase.from('transacciones').select('movimiento_id').not('movimiento_id', 'is', null)
@@ -153,9 +154,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             const { data: instruments, error: insError } = await supabase
                 .from('instrumentos_pago')
-                .select('*, movimientos_tesoreria(*)')
-                .eq('metodo', 'transferencia')
-                .lte('monto', txAmount * 1.1)
+                .select('*, movimientos_tesoreria(*, entidades(razon_social))')
+                .lte('monto', txAmount * 1.2) // Increased tolerance to 20% for manual suggestions
 
             if (!insError && instruments) {
                 let unlinkedMovs = instruments
@@ -165,11 +165,14 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                         return isIngreso ? ins.movimientos_tesoreria?.tipo === 'cobro' : ins.movimientos_tesoreria?.tipo === 'pago'
                     })
 
-                // Also filter movements by name keywords if found
+                // Deep Match movements by name keywords or exact amount
                 if (words.length > 0) {
                     const filteredMovs = unlinkedMovs.filter(ins => {
                         const obs = (ins.movimientos_tesoreria?.observaciones || '').toUpperCase()
-                        return words.some(word => obs.includes(word))
+                        const razonSocial = (ins.movimientos_tesoreria?.entidades?.razon_social || '').toUpperCase()
+                        const isExactAmount = Math.abs(Number(ins.monto) - txAmount) < 0.05
+
+                        return words.some(word => obs.includes(word) || razonSocial.includes(word)) || isExactAmount
                     })
                     if (filteredMovs.length > 0) unlinkedMovs = filteredMovs
                 }
@@ -181,6 +184,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     observaciones: ins.movimientos_tesoreria?.observaciones,
                     numero: ins.movimientos_tesoreria?.numero,
                     entidad: ins.movimientos_tesoreria?.entidad_id,
+                    razonSocial: ins.movimientos_tesoreria?.entidades?.razon_social,
                     tipo: ins.movimientos_tesoreria?.tipo
                 })))
             }
@@ -1091,7 +1095,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                     </div>
                                                     <div>
                                                         <p className={`text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-emerald-400 group-hover:text-emerald-300'}`}>
-                                                            {mov.tipo?.toUpperCase()} N° {mov.numero || 'S/N'}
+                                                            {mov.tipo?.toUpperCase()} N° {mov.numero || 'S/N'} {mov.razonSocial ? ` - ${mov.razonSocial}` : ''}
                                                         </p>
                                                         <p className="text-[10px] text-gray-500">
                                                             Referencia: {mov.observaciones || 'Sin observaciones'} • Fecha: {new Date(mov.fecha).toLocaleDateString()}
