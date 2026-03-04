@@ -628,9 +628,9 @@ function parseTreasuryExcelServer(buffer: Buffer, orgId: string, type: 'cobro' |
         const monto = parseFloat(montoRaw.replace(/[^\d.,-]/g, '').replace(',', '.'))
         const medio = getValue(/medio|metodo|instrumento|forma/i).toLowerCase().replace(' ', '_')
         const banco = getValue(/banco|entidad bancaria/i)
-        const referencia = getValue(/referencia|ref|cheque|transf|medio.*pago/i)
+        const referencia = getValue(/referencia|ref|cheque|transf|detalle/i)
         const disponibilidad = getValue(/disponibilidad|acreditacion/i, true)
-        const observaciones = getValue(/observaciones|obs|detalle|notas|cancelacion/i)
+        const observaciones = getValue(/observaciones|obs|notas|cancelacion|^concepto$/i)
 
         if (!numero && isNaN(monto)) continue
 
