@@ -58,6 +58,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [loadingInvoices, setLoadingInvoices] = useState(false)
     const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
     const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
+    const [globalAiSuggestions, setGlobalAiSuggestions] = useState<any[]>([])
     const [suggestedMovements, setSuggestedMovements] = useState<any[]>([])
     const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([])
     const [isFiltered, setIsFiltered] = useState(false)
@@ -84,6 +85,22 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [splitConcept, setSplitConcept] = useState('IVA Crédito Fiscal')
     const [splitAmount, setSplitAmount] = useState('0')
     const [splitType, setSplitType] = useState<'activo' | 'gasto'>('activo')
+
+    const fetchGlobalSuggestions = async () => {
+        try {
+            const res = await fetch('/api/reconcile/suggestions')
+            if (res.ok) {
+                const data = await res.json()
+                setGlobalAiSuggestions(data.suggestions || [])
+            }
+        } catch (error) {
+            console.warn('Error fetching global suggestions:', error)
+        }
+    }
+
+    useState(() => {
+        fetchGlobalSuggestions()
+    })
 
     const fetchEntities = async () => {
         setLoadingEntities(true)
@@ -840,7 +857,14 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                         {tx.monto < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-sm font-bold text-white truncate max-w-[350px]">{tx.descripcion}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-bold text-white truncate max-w-[320px]">{tx.descripcion}</p>
+                                            {globalAiSuggestions.some(s => s.transId === tx.id) && (
+                                                <Badge variant="outline" className="text-[9px] font-black h-4 bg-amber-500/10 text-amber-500 border-amber-500/20 px-1.5 leading-none animate-pulse">
+                                                    ✨ IA MATCH
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className="text-[10px] text-gray-500">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
                                             <span className="text-[10px] text-gray-500">•</span>
@@ -1225,18 +1249,6 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             {(() => {
                                 const noSelection = selectedInvoiceIds.length === 0 && selectedMovementIds.length === 0
 
-                                if (noSelection) {
-                                    return (
-                                        <div className="flex items-center gap-3 text-gray-400 py-1">
-                                            <AlertCircle className="w-5 h-5 text-blue-500" />
-                                            <div className="flex-1">
-                                                <p className="text-xs font-bold text-white">Asistente de Conciliación listo</p>
-                                                <p className="text-[10px] text-gray-500 italic">Seleccione un movimiento registrado o facturas para habilitar opciones de pago mixto y diferencias.</p>
-                                            </div>
-                                        </div>
-                                    )
-                                }
-
                                 const selectedInvoiceTotal = availableInvoices
                                     .filter(i => selectedInvoiceIds.includes(i.id))
                                     .reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
@@ -1255,6 +1267,26 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                 const shortfall = selectedTotal - availableAmount
                                 const isGastoCase = difference > 0.05
                                 const isMixedCase = shortfall > 0.05
+
+                                if (noSelection) {
+                                    return (
+                                        <div className="flex items-center justify-between py-1">
+                                            <div className="flex items-center gap-3 text-gray-400">
+                                                <AlertCircle className="w-5 h-5 text-blue-500" />
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-bold text-white">Asistente de Conciliación listo</p>
+                                                    <p className="text-[10px] text-gray-500 italic">Elija comprobantes para habilitar el cierre.</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right border-l border-gray-800 pl-4">
+                                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">A Conciliar</p>
+                                                <p className="text-sm font-black text-white">
+                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(availableAmount)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )
+                                }
 
                                 return (
                                     <>
@@ -1417,7 +1449,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             </Button>
                             <Button
                                 onClick={handleConciliate}
-                                disabled={isSubmitting || selectedInvoiceIds.length === 0}
+                                disabled={isSubmitting || (selectedInvoiceIds.length === 0 && selectedMovementIds.length === 0)}
                                 className="bg-blue-600 hover:bg-blue-500 text-white font-bold"
                             >
                                 {isSubmitting ? (
