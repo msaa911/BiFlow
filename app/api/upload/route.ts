@@ -387,12 +387,12 @@ export async function POST(request: Request) {
                             organization_id: orgId,
                             entidad_id: firstRow.entidad_id || null,
                             tipo: isCobro ? 'cobro' : 'pago',
-                            numero: num,
+                            nro_comprobante: num,
                             fecha: firstRow.fecha,
                             monto_total: totalMonto,
                             moneda: firstRow.moneda || 'ARS',
                             observaciones: rows.map(r => r.descripcion || r.razon_social).filter((v, i, a) => a && a.indexOf(v) === i).join(' | '),
-                            categoria: firstRow.metadata?.categoria || firstRow.descripcion || firstRow.razon_social,
+                            concepto: firstRow.metadata?.categoria || firstRow.descripcion || firstRow.razon_social,
                             metadata: {
                                 raw_rows: rows.map(r => r.raw),
                                 import_type: uploadContext,
@@ -410,12 +410,12 @@ export async function POST(request: Request) {
                             organization_id: orgId,
                             entidad_id: t.entidad_id || null,
                             tipo: isCobro ? 'cobro' : 'pago',
-                            numero: num,
+                            nro_comprobante: num,
                             fecha: t.fecha,
                             monto_total: Math.abs(t.monto),
                             moneda: t.moneda || 'ARS',
                             observaciones: t.descripcion || t.razon_social,
-                            categoria: t.metadata?.categoria || t.descripcion || t.razon_social,
+                            concepto: t.metadata?.categoria || t.descripcion || t.razon_social,
                             metadata: {
                                 raw_row: t.raw,
                                 import_type: uploadContext,
@@ -455,7 +455,7 @@ export async function POST(request: Request) {
                                     monto: Math.abs(rawRow.monto),
                                     banco: rawRow.banco || rawRow.metadata?.banco || null,
                                     fecha_disponibilidad: rawRow.vencimiento || rawRow.fecha,
-                                    referencia: rawRow.referencia || rawRow.numero_cheque || rawRow.metadata?.referencia || null,
+                                    detalle_referencia: rawRow.referencia || rawRow.nro_factura || rawRow.metadata?.referencia || null,
                                     estado: 'pendiente'
                                 })
                             })

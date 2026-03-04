@@ -8,8 +8,8 @@ export interface Transaction {
     numero?: string;
     razon_social?: string;
     banco?: string;
-    numero_cheque?: string;
-    cbu?: string;
+    nro_factura?: string;
+    nro_comprobante?: string;
     vencimiento?: string | null;
     referencia?: string;
     tipo: 'ingreso' | 'egreso' | 'factura_venta' | 'factura_compra' | 'DEBITO' | 'CREDITO';
@@ -213,7 +213,7 @@ export class UniversalTranslator {
             tipo: headers.findIndex((h: string) => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado', 'mod', 'comp'].some(k => h.includes(k))),
             vencimiento: headers.findIndex((h: string) => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
             referencia: headers.findIndex((h: string) => ['detalle', 'referencia', 'nro op', 'nro rec', 'comprobante nro'].some(k => h.includes(k))),
-            numero: headers.findIndex((h: string) => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta', 'nro doc'].some(k => h.includes(k))),
+            nro_factura: headers.findIndex((h: string) => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta', 'nro doc'].some(k => h.includes(k))),
             cheque: headers.findIndex((h: string) => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque', 'nro_valor'].some(k => h.includes(k))),
             cbu: headers.findIndex((h: string) => ['cbu', 'cta destino', 'cvu', 'cuenta destino', 'coordenada', 'cbu/alias'].some(k => h.includes(k))),
             debito: headers.findIndex((h: string) => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo', 'retiro'].some(k => h.includes(k))),
@@ -320,16 +320,17 @@ export class UniversalTranslator {
                     cuit: cuit || undefined,
                     razon_social: idx.razon_social !== -1 ? row[idx.razon_social] : '',
                     banco: idx.banco !== -1 ? row[idx.banco] : '',
-                    numero_cheque: numero_cheque || undefined,
-                    cbu: cbu || undefined,
+                    // numero_cheque and cbu are now part of metadata or handled via nro_comprobante / referencia
                     referencia: referencia || undefined,
                     vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
-                    numero: idx.numero !== -1 ? row[idx.numero] : undefined,
+                    nro_factura: idx.nro_factura !== -1 ? row[idx.nro_factura] : undefined,
                     tipo: tipo,
                     tags: [],
                     raw: row,
                     metadata: {
                         categoria: category,
+                        cbu: cbu || undefined,
+                        numero_cheque: numero_cheque || undefined,
                         saldo: idx.saldo !== -1 ? this.parseCurrency(row[idx.saldo]) : undefined
                     }
                 });

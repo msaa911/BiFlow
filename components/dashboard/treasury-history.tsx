@@ -378,7 +378,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                         </TableCell>
                                         <TableCell>
                                             <Badge className={`uppercase text-[9px] font-bold ${mov.tipo === 'cobro' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
-                                                {mov.numero || 'S/N'}
+                                                {mov.nro_comprobante || 'S/N'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="font-bold text-gray-200 text-xs text-ellipsis overflow-hidden whitespace-nowrap max-w-[200px]">
@@ -392,13 +392,13 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                             app.comprobantes?.tipo === 'nota_credito' ? 'N. Crédito' : 'N. Débito';
                                                         return (
                                                             <Badge key={idx} variant="outline" className="text-[10px] uppercase font-bold border-emerald-500/40 text-emerald-100 bg-emerald-500/20 whitespace-nowrap w-fit">
-                                                                {tipoLabel} {app.comprobantes?.numero}
+                                                                {tipoLabel} {app.comprobantes?.nro_factura}
                                                             </Badge>
                                                         );
                                                     })
                                                 ) : (
                                                     <Badge variant="outline" className="text-[10px] uppercase font-bold border-gray-700 bg-gray-800 text-gray-100 whitespace-nowrap w-fit px-2 py-0.5">
-                                                        {(mov.observaciones || mov.categoria || 'S/C')
+                                                        {(mov.concepto || mov.observaciones || 'S/C')
                                                             .replace('Aplica a ', '')
                                                             .replace('OTROS', '')
                                                             .trim() || 'S/C'}

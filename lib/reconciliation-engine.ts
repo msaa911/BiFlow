@@ -48,7 +48,7 @@ export class ReconciliationEngine {
         // 2.b Fetch pending movements (Receipts/OPs)
         const { data: pendingMovements } = await supabase
             .from('instrumentos_pago')
-            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(numero)))')
+            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(nro_factura)))')
             .eq('organization_id', organizationId)
             .in('estado', ['pendiente', 'parcial'])
             .order('fecha_disponibilidad', { ascending: true });
@@ -177,7 +177,7 @@ export class ReconciliationEngine {
 
                     // 0. Check Payment Reference Match (Ej: Numero de cheque, numero de transferencia que detalla el recibo)
                     let hasPaymentRefMatch = false;
-                    const memRef = (m.referencia || '').toUpperCase().trim();
+                    const memRef = (m.detalle_referencia || '').toUpperCase().trim();
                     if (memRef && memRef.length >= 4) {
                         // Buscamos si la referencia del recibo está textualmente en el banco
                         if (descUpper.includes(memRef) || (trans.numero_cheque && trans.numero_cheque.toUpperCase().includes(memRef))) {
@@ -197,7 +197,7 @@ export class ReconciliationEngine {
                     // 1.a Check aplicaciones_pago for invoice numbers
                     if (mov?.aplicaciones_pago && Array.isArray(mov.aplicaciones_pago)) {
                         for (const app of mov.aplicaciones_pago) {
-                            const compNum = app.comprobantes?.numero; // ej: 'FAC-A-0001-1234'
+                            const compNum = app.comprobantes?.nro_factura; // ej: 'FAC-A-0001-1234'
                             if (compNum) {
                                 // Extract the meaningful part of the invoice (last digits, ignoring zeros)
                                 const parts = compNum.split('-');
