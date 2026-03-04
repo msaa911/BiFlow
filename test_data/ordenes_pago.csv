@@ -1,15 +1,18 @@
-Fecha,Orden,Proveedor,CUIT,Detalle,Concepto,Importe,Medio,Banco
-21/02/2026,0001-00000200,Alquileres de Oficinas SA,30-66666666-6,TRF-949369,Aplica a FAC-C-0002-00005000,243558,Transferencia,Banco Galicia
-26/01/2026,0001-00000201,Cloud Hosting Providers INC,33-55555555-5,TRF-972709,Aplica a FAC-C-0002-00005001,204103,Transferencia,Banco Galicia
-26/01/2026,0001-00000202,Cloud Hosting Providers INC,33-55555555-5,TRF-388639,Aplica a FAC-C-0002-00005002,59567,Transferencia,Banco Galicia
-18/01/2026,0001-00000203,Servicios de Limpieza Estrella,30-44444444-4,TRF-379100,Aplica a FAC-C-0002-00005004,210681,Transferencia,Banco Galicia
-23/01/2026,0001-00000204,Cloud Hosting Providers INC,33-55555555-5,TRF-462351,Aplica a FAC-C-0002-00005005,1200000,Transferencia,Banco Galicia
-01/02/2026,0001-00000205,Cloud Hosting Providers INC,33-55555555-5,TRF-151150,Aplica a FAC-C-0002-00005006,148045,Transferencia,Banco Galicia
-17/02/2026,0001-00000206,Servicios de Limpieza Estrella,30-44444444-4,TRF-247421,Aplica a FAC-C-0002-00005009,191781,Transferencia,Banco Galicia
-26/02/2026,0001-00000207,Alquileres de Oficinas SA,30-66666666-6,TRF-807159,Aplica a FAC-C-0002-00005010,239764,Transferencia,Banco Galicia
-10/01/2026,0001-00000208,Cloud Hosting Providers INC,33-55555555-5,TRF-469044,Aplica a FAC-C-0002-00005011,64685,Transferencia,Banco Galicia
-13/02/2026,0001-00000209,Servicios de Limpieza Estrella,30-44444444-4,TRF-268199,Aplica a FAC-C-0002-00005012,159367,Transferencia,Banco Galicia
-21/02/2026,0001-00000210,Servicios de Limpieza Estrella,30-44444444-4,TRF-948920,Aplica a FAC-C-0002-00005014,143338,Transferencia,Banco Galicia
-16/01/2026,0001-00000211,Alquileres de Oficinas SA,30-66666666-6,TRF-826978,Aplica a FAC-C-0002-00005015,246427,Transferencia,Banco Galicia
-24/01/2026,0001-00000212,Cloud Hosting Providers INC,33-55555555-5,TRF-210671,Aplica a FAC-C-0002-00005017,209051,Transferencia,Banco Galicia
-22/02/2026,0001-00000213,Servicios de Limpieza Estrella,30-44444444-4,TRF-237333,Aplica a FAC-C-0002-00005018,68063,Transferencia,Banco Galicia
+Fecha,Orden,Proveedor,CUIT,Concepto,Detalle,Importe,Medio,Banco
+25/02/2026,0001-00000200,Cloud Hosting Providers INC,33-55555555-5,Aplica a FAC-C-0002-00005000,TRF-673947,68405,Transferencia,Banco Galicia
+22/01/2026,0001-00000201,Alquileres de Oficinas SA,30-66666666-6,Aplica a FAC-C-0002-00005001,TRF-562397,110266,Transferencia,Banco Galicia
+20/01/2026,0001-00000202,Cloud Hosting Providers INC,33-55555555-5,Aplica a FAC-C-0002-00005002,TRF-587109,236298,Transferencia,Banco Galicia
+16/02/2026,0001-00000203,Cloud Hosting Providers INC,33-55555555-5,Aplica a FAC-C-0002-00005003,TRF-383606,169516,Transferencia,Banco Galicia
+18/01/2026,0001-00000204,Alquileres de Oficinas SA,30-66666666-6,Aplica a FAC-C-0002-00005004,TRF-905875,206101,Transferencia,Banco Galicia
+19/01/2026,0001-00000205,Alquileres de Oficinas SA,30-66666666-6,Aplica a FAC-C-0002-00005005,TRF-619565,1200000,Transferencia,Banco Galicia
+16/02/2026,0001-00000206,Servicios de Limpieza Estrella,30-44444444-4,Aplica a FAC-C-0002-00005006,TRF-722818,140301,Transferencia,Banco Galicia
+20/02/2026,0001-00000207,Servicios de Limpieza Estrella,30-44444444-4,Aplica a FAC-C-0002-00005007,TRF-610267,135150,Transferencia,Banco Galicia
+08/02/2026,0001-00000208,Alquileres de Oficinas SA,30-66666666-6,Aplica a FAC-C-0002-00005008,TRF-386326,41376,Transferencia,Banco Galicia
+31/01/2026,0001-00000209,Cloud Hosting Providers INC,33-55555555-5,Aplica a FAC-C-0002-00005009,TRF-789136,35456,Transferencia,Banco Galicia
+20/02/2026,0001-00000210,Cloud Hosting Providers INC,33-55555555-5,Aplica a FAC-C-0002-00005011,TRF-332039,32284,Transferencia,Banco Galicia
+19/02/2026,0001-00000211,Servicios de Limpieza Estrella,30-44444444-4,Aplica a FAC-C-0002-00005012,TRF-832205,157984,Transferencia,Banco Galicia
+17/01/2026,0001-00000212,Servicios de Limpieza Estrella,30-44444444-4,Aplica a FAC-C-0002-00005013,TRF-396218,75888,Transferencia,Banco Galicia
+10/02/2026,0001-00000213,Cloud Hosting Providers INC,33-55555555-5,Aplica a FAC-C-0002-00005015,TRF-820236,86861,Transferencia,Banco Galicia
+19/02/2026,0001-00000214,Cloud Hosting Providers INC,33-55555555-5,Aplica a FAC-C-0002-00005016,TRF-880468,178115,Transferencia,Banco Galicia
+26/01/2026,0001-00000215,Alquileres de Oficinas SA,30-66666666-6,Aplica a FAC-C-0002-00005017,TRF-853927,247110,Transferencia,Banco Galicia
+19/02/2026,0001-00000216,Servicios de Limpieza Estrella,30-44444444-4,Aplica a FAC-C-0002-00005018,TRF-306556,111797,Transferencia,Banco Galicia

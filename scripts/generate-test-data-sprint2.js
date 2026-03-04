@@ -399,9 +399,9 @@ fs.writeFileSync(path.join(outDir, 'ventas_ingresos.csv'), toCSV(ventas, ['fecha
 // 2. Egresos
 fs.writeFileSync(path.join(outDir, 'compras_egresos.csv'), toCSV(compras, ['fecha', 'numero', 'concepto', 'cuit', 'razon_social', 'monto', 'vencimiento', 'moneda']));
 // 3. Recibos
-fs.writeFileSync(path.join(outDir, 'recibos.csv'), 'Fecha,Recibo,Cliente,CUIT,Detalle,Concepto,Importe,Medio,Banco\n' + recibos.map(r => `${r.fecha},${r.recibo},${r.cliente},${r.cuit},${r.referencia},${r.observaciones},${r.importe},${r.medio},${r.banco}`).join('\n'));
+fs.writeFileSync(path.join(outDir, 'recibos.csv'), 'Fecha,Recibo,Cliente,CUIT,Concepto,Detalle,Importe,Medio,Banco\n' + recibos.map(r => `${r.fecha},${r.recibo},${r.cliente},${r.cuit},${r.observaciones},${r.referencia},${r.importe},${r.medio},${r.banco}`).join('\n'));
 // 4. Egresos / OP
-fs.writeFileSync(path.join(outDir, 'ordenes_pago.csv'), 'Fecha,Orden,Proveedor,CUIT,Detalle,Concepto,Importe,Medio,Banco\n' + ops.map(r => `${r.fecha},${r.op},${r.proveedor},${r.cuit},${r.referencia},${r.observaciones},${r.importe},${r.medio},${r.banco}`).join('\n'));
+fs.writeFileSync(path.join(outDir, 'ordenes_pago.csv'), 'Fecha,Orden,Proveedor,CUIT,Concepto,Detalle,Importe,Medio,Banco\n' + ops.map(r => `${r.fecha},${r.op},${r.proveedor},${r.cuit},${r.observaciones},${r.referencia},${r.importe},${r.medio},${r.banco}`).join('\n'));
 // 5. Banco
 const bankHeader = `Banco Galicia
 Cuenta Corriente en Pesos Nro: 1234-5678/9
