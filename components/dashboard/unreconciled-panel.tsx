@@ -60,6 +60,9 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
     const [suggestedMovements, setSuggestedMovements] = useState<any[]>([])
     const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([])
+    const [isFiltered, setIsFiltered] = useState(false)
+    const [showAllInvoices, setShowAllInvoices] = useState(false)
+    const [allFetchedInvoices, setAllFetchedInvoices] = useState<any[]>([])
     const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
     const [residualCategory, setResidualCategory] = useState('Gastos Bancarios')
 
@@ -104,13 +107,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         setLoadingInvoices(true)
         setSelectedInvoiceIds([])
         setAiSuggestions([])
+        setIsFiltered(false)
         try {
             const orgId = (transactions[0] as any)?.organization_id
             const typeFilter = txToMatch.monto > 0 ? 'factura_venta' : 'factura_compra'
             const txAmount = Math.abs(txToMatch.monto)
+            const desc = txToMatch.descripcion.toUpperCase()
 
             // 1. Fetch Invoices
-            const { data: invoices, error: invError } = await supabase
+            let { data: invoices, error: invError } = await supabase
                 .from('comprobantes')
                 .select('*')
                 .eq('organization_id', orgId)
@@ -119,6 +124,27 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 .order('fecha_vencimiento', { ascending: true })
 
             if (invError) throw invError
+
+            setAllFetchedInvoices(invoices || [])
+
+            // Extract meaningful words from description (e.g., "CONSTRUCTORA DEL SUR")
+            const skipWords = ['ACREDITACION', 'TRANSFERENCIA', 'REF', 'TRF-', 'PAGO', 'COBRO', 'ESTO', 'TEST-']
+            const words = desc.split(/\s+/).filter(w => w.length > 3 && !skipWords.some(s => w.includes(s)))
+
+            if (!showAllInvoices && invoices && words.length > 0) {
+                // Try to see if any invoice belongs to an entity mentioned in the description
+                const filtered = invoices.filter(inv => {
+                    const razonSocial = (inv.razon_social_socio || '').toUpperCase()
+                    return words.some(word => razonSocial.includes(word))
+                })
+
+                // If we found specific matches, we ONLY show those to avoid clutter
+                if (filtered.length > 0) {
+                    invoices = filtered
+                    setIsFiltered(true)
+                }
+            }
+
             setAvailableInvoices(invoices || [])
 
             // 2. Fetch Orphan Movements (Recibos/OPs already created but unlinked)
@@ -129,26 +155,34 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 .from('instrumentos_pago')
                 .select('*, movimientos_tesoreria(*)')
                 .eq('metodo', 'transferencia')
-                .lte('monto', txAmount * 1.05) // Find items that fits or are smaller
+                .lte('monto', txAmount * 1.1)
 
             if (!insError && instruments) {
-                const unlinkedMovs = instruments
+                let unlinkedMovs = instruments
                     .filter(ins => !linkedIds.has(ins.movimiento_id))
-                    // Filter by type (Cobro/Pago) to match transaction direction
                     .filter(ins => {
                         const isIngreso = txToMatch.monto > 0
                         return isIngreso ? ins.movimientos_tesoreria?.tipo === 'cobro' : ins.movimientos_tesoreria?.tipo === 'pago'
                     })
-                    .map(ins => ({
-                        id: ins.movimiento_id,
-                        fecha: ins.movimientos_tesoreria?.fecha,
-                        monto: ins.monto,
-                        observaciones: ins.movimientos_tesoreria?.observaciones,
-                        numero: ins.movimientos_tesoreria?.numero,
-                        entidad: ins.movimientos_tesoreria?.entidad_id,
-                        tipo: ins.movimientos_tesoreria?.tipo
-                    }))
-                setSuggestedMovements(unlinkedMovs)
+
+                // Also filter movements by name keywords if found
+                if (words.length > 0) {
+                    const filteredMovs = unlinkedMovs.filter(ins => {
+                        const obs = (ins.movimientos_tesoreria?.observaciones || '').toUpperCase()
+                        return words.some(word => obs.includes(word))
+                    })
+                    if (filteredMovs.length > 0) unlinkedMovs = filteredMovs
+                }
+
+                setSuggestedMovements(unlinkedMovs.map(ins => ({
+                    id: ins.movimiento_id,
+                    fecha: ins.movimientos_tesoreria?.fecha,
+                    monto: ins.monto,
+                    observaciones: ins.movimientos_tesoreria?.observaciones,
+                    numero: ins.movimientos_tesoreria?.numero,
+                    entidad: ins.movimientos_tesoreria?.entidad_id,
+                    tipo: ins.movimientos_tesoreria?.tipo
+                })))
             }
 
             // 3. Fetch AI Suggestions
@@ -1085,14 +1119,36 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                         )}
 
                         <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                Comprobantes Sugeridos {aiSuggestions.length > 0 && <span className="ml-2 text-amber-500">✨ IA Sugiere {aiSuggestions.length} match(es)</span>}
-                            </p>
-                            {selectedInvoiceIds.length > 0 && (
-                                <p className="text-xs text-blue-400 font-bold uppercase mr-2">
-                                    {selectedInvoiceIds.length} seleccionado(s)
+                            <div className="flex items-center gap-2">
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                    Comprobantes Sugeridos {aiSuggestions.length > 0 && <span className="ml-2 text-amber-500">✨ IA Sugiere {aiSuggestions.length} match(es)</span>}
                                 </p>
-                            )}
+                                {isFiltered && (
+                                    <Badge variant="outline" className="text-[9px] font-black h-4 bg-blue-500/10 text-blue-400 border-blue-500/20 px-1.5 leading-none">
+                                        DETECCIÓN INTELIGENTE
+                                    </Badge>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {isFiltered && (
+                                    <Button
+                                        variant="link"
+                                        size="sm"
+                                        className="h-auto p-0 text-[10px] text-gray-500 hover:text-blue-400 font-bold uppercase tracking-tighter"
+                                        onClick={() => {
+                                            setAvailableInvoices(allFetchedInvoices)
+                                            setIsFiltered(false)
+                                        }}
+                                    >
+                                        Ver todos ({allFetchedInvoices.length})
+                                    </Button>
+                                )}
+                                {selectedInvoiceIds.length > 0 && (
+                                    <p className="text-xs text-blue-400 font-bold uppercase">
+                                        {selectedInvoiceIds.length} seleccionado(s)
+                                    </p>
+                                )}
+                            </div>
                         </div>
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                             {loadingInvoices ? (
@@ -1160,9 +1216,23 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     </div>
 
                     {/* Summary and Residual Assistant */}
-                    {(selectedInvoiceIds.length > 0 || selectedMovementIds.length > 0) && selectedTx && (
+                    {selectedTx && (
                         <div className="mt-4 p-4 bg-gray-900/60 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
                             {(() => {
+                                const noSelection = selectedInvoiceIds.length === 0 && selectedMovementIds.length === 0
+
+                                if (noSelection) {
+                                    return (
+                                        <div className="flex items-center gap-3 text-gray-400 py-1">
+                                            <AlertCircle className="w-5 h-5 text-blue-500" />
+                                            <div className="flex-1">
+                                                <p className="text-xs font-bold text-white">Asistente de Conciliación listo</p>
+                                                <p className="text-[10px] text-gray-500 italic">Seleccione un movimiento registrado o facturas para habilitar opciones de pago mixto y diferencias.</p>
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
                                 const selectedInvoiceTotal = availableInvoices
                                     .filter(i => selectedInvoiceIds.includes(i.id))
                                     .reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
