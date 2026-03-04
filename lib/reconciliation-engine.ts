@@ -10,7 +10,31 @@ export class ReconciliationEngine {
         const dryRun = options?.dryRun ?? false;
         console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
 
-        // 1. Fetch pending invoices (AP/AR) -> Order by due date to apply FIFO if multiple
+        // 1. PHASE 0: Repair Orphaned Transactions (linked but stuck in 'pendiente')
+        console.log(`[RECONCILIATION] Phase 0: Checking for orphans...`)
+        const { data: orphans } = await supabase
+            .from('transacciones')
+            .select('id, monto, monto_usado')
+            .eq('organization_id', organizationId)
+            .not('movimiento_id', 'is', null)
+            .eq('estado', 'pendiente');
+
+        if (orphans && orphans.length > 0) {
+            console.log(`[RECONCILIATION] Found ${orphans.length} orphans. Synching state...`)
+            for (const orph of orphans) {
+                const total = Math.abs(Number(orph.monto));
+                const used = Number(orph.monto_usado || 0);
+                const isFullyUsed = used >= total - 0.05;
+
+                await supabase
+                    .from('transacciones')
+                    .update({ estado: isFullyUsed ? 'conciliado' : 'parcial' })
+                    .eq('id', orph.id)
+                    .eq('organization_id', organizationId);
+            }
+        }
+
+        // 2. Fetch pending invoices (AP/AR) -> Order by due date to apply FIFO if multiple
         const { data: pendingInvoices, error: invError } = await supabase
             .from('comprobantes')
             .select('*')
@@ -21,10 +45,10 @@ export class ReconciliationEngine {
 
         if (invError || !pendingInvoices || pendingInvoices.length === 0) {
             console.log(`[RECONCILIATION] No pending invoices found.`)
-            return { matched: 0, actions: [] }
+            return { matched: 0, actions: [], repaired: orphans?.length || 0 }
         }
 
-        // 2. Fetch unlinked bank transactions
+        // 3. Fetch unlinked bank transactions
         const { data: pendingTrans, error: transError } = await supabase
             .from('transacciones')
             .select('*')
@@ -33,7 +57,7 @@ export class ReconciliationEngine {
 
         if (transError || !pendingTrans || pendingTrans.length === 0) {
             console.log(`[RECONCILIATION] No unlinked transactions found.`)
-            return { matched: 0, actions: [] }
+            return { matched: 0, actions: [], repaired: orphans?.length || 0 }
         }
 
         // 3. Fetch Trust Ledger
