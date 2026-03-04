@@ -174,7 +174,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             const { data: instruments, error: insError } = await supabase
                 .from('instrumentos_pago')
-                .select('*, movimientos_tesoreria(*, entidades(razon_social))')
+                .select('*, movimientos_tesoreria(*, entidades(razon_social), aplicaciones_pago(comprobantes(numero, tipo)))')
                 .eq('organization_id', orgId)
                 .lte('monto', txAmount * 1.2) // Increased tolerance to 20% for manual suggestions
 
@@ -211,7 +211,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             numero: ins.movimientos_tesoreria?.numero,
                             entidad: ins.movimientos_tesoreria?.entidad_id,
                             razonSocial: ins.movimientos_tesoreria?.entidades?.razon_social,
-                            tipo: ins.movimientos_tesoreria?.tipo
+                            tipo: ins.movimientos_tesoreria?.tipo,
+                            aplicaciones: ins.movimientos_tesoreria?.aplicaciones_pago || []
                         })
                     }
                 })
@@ -1205,6 +1206,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                         <p className="text-[10px] text-gray-500">
                                                             Referencia: {mov.observaciones || 'Sin observaciones'} • Fecha: {new Date(mov.fecha).toLocaleDateString()}
                                                         </p>
+                                                        {mov.aplicaciones && mov.aplicaciones.length > 0 && (
+                                                            <p className="text-[10px] text-emerald-600 font-bold mt-1">
+                                                                Aplica a: {mov.aplicaciones.map((a: any) => a.comprobantes?.numero).filter(Boolean).join(', ')}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="text-right">

@@ -48,7 +48,7 @@ export class ReconciliationEngine {
         // 2.b Fetch pending movements (Receipts/OPs)
         const { data: pendingMovements } = await supabase
             .from('instrumentos_pago')
-            .select('*, movimientos_tesoreria(*, entidades(*))')
+            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(numero)))')
             .eq('organization_id', organizationId)
             .in('estado', ['pendiente', 'parcial'])
             .order('fecha_disponibilidad', { ascending: true });
@@ -171,14 +171,54 @@ export class ReconciliationEngine {
 
                     if (!amountMatches) return false;
 
+                    const mov = m.movimientos_tesoreria;
+                    const movEntidad = mov?.entidades;
+
+                    // Verificamos si hay referencias cruzadas de factura en la descripcion del banco
+                    let hasReferenceMatch = false;
+                    const descUpper = (trans.descripcion || '').toUpperCase();
+
+                    // 1. Check aplicaciones_pago for invoice numbers
+                    if (mov?.aplicaciones_pago && Array.isArray(mov.aplicaciones_pago)) {
+                        for (const app of mov.aplicaciones_pago) {
+                            const compNum = app.comprobantes?.numero; // ej: 'FAC-A-0001-1234'
+                            if (compNum) {
+                                // Extract the meaningful part of the invoice (last digits, ignoring zeros)
+                                const parts = compNum.split('-');
+                                const lastPart = parts[parts.length - 1]; // '1234'
+                                if (lastPart && lastPart.length >= 3) {
+                                    const regex = new RegExp(`\\b0*${Number(lastPart)}\\b`); // match 1234, 01234, 001234
+                                    if (regex.test(descUpper) || descUpper.includes(lastPart)) {
+                                        hasReferenceMatch = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 2. Check observaciones del movimiento (fallback manual)
+                    if (!hasReferenceMatch && mov?.observaciones) {
+                        const obsMatch = mov.observaciones.match(/[A-Z]+-?\d{1,4}-?(\d{4,8})/); // Catch patterns like FAC-0001-1234
+                        if (obsMatch && obsMatch[1]) {
+                            const lastPart = obsMatch[1];
+                            const numericVal = Number(lastPart);
+                            const regex = new RegExp(`\\b0*${numericVal}\\b`);
+                            if (numericVal > 0 && (regex.test(descUpper) || descUpper.includes(lastPart))) {
+                                hasReferenceMatch = true;
+                            }
+                        }
+                    }
+
+                    // Si hay match por referencia de factura Y el monto coincide, es MATCH SEGURO Nivel 0 (Absoluto)
+                    if (hasReferenceMatch) {
+                        return true;
+                    }
+
                     // Si los montos coinciden exactamente para un Recibo/OP, lo consideramos un match seguro 
                     // ya que el administrativo cargó el monto explícito para esta operación bancaria.
                     // Relajamos la restricción estricta de CUIT vs texto para evitar falsos negativos
-                    // en cobros/pagos por terceros o nombres ligeramente distintos.
-
-                    const movEntidad = m.movimientos_tesoreria?.entidades;
                     if (txCuitNormalized && movEntidad?.cuit) {
-                        // Si ambos CUITs existen y son distintos, advertimos pero NO bloqueamos
                         if (normalizeCuit(movEntidad.cuit) !== txCuitNormalized) {
                             console.warn(`[RECON_MATCH_WARN] Amount matches, but CUIT differs for Mov ${m.id}. Tx: ${txCuitNormalized}, Mov: ${normalizeCuit(movEntidad.cuit)}. Accepting anyway due to Architect Pivot.`);
                         }

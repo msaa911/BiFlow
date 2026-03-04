@@ -382,6 +382,7 @@ export async function POST(request: Request) {
                             fecha: t.fecha,
                             monto_total: Math.abs(t.monto),
                             moneda: t.moneda || 'ARS',
+                            observaciones: t.concepto,
                             metadata: { ...(t.metadata || {}), raw_row: t.raw, import_type: uploadContext, archivo_importacion_id: importId }
                         }))
 
