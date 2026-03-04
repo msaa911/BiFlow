@@ -119,20 +119,38 @@ export class ReconciliationEngine {
             const normalizeCuit = (cuit: string | undefined | null) => cuit ? cuit.replace(/\D/g, '') : '';
             const txCuitNormalized = normalizeCuit(trans.cuit);
 
-            // Funnel
+            // Funnel - Intentamos determinar el nivel de confianza y restringir las facturas
+            // pero si algo falla, no queremos perder un posible match por monto exacto.
+            let fallbackInvoices = [...targetInvoices];
+
             if (txCuitNormalized) {
-                targetInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === txCuitNormalized);
-                matchLevel = 1;
+                const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === txCuitNormalized);
+                if (exactCuitInvoices.length > 0) {
+                    targetInvoices = exactCuitInvoices;
+                    matchLevel = 1;
+                }
             } else if (trans.metadata?.cbu && trustLedgerMap.has(trans.metadata.cbu)) {
                 const deducedCuit = normalizeCuit(trustLedgerMap.get(trans.metadata.cbu));
-                targetInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === deducedCuit);
-                matchLevel = 2;
+                const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === deducedCuit);
+                if (exactCuitInvoices.length > 0) {
+                    targetInvoices = exactCuitInvoices;
+                    matchLevel = 2;
+                }
             } else {
                 const fuzzyClientCuit = this.findClientByFuzzy(trans.descripcion || '', targetInvoices);
                 if (fuzzyClientCuit) {
-                    targetInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === normalizeCuit(fuzzyClientCuit));
-                    matchLevel = 3;
+                    const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === normalizeCuit(fuzzyClientCuit));
+                    if (exactCuitInvoices.length > 0) {
+                        targetInvoices = exactCuitInvoices;
+                        matchLevel = 3;
+                    }
                 }
+            }
+
+            // Si el funnel filtró TODO y nos quedamos en cero, restauramos las facturas iniciales para intentar match exacto por monto.
+            if (targetInvoices.length === 0) {
+                targetInvoices = fallbackInvoices;
+                matchLevel = 4;
             }
 
             let finalMatch: any[] | null = null;
@@ -153,20 +171,20 @@ export class ReconciliationEngine {
 
                     if (!amountMatches) return false;
 
-                    // Deep Match: CUIT or Name
+                    // Si los montos coinciden exactamente para un Recibo/OP, lo consideramos un match seguro 
+                    // ya que el administrativo cargó el monto explícito para esta operación bancaria.
+                    // Relajamos la restricción estricta de CUIT vs texto para evitar falsos negativos
+                    // en cobros/pagos por terceros o nombres ligeramente distintos.
+
                     const movEntidad = m.movimientos_tesoreria?.entidades;
                     if (txCuitNormalized && movEntidad?.cuit) {
-                        return normalizeCuit(movEntidad.cuit) === txCuitNormalized;
+                        // Si ambos CUITs existen y son distintos, advertimos pero NO bloqueamos
+                        if (normalizeCuit(movEntidad.cuit) !== txCuitNormalized) {
+                            console.warn(`[RECON_MATCH_WARN] Amount matches, but CUIT differs for Mov ${m.id}. Tx: ${txCuitNormalized}, Mov: ${normalizeCuit(movEntidad.cuit)}. Accepting anyway due to Architect Pivot.`);
+                        }
                     }
 
-                    // Fuzzy Desc
-                    const razonSocial = movEntidad?.razon_social?.toLowerCase();
-                    if (razonSocial && trans.descripcion) {
-                        const words = razonSocial.split(' ').filter((w: string) => w.length > 3);
-                        return words.length > 0 && trans.descripcion.toLowerCase().includes(words[0]);
-                    }
-
-                    return true; // Amount matches and no CUIT mismatch found
+                    return true; // Amount matches -> it's a match
                 });
 
                 if (movementMatch) {
