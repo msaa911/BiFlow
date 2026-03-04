@@ -195,16 +195,27 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     if (filteredMovs.length > 0) unlinkedMovs = filteredMovs
                 }
 
-                setSuggestedMovements(unlinkedMovs.map(ins => ({
-                    id: ins.movimiento_id,
-                    fecha: ins.movimientos_tesoreria?.fecha,
-                    monto: ins.monto,
-                    observaciones: ins.movimientos_tesoreria?.observaciones,
-                    numero: ins.movimientos_tesoreria?.numero,
-                    entidad: ins.movimientos_tesoreria?.entidad_id,
-                    razonSocial: ins.movimientos_tesoreria?.entidades?.razon_social,
-                    tipo: ins.movimientos_tesoreria?.tipo
-                })))
+                // De-duplicate: A movement (movimiento_tesoreria) can have multiple instruments or applications
+                // We only want to show it once.
+                const uniqueMovs = new Map()
+                unlinkedMovs.forEach(ins => {
+                    if (!uniqueMovs.has(ins.movimiento_id)) {
+                        uniqueMovs.set(ins.movimiento_id, {
+                            id: ins.movimiento_id,
+                            fecha: ins.movimientos_tesoreria?.fecha,
+                            monto: ins.monto,
+                            observaciones: ins.movimientos_tesoreria?.observaciones,
+                            numero: ins.movimientos_tesoreria?.numero,
+                            entidad: ins.movimientos_tesoreria?.entidad_id,
+                            razonSocial: ins.movimientos_tesoreria?.entidades?.razon_social,
+                            tipo: ins.movimientos_tesoreria?.tipo
+                        })
+                    }
+                })
+
+                setSuggestedMovements(Array.from(uniqueMovs.values()))
+            } else {
+                setSuggestedMovements([]) // Clear if no instruments found
             }
 
             // 3. Fetch AI Suggestions
@@ -820,6 +831,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 <div>
                     <CardTitle className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-500" />
+                        AUDITORÍA DE BANCOS <span className="text-[10px] bg-red-500 text-white px-1 rounded animate-pulse ml-2">v3.2 ACTIVE</span>
                     </CardTitle>
                     <p className="text-xs text-gray-400 mt-1">Movimientos bancarios pendientes de vinculación con comprobantes.</p>
                 </div>
@@ -1471,7 +1483,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
                             <PlusCircle className="w-5 h-5 text-emerald-500" />
-                            Carga Rápida de Comprobante
+                            Carga Rápida de Comprobante <span className="text-[10px] bg-red-500 text-white px-1 rounded animate-pulse">v3.2</span>
                         </DialogTitle>
                         <DialogDescription className="text-gray-400">
                             Crea la factura y su {selectedTx?.monto ? (selectedTx.monto < 0 ? 'Orden de Pago' : 'Recibo') : 'documento'} en un solo paso.

@@ -21,7 +21,7 @@ export class ReconciliationEngine {
             .not('movimiento_id', 'is', null)
             .eq('estado', 'pendiente');
 
-        if (orphans && orphans.length > 0) {
+        if (!dryRun && orphans && orphans.length > 0) {
             console.log(`[RECONCILIATION] Found ${orphans.length} orphans. Synching state...`)
             for (const orph of orphans) {
                 const total = Math.abs(Number(orph.monto));
@@ -211,6 +211,20 @@ export class ReconciliationEngine {
                 }
 
                 try {
+                    // IDEMPOTENCY CHECK: Refresh transaction status from origin before writing
+                    const { data: currentTx } = await adminSupabase
+                        .from('transacciones')
+                        .select('movimiento_id, estado, monto_usado')
+                        .eq('id', trans.id)
+                        .single();
+
+                    if (!currentTx || currentTx.movimiento_id || currentTx.estado === 'conciliado') {
+                        console.log(`[RECONCILIATION] Skipping trans ${trans.id} - already processed by concurrent request.`);
+                        continue;
+                    }
+
+                    const previouslyUsedRefreshed = Number(currentTx.monto_usado || 0);
+
                     // CASE 1: MATCH WITH EXISTING MOVEMENT
                     if (finalMovementMatch) {
                         const movId = finalMovementMatch.movimiento_id;
@@ -222,7 +236,7 @@ export class ReconciliationEngine {
                             .eq('id', finalMovementMatch.id);
 
                         // 2. Link Transaction
-                        const newMontoUsado = previouslyUsed + availableTransAmount;
+                        const newMontoUsado = previouslyUsedRefreshed + availableTransAmount;
                         const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05;
 
                         await adminSupabase
