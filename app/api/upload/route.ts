@@ -359,44 +359,81 @@ export async function POST(request: Request) {
                         }
                     }
 
-                    // DUPLICATE PREVENTION: Fetch existing treasury movements to filter
-                    const { data: existingMovs } = await currentSupabase
-                        .from('movimientos_tesoreria')
-                        .select('numero, tipo')
-                        .eq('organization_id', orgId)
+                    // GROUPING LOGIC FOR MIXED PAYMENTS (MULTI-INSTRUMENT)
+                    // If multiple rows have the same number, they belong to the same movement
+                    const groupedByNum: Record<string, any[]> = {}
+                    const ungrouped: any[] = []
 
-                    const existMovSet = new Set(existingMovs?.map((e: any) => `${e.tipo}_${e.numero}`) || []);
+                    transactionsWithLink.forEach(t => {
+                        if (t.numero) {
+                            if (!groupedByNum[t.numero]) groupedByNum[t.numero] = []
+                            groupedByNum[t.numero].push(t)
+                        } else {
+                            ungrouped.push(t)
+                        }
+                    })
 
-                    const movements = transactionsWithLink
-                        .filter((t: any) => {
-                            const num = t.numero || (isCobro ? 'REC' : 'OP') + '-' + Math.random().toString(36).substring(7).toUpperCase()
-                            const tipo = isCobro ? 'cobro' : 'pago'
-                            // Only check duplicates if Numero is provided in file
-                            return !t.numero || !existMovSet.has(`${tipo}_${t.numero}`)
-                        })
-                        .map((t: any) => ({
+                    // Prepare consolidated movements
+                    const movementsToInsert: any[] = []
+                    const instrumentDataMap: any[] = [] // Temporary map to link instruments after insert
+
+                    // Process grouped
+                    Object.keys(groupedByNum).forEach(num => {
+                        const rows = groupedByNum[num]
+                        const totalMonto = rows.reduce((acc, r) => acc + Math.abs(r.monto), 0)
+                        const firstRow = rows[0]
+
+                        movementsToInsert.push({
                             organization_id: orgId,
-                            entidad_id: t.entidad_id || null, // Ensure entidad_id is mapped
+                            entidad_id: firstRow.entidad_id || null,
                             tipo: isCobro ? 'cobro' : 'pago',
-                            numero: t.numero || (isCobro ? 'REC' : 'OP') + '-' + Math.random().toString(36).substring(7).toUpperCase(),
+                            numero: num,
+                            fecha: firstRow.fecha,
+                            monto_total: totalMonto,
+                            moneda: firstRow.moneda || 'ARS',
+                            observaciones: rows.map(r => r.concepto).filter((v, i, a) => a.indexOf(v) === i).join(' | '),
+                            metadata: {
+                                raw_rows: rows.map(r => r.raw),
+                                import_type: uploadContext,
+                                archivo_importacion_id: importId,
+                                is_mixed_payment: rows.length > 1
+                            }
+                        })
+                        instrumentDataMap.push(rows)
+                    })
+
+                    // Process ungrouped (one-to-one)
+                    ungrouped.forEach(t => {
+                        const num = (isCobro ? 'REC' : 'OP') + '-' + Math.random().toString(36).substring(7).toUpperCase()
+                        movementsToInsert.push({
+                            organization_id: orgId,
+                            entidad_id: t.entidad_id || null,
+                            tipo: isCobro ? 'cobro' : 'pago',
+                            numero: num,
                             fecha: t.fecha,
                             monto_total: Math.abs(t.monto),
                             moneda: t.moneda || 'ARS',
                             observaciones: t.concepto,
-                            metadata: { ...(t.metadata || {}), raw_row: t.raw, import_type: uploadContext, archivo_importacion_id: importId }
-                        }))
+                            metadata: {
+                                raw_row: t.raw,
+                                import_type: uploadContext,
+                                archivo_importacion_id: importId
+                            }
+                        })
+                        instrumentDataMap.push([t])
+                    })
 
-                    uniqueCount = movements.length
+                    uniqueCount = movementsToInsert.length
 
                     let insertedMovs: any[] = []
-                    if (movements.length > 0) {
+                    if (movementsToInsert.length > 0) {
                         const { data, error: movsError } = await currentSupabase
                             .from('movimientos_tesoreria')
-                            .insert(movements)
+                            .insert(movementsToInsert)
                             .select()
 
                         if (movsError) {
-                            console.error('[UPLOAD] [TREASURY] Movs Insert Error:', movsError)
+                            console.error('[UPLOAD] [TREASURY] Grouped Movs Insert Error:', movsError)
                             throw new Error(`Error insertion treasury movements: ${movsError.message}`)
                         }
                         insertedMovs = data || []
@@ -404,28 +441,35 @@ export async function POST(request: Request) {
 
                     // Create Instruments for each movement
                     if (insertedMovs.length > 0) {
-                        const instruments = insertedMovs.map((m: any, idx: number) => {
-                            const raw = transactionsWithLink[idx]
-                            return {
-                                movimiento_id: m.id,
-                                metodo: raw.metadata?.metodo || (isCobro ? 'transferencia' : 'cheque_propio'),
-                                monto: m.monto_total,
-                                banco: raw.banco || raw.metadata?.banco || null,
-                                fecha_disponibilidad: raw.vencimiento || raw.fecha,
-                                referencia: raw.numero_cheque || raw.metadata?.referencia || null,
-                                estado: 'pendiente'
-                            }
+                        const instrumentsToInsert: any[] = []
+
+                        insertedMovs.forEach((m, idx) => {
+                            const originalRows = instrumentDataMap[idx]
+                            originalRows.forEach((rawRow: any) => {
+                                instrumentsToInsert.push({
+                                    organization_id: orgId,
+                                    movimiento_id: m.id,
+                                    metodo: rawRow.metadata?.metodo || (isCobro ? 'transferencia' : 'cheque_propio'),
+                                    monto: Math.abs(rawRow.monto),
+                                    banco: rawRow.banco || rawRow.metadata?.banco || null,
+                                    fecha_disponibilidad: rawRow.vencimiento || rawRow.fecha,
+                                    referencia: rawRow.numero_cheque || rawRow.metadata?.referencia || null,
+                                    estado: 'pendiente'
+                                })
+                            })
                         })
 
-                        const { error: insError } = await currentSupabase
-                            .from('instrumentos_pago')
-                            .insert(instruments)
+                        if (instrumentsToInsert.length > 0) {
+                            const { error: insError } = await currentSupabase
+                                .from('instrumentos_pago')
+                                .insert(instrumentsToInsert)
 
-                        if (insError) {
-                            console.error('[UPLOAD] [TREASURY] Instruments Insert Error:', insError)
-                            // We don't throw fatal here because movements were inserted, but it's bad.
+                            if (insError) {
+                                console.error('[UPLOAD] [TREASURY] Instruments Insert Error:', insError)
+                            }
                         }
                     }
+
                 }
             } else {
                 // DEFAULT: BANK TRANSACTIONS

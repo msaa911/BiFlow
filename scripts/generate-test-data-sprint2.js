@@ -300,6 +300,76 @@ banco.push({
     banco: 'Banco Galicia'
 });
 
+// --- CASO COMPLEJO: PAGO MIXTO Y MULTI-FACTURA (Estandar AFIP) ---
+(function () {
+    const specialClient = clientes[0];
+    const fac1Num = `FAC-A-0001-${String(idVentas++).padStart(8, '0')}`;
+    const fac2Num = `FAC-A-0001-${String(idVentas++).padStart(8, '0')}`;
+
+    ventas.push({
+        fecha: formatDate(new Date(2026, 0, 15)),
+        numero: fac1Num,
+        concepto: `Factura de Consultoría A`,
+        cuit: specialClient.cuit,
+        razon_social: specialClient.razon,
+        monto: 100000,
+        vencimiento: formatDate(new Date(2026, 0, 30)),
+        moneda: 'ARS'
+    });
+
+    ventas.push({
+        fecha: formatDate(new Date(2026, 0, 16)),
+        numero: fac2Num,
+        concepto: `Factura de Consultoría B`,
+        cuit: specialClient.cuit,
+        razon_social: specialClient.razon,
+        monto: 150000,
+        vencimiento: formatDate(new Date(2026, 0, 31)),
+        moneda: 'ARS'
+    });
+
+    const mixedReciboNum = `0001-${String(idRecibos++).padStart(8, '0')}`;
+    const commonDate = new Date(2026, 1, 5);
+
+    // Instrumento 1: Transferencia al Banco (Aparecerá en el extracto)
+    recibos.push({
+        fecha: formatDate(commonDate),
+        recibo: mixedReciboNum,
+        cliente: specialClient.razon,
+        cuit: specialClient.cuit,
+        importe: 125000,
+        medio: 'Transferencia',
+        banco: 'Banco Galicia',
+        referencia: 'TRF-MIXED-123',
+        observaciones: `Aplica a ${fac1Num} y ${fac2Num}`
+    });
+
+    // Instrumento 2: Efectivo (No aparecerá en el banco, queda en caja)
+    recibos.push({
+        fecha: formatDate(commonDate),
+        recibo: mixedReciboNum,
+        cliente: specialClient.razon,
+        cuit: specialClient.cuit,
+        importe: 125000,
+        medio: 'Efectivo',
+        banco: '',
+        referencia: '',
+        observaciones: `Aplica a ${fac1Num} y ${fac2Num}`
+    });
+
+    // Entrada en banco por la transferencia del pago mixto
+    banco.push({
+        fechaRaw: commonDate,
+        fecha: formatDate(commonDate),
+        concepto: `Transferencia TRF-MIXED-123`,
+        debito: '',
+        credito: '125000.00',
+        cuit: '',
+        referencia: '',
+        banco: ''
+    });
+})();
+
 // Sort Bank by Date and Recalculate Saldos sequentially
 banco.sort((a, b) => a.fechaRaw - b.fechaRaw);
 let currentBalance = saldoBancario;
