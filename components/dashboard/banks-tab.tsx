@@ -19,7 +19,7 @@ interface BanksTabProps {
 }
 
 const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+    return new Date(dateStr).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 export function BanksTab({ orgId, initialTransactions, pendingTransactions = [], onRefresh }: BanksTabProps) {
@@ -220,11 +220,11 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <table className="w-full text-left text-sm text-gray-400">
                             <thead className="bg-gray-800/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
-                                    <th className="px-6 py-4">Fecha</th>
+                                    <th className="px-6 py-4 w-40">Fecha</th>
                                     <th className="px-6 py-4">Descripción</th>
-                                    <th className="px-6 py-4">Estado</th>
-                                    <th className="px-6 py-4">Categoría</th>
-                                    <th className="px-6 py-4 text-right">Monto</th>
+                                    <th className="px-6 py-4 w-32">Estado</th>
+                                    <th className="px-6 py-4 w-40">Categoría</th>
+                                    <th className="px-6 py-4 text-right w-32">Monto</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
@@ -262,10 +262,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     })
                                     .map((t) => (
                                         <tr key={t.id} className="hover:bg-gray-800/50 transition-all group">
-                                            <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                                            <td className="px-6 py-4 whitespace-nowrap text-gray-300 w-40">
                                                 {formatDate(t.fecha)}
                                             </td>
-                                            <td className="px-6 py-4 text-white font-medium max-w-[300px] truncate">
+                                            <td className="px-6 py-4 text-white font-medium max-w-[500px] truncate">
                                                 {t.descripcion}
                                             </td>
                                             <td className="px-6 py-4">
