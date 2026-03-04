@@ -233,7 +233,8 @@ export class ReconciliationEngine {
                                     transaccion_id: trans.id
                                 }
                             })
-                            .eq('id', inv.id);
+                            .eq('id', inv.id)
+                            .eq('organization_id', organizationId);
 
                         if (invErr) {
                             console.error(`[RECON_ERROR] Failed Invoice Update for Inv ${inv.id}:`, invErr);
@@ -260,7 +261,8 @@ export class ReconciliationEngine {
                             monto_usado: newMontoUsado,
                             tags
                         })
-                        .eq('id', trans.id);
+                        .eq('id', trans.id)
+                        .eq('organization_id', organizationId);
 
                     if (txError) {
                         console.error(`[RECON_ERROR] Failed Transaccion Update for Tx ${trans.id}:`, txError);
@@ -282,7 +284,11 @@ export class ReconciliationEngine {
             } else {
                 // SUGGESTIONS OR ANOMALIES
                 if (anomalyFound && !dryRun) {
-                    await supabase.from('transacciones').update({ tags }).eq('id', trans.id);
+                    await supabase
+                        .from('transacciones')
+                        .update({ tags })
+                        .eq('id', trans.id)
+                        .eq('organization_id', organizationId);
                 }
 
                 if (finalMatch) {
