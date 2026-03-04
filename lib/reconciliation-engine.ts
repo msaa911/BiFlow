@@ -1,18 +1,20 @@
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 /**
- * RECONCILIATION ENGINE v2.0
+ * RECONCILIATION ENGINE v3.1
  * Purpose: Smart matching of bank transactions with pending treasury invoices.
  * Strategy: Funnel (Reduction) + Subset Sum (1-a-N).
  */
 export class ReconciliationEngine {
     static async matchAndReconcile(supabase: any, organizationId: string, options?: { dryRun?: boolean }) {
         const dryRun = options?.dryRun ?? false;
-        console.log(`[RECONCILIATION v3.0] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
+        const adminSupabase = createAdminClient();
+        console.log(`[RECONCILIATION v3.1] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
 
         // 1. PHASE 0: Repair Orphaned Transactions (linked but stuck in 'pendiente')
         console.log(`[RECONCILIATION] Phase 0: Checking for orphans...`)
-        const { data: orphans } = await supabase
+        const { data: orphans } = await adminSupabase
             .from('transacciones')
             .select('id, monto, monto_usado')
             .eq('organization_id', organizationId)
@@ -26,7 +28,7 @@ export class ReconciliationEngine {
                 const used = Number(orph.monto_usado || 0);
                 const isFullyUsed = used >= total - 0.05;
 
-                await supabase
+                await adminSupabase
                     .from('transacciones')
                     .update({ estado: isFullyUsed ? 'conciliado' : 'parcial' })
                     .eq('id', orph.id)
@@ -191,7 +193,7 @@ export class ReconciliationEngine {
                     }
 
                     // 1. Create Movimiento Tesoreria (Header)
-                    const { data: movimiento, error: movError } = await supabase
+                    const { data: movimiento, error: movError } = await adminSupabase
                         .from('movimientos_tesoreria')
                         .insert({
                             organization_id: organizationId,
@@ -211,7 +213,7 @@ export class ReconciliationEngine {
                     }
 
                     // 2. Create Instrument (The bank movement)
-                    const { error: insError } = await supabase
+                    const { error: insError } = await adminSupabase
                         .from('instrumentos_pago')
                         .insert({
                             movimiento_id: movimiento.id,
@@ -230,7 +232,7 @@ export class ReconciliationEngine {
 
                     // 3. Create Applications & Update Invoices
                     for (const inv of invoicesToApply) {
-                        const { error: appError } = await supabase
+                        const { error: appError } = await adminSupabase
                             .from('aplicaciones_pago')
                             .insert({
                                 movimiento_id: movimiento.id,
@@ -246,7 +248,7 @@ export class ReconciliationEngine {
                         const newPendiente = Number(inv.monto_pendiente) - inv.amountToApply;
                         const newEstado = newPendiente <= 0.05 ? 'pagado' : 'parcial';
 
-                        const { error: invErr } = await supabase
+                        const { error: invErr } = await adminSupabase
                             .from('comprobantes')
                             .update({
                                 monto_pendiente: Math.max(0, newPendiente),
@@ -277,7 +279,7 @@ export class ReconciliationEngine {
                     const newMontoUsado = previouslyUsed + totalAppliedInOperation;
                     const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05;
 
-                    const { error: txError } = await supabase
+                    const { error: txError } = await adminSupabase
                         .from('transacciones')
                         .update({
                             movimiento_id: movimiento.id,
@@ -293,13 +295,23 @@ export class ReconciliationEngine {
                         throw txError;
                     }
 
+                    // NUCLEAR VERIFICATION: Fetch row back to confirm state
+                    const { data: verifyRow } = await adminSupabase
+                        .from('transacciones')
+                        .select('estado, movimiento_id, monto_usado')
+                        .eq('id', trans.id)
+                        .single();
+
+                    console.log(`[RECON_VERIFY] Tx ${trans.id} -> State: ${verifyRow?.estado}, Mov: ${verifyRow?.movimiento_id}`);
+
                     matchedCount++;
                     results.push({
                         transId: trans.id,
                         monto: availableTransAmount,
                         movimientoId: movimiento.id,
                         level: matchLevel,
-                        auto: true
+                        auto: true,
+                        finalState: verifyRow?.estado
                     });
 
                 } catch (err: any) {
