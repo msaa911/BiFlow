@@ -262,159 +262,21 @@ export class ReconciliationEngine {
                         continue;
                     }
 
-                    // CASE 2: MATCH WITH INVOICES (Traditional Flow)
-                    if (!finalMatch || finalMatch.length === 0) throw new Error("Logic error: finalMatch is empty in Case 2");
-
-                    // 0. Get Entity ID (Mandatory for Movimiento)
-                    const { data: entity, error: entityErr } = await supabase
-                        .from('entidades')
-                        .select('id')
-                        .eq('organization_id', organizationId)
-                        .eq('cuit', finalMatch[0].cuit_socio)
-                        .single();
-
-                    if (!entity || entityErr) {
-                        console.error(`[RECON_ERROR] Entity not found for CUIT ${finalMatch[0].cuit_socio}:`, entityErr);
-                        throw new Error(`Entity not found for CUIT ${finalMatch[0].cuit_socio}`);
-                    }
-
-                    // Calculate actual allocation
-                    let remainingAvailableAmount = availableTransAmount;
-                    let totalAppliedInOperation = 0;
-
-                    const invoicesToApply = finalMatch.map(inv => {
-                        const amountToApply = Math.min(Number(inv.monto_pendiente), remainingAvailableAmount);
-                        remainingAvailableAmount -= amountToApply;
-                        totalAppliedInOperation += amountToApply;
-                        return { ...inv, amountToApply };
-                    }).filter(i => i.amountToApply > 0);
-
-                    if (totalAppliedInOperation <= 0) {
-                        console.warn(`[RECONCILIATION] Computed 0 total applied for trans ${trans.id}`);
+                    // CASE 2: MATCH WITH INVOICES (Traditional Flow - DEPRECATED)
+                    // PIVOT ARQUITECTÓNICO: Ya no creamos recibos/órdenes de pago automáticamente
+                    // basándonos solo en facturas. En su lugar, simplemente lo pasamos como sugerencia.
+                    if (finalMatch && finalMatch.length > 0) {
+                        console.log(`[RECONCILIATION] Pivot: Skipping auto-creation for invoice match on Tx ${trans.id}. Added as suggestion.`);
+                        results.push({
+                            transId: trans.id,
+                            transDesc: trans.descripcion,
+                            monto: availableTransAmount,
+                            invoiceIds: finalMatch.map(i => i.id),
+                            level: matchLevel,
+                            auto: false
+                        });
                         continue;
                     }
-
-                    // 1. Create Movimiento Tesoreria (Header)
-                    const { data: movimiento, error: movError } = await adminSupabase
-                        .from('movimientos_tesoreria')
-                        .insert({
-                            organization_id: organizationId,
-                            entidad_id: entity.id,
-                            tipo: isCobro ? 'cobro' : 'pago',
-                            fecha: trans.fecha,
-                            monto_total: totalAppliedInOperation,
-                            observaciones: `AUTO: ${trans.descripcion}`,
-                            metadata: { transaccion_id: trans.id, auto: true, level: matchLevel, partial: invoicesToApply.length > 1 }
-                        })
-                        .select()
-                        .single();
-
-                    if (movError) {
-                        console.error(`[RECON_ERROR] Failed Movimiento Insert:`, movError);
-                        throw movError;
-                    }
-
-                    // 2. Create Instrument (The bank movement)
-                    const { error: insError } = await adminSupabase
-                        .from('instrumentos_pago')
-                        .insert({
-                            movimiento_id: movimiento.id,
-                            metodo: 'transferencia',
-                            monto: totalAppliedInOperation,
-                            fecha_disponibilidad: trans.fecha,
-                            banco: trans.banco,
-                            referencia: trans.descripcion,
-                            estado: 'acreditado'
-                        });
-
-                    if (insError) {
-                        console.error(`[RECON_ERROR] Failed Instrument Insert:`, insError);
-                        throw insError;
-                    }
-
-                    // 3. Create Applications & Update Invoices
-                    for (const inv of invoicesToApply) {
-                        const { error: appError } = await adminSupabase
-                            .from('aplicaciones_pago')
-                            .insert({
-                                movimiento_id: movimiento.id,
-                                comprobante_id: inv.id,
-                                monto_aplicado: inv.amountToApply
-                            });
-
-                        if (appError) {
-                            console.error(`[RECON_ERROR] Failed Aplicacion Insert for Inv ${inv.id}:`, appError);
-                            throw appError;
-                        }
-
-                        const newPendiente = Number(inv.monto_pendiente) - inv.amountToApply;
-                        const newEstado = newPendiente <= 0.05 ? 'pagado' : 'parcial';
-
-                        const { error: invErr } = await adminSupabase
-                            .from('comprobantes')
-                            .update({
-                                monto_pendiente: Math.max(0, newPendiente),
-                                estado: newEstado,
-                                metadata: {
-                                    ...(inv.metadata || {}),
-                                    last_auto_reconciled: new Date().toISOString(),
-                                    transaccion_id: trans.id
-                                }
-                            })
-                            .eq('id', inv.id)
-                            .eq('organization_id', organizationId);
-
-                        if (invErr) {
-                            console.error(`[RECON_ERROR] Failed Invoice Update for Inv ${inv.id}:`, invErr);
-                            throw invErr;
-                        }
-
-                        // Update local pendingInvoices to avoid double-dipping in the same run
-                        const localInv = pendingInvoices.find((i: any) => i.id === inv.id);
-                        if (localInv) {
-                            localInv.monto_pendiente = Math.max(0, newPendiente);
-                            localInv.estado = newEstado;
-                        }
-                    }
-
-                    // 4. Update Bank Transaction
-                    const newMontoUsado = previouslyUsed + totalAppliedInOperation;
-                    const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05;
-
-                    const { error: txError } = await adminSupabase
-                        .from('transacciones')
-                        .update({
-                            movimiento_id: movimiento.id,
-                            estado: isFullyUsed ? 'conciliado' : 'parcial',
-                            monto_usado: newMontoUsado,
-                            tags
-                        })
-                        .eq('id', trans.id)
-                        .eq('organization_id', organizationId);
-
-                    if (txError) {
-                        console.error(`[RECON_ERROR] Failed Transaccion Update for Tx ${trans.id}:`, txError);
-                        throw txError;
-                    }
-
-                    // NUCLEAR VERIFICATION: Fetch row back to confirm state
-                    const { data: verifyRow } = await adminSupabase
-                        .from('transacciones')
-                        .select('estado, movimiento_id, monto_usado')
-                        .eq('id', trans.id)
-                        .single();
-
-                    console.log(`[RECON_VERIFY] Tx ${trans.id} -> State: ${verifyRow?.estado}, Mov: ${verifyRow?.movimiento_id}`);
-
-                    matchedCount++;
-                    results.push({
-                        transId: trans.id,
-                        monto: availableTransAmount,
-                        movimientoId: movimiento.id,
-                        level: matchLevel,
-                        auto: true,
-                        finalState: verifyRow?.estado
-                    });
 
                 } catch (err: any) {
                     console.error(`[RECONCILIATION] Failed to execute circuit for trans ${trans.id}:`, err.message);
