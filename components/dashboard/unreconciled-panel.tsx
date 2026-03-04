@@ -58,6 +58,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [loadingInvoices, setLoadingInvoices] = useState(false)
     const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
     const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
+    const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
+    const [residualCategory, setResidualCategory] = useState('Gastos Bancarios')
 
     // Quick Load States
     const [isQuickLoading, setIsQuickLoading] = useState(false)
@@ -353,7 +355,94 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 if (invError) throw invError
             }
 
-            // 6. Update Bank Transaction
+            // 6. Handle Residual (If requested)
+            if (processResidualAsGasto && Math.abs(remainingBankToApply) > 0.05) {
+                const residualAmount = Math.abs(remainingBankToApply)
+                const isIngreso = selectedTx.monto > 0
+                const claseDoc = isIngreso ? 'NCB' : 'NDB'
+                const voucherType = isIngreso ? 'ncb_bancaria' : 'ndb_bancaria'
+
+                // 6.1. Ensure "Gastos Varios / Banco" entity exists
+                let { data: expEntity } = await supabase
+                    .from('entidades')
+                    .select('id, cuit, razon_social')
+                    .eq('organization_id', orgId)
+                    .eq('razon_social', 'Gastos Varios / Otros')
+                    .maybeSingle()
+
+                if (!expEntity) {
+                    const { data: newEntity } = await supabase
+                        .from('entidades')
+                        .insert({
+                            organization_id: orgId,
+                            razon_social: 'Gastos Varios / Otros',
+                            cuit: '00000000000',
+                            categoria: 'proveedor'
+                        })
+                        .select()
+                        .single()
+                    expEntity = newEntity
+                }
+
+                if (expEntity) {
+                    // 6.2 Create NDB/NCB for the residual
+                    const { data: resMov } = await supabase
+                        .from('movimientos_tesoreria')
+                        .insert({
+                            organization_id: orgId,
+                            entidad_id: expEntity.id,
+                            tipo: isIngreso ? 'cobro' : 'pago',
+                            clase_documento: claseDoc,
+                            categoria: residualCategory,
+                            fecha: selectedTx.fecha,
+                            monto_total: residualAmount,
+                            observaciones: `[${claseDoc}] AJUSTE RESIDUAL CONCILIACIÓN: ${selectedTx.descripcion}`,
+                            metadata: { transaccion_id: selectedTx.id, is_residual: true }
+                        })
+                        .select()
+                        .single()
+
+                    if (resMov) {
+                        const { data: resVoucher } = await supabase
+                            .from('comprobantes')
+                            .insert({
+                                organization_id: orgId,
+                                entidad_id: expEntity.id,
+                                tipo: voucherType,
+                                numero: resMov.numero,
+                                cuit_socio: expEntity.cuit,
+                                razon_social_socio: expEntity.razon_social,
+                                fecha_emision: selectedTx.fecha,
+                                fecha_vencimiento: selectedTx.fecha,
+                                monto_total: residualAmount,
+                                monto_pendiente: 0,
+                                estado: 'pagado'
+                            })
+                            .select()
+                            .single()
+
+                        if (resVoucher) {
+                            await supabase.from('aplicaciones_pago').insert({
+                                movimiento_id: resMov.id,
+                                comprobante_id: resVoucher.id,
+                                monto_aplicado: residualAmount
+                            })
+
+                            await supabase.from('instrumentos_pago').insert({
+                                movimiento_id: resMov.id,
+                                metodo: 'transferencia',
+                                monto: residualAmount,
+                                fecha_disponibilidad: selectedTx.fecha,
+                                referencia: `AJUSTE: ${selectedTx.descripcion}`,
+                                estado: 'acreditado'
+                            })
+                        }
+                    }
+                    totalAppliedInOperation += residualAmount
+                }
+            }
+
+            // 7. Update Bank Transaction
             const newMontoUsado = previouslyUsed + totalAppliedInOperation
             const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05
 
@@ -916,6 +1005,72 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             )}
                         </div>
                     </div>
+
+                    {/* Summary and Residual Assistant */}
+                    {selectedInvoiceIds.length > 0 && selectedTx && (
+                        <div className="mt-4 p-4 bg-gray-900/60 border border-gray-800 rounded-xl animate-in slide-in-from-bottom-2 duration-300">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Resumen de Selección</p>
+                                    <div className="flex items-center gap-4">
+                                        <div>
+                                            <p className="text-[10px] text-gray-400">Banco</p>
+                                            <p className="text-sm font-bold text-white">
+                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(availableAmount)}
+                                            </p>
+                                        </div>
+                                        <div className="text-gray-700">-</div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-400">Seleccionado</p>
+                                            <p className="text-sm font-bold text-blue-400">
+                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
+                                                    availableInvoices.filter(i => selectedInvoiceIds.includes(i.id)).reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {Math.abs(availableAmount - availableInvoices.filter(i => selectedInvoiceIds.includes(i.id)).reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)) > 0.05 && (
+                                    <div className="text-right">
+                                        <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">Diferencia (Residual)</p>
+                                        <p className="text-sm font-black text-amber-500">
+                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
+                                                availableAmount - availableInvoices.filter(i => selectedInvoiceIds.includes(i.id)).reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Residual Assistant UI */}
+                            {Math.abs(availableAmount - availableInvoices.filter(i => selectedInvoiceIds.includes(i.id)).reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)) > 0.05 && (
+                                <div className="pt-3 border-t border-gray-800 flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <div
+                                            onClick={() => setProcessResidualAsGasto(!processResidualAsGasto)}
+                                            className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-colors ${processResidualAsGasto ? 'bg-amber-500 border-amber-500' : 'border-gray-600 bg-gray-950'}`}
+                                        >
+                                            {processResidualAsGasto && <Check className="w-3 h-3 text-black font-bold" />}
+                                        </div>
+                                        <span className="text-[10px] text-gray-300 font-bold uppercase cursor-pointer" onClick={() => setProcessResidualAsGasto(!processResidualAsGasto)}>
+                                            Liquidar diferencia como gasto bancario
+                                        </span>
+                                    </div>
+
+                                    {processResidualAsGasto && (
+                                        <select
+                                            value={residualCategory}
+                                            onChange={(e) => setResidualCategory(e.target.value)}
+                                            className="bg-gray-950 border border-gray-800 rounded h-7 px-2 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                        >
+                                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <DialogFooter className="flex justify-between items-center w-full mt-4">
                         <Button
