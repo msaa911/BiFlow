@@ -29,6 +29,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     const [realBalance, setRealBalance] = useState(0)
     const [loading, setLoading] = useState(true)
     const [reconciling, setReconciling] = useState(false)
+    const [cleaning, setCleaning] = useState(false)
     const supabase = createClient()
 
     async function fetchData() {
@@ -122,6 +123,27 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         }
     }
 
+    const handleCleanup = async () => {
+        if (!confirm('¿Seguro quieres eliminar los duplicados de Recibos/OP? Se recalcularán los saldos de las facturas para asegurar que el balance sea el correcto.')) return;
+
+        setCleaning(true)
+        try {
+            const res = await fetch('/api/maintenance/cleanup')
+            const data = await res.json()
+            if (res.ok) {
+                alert(`¡Éxito! Se eliminaron ${data.deletedMovements} movimientos duplicados y se recalcularon los saldos de ${data.recalculatedInvoices} facturas.`)
+                await fetchData()
+            } else {
+                alert('No se pudieron limpiar los duplicados: ' + (data.error || 'Error desconocido'))
+            }
+        } catch (error) {
+            console.error('Cleanup failed:', error)
+            alert('Error al ejecutar la limpieza masiva.')
+        } finally {
+            setCleaning(false)
+        }
+    }
+
     const initialBalancesSum = bankAccounts.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0)
 
     const totalAR = invoices
@@ -149,17 +171,30 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 Cruce de extractos vs Ingresos/Egresos
                             </p>
                         </div>
-                        <button
-                            onClick={handleReconcile}
-                            disabled={reconciling}
-                            className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-md ${reconciling
-                                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
-                                }`}
-                        >
-                            <TrendingUp className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
-                            {reconciling ? 'Procesando...' : 'Conciliación'}
-                        </button>
+                        <div className="flex flex-col gap-2 w-full">
+                            <button
+                                onClick={handleReconcile}
+                                disabled={reconciling || cleaning}
+                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-md ${reconciling
+                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
+                                    }`}
+                            >
+                                <TrendingUp className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
+                                {reconciling ? 'Procesando...' : 'Conciliación'}
+                            </button>
+                            <button
+                                onClick={handleCleanup}
+                                disabled={cleaning || reconciling}
+                                className={`flex items-center justify-center w-full gap-2 px-4 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all border ${cleaning
+                                    ? 'bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed'
+                                    : 'border-red-500/30 text-red-400 hover:bg-red-500/10 active:scale-95'
+                                    }`}
+                            >
+                                <AlertCircle className={`w-3 h-3 ${cleaning ? 'animate-pulse' : ''}`} />
+                                {cleaning ? 'Limpiando...' : 'Limpiar Duplicados'}
+                            </button>
+                        </div>
                     </div>
                 </Card>
 
