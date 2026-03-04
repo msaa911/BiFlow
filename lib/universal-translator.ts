@@ -11,7 +11,7 @@ export interface Transaction {
     nro_factura?: string;
     nro_comprobante?: string;
     vencimiento?: string | null;
-    referencia?: string;
+    detalle_referencia?: string;
     tipo: 'ingreso' | 'egreso' | 'factura_venta' | 'factura_compra' | 'DEBITO' | 'CREDITO';
     tags?: string[];
     raw?: any[];
@@ -321,7 +321,7 @@ export class UniversalTranslator {
                     razon_social: idx.razon_social !== -1 ? row[idx.razon_social] : '',
                     banco: idx.banco !== -1 ? row[idx.banco] : '',
                     // numero_cheque and cbu are now part of metadata or handled via nro_comprobante / referencia
-                    referencia: referencia || undefined,
+                    detalle_referencia: referencia || undefined,
                     vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
                     nro_factura: idx.nro_factura !== -1 ? row[idx.nro_factura] : undefined,
                     tipo: tipo,

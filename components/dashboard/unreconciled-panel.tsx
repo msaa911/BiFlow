@@ -312,7 +312,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     metodo: 'transferencia',
                     monto: Math.abs(selectedTx.monto),
                     fecha_disponibilidad: selectedTx.fecha,
-                    referencia: selectedTx.descripcion,
+                    detalle_referencia: selectedTx.descripcion,
                     estado: 'acreditado'
                 })
 
@@ -465,7 +465,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     metodo: 'transferencia',
                     monto: totalAppliedFromBank,
                     fecha_disponibilidad: selectedTx.fecha,
-                    referencia: selectedTx.descripcion,
+                    detalle_referencia: selectedTx.descripcion,
                     estado: 'acreditado'
                 })
 
@@ -481,7 +481,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                         monto: secondaryAmount,
                         fecha_disponibilidad: selectedTx.fecha,
                         banco: secondaryPaymentMethod === 'cheque' ? secondaryCheckData.banco : null,
-                        referencia: secondaryPaymentMethod === 'cheque' ? `CH-${secondaryCheckData.numero}` : 'PAGO MIXTO',
+                        detalle_referencia: secondaryPaymentMethod === 'cheque' ? `CH-${secondaryCheckData.numero}` : 'PAGO MIXTO',
                         estado: (secondaryPaymentMethod === 'efectivo' || secondaryPaymentMethod === 'retencion') ? 'acreditado' : 'pendiente'
                     })
                 if (secInsError) throw secInsError
@@ -603,7 +603,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                 metodo: 'transferencia',
                                 monto: residualAmount,
                                 fecha_disponibilidad: selectedTx.fecha,
-                                referencia: `AJUSTE: ${selectedTx.descripcion}`,
+                                detalle_referencia: `AJUSTE: ${selectedTx.descripcion}`,
                                 estado: 'acreditado'
                             })
                         }
@@ -792,7 +792,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     metodo: 'transferencia',
                     monto: totalMonto,
                     fecha_disponibilidad: selectedTx.fecha,
-                    referencia: selectedTx.descripcion,
+                    detalle_referencia: selectedTx.descripcion,
                     estado: 'acreditado'
                 })
 

@@ -103,7 +103,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                     metodo: 'transferencia',
                     monto: amount,
                     fecha_disponibilidad: tx.fecha,
-                    referencia: tx.descripcion,
+                    detalle_referencia: tx.descripcion,
                     estado: 'acreditado'
                 })
 

@@ -30,7 +30,7 @@ import { toast } from 'sonner'
 
 interface Check {
     id: string
-    referencia: string
+    detalle_referencia: string
     banco: string
     monto: number
     fecha_disponibilidad: string
@@ -163,7 +163,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                     monto: i.monto,
                     fecha_disponibilidad: i.fecha_disponibilidad,
                     banco: i.banco || null,
-                    detalle_referencia: i.referencia || null,
+                    detalle_referencia: i.detalle_referencia || null,
                     vinculo_instrumento_id: i.vinculo_instrumento_id || null,
                     cant_endosos: i.metodo === 'endoso' ? (i.cant_endosos || 0) + 1 : 0,
                     tipo_cheque: i.tipo_cheque || 'cpd'
@@ -348,7 +348,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                                             className={`w-full border-dashed h-9 text-xs ${ins.limitExceeded ? 'border-red-500 bg-red-500/10' : 'border-gray-700'}`}
                                                             onClick={() => setIsSelectingCheck(true)}
                                                         >
-                                                            {ins.vinculo_instrumento_id ? `Cheque ${ins.referencia} (${ins.cant_endosos} endosos)` : 'Seleccionar cheque de cartera...'}
+                                                            {ins.vinculo_instrumento_id ? `Cheque ${ins.detalle_referencia} (${ins.cant_endosos} endosos)` : 'Seleccionar cheque de cartera...'}
                                                         </Button>
                                                         {ins.limitExceeded && (
                                                             <div className="flex items-center gap-1 text-red-400 text-[10px] animate-pulse">
@@ -381,8 +381,8 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                                             <div className="flex gap-1">
                                                                 <Input
                                                                     placeholder="Nro"
-                                                                    value={ins.referencia || ''}
-                                                                    onChange={(e) => updateInstrument(ins.id, { referencia: e.target.value })}
+                                                                    value={ins.detalle_referencia || ''}
+                                                                    onChange={(e) => updateInstrument(ins.id, { detalle_referencia: e.target.value })}
                                                                     className="bg-gray-950 border-gray-800 h-9 text-xs w-2/3"
                                                                 />
                                                                 <select
@@ -426,7 +426,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                                                     updateInstrument(targetIns.id, {
                                                                         vinculo_instrumento_id: c.id,
                                                                         monto: c.monto,
-                                                                        referencia: c.referencia,
+                                                                        detalle_referencia: c.detalle_referencia,
                                                                         banco: c.banco,
                                                                         fecha_disponibilidad: c.fecha_disponibilidad,
                                                                         cant_endosos: c.cant_endosos,
@@ -440,7 +440,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                                                         >
                                                             <div>
                                                                 <div className="flex items-center gap-2">
-                                                                    <p className="font-bold text-xs">{c.referencia} - {c.banco}</p>
+                                                                    <p className="font-bold text-xs">{c.detalle_referencia} - {c.banco}</p>
                                                                     <Badge variant="outline" className="text-[8px] py-0 h-3">{c.tipo_cheque || 'cpd'}</Badge>
                                                                 </div>
                                                                 <p className={`text-[10px] ${isLimitReached ? 'text-red-400 font-bold' : 'text-gray-500'}`}>

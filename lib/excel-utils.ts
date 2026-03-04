@@ -403,7 +403,7 @@ export async function parseTreasuryExcel(file: File, type: 'cobro' | 'pago'): Pr
                         monto_total: monto,
                         metodo: medio || 'efectivo',
                         banco: banco || null,
-                        referencia: referencia || null,
+                        detalle_referencia: referencia || null,
                         fecha_disponibilidad: disponibilidad || fecha,
                         observaciones: observaciones || null,
                         rowNum,
