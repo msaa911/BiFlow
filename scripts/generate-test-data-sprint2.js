@@ -96,8 +96,6 @@ for (let i = 0; i < 25; i++) {
                 medio: medio,
                 banco: bancoNombre,
                 referencia: refTx,
-                disponibilidad: formatDate(fechaDisponibilidad),
-                cbu: esCheque ? '' : cliente.cbu,
                 observaciones: `Aplica a ${numeroFac}`
             });
 
@@ -188,8 +186,6 @@ for (let i = 0; i < 20; i++) {
                 medio: 'Transferencia',
                 banco: 'Banco Galicia',
                 referencia: refTx,
-                disponibilidad: formatDate(fechaPago),
-                cbu: pagoCBU,
                 observaciones: `Aplica a ${numeroFac}`
             });
 
@@ -333,9 +329,9 @@ fs.writeFileSync(path.join(outDir, 'ventas_ingresos.csv'), toCSV(ventas, ['fecha
 // 2. Egresos
 fs.writeFileSync(path.join(outDir, 'compras_egresos.csv'), toCSV(compras, ['fecha', 'numero', 'concepto', 'cuit', 'razon_social', 'monto', 'vencimiento', 'moneda']));
 // 3. Recibos
-fs.writeFileSync(path.join(outDir, 'recibos.csv'), 'Fecha,Recibo,Cliente,CUIT,Importe,Medio,Banco,Referencia,Disponibilidad,CBU,Observaciones\n' + recibos.map(r => `${r.fecha},${r.recibo},${r.cliente},${r.cuit},${r.importe},${r.medio},${r.banco},${r.referencia},${r.disponibilidad},${r.cbu},${r.observaciones}`).join('\n'));
+fs.writeFileSync(path.join(outDir, 'recibos.csv'), 'Fecha,Recibo,Cliente,CUIT,Importe,Medio,Banco,Referencia,Observaciones\n' + recibos.map(r => `${r.fecha},${r.recibo},${r.cliente},${r.cuit},${r.importe},${r.medio},${r.banco},${r.referencia},${r.observaciones}`).join('\n'));
 // 4. Egresos / OP
-fs.writeFileSync(path.join(outDir, 'ordenes_pago.csv'), 'Fecha,Orden,Proveedor,CUIT,Importe,Medio,Banco,Referencia,Disponibilidad,CBU,Observaciones\n' + ops.map(r => `${r.fecha},${r.op},${r.proveedor},${r.cuit},${r.importe},${r.medio},${r.banco},${r.referencia},${r.disponibilidad},${r.cbu},${r.observaciones}`).join('\n'));
+fs.writeFileSync(path.join(outDir, 'ordenes_pago.csv'), 'Fecha,Orden,Proveedor,CUIT,Importe,Medio,Banco,Referencia,Observaciones\n' + ops.map(r => `${r.fecha},${r.op},${r.proveedor},${r.cuit},${r.importe},${r.medio},${r.banco},${r.referencia},${r.observaciones}`).join('\n'));
 // 5. Banco
 fs.writeFileSync(path.join(outDir, 'extracto_bancario_columnas.csv'), 'Fecha,Concepto,Debito,Credito,Saldo,CUIT,Referencia,Banco\n' + banco.map(r => `${r.fecha},${r.concepto},${r.debito},${r.credito},${r.saldo},${r.cuit},${r.referencia},${r.banco}`).join('\n'));
 
