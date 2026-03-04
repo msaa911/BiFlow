@@ -143,7 +143,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                             ? Number(app.monto_aplicado)
                             : Number(inv.monto_pendiente) + Number(app.monto_aplicado)
 
-                        const newEstado = restoredMonto >= inv.monto_total ? 'pendiente' : (restoredMonto <= 0 ? 'pagado' : 'parcial')
+                        const newEstado = restoredMonto >= inv.monto_total ? 'pendiente' : (restoredMonto <= 0.05 ? 'pagado' : 'parcial')
 
                         await supabase.from('comprobantes')
                             .update({ monto_pendiente: restoredMonto, estado: newEstado })
@@ -153,35 +153,49 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 }
             }
 
-            // 2. Specialized Cleanup for NDB/NCB (Delete associated vouchers)
-            const isBancaria = mov.clase_documento === 'NDB' || mov.clase_documento === 'NCB'
-            if (isBancaria && mov.aplicaciones_pago?.length > 0) {
+            // 2. Specialized Cleanup for NDB/NCB (Delete associated residual vouchers)
+            const isResidual = mov.clase_documento === 'NDB' || mov.clase_documento === 'NCB'
+            if (isResidual && mov.aplicaciones_pago?.length > 0) {
                 const voucherIds = mov.aplicaciones_pago.map((a: any) => a.comprobante_id)
+                // We only delete vouchers of type bancaria to avoid accidental deletion of real invoices
                 await supabase.from('comprobantes')
                     .delete()
                     .in('id', voucherIds)
+                    .in('tipo', ['ndb_bancaria', 'ncb_bancaria'])
                     .eq('organization_id', orgId)
             }
 
-            // 3. Reset Bank Transaction status if linked
-            // The movement metadata might store the original bank tx id
-            const linkedTxId = mov.metadata?.transaccion_id
-            if (linkedTxId) {
-                await supabase.from('transacciones')
-                    .update({
-                        estado: 'pendiente',
-                        movimiento_id: null,
-                        monto_usado: 0
-                    })
-                    .eq('id', linkedTxId)
-                    .eq('organization_id', orgId)
+            // 3. Robust Bank Transaction Linkage Cleanup
+            // Directly search in transacciones table for any link to this movement
+            const { data: linkedTxs } = await supabase
+                .from('transacciones')
+                .select('*')
+                .eq('movimiento_id', movId)
+                .eq('organization_id', orgId)
+
+            if (linkedTxs && linkedTxs.length > 0) {
+                for (const tx of linkedTxs) {
+                    const movementMonto = Number(mov.monto_total || 0)
+                    const currentUsed = Number(tx.monto_usado || 0)
+                    const newMontoUsado = Math.max(0, currentUsed - movementMonto)
+                    const isNowOrphan = newMontoUsado <= 0.05
+
+                    await supabase.from('transacciones')
+                        .update({
+                            estado: isNowOrphan ? 'pendiente' : 'parcial',
+                            movimiento_id: isNowOrphan ? null : tx.movimiento_id,
+                            monto_usado: newMontoUsado
+                        })
+                        .eq('id', tx.id)
+                        .eq('organization_id', orgId)
+                }
             }
 
             // 4. Delete children (aplicaciones + instrumentos)
             await supabase.from('aplicaciones_pago').delete().eq('movimiento_id', movId)
             await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
 
-            // 5. Hard-delete the movement row
+            // 5. Final Delete of the movement itself
             const { error: delErr } = await supabase.from('movimientos_tesoreria')
                 .delete()
                 .eq('id', movId)
