@@ -19,11 +19,19 @@ export async function POST(request: Request) {
 
         // Find the widest row to determine column count
         const maxCols = sampleRows.reduce((max, row) => Math.max(max, row.length), 0)
+
+        // PAD ROWS: Ensure all rows have the same length for grid alignment
+        const paddedRows = sampleRows.map(row => {
+            const padded = [...row];
+            while (padded.length < maxCols) padded.push("");
+            return padded;
+        });
+
         const headers = Array.from({ length: maxCols }, (_, i) => `Columna ${i + 1}`)
 
         return NextResponse.json({
             headers,
-            previewData: sampleRows,
+            previewData: paddedRows,
             message: 'Muestra generada correctamente'
         })
 

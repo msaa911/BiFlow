@@ -276,10 +276,10 @@ export async function POST(request: Request) {
                     // DUPLICATE PREVENTION: Fetch existing invoices to filter
                     const { data: existingInvs } = await currentSupabase
                         .from('comprobantes')
-                        .select('numero, cuit_socio, tipo')
+                        .select('nro_factura, cuit_socio, tipo')
                         .eq('organization_id', orgId);
 
-                    const existSet = new Set(existingInvs?.map((e: any) => `${e.tipo}_${e.numero}_${e.cuit_socio}`) || []);
+                    const existSet = new Set(existingInvs?.map((e: any) => `${e.tipo}_${e.nro_factura}_${e.cuit_socio}`) || []);
 
                     const sanitizedComprobantes = transactionsWithLink
                         .filter((t: any) => {
@@ -292,7 +292,7 @@ export async function POST(request: Request) {
                             organization_id: t.organization_id || orgId,
                             archivo_importacion_id: importId,
                             tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
-                            numero: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
+                            nro_factura: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
                             cuit_socio: t.cuit || '00-00000000-0',
                             razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
                             nombre_entidad: t.razon_social || t.descripcion || 'Sin Razón Social',
@@ -392,7 +392,7 @@ export async function POST(request: Request) {
                             monto_total: totalMonto,
                             moneda: firstRow.moneda || 'ARS',
                             observaciones: rows.map(r => r.descripcion || r.razon_social).filter((v, i, a) => a && a.indexOf(v) === i).join(' | '),
-                            concepto: firstRow.metadata?.categoria || firstRow.descripcion || firstRow.razon_social,
+                            concepto: firstRow.concepto || firstRow.descripcion || firstRow.razon_social || 'Sin Concepto',
                             metadata: {
                                 raw_rows: rows.map(r => r.raw),
                                 import_type: uploadContext,
@@ -415,7 +415,7 @@ export async function POST(request: Request) {
                             monto_total: Math.abs(t.monto),
                             moneda: t.moneda || 'ARS',
                             observaciones: t.descripcion || t.razon_social,
-                            concepto: t.metadata?.categoria || t.descripcion || t.razon_social,
+                            concepto: t.concepto || t.descripcion || t.razon_social,
                             metadata: {
                                 raw_row: t.raw,
                                 import_type: uploadContext,
@@ -455,7 +455,7 @@ export async function POST(request: Request) {
                                     monto: Math.abs(rawRow.monto),
                                     banco: rawRow.banco || rawRow.metadata?.banco || null,
                                     fecha_disponibilidad: rawRow.vencimiento || rawRow.fecha,
-                                    detalle_referencia: rawRow.referencia || rawRow.nro_factura || rawRow.metadata?.referencia || null,
+                                    detalle_referencia: rawRow.metadata?.referencia || rawRow.numero_cheque || rawRow.referencia || null,
                                     estado: 'pendiente'
                                 })
                             })
