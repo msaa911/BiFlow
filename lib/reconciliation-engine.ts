@@ -45,8 +45,16 @@ export class ReconciliationEngine {
             .neq('estado', 'pagado')
             .order('fecha_vencimiento', { ascending: true })
 
-        if (invError || !pendingInvoices || pendingInvoices.length === 0) {
-            console.log(`[RECONCILIATION] No pending invoices found.`)
+        // 2.b Fetch pending movements (Receipts/OPs)
+        const { data: pendingMovements } = await supabase
+            .from('instrumentos_pago')
+            .select('*, movimientos_tesoreria(*, entidades(*))')
+            .eq('organization_id', organizationId)
+            .in('estado', ['pendiente', 'parcial'])
+            .order('fecha_disponibilidad', { ascending: true });
+
+        if (invError && !pendingMovements) {
+            console.log(`[RECONCILIATION] No pending data found.`)
             return { matched: 0, actions: [], repaired: orphans?.length || 0 }
         }
 
@@ -128,7 +136,47 @@ export class ReconciliationEngine {
             }
 
             let finalMatch: any[] | null = null;
-            if (targetInvoices.length > 0) {
+            let finalMovementMatch: any = null;
+
+            // --- STRATEGY A: Existing Movements (Receipts/OPs) ---
+            if (pendingMovements && pendingMovements.length > 0) {
+                const isCobro = trans.monto > 0;
+                const targetMovements = pendingMovements.filter((m: any) => {
+                    const movType = m.movimientos_tesoreria?.tipo;
+                    return isCobro ? movType === 'cobro' : movType === 'pago';
+                });
+
+                // 1-a-1 Exact Movement Match
+                const movementMatch = targetMovements.find((m: any) => {
+                    const mAmount = Number(m.monto);
+                    const amountMatches = Math.abs(mAmount - availableTransAmount) < 0.05;
+
+                    if (!amountMatches) return false;
+
+                    // Deep Match: CUIT or Name
+                    const movEntidad = m.movimientos_tesoreria?.entidades;
+                    if (txCuitNormalized && movEntidad?.cuit) {
+                        return normalizeCuit(movEntidad.cuit) === txCuitNormalized;
+                    }
+
+                    // Fuzzy Desc
+                    const razonSocial = movEntidad?.razon_social?.toLowerCase();
+                    if (razonSocial && trans.descripcion) {
+                        const words = razonSocial.split(' ').filter((w: string) => w.length > 3);
+                        return words.length > 0 && trans.descripcion.toLowerCase().includes(words[0]);
+                    }
+
+                    return true; // Amount matches and no CUIT mismatch found
+                });
+
+                if (movementMatch) {
+                    finalMovementMatch = movementMatch;
+                    matchLevel = 1; // Movement matches are high confidence
+                }
+            }
+
+            // --- STRATEGY B: Invoices (Subset Sum) ---
+            if (!finalMovementMatch && targetInvoices.length > 0) {
                 // 1-a-1 Exact Match
                 const singleMatch = targetInvoices.find(i => Math.abs(Number(i.monto_pendiente) - availableTransAmount) < 0.05);
                 if (singleMatch) {
@@ -144,8 +192,8 @@ export class ReconciliationEngine {
                 }
             }
 
-            if (finalMatch && matchLevel <= 4) {
-                console.log(`[RECONCILIATION] Match Level ${matchLevel} found for trans ${trans.id} (${availableTransAmount} avail., ${totalBankAmount} total)`);
+            if ((finalMatch || finalMovementMatch) && matchLevel <= 4) {
+                console.log(`[RECONCILIATION] Match Level ${matchLevel} found for trans ${trans.id} (${availableTransAmount} avail.)`);
 
                 // In dryRun mode, just record the match without writing to DB
                 if (dryRun) {
@@ -154,7 +202,8 @@ export class ReconciliationEngine {
                         transId: trans.id,
                         transDesc: trans.descripcion,
                         monto: availableTransAmount,
-                        invoiceIds: finalMatch.map((i: any) => i.id),
+                        invoiceIds: finalMatch ? finalMatch.map((i: any) => i.id) : [],
+                        movementId: finalMovementMatch ? finalMovementMatch.movimiento_id : null,
                         level: matchLevel,
                         auto: true
                     });
@@ -162,7 +211,46 @@ export class ReconciliationEngine {
                 }
 
                 try {
-                    // --- CIRCUIT EXECUTION START ---
+                    // CASE 1: MATCH WITH EXISTING MOVEMENT
+                    if (finalMovementMatch) {
+                        const movId = finalMovementMatch.movimiento_id;
+
+                        // 1. Update Instrument state
+                        await adminSupabase
+                            .from('instrumentos_pago')
+                            .update({ estado: 'acreditado' })
+                            .eq('id', finalMovementMatch.id);
+
+                        // 2. Link Transaction
+                        const newMontoUsado = previouslyUsed + availableTransAmount;
+                        const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05;
+
+                        await adminSupabase
+                            .from('transacciones')
+                            .update({
+                                movimiento_id: movId,
+                                estado: isFullyUsed ? 'conciliado' : 'parcial',
+                                monto_usado: newMontoUsado,
+                                tags
+                            })
+                            .eq('id', trans.id)
+                            .eq('organization_id', organizationId);
+
+                        matchedCount++;
+                        results.push({
+                            transId: trans.id,
+                            monto: availableTransAmount,
+                            movimientoId: movId,
+                            level: matchLevel,
+                            auto: true,
+                            type: 'movement'
+                        });
+                        continue;
+                    }
+
+                    // CASE 2: MATCH WITH INVOICES (Traditional Flow)
+                    if (!finalMatch || finalMatch.length === 0) throw new Error("Logic error: finalMatch is empty in Case 2");
+
                     // 0. Get Entity ID (Mandatory for Movimiento)
                     const { data: entity, error: entityErr } = await supabase
                         .from('entidades')
