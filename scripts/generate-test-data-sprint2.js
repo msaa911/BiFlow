@@ -104,11 +104,8 @@ for (let i = 0; i < 25; i++) {
             // Solo impacta en banco si es Transferencia o Cheque al día
             if (medio === 'Transferencia' || (esCheque && diasDiferimiento === 0)) {
 
-                // Mencionamos sutilmente la factura en el texto del banco, como suele pasar en la realidad (ultimos 4 o 5 digitos)
-                const numCorto = numeroFac.split('-').pop();
-                const conceptoBanco = Math.random() > 0.3
-                    ? `Acreditacion ${medio} ${cliente.razon} Ref ${refTx} O. ${numCorto}`
-                    : `Acreditacion ${medio} ${cliente.razon} Ref ${refTx}`;
+                // Texto minimalista para el banco simulando la falta de información
+                const conceptoBanco = medio === 'Transferencia' ? `Transferencia ${refTx}` : `Cheque ${refTx}`;
 
                 banco.push({
                     fechaRaw: fechaPago,
@@ -116,9 +113,9 @@ for (let i = 0; i < 25; i++) {
                     concepto: conceptoBanco,
                     debito: '',
                     credito: monto.toFixed(2),
-                    cuit: cliente.cuit,
-                    referencia: refTx,
-                    banco: 'Banco Galicia'
+                    cuit: '',
+                    referencia: '',
+                    banco: ''
                 });
 
                 // AUDITORÍA: Inyectar comisión de cheque si aplica
@@ -197,10 +194,7 @@ for (let i = 0; i < 20; i++) {
             });
 
             // Bank loses money
-            const numCorto = numeroFac.split('-').pop();
-            const conceptoBanco = Math.random() > 0.3
-                ? `Debito Transf. ${prov.razon} Ref ${refTx} F. ${numCorto} CBU ${pagoCBU}${notaAdicional}`
-                : `Debito Transf. ${prov.razon} Ref ${refTx} CBU ${pagoCBU}${notaAdicional}`;
+            const conceptoBanco = `Transferencia ${refTx}`;
 
             banco.push({
                 fechaRaw: fechaPago,
@@ -208,9 +202,9 @@ for (let i = 0; i < 20; i++) {
                 concepto: conceptoBanco,
                 debito: monto.toFixed(2),
                 credito: '',
-                cuit: prov.cuit,
-                referencia: refTx,
-                banco: 'Banco Galicia'
+                cuit: '',
+                referencia: '',
+                banco: ''
             });
         }
     }
