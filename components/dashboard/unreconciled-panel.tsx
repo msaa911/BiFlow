@@ -58,6 +58,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [loadingInvoices, setLoadingInvoices] = useState(false)
     const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
     const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
+    const [suggestedMovements, setSuggestedMovements] = useState<any[]>([])
+    const [selectedMovementId, setSelectedMovementId] = useState<string | null>(null)
     const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
     const [residualCategory, setResidualCategory] = useState('Gastos Bancarios')
 
@@ -103,28 +105,55 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         setSelectedInvoiceIds([])
         setAiSuggestions([])
         try {
-            // Filter by type: positive amount -> sales (venta), negative -> purchases (compra)
+            const orgId = (transactions[0] as any)?.organization_id
             const typeFilter = txToMatch.monto > 0 ? 'factura_venta' : 'factura_compra'
+            const txAmount = Math.abs(txToMatch.monto)
 
-            const { data, error } = await supabase
+            // 1. Fetch Invoices
+            const { data: invoices, error: invError } = await supabase
                 .from('comprobantes')
                 .select('*')
-                .eq('organization_id', (transactions[0] as any)?.organization_id)
+                .eq('organization_id', orgId)
                 .in('estado', ['pendiente', 'parcial'])
                 .eq('tipo', typeFilter)
                 .order('fecha_vencimiento', { ascending: true })
 
-            if (error) throw error
-            setAvailableInvoices(data || [])
+            if (invError) throw invError
+            setAvailableInvoices(invoices || [])
 
-            // Fetch AI Suggestions
+            // 2. Fetch Orphan Movements (Recibos/OPs already created but unlinked)
+            // First, find movement IDs already linked to avoid duplicates
+            const { data: linkedTx } = await supabase.from('transacciones').select('movimiento_id').not('movimiento_id', 'is', null)
+            const linkedIds = new Set(linkedTx?.map(t => t.movimiento_id) || [])
+
+            // Now fetch instruments of type 'transferencia' with similar amount
+            const { data: instruments, error: insError } = await supabase
+                .from('instrumentos_pago')
+                .select('*, movimientos_tesoreria(*)')
+                .eq('metodo', 'transferencia')
+                .gte('monto', txAmount * 0.95)
+                .lte('monto', txAmount * 1.05)
+
+            if (!insError && instruments) {
+                const unlinkedMovs = instruments
+                    .filter(ins => !linkedIds.has(ins.movimiento_id))
+                    .map(ins => ({
+                        id: ins.movimiento_id,
+                        fecha: ins.movimientos_tesoreria?.fecha,
+                        monto: ins.monto,
+                        observaciones: ins.movimientos_tesoreria?.observaciones,
+                        numero: ins.movimientos_tesoreria?.numero,
+                        entidad: ins.movimientos_tesoreria?.entidad_id // Simplified
+                    }))
+                setSuggestedMovements(unlinkedMovs)
+            }
+
+            // 3. Fetch AI Suggestions
             try {
                 const res = await fetch('/api/reconcile/suggestions')
                 if (res.ok) {
                     const suggData = await res.json()
-                    // Filter suggestions for THIS specific transaction
                     const txSuggestions = (suggData.suggestions || []).filter((s: any) => s.transId === txToMatch.id)
-                    // Extract the invoice IDs suggested
                     const suggestedIds = txSuggestions.flatMap((s: any) => s.invoiceIds || [])
                     setAiSuggestions(suggestedIds)
                 }
@@ -241,16 +270,41 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     }
 
     const handleConciliate = async () => {
-        if (!selectedTx || selectedInvoiceIds.length === 0) return
+        if (!selectedTx || (selectedInvoiceIds.length === 0 && !selectedMovementId)) return
         setIsSubmitting(true)
         try {
             const orgId = (transactions[0] as any)?.organization_id
             const isCobro = selectedTx.monto > 0
 
-            // Available to apply (total minus amount already used in previous partial reconciliations)
             const totalBankAmount = Math.abs(selectedTx.monto)
             const previouslyUsed = Number(selectedTx.monto_usado || 0)
             const availableAmount = totalBankAmount - previouslyUsed
+
+            // CASE 1: Direct link to existing Movement (Recibo/OP)
+            if (selectedMovementId) {
+                const { error: txLinkErr } = await supabase
+                    .from('transacciones')
+                    .update({
+                        movimiento_id: selectedMovementId,
+                        estado: 'conciliado',
+                        monto_usado: totalBankAmount, // Total match
+                        metadata: {
+                            ...((selectedTx as any).metadata || {}),
+                            linked_at: new Date().toISOString(),
+                            link_method: 'direct_match'
+                        }
+                    })
+                    .eq('id', selectedTx.id)
+
+                if (txLinkErr) throw txLinkErr
+
+                toast.success('Transacción vinculada con el movimiento existente.')
+                setIsConciliating(false)
+                setSelectedMovementId(null)
+                setSelectedInvoiceIds([])
+                if (onRefresh) onRefresh()
+                return
+            }
 
             if (availableAmount <= 0) {
                 throw new Error("La transacción ya ha sido utilizada en su totalidad.")
@@ -957,6 +1011,57 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     )}
 
                     <div className="py-2">
+                        {suggestedMovements.length > 0 && (
+                            <div className="mb-6 animate-in slide-in-from-top-4 duration-500">
+                                <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> Movimientos Ya Registrados (Recibos/OP)
+                                </p>
+                                <div className="space-y-2">
+                                    {suggestedMovements.map(mov => {
+                                        const isSelected = selectedMovementId === mov.id
+                                        return (
+                                            <button
+                                                key={mov.id}
+                                                onClick={() => {
+                                                    setSelectedMovementId(isSelected ? null : mov.id)
+                                                    if (!isSelected) setSelectedInvoiceIds([])
+                                                }}
+                                                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group
+                                                    ${isSelected ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
+                                                        : 'border-emerald-500/30 bg-gray-900/40 hover:border-emerald-500 hover:bg-emerald-500/5'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`flex items-center justify-center w-5 h-5 rounded-md border ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-emerald-500/50 bg-gray-900 group-hover:border-emerald-500'}`}>
+                                                        {isSelected && <Check className="w-3.5 h-3.5 text-black" />}
+                                                    </div>
+                                                    <div>
+                                                        <p className={`text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-emerald-400 group-hover:text-emerald-300'}`}>
+                                                            {mov.tipo?.toUpperCase()} N° {mov.numero || 'S/N'}
+                                                        </p>
+                                                        <p className="text-[10px] text-gray-500">
+                                                            Referencia: {mov.observaciones || 'Sin observaciones'} • Fecha: {new Date(mov.fecha).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`text-sm font-black ${isSelected ? 'text-emerald-400' : 'text-white'}`}>
+                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto)}
+                                                    </p>
+                                                    <span className="text-[9px] font-black text-emerald-500/70 bg-emerald-500/5 px-1.5 rounded uppercase mt-1 inline-block border border-emerald-500/20">Vincular Directo</span>
+                                                </div>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                <div className="mt-4 flex items-center gap-2">
+                                    <div className="h-px flex-1 bg-gray-800"></div>
+                                    <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">O elegir comprobantes sueltos</span>
+                                    <div className="h-px flex-1 bg-gray-800"></div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex items-center justify-between mb-3">
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                                 Comprobantes Sugeridos {aiSuggestions.length > 0 && <span className="ml-2 text-amber-500">✨ IA Sugiere {aiSuggestions.length} match(es)</span>}
@@ -1039,6 +1144,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                 const selectedTotal = availableInvoices
                                     .filter(i => selectedInvoiceIds.includes(i.id))
                                     .reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
+
+                                const totalBankAmount = Math.abs(selectedTx.monto)
+                                const previouslyUsed = Number(selectedTx.monto_usado || 0)
+                                const availableAmount = totalBankAmount - previouslyUsed
+
                                 const difference = availableAmount - selectedTotal
                                 const shortfall = selectedTotal - availableAmount
                                 const isGastoCase = difference > 0.05
