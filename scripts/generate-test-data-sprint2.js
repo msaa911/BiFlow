@@ -333,6 +333,15 @@ fs.writeFileSync(path.join(outDir, 'recibos.csv'), 'Fecha,Recibo,Cliente,CUIT,Im
 // 4. Egresos / OP
 fs.writeFileSync(path.join(outDir, 'ordenes_pago.csv'), 'Fecha,Orden,Proveedor,CUIT,Importe,Medio,Banco,Referencia,Observaciones\n' + ops.map(r => `${r.fecha},${r.op},${r.proveedor},${r.cuit},${r.importe},${r.medio},${r.banco},${r.referencia},${r.observaciones}`).join('\n'));
 // 5. Banco
-fs.writeFileSync(path.join(outDir, 'extracto_bancario_columnas.csv'), 'Fecha,Concepto,Debito,Credito,Saldo,CUIT,Referencia,Banco\n' + banco.map(r => `${r.fecha},${r.concepto},${r.debito},${r.credito},${r.saldo},${r.cuit},${r.referencia},${r.banco}`).join('\n'));
+const bankHeader = `Banco Galicia
+Cuenta Corriente en Pesos Nro: 1234-5678/9
+CBU: 0140000000000000000000
+Titular: EMPRESA DEMO SA
+CUIT: 30-71111111-2
+Desde: 01/01/2026 Hasta: 28/02/2026
+
+Fecha,Concepto,Debito,Credito,Saldo
+`;
+fs.writeFileSync(path.join(outDir, 'extracto_bancario_columnas.csv'), bankHeader + banco.map(r => `${r.fecha},${r.concepto},${r.debito},${r.credito},${r.saldo}`).join('\n'));
 
 console.log('Archivos generados con saltos de línea correctos (\n)');
