@@ -391,7 +391,8 @@ export async function POST(request: Request) {
                             fecha: firstRow.fecha,
                             monto_total: totalMonto,
                             moneda: firstRow.moneda || 'ARS',
-                            observaciones: rows.map(r => r.concepto).filter((v, i, a) => a.indexOf(v) === i).join(' | '),
+                            observaciones: rows.map(r => r.descripcion || r.razon_social).filter((v, i, a) => a && a.indexOf(v) === i).join(' | '),
+                            categoria: firstRow.metadata?.categoria || firstRow.descripcion || firstRow.razon_social,
                             metadata: {
                                 raw_rows: rows.map(r => r.raw),
                                 import_type: uploadContext,
@@ -413,7 +414,8 @@ export async function POST(request: Request) {
                             fecha: t.fecha,
                             monto_total: Math.abs(t.monto),
                             moneda: t.moneda || 'ARS',
-                            observaciones: t.concepto,
+                            observaciones: t.descripcion || t.razon_social,
+                            categoria: t.metadata?.categoria || t.descripcion || t.razon_social,
                             metadata: {
                                 raw_row: t.raw,
                                 import_type: uploadContext,
