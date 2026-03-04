@@ -28,8 +28,21 @@ Este documento es la **única fuente de verdad** del proyecto. Integra la visió
 
 ---
 
-## 🛠️ PRÓXIMA SESIÓN (Mañana - Marzo 4)
-- [ ] **Punto de Partida**: Cargar archivos desde cero para validar integraciones.
+## 🗓️ PRÓXIMA SESIÓN (Marzo 5) - PIVOT ARQUITECTÓNICO DE CONCILIACIÓN
+**Objetivo Principal:** Cambiar el paradigma de conciliación bancaria para que trabaje exclusivamente contra Recibos y Órdenes de Pago (Movimientos de Tesorería), eliminando la autogeneración desde Facturas.
+
+### 1. Refactorización Backend (`reconciliation-engine.ts`)
+- [ ] Detener la creación automática de Recibos/OP a partir de facturas.
+- [ ] Ajustar el motor `matchAndReconcile` para que solo busque enlazar transacciones bancarias contra `instrumentos_pago` de `movimientos_tesoreria` pendientes.
+
+### 2. Refactorización UI (`unreconciled-panel.tsx`)
+- [ ] **Vista por Defecto:** Al clicar "Conciliar", mostrar *únicamente* los Movimientos Previos Compatibles (Recibos/OP huérfanos).
+- [ ] **Flujo de Vinculación:** Simplificar el cruce de datos sin generar nuevos movimientos.
+- [ ] **Flujo Alternativo (Bajo Demanda):** Crear un botón explícito "Crear Nuevo Recibo / O.P." que abra el asistente completo (facturas, pagos mixtos, residuales) solo cuando el administrativo olvidó cargar el recibo previamente.
+
+---
+
+## 🛠️ BACKLOG TÉCNICO
 - [ ] **Test NDB/NCB**: Validar que las Notas Bancarias se emitan y dejen de estar "Pendientes".
 - [ ] **Impuestos**: Verificar persistencia de reglas de impuestos en extractos.
 - [ ] **UI Sidebar**: Actualizar navegación lateral.
