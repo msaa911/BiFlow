@@ -220,11 +220,11 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <table className="w-full text-left text-sm text-gray-400">
                             <thead className="bg-gray-800/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
-                                    <th className="px-6 py-4 w-40">Fecha</th>
-                                    <th className="px-6 py-4">Descripción</th>
-                                    <th className="px-6 py-4 w-32">Estado</th>
-                                    <th className="px-6 py-4 w-40">Categoría</th>
-                                    <th className="px-6 py-4 text-right w-32">Monto</th>
+                                    <th className="px-4 py-4 w-[110px]">Fecha</th>
+                                    <th className="px-4 py-4">Descripción</th>
+                                    <th className="px-4 py-4 w-[100px]">Estado</th>
+                                    <th className="px-4 py-4 w-[140px]">Categoría</th>
+                                    <th className="px-4 py-4 text-right w-[110px]">Monto</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
@@ -262,13 +262,13 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     })
                                     .map((t) => (
                                         <tr key={t.id} className="hover:bg-gray-800/50 transition-all group">
-                                            <td className="px-6 py-4 whitespace-nowrap text-gray-300 w-40">
+                                            <td className="px-4 py-3 whitespace-nowrap text-gray-300 w-[110px] text-xs">
                                                 {formatDate(t.fecha)}
                                             </td>
-                                            <td className="px-6 py-4 text-white font-medium max-w-[500px] truncate">
+                                            <td className="px-4 py-3 text-white font-medium max-w-[400px] truncate text-xs">
                                                 {t.descripcion}
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-4 py-3 w-[100px]">
                                                 {t.estado === 'conciliado' ? (
                                                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase">
                                                         Conciliado
@@ -283,12 +283,12 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                                     </Badge>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700">
+                                            <td className="px-4 py-3 w-[140px]">
+                                                <span className="px-2 py-0.5 rounded text-[9px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700">
                                                     {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
                                                 </span>
                                             </td>
-                                            <td className={`px-6 py-4 text-right font-bold tabular-nums ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                            <td className={`px-4 py-3 text-right font-bold tabular-nums text-xs w-[110px] ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
                                             </td>
                                         </tr>
