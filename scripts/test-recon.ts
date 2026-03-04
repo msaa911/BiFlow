@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { ReconciliationEngine } from './lib/reconciliation-engine'
+import { ReconciliationEngine } from '../lib/reconciliation-engine'
 import * as dotenv from 'dotenv'
 dotenv.config({ path: '.env.local' })
 
