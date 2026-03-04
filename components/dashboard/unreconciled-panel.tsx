@@ -59,7 +59,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
     const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
     const [suggestedMovements, setSuggestedMovements] = useState<any[]>([])
-    const [selectedMovementId, setSelectedMovementId] = useState<string | null>(null)
+    const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([])
     const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
     const [residualCategory, setResidualCategory] = useState('Gastos Bancarios')
 
@@ -122,28 +122,31 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             setAvailableInvoices(invoices || [])
 
             // 2. Fetch Orphan Movements (Recibos/OPs already created but unlinked)
-            // First, find movement IDs already linked to avoid duplicates
             const { data: linkedTx } = await supabase.from('transacciones').select('movimiento_id').not('movimiento_id', 'is', null)
             const linkedIds = new Set(linkedTx?.map(t => t.movimiento_id) || [])
 
-            // Now fetch instruments of type 'transferencia' with similar amount
             const { data: instruments, error: insError } = await supabase
                 .from('instrumentos_pago')
                 .select('*, movimientos_tesoreria(*)')
                 .eq('metodo', 'transferencia')
-                .gte('monto', txAmount * 0.95)
-                .lte('monto', txAmount * 1.05)
+                .lte('monto', txAmount * 1.05) // Find items that fits or are smaller
 
             if (!insError && instruments) {
                 const unlinkedMovs = instruments
                     .filter(ins => !linkedIds.has(ins.movimiento_id))
+                    // Filter by type (Cobro/Pago) to match transaction direction
+                    .filter(ins => {
+                        const isIngreso = txToMatch.monto > 0
+                        return isIngreso ? ins.movimientos_tesoreria?.tipo === 'cobro' : ins.movimientos_tesoreria?.tipo === 'pago'
+                    })
                     .map(ins => ({
                         id: ins.movimiento_id,
                         fecha: ins.movimientos_tesoreria?.fecha,
                         monto: ins.monto,
                         observaciones: ins.movimientos_tesoreria?.observaciones,
                         numero: ins.movimientos_tesoreria?.numero,
-                        entidad: ins.movimientos_tesoreria?.entidad_id // Simplified
+                        entidad: ins.movimientos_tesoreria?.entidad_id,
+                        tipo: ins.movimientos_tesoreria?.tipo
                     }))
                 setSuggestedMovements(unlinkedMovs)
             }
@@ -270,7 +273,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     }
 
     const handleConciliate = async () => {
-        if (!selectedTx || (selectedInvoiceIds.length === 0 && !selectedMovementId)) return
+        if (!selectedTx || (selectedInvoiceIds.length === 0 && selectedMovementIds.length === 0)) return
         setIsSubmitting(true)
         try {
             const orgId = (transactions[0] as any)?.organization_id
@@ -280,27 +283,41 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             const previouslyUsed = Number(selectedTx.monto_usado || 0)
             const availableAmount = totalBankAmount - previouslyUsed
 
-            // CASE 1: Direct link to existing Movement (Recibo/OP)
-            if (selectedMovementId) {
+            // CASE 1: Direct link to existing Movements (Recibos/OPs) - Batch Support
+            if (selectedMovementIds.length > 0) {
+                // If there are multiple, we assume they all belong to this transaction
+                // We link each movement_id to the transaction in separate updates or a single one if it's many-to-one
+                // Note: Currently transaction table has movement_id (1-to-1).
+                // If the user selects multiple, it's a "Batch" (Lote).
+                // Contablemente, si es un lote, vinculamos el primero y registramos los otros en el metadata,
+                // o creamos un movimiento contenedor si fuera necesario. 
+                // Pero lo más limpio para el usuario es vincular el 'movimiento_id' principal.
+
+                // TODO: Support many-to-one mapping in DB if required. For now, we link the first 
+                // and mark the others as linked in metadata.
                 const { error: txLinkErr } = await supabase
                     .from('transacciones')
                     .update({
-                        movimiento_id: selectedMovementId,
+                        movimiento_id: selectedMovementIds[0], // Primary link
                         estado: 'conciliado',
                         monto_usado: totalBankAmount, // Total match
                         metadata: {
                             ...((selectedTx as any).metadata || {}),
                             linked_at: new Date().toISOString(),
-                            link_method: 'direct_match'
+                            link_method: 'batch_match',
+                            all_movement_ids: selectedMovementIds
                         }
                     })
                     .eq('id', selectedTx.id)
 
                 if (txLinkErr) throw txLinkErr
 
-                toast.success('Transacción vinculada con el movimiento existente.')
+                // Also update other movements to be "conciliados" if they have that flag
+                // (Logic depends on business rules, for now linking the TX is enough)
+
+                toast.success(`${selectedMovementIds.length} movimientos vinculados con el banco.`)
                 setIsConciliating(false)
-                setSelectedMovementId(null)
+                setSelectedMovementIds([])
                 setSelectedInvoiceIds([])
                 if (onRefresh) onRefresh()
                 return
@@ -1018,13 +1035,16 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                 </p>
                                 <div className="space-y-2">
                                     {suggestedMovements.map(mov => {
-                                        const isSelected = selectedMovementId === mov.id
+                                        const isSelected = selectedMovementIds.includes(mov.id)
                                         return (
                                             <button
                                                 key={mov.id}
                                                 onClick={() => {
-                                                    setSelectedMovementId(isSelected ? null : mov.id)
-                                                    if (!isSelected) setSelectedInvoiceIds([])
+                                                    const newSelected = isSelected
+                                                        ? selectedMovementIds.filter(id => id !== mov.id)
+                                                        : [...selectedMovementIds, mov.id]
+                                                    setSelectedMovementIds(newSelected)
+                                                    if (newSelected.length > 0) setSelectedInvoiceIds([])
                                                 }}
                                                 className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group
                                                     ${isSelected ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
@@ -1048,7 +1068,9 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                     <p className={`text-sm font-black ${isSelected ? 'text-emerald-400' : 'text-white'}`}>
                                                         {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto)}
                                                     </p>
-                                                    <span className="text-[9px] font-black text-emerald-500/70 bg-emerald-500/5 px-1.5 rounded uppercase mt-1 inline-block border border-emerald-500/20">Vincular Directo</span>
+                                                    <span className={`text-[9px] font-black px-1.5 rounded uppercase mt-1 inline-block border ${isSelected ? 'bg-emerald-500 text-black border-emerald-500' : 'text-emerald-500/70 bg-emerald-500/5 border-emerald-500/20'}`}>
+                                                        {isSelected ? 'Seleccionado' : 'Vincular Directo'}
+                                                    </span>
                                                 </div>
                                             </button>
                                         )
@@ -1138,12 +1160,18 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     </div>
 
                     {/* Summary and Residual Assistant */}
-                    {selectedInvoiceIds.length > 0 && selectedTx && (
+                    {(selectedInvoiceIds.length > 0 || selectedMovementIds.length > 0) && selectedTx && (
                         <div className="mt-4 p-4 bg-gray-900/60 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
                             {(() => {
-                                const selectedTotal = availableInvoices
+                                const selectedInvoiceTotal = availableInvoices
                                     .filter(i => selectedInvoiceIds.includes(i.id))
                                     .reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
+
+                                const selectedMovementTotal = suggestedMovements
+                                    .filter(m => selectedMovementIds.includes(m.id))
+                                    .reduce((acc, curr) => acc + Number(curr.monto), 0)
+
+                                const selectedTotal = selectedInvoiceTotal + selectedMovementTotal
 
                                 const totalBankAmount = Math.abs(selectedTx.monto)
                                 const previouslyUsed = Number(selectedTx.monto_usado || 0)
