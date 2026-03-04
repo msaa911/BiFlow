@@ -103,8 +103,8 @@ export function CheckRejectionModal({
                         monto: Number(feeAmount),
                         moneda: 'ARS',
                         fecha: new Date().toISOString().split('T')[0],
-                        descripcion: `Gasto Bancario: Rechazo Cheque ${check.referencia || 'S/N'}`,
-                        categoria: 'Gastos Bancarios',
+                        descripcion: `Gasto Bancario: Rechazo Cheque ${check.detalle_referencia || 'S/N'}`,
+                        concepto: 'Gastos Bancarios',
                         metodo_pago: 'transferencia',
                         estado: 'completado',
                         metadata: {
@@ -147,7 +147,7 @@ export function CheckRejectionModal({
                     <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
                         <div className="flex justify-between items-start mb-2">
                             <span className="text-[10px] uppercase font-bold text-red-400">Valor a Recuperar</span>
-                            <span className="text-xs font-mono text-gray-500">#{check.referencia}</span>
+                            <span className="text-xs font-mono text-gray-500">#{check.detalle_referencia}</span>
                         </div>
                         <p className="text-2xl font-bold text-white">
                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(check.monto)}

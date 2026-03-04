@@ -92,7 +92,7 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
 
     const filteredChecks = checks.filter(c =>
         (c.movimientos_tesoreria?.entidades?.razon_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.referencia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.detalle_referencia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.banco || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -150,11 +150,11 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
     const downloadCSV = () => {
         if (checks.length === 0) return
 
-        const headers = ["Numero", "Banco", "Monto", "Fecha Emision", "Fecha Vencimiento", "Estado", "Socio"]
+        const headers = ["Nro Cheque", "Banco", "Monto", "Fecha Emision", "Fecha Disponib.", "Estado", "Socio"]
         const csvContent = [
             headers.join(","),
             ...checks.map(c => [
-                c.numero,
+                c.detalle_referencia,
                 c.banco,
                 c.monto,
                 c.fecha_emision,
@@ -361,7 +361,7 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-white uppercase">{check.referencia || 'S/N'}</span>
+                                            <span className="text-xs font-bold text-white uppercase">{check.detalle_referencia || 'S/N'}</span>
                                             <span className="text-[10px] text-gray-400/70 uppercase">{check.banco || 'Varios'}</span>
                                         </div>
                                     </TableCell>
@@ -477,7 +477,7 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                 isOpen={isHistoryModalOpen}
                 onClose={() => setIsHistoryModalOpen(false)}
                 checkId={selectedCheckForHistory?.id}
-                checkNumero={selectedCheckForHistory?.numero}
+                checkNumero={selectedCheckForHistory?.detalle_referencia}
             />
         </div>
     )

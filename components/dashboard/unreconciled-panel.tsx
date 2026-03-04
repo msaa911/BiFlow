@@ -174,7 +174,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             const { data: instruments, error: insError } = await supabase
                 .from('instrumentos_pago')
-                .select('*, movimientos_tesoreria(*, entidades(razon_social), aplicaciones_pago(comprobantes(numero, tipo)))')
+                .select('*, movimientos_tesoreria(*, entidades(razon_social), aplicaciones_pago(comprobantes(nro_factura, tipo)))')
                 .eq('organization_id', orgId)
                 .lte('monto', txAmount * 1.2) // Increased tolerance to 20% for manual suggestions
 
@@ -208,7 +208,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             fecha: ins.movimientos_tesoreria?.fecha,
                             monto: ins.monto,
                             observaciones: ins.movimientos_tesoreria?.observaciones,
-                            numero: ins.movimientos_tesoreria?.numero,
+                            nro_comprobante: ins.movimientos_tesoreria?.nro_comprobante,
                             entidad: ins.movimientos_tesoreria?.entidad_id,
                             razonSocial: ins.movimientos_tesoreria?.entidades?.razon_social,
                             tipo: ins.movimientos_tesoreria?.tipo,
@@ -263,7 +263,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 .insert({
                     organization_id: orgId,
                     tipo: tipoComprobante,
-                    numero: invoiceNumber,
+                    nro_factura: invoiceNumber,
                     cuit_socio: entities.find(e => e.id === selectedEntityId)?.cuit || '',
                     razon_social_socio: entities.find(e => e.id === selectedEntityId)?.razon_social || '',
                     fecha_emision: selectedTx.fecha,
@@ -1201,14 +1201,14 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                     </div>
                                                     <div>
                                                         <p className={`text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-emerald-400 group-hover:text-emerald-300'}`}>
-                                                            {mov.tipo?.toUpperCase()} N° {mov.numero || 'S/N'} {mov.razonSocial ? ` - ${mov.razonSocial}` : ''}
+                                                            {mov.tipo?.toUpperCase()} N° {mov.nro_comprobante || 'S/N'} {mov.razonSocial ? ` - ${mov.razonSocial}` : ''}
                                                         </p>
                                                         <p className="text-[10px] text-gray-500">
                                                             Referencia: {mov.observaciones || 'Sin observaciones'} • Fecha: {new Date(mov.fecha).toLocaleDateString()}
                                                         </p>
                                                         {mov.aplicaciones && mov.aplicaciones.length > 0 && (
                                                             <p className="text-[10px] text-emerald-600 font-bold mt-1">
-                                                                Aplica a: {mov.aplicaciones.map((a: any) => a.comprobantes?.numero).filter(Boolean).join(', ')}
+                                                                Aplica a: {mov.aplicaciones.map((a: any) => a.comprobantes?.nro_factura).filter(Boolean).join(', ')}
                                                             </p>
                                                         )}
                                                     </div>
@@ -1312,7 +1312,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                                 {inv.razon_social_socio} {isSuggested && <span className="ml-2 text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Sugerencia IA</span>}
                                                             </p>
                                                             <p className="text-[10px] text-gray-500">
-                                                                {inv.tipo} • {inv.numero} • Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}
+                                                                {inv.tipo} • {inv.nro_factura} • Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}
                                                                 {inv.estado === 'parcial' && <span className="ml-2 text-blue-400 bg-blue-500/10 px-1 rounded">Pago Parcial</span>}
                                                             </p>
                                                         </div>

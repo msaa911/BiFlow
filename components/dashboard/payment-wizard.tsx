@@ -78,7 +78,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
         const supabase = createClient()
         const { data } = await supabase
             .from('instrumentos_pago')
-            .select('id, referencia, banco, monto, fecha_disponibilidad, cant_endosos, tipo_cheque')
+            .select('id, detalle_referencia, banco, monto, fecha_disponibilidad, cant_endosos, tipo_cheque')
             .eq('metodo', 'cheque_terceros')
             .eq('estado', 'pendiente')
 
@@ -144,7 +144,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                     organization_id: orgId,
                     entidad_id: entidadId,
                     tipo: tipo,
-                    numero: numero || null,
+                    nro_comprobante: numero || null,
                     monto_total: totalInstruments,
                     fecha: new Date().toISOString().split('T')[0],
                     observaciones: `Generado desde el asistente de ${tipo}`
@@ -163,7 +163,7 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                     monto: i.monto,
                     fecha_disponibilidad: i.fecha_disponibilidad,
                     banco: i.banco || null,
-                    referencia: i.referencia || null,
+                    detalle_referencia: i.referencia || null,
                     vinculo_instrumento_id: i.vinculo_instrumento_id || null,
                     cant_endosos: i.metodo === 'endoso' ? (i.cant_endosos || 0) + 1 : 0,
                     tipo_cheque: i.tipo_cheque || 'cpd'

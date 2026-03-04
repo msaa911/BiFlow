@@ -410,10 +410,12 @@ export class UniversalTranslator {
                     const category = this.categorizeTransaction(descArea, monto, cheque);
                     transactions.push({
                         fecha, concepto, monto, cuit: '',
-                        cbu,
-                        numero_cheque: cheque,
                         tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any,
-                        metadata: { categoria: category }
+                        metadata: {
+                            categoria: category,
+                            cbu: cbu || undefined,
+                            numero_cheque: cheque || undefined
+                        }
                     });
                 }
             }
@@ -592,10 +594,12 @@ export class UniversalTranslator {
                         concepto,
                         monto,
                         tipo: (monto < 0 ? 'DEBITO' : 'CREDITO') as any,
-                        cbu: cbu || undefined,
                         cuit: cuit || undefined,
-                        numero_cheque: numero_cheque || undefined,
-                        metadata: { categoria: category }
+                        metadata: {
+                            categoria: category,
+                            cbu: cbu || undefined,
+                            numero_cheque: numero_cheque || undefined
+                        }
                     });
                 }
             } else if (template.tipo === 'fixed_width') {
