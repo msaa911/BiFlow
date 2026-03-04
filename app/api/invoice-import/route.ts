@@ -44,41 +44,65 @@ export async function POST(request: Request) {
 
         const importId = importLog.id
 
-        // 2. Insert comprobantes with link
-        const compsToInsert = comprobantes.map((inv: any) => {
-            // Helper interno para normalizar las fechas que llegan desde el modal
-            const nDate = (d: string) => {
-                if (!d) return null;
-                const clean = String(d).replace(/[^\d/.-]/g, '');
-                if (clean.length === 8 && /^\d{8}$/.test(clean)) return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}`;
-                const p = clean.split(/[/-]/).filter(x => x.length > 0);
-                if (p.length === 3) {
-                    let [p1, p2, p3] = p;
-                    if (p1.length === 4) return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
-                    if (p1.length <= 2 && p3.length >= 2) {
-                        if (p3.length === 2) p3 = `20${p3}`;
-                        return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
-                    }
-                }
-                return d;
-            };
+        // 2. DUPLICATE PREVENTION: Fetch existing invoices to filter
+        const { data: existing } = await admin
+            .from('comprobantes')
+            .select('numero, cuit_socio, tipo')
+            .eq('organization_id', orgId);
 
-            return {
-                organization_id: orgId,
-                entidad_id: inv.entidad_id || null,
-                archivo_importacion_id: importId,
-                tipo: inv.tipo,
-                fecha_emision: nDate(inv.fecha_emision),
-                fecha_vencimiento: nDate(inv.fecha_vencimiento) || nDate(inv.fecha_emision),
-                numero: inv.numero,
-                monto_total: inv.monto_total,
-                monto_pendiente: inv.monto_pendiente,
-                estado: inv.estado || 'pendiente',
-                condicion: inv.condicion,
-                razon_social_socio: inv.razon_social_socio,
-                cuit_socio: inv.cuit_socio
-            };
-        });
+        const existSet = new Set(existing?.map(e => `${e.tipo}_${e.numero}_${e.cuit_socio}`) || []);
+
+        // 3. Insert comprobantes with link (Filtering duplicates)
+        const compsToInsert = comprobantes
+            .filter((inv: any) => !existSet.has(`${inv.tipo}_${inv.numero}_${inv.cuit_socio}`))
+            .map((inv: any) => {
+                // Helper interno para normalizar las fechas que llegan desde el modal
+                const nDate = (d: string) => {
+                    if (!d) return null;
+                    const clean = String(d).replace(/[^\d/.-]/g, '');
+                    if (clean.length === 8 && /^\d{8}$/.test(clean)) return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}`;
+                    const p = clean.split(/[/-]/).filter(x => x.length > 0);
+                    if (p.length === 3) {
+                        let [p1, p2, p3] = p;
+                        if (p1.length === 4) return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+                        if (p1.length <= 2 && p3.length >= 2) {
+                            if (p3.length === 2) p3 = `20${p3}`;
+                            return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+                        }
+                    }
+                    return d;
+                };
+
+                return {
+                    organization_id: orgId,
+                    entidad_id: inv.entidad_id || null,
+                    archivo_importacion_id: importId,
+                    tipo: inv.tipo,
+                    fecha_emision: nDate(inv.fecha_emision),
+                    fecha_vencimiento: nDate(inv.fecha_vencimiento) || nDate(inv.fecha_emision),
+                    numero: inv.numero,
+                    monto_total: inv.monto_total,
+                    monto_pendiente: inv.monto_pendiente,
+                    estado: inv.estado || 'pendiente',
+                    condicion: inv.condicion,
+                    razon_social_socio: inv.razon_social_socio,
+                    cuit_socio: inv.cuit_socio
+                };
+            });
+
+        if (compsToInsert.length === 0) {
+            await admin.from('archivos_importados').update({
+                estado: 'completado',
+                metadata: { context: tipoLabel, inserted: 0, skipped_duplicates: comprobantes.length }
+            }).eq('id', importId)
+
+            return NextResponse.json({
+                success: true,
+                importId,
+                count: 0,
+                message: 'All invoices were skipped as duplicates.'
+            })
+        }
 
         const { data: insertedComps, error: insertError } = await admin
             .from('comprobantes')

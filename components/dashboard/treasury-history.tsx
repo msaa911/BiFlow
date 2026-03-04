@@ -44,6 +44,8 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
     const [expandedMov, setExpandedMov] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [isUploading, setIsUploading] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
@@ -126,89 +128,135 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
         m.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const handleDelete = async (movId: string) => {
-        if (!confirm('¿Estás seguro de que quieres eliminar este movimiento? Los saldos de las facturas imputadas serán restaurados. Esta acción no se puede deshacer.')) return
+    const toggleSelect = (id: string) => {
+        const next = new Set(selectedIds)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        setSelectedIds(next)
+    }
 
-        setLoading(true)
-        try {
-            const mov = movements.find(m => m.id === movId)
-            if (!mov) return
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredMovements.length && filteredMovements.length > 0) {
+            setSelectedIds(new Set())
+        } else {
+            setSelectedIds(new Set(filteredMovements.map(m => m.id)))
+        }
+    }
 
-            // 1. Revert all aplicaciones: restore monto_pendiente on each comprobante
-            if (mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0) {
-                for (const app of mov.aplicaciones_pago) {
-                    const { data: inv } = await supabase.from('comprobantes').select('monto_pendiente, monto_total, tipo').eq('id', app.comprobante_id).single()
-                    if (inv) {
-                        const restoredMonto = inv.tipo === 'nota_credito'
-                            ? Number(app.monto_aplicado)
-                            : Number(inv.monto_pendiente) + Number(app.monto_aplicado)
+    const deleteMovementLogic = async (movId: string) => {
+        const mov = movements.find(m => m.id === movId)
+        if (!mov) return
 
-                        const newEstado = restoredMonto >= inv.monto_total ? 'pendiente' : (restoredMonto <= 0.05 ? 'pagado' : 'parcial')
+        // 1. Revert all aplicaciones: restore monto_pendiente on each comprobante
+        if (mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0) {
+            for (const app of mov.aplicaciones_pago) {
+                const { data: inv } = await supabase.from('comprobantes')
+                    .select('monto_pendiente, monto_total, tipo')
+                    .eq('id', app.comprobante_id)
+                    .single()
 
-                        await supabase.from('comprobantes')
-                            .update({ monto_pendiente: restoredMonto, estado: newEstado })
-                            .eq('id', app.comprobante_id)
-                            .eq('organization_id', orgId)
-                    }
-                }
-            }
+                if (inv) {
+                    const restoredMonto = inv.tipo === 'nota_credito'
+                        ? Number(app.monto_aplicado)
+                        : Number(inv.monto_pendiente) + Number(app.monto_aplicado)
 
-            // 2. Specialized Cleanup for NDB/NCB (Delete associated residual vouchers)
-            const isResidual = mov.clase_documento === 'NDB' || mov.clase_documento === 'NCB'
-            if (isResidual && mov.aplicaciones_pago?.length > 0) {
-                const voucherIds = mov.aplicaciones_pago.map((a: any) => a.comprobante_id)
-                // We only delete vouchers of type bancaria to avoid accidental deletion of real invoices
-                await supabase.from('comprobantes')
-                    .delete()
-                    .in('id', voucherIds)
-                    .in('tipo', ['ndb_bancaria', 'ncb_bancaria'])
-                    .eq('organization_id', orgId)
-            }
+                    const newEstado = restoredMonto >= inv.monto_total ? 'pendiente' : (restoredMonto <= 0.05 ? 'pagado' : 'parcial')
 
-            // 3. Robust Bank Transaction Linkage Cleanup
-            // Directly search in transacciones table for any link to this movement
-            const { data: linkedTxs } = await supabase
-                .from('transacciones')
-                .select('*')
-                .eq('movimiento_id', movId)
-                .eq('organization_id', orgId)
-
-            if (linkedTxs && linkedTxs.length > 0) {
-                for (const tx of linkedTxs) {
-                    const movementMonto = Number(mov.monto_total || 0)
-                    const currentUsed = Number(tx.monto_usado || 0)
-                    const newMontoUsado = Math.max(0, currentUsed - movementMonto)
-                    const isNowOrphan = newMontoUsado <= 0.05
-
-                    await supabase.from('transacciones')
-                        .update({
-                            estado: isNowOrphan ? 'pendiente' : 'parcial',
-                            movimiento_id: isNowOrphan ? null : tx.movimiento_id,
-                            monto_usado: newMontoUsado
-                        })
-                        .eq('id', tx.id)
+                    await supabase.from('comprobantes')
+                        .update({ monto_pendiente: restoredMonto, estado: newEstado })
+                        .eq('id', app.comprobante_id)
                         .eq('organization_id', orgId)
                 }
             }
+        }
 
-            // 4. Delete children (aplicaciones + instrumentos)
-            await supabase.from('aplicaciones_pago').delete().eq('movimiento_id', movId)
-            await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
-
-            // 5. Final Delete of the movement itself
-            const { error: delErr } = await supabase.from('movimientos_tesoreria')
+        // 2. Specialized Cleanup for NDB/NCB
+        const isResidual = mov.clase_documento === 'NDB' || mov.clase_documento === 'NCB'
+        if (isResidual && mov.aplicaciones_pago?.length > 0) {
+            const voucherIds = mov.aplicaciones_pago.map((a: any) => a.comprobante_id)
+            await supabase.from('comprobantes')
                 .delete()
-                .eq('id', movId)
+                .in('id', voucherIds)
+                .in('tipo', ['ndb_bancaria', 'ncb_bancaria'])
                 .eq('organization_id', orgId)
+        }
 
-            if (delErr) throw delErr
+        // 3. Bank Transaction Linkage Cleanup
+        const { data: linkedTxs } = await supabase
+            .from('transacciones')
+            .select('*')
+            .eq('movimiento_id', movId)
+            .eq('organization_id', orgId)
 
+        if (linkedTxs && linkedTxs.length > 0) {
+            for (const tx of linkedTxs) {
+                const movementMonto = Number(mov.monto_total || 0)
+                const currentUsed = Number(tx.monto_usado || 0)
+                const newMontoUsado = Math.max(0, currentUsed - movementMonto)
+                const isNowOrphan = newMontoUsado <= 0.05
+
+                await supabase.from('transacciones')
+                    .update({
+                        estado: isNowOrphan ? 'pendiente' : 'parcial',
+                        movimiento_id: isNowOrphan ? null : tx.movimiento_id,
+                        monto_usado: newMontoUsado
+                    })
+                    .eq('id', tx.id)
+                    .eq('organization_id', orgId)
+            }
+        }
+
+        // 4. Delete children
+        await supabase.from('aplicaciones_pago').delete().eq('movimiento_id', movId)
+        await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
+
+        // 5. Final Delete
+        const { error: delErr } = await supabase.from('movimientos_tesoreria')
+            .delete()
+            .eq('id', movId)
+            .eq('organization_id', orgId)
+
+        if (delErr) throw delErr
+    }
+
+    const handleDelete = async (movId: string) => {
+        if (!confirm('¿Estás seguro de que quieres eliminar este movimiento? Los saldos de las facturas imputadas serán restaurados. Esta acción no se puede deshacer.')) return
+        setLoading(true)
+        try {
+            await deleteMovementLogic(movId)
             toast.success('Movimiento eliminado correctamente.')
             fetchMovements()
         } catch (err: any) {
             console.error('Error deleting movement:', err)
             toast.error('Error al eliminar: ' + err.message)
         } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleBulkDelete = async () => {
+        if (!confirm(`¿Estás seguro de que quieres eliminar los ${selectedIds.size} movimientos seleccionados? Los saldos de las facturas imputadas serán restaurados.`)) return
+
+        setIsDeletingBulk(true)
+        setLoading(true)
+        let deleted = 0
+        let errors = 0
+
+        try {
+            for (const id of Array.from(selectedIds)) {
+                try {
+                    await deleteMovementLogic(id)
+                    deleted++
+                } catch (e) {
+                    console.error(`Error deleting ${id}:`, e)
+                    errors++
+                }
+            }
+            setSelectedIds(new Set())
+            toast.success(`Eliminación finalizada: ${deleted} exitosos, ${errors} fallidos.`)
+            fetchMovements()
+        } finally {
+            setIsDeletingBulk(false)
             setLoading(false)
         }
     }
@@ -227,6 +275,19 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                     <p className="text-sm text-gray-500">{subtitle}</p>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
+                    {selectedIds.size > 0 && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="gap-2 h-9 shadow-lg animate-in zoom-in-95 duration-200"
+                            onClick={handleBulkDelete}
+                            disabled={isDeletingBulk}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            {isDeletingBulk ? 'Borrando...' : `Eliminar ${selectedIds.size}`}
+                        </Button>
+                    )}
+
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -275,6 +336,14 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 <Table>
                     <TableHeader className="bg-gray-900">
                         <TableRow className="hover:bg-transparent border-gray-800">
+                            <TableHead className="w-[40px]">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-gray-700 bg-gray-900"
+                                    checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0}
+                                    onChange={toggleSelectAll}
+                                />
+                            </TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Fecha</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Doc.</TableHead>
                             <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Entidad</TableHead>
@@ -296,7 +365,15 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                             </TableRow>
                         ) : filteredMovements.map(mov => (
                             <>
-                                <TableRow key={mov.id} className="border-gray-800 hover:bg-gray-800/30 transition-colors">
+                                <TableRow key={mov.id} className={`border-gray-800 transition-colors ${selectedIds.has(mov.id) ? 'bg-emerald-500/5' : 'hover:bg-gray-800/30'}`}>
+                                    <TableCell>
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-gray-700 bg-gray-900"
+                                            checked={selectedIds.has(mov.id)}
+                                            onChange={() => toggleSelect(mov.id)}
+                                        />
+                                    </TableCell>
                                     <TableCell className="font-mono text-xs">
                                         {new Date(mov.fecha).toLocaleDateString('es-AR')}
                                     </TableCell>
