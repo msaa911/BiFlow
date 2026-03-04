@@ -11,6 +11,7 @@ export interface Transaction {
     numero_cheque?: string;
     cbu?: string;
     vencimiento?: string | null;
+    referencia?: string;
     tipo: 'ingreso' | 'egreso' | 'factura_venta' | 'factura_compra' | 'DEBITO' | 'CREDITO';
     tags?: string[];
     raw?: any[];
@@ -211,6 +212,7 @@ export class UniversalTranslator {
             banco: headers.findIndex((h: string) => ['banco', 'bank', 'entidad', 'origen', 'sucursal'].some(k => h.includes(k))),
             tipo: headers.findIndex((h: string) => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado', 'mod', 'comp'].some(k => h.includes(k))),
             vencimiento: headers.findIndex((h: string) => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
+            referencia: headers.findIndex((h: string) => ['detalle', 'referencia', 'nro op', 'nro rec', 'comprobante nro'].some(k => h.includes(k))),
             numero: headers.findIndex((h: string) => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta', 'nro doc'].some(k => h.includes(k))),
             cheque: headers.findIndex((h: string) => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque', 'nro_valor'].some(k => h.includes(k))),
             cbu: headers.findIndex((h: string) => ['cbu', 'cta destino', 'cvu', 'cuenta destino', 'coordenada', 'cbu/alias'].some(k => h.includes(k))),
@@ -283,12 +285,17 @@ export class UniversalTranslator {
                 if (cbuMatch) cbu = cbuMatch[0];
             }
 
-            // Smart Cheque Extraction (Search for 8 digits if not in explicit column)
+            // Smart Cheque / Transfer Reference Extraction
             let numero_cheque = idx.cheque !== -1 ? row[idx.cheque] : '';
+            let referencia = idx.referencia !== -1 ? row[idx.referencia] : '';
+
             if (!numero_cheque) {
                 const chequeMatch = line.match(/\b(?:CH|CHEQUE|PAGO CH|VALOR)\s?(\d{6,10})\b/i);
                 if (chequeMatch) numero_cheque = chequeMatch[1];
             }
+
+            if (!referencia && numero_cheque) referencia = numero_cheque;
+            if (!referencia && row[idx.desc]) referencia = row[idx.desc];
 
             // Lógica de Signos si viene en columna Tipo
             let tipo: 'DEBITO' | 'CREDITO' = monto < 0 ? 'DEBITO' : 'CREDITO';
@@ -315,6 +322,7 @@ export class UniversalTranslator {
                     banco: idx.banco !== -1 ? row[idx.banco] : '',
                     numero_cheque: numero_cheque || undefined,
                     cbu: cbu || undefined,
+                    referencia: referencia || undefined,
                     vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
                     numero: idx.numero !== -1 ? row[idx.numero] : undefined,
                     tipo: tipo,

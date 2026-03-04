@@ -455,7 +455,7 @@ export async function POST(request: Request) {
                                     monto: Math.abs(rawRow.monto),
                                     banco: rawRow.banco || rawRow.metadata?.banco || null,
                                     fecha_disponibilidad: rawRow.vencimiento || rawRow.fecha,
-                                    referencia: rawRow.numero_cheque || rawRow.metadata?.referencia || null,
+                                    referencia: rawRow.referencia || rawRow.numero_cheque || rawRow.metadata?.referencia || null,
                                     estado: 'pendiente'
                                 })
                             })
