@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText } from 'lucide-react'
+import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CheckPortfolio } from './check-portfolio'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,8 @@ import Link from 'next/link'
 import { SmartFormatBuilder } from './smart-format-builder'
 import { UnreconciledPanel } from './unreconciled-panel'
 import { TreasuryHistory } from './treasury-history'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 interface BanksTabProps {
     orgId: string
@@ -27,9 +29,55 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [showFormatBuilder, setShowFormatBuilder] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'reconciled'>('all')
+    const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
+    const [isDeletingBulk, setIsDeletingBulk] = useState(false)
+    const supabase = createClient()
 
     const incomes = initialTransactions.filter(t => t.monto > 0)
     const expenses = initialTransactions.filter(t => t.monto < 0)
+
+    const filteredTx = initialTransactions.filter(t => {
+        if (filterStatus === 'pending') return t.estado === 'pendiente' || t.estado === 'parcial'
+        if (filterStatus === 'reconciled') return t.estado === 'conciliado'
+        return true
+    })
+
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedTxIds(new Set(filteredTx.map(t => t.id)))
+        } else {
+            setSelectedTxIds(new Set())
+        }
+    }
+
+    const handleSelect = (id: string, checked: boolean) => {
+        const newSet = new Set(selectedTxIds)
+        if (checked) newSet.add(id)
+        else newSet.delete(id)
+        setSelectedTxIds(newSet)
+    }
+
+    const handleBulkDelete = async () => {
+        if (selectedTxIds.size === 0) return
+        if (!confirm(`¿Seguro que desea eliminar ${selectedTxIds.size} transacciones del histórico? Esta acción es irreversible.`)) return
+
+        setIsDeletingBulk(true)
+        try {
+            const idsToDelete = Array.from(selectedTxIds)
+            const { error } = await supabase.from('transacciones').delete().in('id', idsToDelete)
+
+            if (error) throw error
+
+            toast.success(`${selectedTxIds.size} transacciones eliminadas con éxito`)
+            setSelectedTxIds(new Set())
+            if (onRefresh) onRefresh()
+        } catch (error: any) {
+            console.error('Error deleting bulk:', error)
+            toast.error('Error al eliminar en lote: ' + error.message)
+        } finally {
+            setIsDeletingBulk(false)
+        }
+    }
 
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -220,6 +268,15 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <table className="w-full text-left text-sm text-gray-400">
                             <thead className="bg-gray-800/50 text-xs uppercase font-medium text-gray-500">
                                 <tr>
+                                    <th className="px-4 py-4 w-12 text-center">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
+                                            checked={filteredTx.length > 0 && selectedTxIds.size === filteredTx.length}
+                                            onChange={handleSelectAll}
+                                            title="Seleccionar todas las visibles"
+                                        />
+                                    </th>
                                     <th className="px-4 py-4 w-[110px]">Fecha</th>
                                     <th className="px-4 py-4">Descripción</th>
                                     <th className="px-4 py-4 w-[100px]">Estado</th>
@@ -228,71 +285,86 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                <div className="p-4 bg-gray-900 border-b border-gray-800 flex gap-2">
+                                <div className="p-4 bg-gray-900 border-b border-gray-800 flex flex-wrap gap-2 justify-between items-center w-full">
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setFilterStatus('all')}
+                                            className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'all' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            Todos ({initialTransactions.length})
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setFilterStatus('pending')}
+                                            className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            Pendientes ({initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length})
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setFilterStatus('reconciled')}
+                                            className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'reconciled' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            Conciliados ({initialTransactions.filter(t => t.estado === 'conciliado').length})
+                                        </Button>
+                                    </div>
                                     <Button
-                                        variant="ghost"
+                                        variant={selectedTxIds.size > 0 ? "destructive" : "outline"}
                                         size="sm"
-                                        onClick={() => setFilterStatus('all')}
-                                        className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'all' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
+                                        className={`gap-2 h-8 text-[10px] font-bold uppercase transition-all ${selectedTxIds.size > 0 ? 'shadow-lg' : 'opacity-40 border-dashed text-gray-500 bg-transparent hover:bg-transparent hover:text-gray-500 border-gray-700'}`}
+                                        onClick={handleBulkDelete}
+                                        disabled={isDeletingBulk || selectedTxIds.size === 0}
+                                        title={selectedTxIds.size === 0 ? "Marca las casillas de las transacciones para activar este botón" : "Eliminar seleccionados"}
                                     >
-                                        Todos ({initialTransactions.length})
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setFilterStatus('pending')}
-                                        className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-gray-300'}`}
-                                    >
-                                        Pendientes ({initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length})
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setFilterStatus('reconciled')}
-                                        className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'reconciled' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}
-                                    >
-                                        Conciliados ({initialTransactions.filter(t => t.estado === 'conciliado').length})
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        {isDeletingBulk ? 'Borrando...' : (selectedTxIds.size > 0 ? `Eliminar ${selectedTxIds.size}` : 'Seleccionados')}
                                     </Button>
                                 </div>
-                                {initialTransactions
-                                    .filter(t => {
-                                        if (filterStatus === 'pending') return t.estado === 'pendiente' || t.estado === 'parcial'
-                                        if (filterStatus === 'reconciled') return t.estado === 'conciliado'
-                                        return true
-                                    })
-                                    .map((t) => (
-                                        <tr key={t.id} className="hover:bg-gray-800/50 transition-all group">
-                                            <td className="px-4 py-3 whitespace-nowrap text-gray-300 w-[110px] text-xs">
-                                                {formatDate(t.fecha)}
-                                            </td>
-                                            <td className="px-4 py-3 text-white font-medium max-w-[400px] truncate text-xs">
-                                                {t.descripcion}
-                                            </td>
-                                            <td className="px-4 py-3 w-[100px]">
-                                                {t.estado === 'conciliado' ? (
-                                                    <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase">
-                                                        Conciliado
-                                                    </Badge>
-                                                ) : t.estado === 'parcial' ? (
-                                                    <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] font-bold uppercase">
-                                                        Parcial
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] font-bold uppercase">
-                                                        Pendiente
-                                                    </Badge>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 w-[140px]">
-                                                <span className="px-2 py-0.5 rounded text-[9px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700">
-                                                    {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
-                                                </span>
-                                            </td>
-                                            <td className={`px-4 py-3 text-right font-bold tabular-nums text-xs w-[110px] ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                {filteredTx.map((t) => (
+                                    <tr key={t.id} className={`hover:bg-gray-800/50 transition-all group ${selectedTxIds.has(t.id) ? 'bg-emerald-500/5 border-l-2 border-emerald-500' : ''}`}>
+                                        <td className="px-4 py-3 text-center align-middle">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
+                                                checked={selectedTxIds.has(t.id)}
+                                                onChange={(e) => handleSelect(t.id, e.target.checked)}
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-gray-300 w-[110px] text-xs">
+                                            {formatDate(t.fecha)}
+                                        </td>
+                                        <td className="px-4 py-3 text-white font-medium max-w-[400px] truncate text-xs">
+                                            {t.descripcion}
+                                        </td>
+                                        <td className="px-4 py-3 w-[100px]">
+                                            {t.estado === 'conciliado' ? (
+                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase">
+                                                    Conciliado
+                                                </Badge>
+                                            ) : t.estado === 'parcial' ? (
+                                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] font-bold uppercase">
+                                                    Parcial
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] font-bold uppercase">
+                                                    Pendiente
+                                                </Badge>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 w-[140px]">
+                                            <span className="px-2 py-0.5 rounded text-[9px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700">
+                                                {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
+                                            </span>
+                                        </td>
+                                        <td className={`px-4 py-3 text-right font-bold tabular-nums text-xs w-[110px] ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>

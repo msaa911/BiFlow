@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -36,6 +36,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [categorizedTxIds, setCategorizedTxIds] = useState<string[]>([])
+    const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
+    const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const supabase = createClient()
 
     const categories = [
@@ -825,6 +827,43 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         }
     }
 
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedTxIds(new Set(filtered.map(t => t.id)))
+        } else {
+            setSelectedTxIds(new Set())
+        }
+    }
+
+    const handleSelect = (id: string, checked: boolean) => {
+        const newSet = new Set(selectedTxIds)
+        if (checked) newSet.add(id)
+        else newSet.delete(id)
+        setSelectedTxIds(newSet)
+    }
+
+    const handleBulkDelete = async () => {
+        if (selectedTxIds.size === 0) return
+        if (!confirm(`¿Seguro que desea eliminar ${selectedTxIds.size} transacciones bancarias? Esta acción borrará permanentemente los registros del sistema.`)) return
+
+        setIsDeletingBulk(true)
+        try {
+            const idsToDelete = Array.from(selectedTxIds)
+            const { error } = await supabase.from('transacciones').delete().in('id', idsToDelete)
+
+            if (error) throw error
+
+            toast.success(`${selectedTxIds.size} transacciones eliminadas con éxito`)
+            setSelectedTxIds(new Set())
+            if (onRefresh) onRefresh()
+        } catch (error: any) {
+            console.error('Error deleting bulk:', error)
+            toast.error('Error al eliminar en lote: ' + error.message)
+        } finally {
+            setIsDeletingBulk(false)
+        }
+    }
+
     return (
         <Card className="bg-gray-900 border-gray-800 animate-in fade-in duration-500">
             <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800 px-6 py-4">
@@ -836,6 +875,17 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     <p className="text-xs text-gray-400 mt-1">Movimientos bancarios pendientes de vinculación con comprobantes.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <Button
+                        variant={selectedTxIds.size > 0 ? "destructive" : "outline"}
+                        size="sm"
+                        className={`gap-2 duration-200 ${selectedTxIds.size > 0 ? 'shadow-lg animate-in zoom-in-95' : 'opacity-40 border-dashed text-gray-500 bg-transparent hover:bg-transparent hover:text-gray-500 border-gray-700'}`}
+                        onClick={handleBulkDelete}
+                        disabled={isDeletingBulk || selectedTxIds.size === 0}
+                        title={selectedTxIds.size === 0 ? "Marca las casillas de las transacciones para activar este botón" : "Eliminar seleccionados"}
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        {isDeletingBulk ? 'Borrando...' : (selectedTxIds.size > 0 ? `Eliminar ${selectedTxIds.size}` : 'Selecciona para eliminar')}
+                    </Button>
                     <Button
                         variant="outline"
                         size="sm"
@@ -849,6 +899,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             </CardHeader>
             <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-6">
+                    <div className="flex items-center px-1">
+                        <input
+                            type="checkbox"
+                            className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
+                            checked={filtered.length > 0 && selectedTxIds.size === filtered.length}
+                            onChange={handleSelectAll}
+                            title="Seleccionar todas las visibles"
+                        />
+                    </div>
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
                         <input
@@ -864,8 +923,14 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                     {filtered.length > 0 ? (
                         filtered.map(tx => (
-                            <div key={tx.id} className={`group flex items-center justify-between p-4 bg-gray-950 border rounded-xl transition-all ${tx.estado === 'conciliado' ? 'border-emerald-500/10 opacity-60 grayscale-[0.8] bg-gray-950/50' : 'border-gray-800 hover:border-gray-700 shadow-sm'}`}>
+                            <div key={tx.id} className={`group flex items-center justify-between p-4 bg-gray-950 border rounded-xl transition-all ${tx.estado === 'conciliado' ? 'border-emerald-500/10 opacity-60 grayscale-[0.8] bg-gray-950/50' : 'border-gray-800 hover:border-gray-700 shadow-sm'} ${selectedTxIds.has(tx.id) ? 'bg-emerald-500/5 border-l-2 border-emerald-500' : ''}`}>
                                 <div className="flex items-center gap-4">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
+                                        checked={selectedTxIds.has(tx.id)}
+                                        onChange={(e) => handleSelect(tx.id, e.target.checked)}
+                                    />
                                     <div className={`p-2 rounded-lg ${tx.monto < 0 ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                                         {tx.monto < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
                                     </div>

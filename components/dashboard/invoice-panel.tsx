@@ -36,6 +36,8 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
     const [loadingTransactions, setLoadingTransactions] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
@@ -167,6 +169,43 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
         }
     }
 
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedIds(new Set(filteredInvoices.map(i => i.id)))
+        } else {
+            setSelectedIds(new Set())
+        }
+    }
+
+    const handleSelect = (id: string, checked: boolean) => {
+        const newSet = new Set(selectedIds)
+        if (checked) newSet.add(id)
+        else newSet.delete(id)
+        setSelectedIds(newSet)
+    }
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return
+        if (!confirm(`¿Seguro que desea eliminar ${selectedIds.size} comprobantes? Esta acción no se puede deshacer.`)) return
+
+        setIsDeletingBulk(true)
+        try {
+            const idsToDelete = Array.from(selectedIds)
+            const { error } = await supabase.from('comprobantes').delete().in('id', idsToDelete)
+
+            if (error) throw error
+
+            toast.success(`${selectedIds.size} comprobantes eliminados con éxito`)
+            setSelectedIds(new Set())
+            onRefresh()
+        } catch (error: any) {
+            console.error('Error deleting bulk:', error)
+            toast.error('Error al eliminar en lote: ' + error.message)
+        } finally {
+            setIsDeletingBulk(false)
+        }
+    }
+
     const filteredInvoices = invoices.filter(inv => {
         let typeMatch = false
         if (view === 'AR') {
@@ -212,6 +251,17 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 )}
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                    <Button
+                        variant={selectedIds.size > 0 ? "destructive" : "outline"}
+                        size="sm"
+                        className={`gap-2 h-9 duration-200 ${selectedIds.size > 0 ? 'shadow-lg animate-in zoom-in-95' : 'opacity-40 border-dashed text-gray-500 bg-transparent hover:bg-transparent hover:text-gray-500 border-gray-700'}`}
+                        onClick={handleBulkDelete}
+                        disabled={isDeletingBulk || selectedIds.size === 0}
+                        title={selectedIds.size === 0 ? "Marca las casillas de la tabla para activar este botón" : "Eliminar seleccionados"}
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        {isDeletingBulk ? 'Borrando...' : (selectedIds.size > 0 ? `Eliminar ${selectedIds.size}` : 'Selecciona para eliminar')}
+                    </Button>
                     <Button
                         variant="outline"
                         size="sm"
@@ -287,6 +337,14 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-800/50 text-xs uppercase font-semibold text-gray-500 tracking-wider">
                         <tr>
+                            <th className="px-6 py-4 w-12 text-center">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
+                                    checked={filteredInvoices.length > 0 && selectedIds.size === filteredInvoices.length}
+                                    onChange={handleSelectAll}
+                                />
+                            </th>
                             <th className="px-6 py-4">Fecha (Emisión)</th>
                             <th className="px-6 py-4">CUIT / Entidad</th>
                             <th className="px-6 py-4">Concepto / Condición</th>
@@ -297,11 +355,19 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                     </thead>
                     <tbody className="divide-y divide-gray-800">
                         {loading ? (
-                            <tr><td colSpan={6} className="px-6 py-24 text-center text-gray-500">Cargando comprobantes...</td></tr>
+                            <tr><td colSpan={7} className="px-6 py-24 text-center text-gray-500">Cargando comprobantes...</td></tr>
                         ) : filteredInvoices.length === 0 ? (
-                            <tr><td colSpan={6} className="px-6 py-24 text-center text-gray-500">No hay comprobantes registrados.</td></tr>
+                            <tr><td colSpan={7} className="px-6 py-24 text-center text-gray-500">No hay comprobantes registrados.</td></tr>
                         ) : filteredInvoices.map(inv => (
-                            <tr key={inv.id} className="hover:bg-gray-800/20 transition-colors">
+                            <tr key={inv.id} className={`hover:bg-gray-800/20 transition-colors ${selectedIds.has(inv.id) ? 'bg-emerald-500/5 border-l-2 border-emerald-500' : ''}`}>
+                                <td className="px-6 py-4 text-center align-middle">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
+                                        checked={selectedIds.has(inv.id)}
+                                        onChange={(e) => handleSelect(inv.id, e.target.checked)}
+                                    />
+                                </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
                                         <span className="text-white font-bold">{new Date(inv.fecha_emision).toLocaleDateString('es-AR')}</span>
