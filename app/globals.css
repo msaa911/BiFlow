@@ -74,6 +74,18 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Hide Chrome/Safari/Edge/Opera spin buttons */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Hide Firefox spin buttons */
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
 }
 
 .custom-scrollbar::-webkit-scrollbar {

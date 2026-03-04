@@ -232,7 +232,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-gray-950 border-gray-800 text-white sm:max-w-[700px] p-0 overflow-hidden">
+            <DialogContent className="bg-gray-950 border-gray-800 text-white sm:max-w-[850px] p-0 overflow-hidden">
                 <DialogHeader className="p-6 border-b border-gray-800">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <Wallet className="w-5 h-5 text-emerald-400" />
@@ -401,10 +401,10 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                             {instruments.map((ins, index) => (
                                                 <div key={ins.id} className="p-4 bg-gray-900 border border-gray-800 rounded-xl space-y-4">
                                                     <div className="flex justify-between items-center gap-4">
-                                                        <div className="grid grid-cols-2 gap-4 flex-1">
+                                                        <div className="grid grid-cols-[1.6fr_1fr] gap-4 flex-1">
                                                             <div className="space-y-1.5">
                                                                 <Label className="text-[9px] uppercase text-gray-500 font-bold">Medio</Label>
-                                                                <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+                                                                <div className="flex gap-1 pb-1">
                                                                     {['efectivo', 'transferencia', 'cheque_terceros', 'cheque_propio'].map(m => (
                                                                         <button
                                                                             key={m}
