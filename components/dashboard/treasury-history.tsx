@@ -332,203 +332,200 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
             </div>
 
             <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50">
-                <Table>
-                    <TableHeader className="bg-gray-900">
-                        <TableRow className="hover:bg-transparent border-gray-800">
-                            <TableHead className="w-[40px]">
-                                <input
-                                    type="checkbox"
-                                    className="rounded border-gray-700 bg-gray-900"
-                                    checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0}
-                                    onChange={toggleSelectAll}
-                                />
-                            </TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Fecha</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Doc.</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Entidad</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Clase</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Concepto</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-right">Total</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Detalle</TableHead>
-                            <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-center">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center text-gray-500">Cargando...</TableCell>
+                <div className="max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                    <Table>
+                        <TableHeader className="bg-gray-900 sticky top-0 z-10">
+                            <TableRow className="hover:bg-transparent border-gray-800">
+                                <TableHead className="w-[40px]">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-700 bg-gray-900"
+                                        checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </TableHead>
+                                <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Fecha</TableHead>
+                                <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Comprobante</TableHead>
+                                <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Razón Social</TableHead>
+                                <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Concepto</TableHead>
+                                <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-right">Total</TableHead>
+                                <TableHead className="text-gray-400 font-bold uppercase text-[10px]">Detalle</TableHead>
+                                <TableHead className="text-gray-400 font-bold uppercase text-[10px] text-center">Acciones</TableHead>
                             </TableRow>
-                        ) : filteredMovements.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center text-gray-500">No se encontraron registros.</TableCell>
-                            </TableRow>
-                        ) : filteredMovements.map(mov => (
-                            <>
-                                <TableRow key={mov.id} className={`border-gray-800 transition-colors ${selectedIds.has(mov.id) ? 'bg-emerald-500/5' : 'hover:bg-gray-800/30'}`}>
-                                    <TableCell>
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-gray-700 bg-gray-900"
-                                            checked={selectedIds.has(mov.id)}
-                                            onChange={() => toggleSelect(mov.id)}
-                                        />
-                                    </TableCell>
-                                    <TableCell className="font-mono text-xs">
-                                        {new Date(mov.fecha).toLocaleDateString('es-AR')}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge className={`uppercase text-[9px] font-bold ${mov.tipo === 'cobro' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
-                                            {mov.numero || 'S/N'}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="font-bold text-gray-200 text-xs text-ellipsis overflow-hidden whitespace-nowrap max-w-[200px]">
-                                        {mov.entidades?.razon_social}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className={`text-[9px] font-black tracking-widest px-1.5 py-0.5 flex items-center gap-1 w-fit
-                                            ${mov.clase_documento === 'NDB' ? 'border-red-500/30 text-red-400 bg-red-500/5' :
-                                                mov.clase_documento === 'NCB' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' :
-                                                    'border-blue-500/20 bg-blue-500/5 text-blue-400'}`}>
-                                            {mov.clase_documento === 'NDB' && <TrendingDown className="w-2.5 h-2.5" />}
-                                            {mov.clase_documento === 'NCB' && <TrendingUp className="w-2.5 h-2.5" />}
-                                            {mov.clase_documento || (mov.tipo === 'cobro' ? 'Recibo' : 'OP')}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            <Badge variant="outline" className={`text-[9px] uppercase font-bold border-gray-700 bg-gray-800 text-gray-400 ${mov.categoria ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : ''}`}>
-                                                {mov.categoria || 'S/C'}
-                                            </Badge>
-                                            {mov.metadata?.desglose && (
-                                                <Badge variant="outline" className="text-[8px] font-black border-amber-500/20 text-amber-500 bg-amber-500/5 uppercase w-fit">
-                                                    CON DESGLOSE
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono font-bold text-white text-xs">
-                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}
-                                    </TableCell>
-                                    <TableCell>
-                                        <button
-                                            onClick={() => setExpandedMov(expandedMov === mov.id ? null : mov.id)}
-                                            className="text-[10px] uppercase font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-                                        >
-                                            {expandedMov === mov.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                            {expandedMov === mov.id ? 'Cerrar' : 'Ver Detalle'}
-                                        </button>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex justify-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
-                                                title="Exportar a Excel"
-                                                onClick={() => {
-                                                    try {
-                                                        exportTreasuryMovementToExcel(mov)
-                                                        toast.success('Excel generado')
-                                                    } catch (e) {
-                                                        toast.error('Error al exportar')
-                                                    }
-                                                }}
-                                            >
-                                                <Download className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-gray-500 hover:text-red-500 hover:bg-red-500/10"
-                                                onClick={() => handleDelete(mov.id)}
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="h-32 text-center text-gray-500">Cargando...</TableCell>
                                 </TableRow>
-                                {expandedMov === mov.id && (
-                                    <TableRow className="bg-gray-900/80 border-gray-800">
-                                        <TableCell colSpan={6} className="p-0">
-                                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                {/* Instrumentos */}
-                                                <div>
-                                                    <h4 className="text-[10px] uppercase font-bold text-gray-500 mb-3 tracking-widest">Valores / Instrumentos</h4>
-                                                    <div className="space-y-2">
-                                                        {mov.instrumentos_pago.map((ins: any) => (
-                                                            <div key={ins.id} className="flex justify-between items-center p-3 bg-gray-950 border border-gray-800 rounded-lg text-xs">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
-                                                                        <FileText className="w-4 h-4 text-emerald-500" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="font-bold text-gray-300 uppercase">{ins.metodo.replace('_', ' ')}</p>
-                                                                        <p className="text-[10px] text-gray-500">Disp: {new Date(ins.fecha_disponibilidad).toLocaleDateString('es-AR')} {ins.referencia ? ` | Ref: ${ins.referencia}` : ''}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <p className="font-mono font-bold text-emerald-400">
-                                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(ins.monto)}
-                                                                </p>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Aplicaciones o Desglose */}
-                                                <div>
-                                                    {mov.metadata?.desglose ? (
-                                                        <>
-                                                            <h4 className="text-[10px] uppercase font-bold text-amber-500 mb-3 tracking-widest flex items-center gap-2">
-                                                                <Tag className="w-3 h-3" /> Desglose Administrativo (Split)
-                                                            </h4>
-                                                            <div className="space-y-2">
-                                                                {mov.metadata.desglose.map((item: any, idx: number) => (
-                                                                    <div key={idx} className="flex justify-between items-center p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg text-xs">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <Badge variant="outline" className={`text-[8px] uppercase ${item.tipo === 'activo' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}`}>
-                                                                                {item.tipo}
-                                                                            </Badge>
-                                                                            <p className="font-bold text-gray-300">{item.concepto}</p>
-                                                                        </div>
-                                                                        <p className="font-mono font-bold text-white">
-                                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(item.monto)}
-                                                                        </p>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <h4 className="text-[10px] uppercase font-bold text-gray-500 mb-3 tracking-widest">Facturas Canceladas / Imputadas</h4>
-                                                            <div className="space-y-2">
-                                                                {mov.aplicaciones_pago.length > 0 ? (
-                                                                    mov.aplicaciones_pago.map((app: any, idx: number) => (
-                                                                        <div key={idx} className="flex justify-between items-center p-3 bg-gray-950 border border-gray-800 rounded-lg text-xs">
-                                                                            <div>
-                                                                                <p className="font-bold text-gray-300">{app.comprobantes?.numero}</p>
-                                                                                <p className="text-[10px] text-gray-500 uppercase">{app.comprobantes?.tipo.replace('_', ' ')}</p>
-                                                                            </div>
-                                                                            <p className="font-mono font-bold text-blue-400">
-                                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(app.monto_aplicado)}
-                                                                            </p>
-                                                                        </div>
-                                                                    ))
-                                                                ) : (
-                                                                    <p className="text-[10px] text-gray-600 italic">Movimiento directo sin imputación de facturas.</p>
-                                                                )}
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
+                            ) : filteredMovements.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="h-32 text-center text-gray-500">No se encontraron registros.</TableCell>
+                                </TableRow>
+                            ) : filteredMovements.map(mov => (
+                                <>
+                                    <TableRow key={mov.id} className={`border-gray-800 transition-colors ${selectedIds.has(mov.id) ? 'bg-emerald-500/5' : 'hover:bg-gray-800/30'}`}>
+                                        <TableCell>
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-gray-700 bg-gray-900"
+                                                checked={selectedIds.has(mov.id)}
+                                                onChange={() => toggleSelect(mov.id)}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                            {new Date(mov.fecha).toLocaleDateString('es-AR')}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge className={`uppercase text-[9px] font-bold ${mov.tipo === 'cobro' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
+                                                {mov.numero || 'S/N'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="font-bold text-gray-200 text-xs text-ellipsis overflow-hidden whitespace-nowrap max-w-[200px]">
+                                            {mov.entidades?.razon_social}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1">
+                                                {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
+                                                    mov.aplicaciones_pago.map((app: any, idx: number) => {
+                                                        const tipoLabel = app.comprobantes?.tipo === 'factura_venta' || app.comprobantes?.tipo === 'factura_compra' ? 'Factura' :
+                                                            app.comprobantes?.tipo === 'nota_credito' ? 'N. Crédito' : 'N. Débito';
+                                                        return (
+                                                            <Badge key={idx} variant="outline" className="text-[9px] uppercase font-bold border-emerald-500/30 text-emerald-400 bg-emerald-500/10 whitespace-nowrap w-fit">
+                                                                {tipoLabel} {app.comprobantes?.numero}
+                                                            </Badge>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <Badge variant="outline" className="text-[9px] uppercase font-bold border-gray-700 bg-gray-800 text-gray-400">
+                                                        {mov.observaciones || 'S/C'}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono font-bold text-white text-xs">
+                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}
+                                        </TableCell>
+                                        <TableCell>
+                                            <button
+                                                onClick={() => setExpandedMov(expandedMov === mov.id ? null : mov.id)}
+                                                className="text-[10px] uppercase font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                                            >
+                                                {expandedMov === mov.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                                {expandedMov === mov.id ? 'Cerrar' : 'Ver Detalle'}
+                                            </button>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex justify-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                                    title="Exportar a Excel"
+                                                    onClick={() => {
+                                                        try {
+                                                            exportTreasuryMovementToExcel(mov)
+                                                            toast.success('Excel generado')
+                                                        } catch (e) {
+                                                            toast.error('Error al exportar')
+                                                        }
+                                                    }}
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-gray-500 hover:text-red-500 hover:bg-red-500/10"
+                                                    onClick={() => handleDelete(mov.id)}
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                )}
-                            </>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+                                    {expandedMov === mov.id && (
+                                        <TableRow className="bg-gray-900/80 border-gray-800">
+                                            <TableCell colSpan={8} className="p-0">
+                                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    {/* Instrumentos */}
+                                                    <div>
+                                                        <h4 className="text-[10px] uppercase font-bold text-gray-500 mb-3 tracking-widest">Valores / Instrumentos</h4>
+                                                        <div className="space-y-2">
+                                                            {mov.instrumentos_pago.map((ins: any) => (
+                                                                <div key={ins.id} className="flex justify-between items-center p-3 bg-gray-950 border border-gray-800 rounded-lg text-xs">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
+                                                                            <FileText className="w-4 h-4 text-emerald-500" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold text-gray-300 uppercase">{ins.metodo.replace('_', ' ')}</p>
+                                                                            <p className="text-[10px] text-gray-500">Disp: {new Date(ins.fecha_disponibilidad).toLocaleDateString('es-AR')} {ins.referencia ? ` | Ref: ${ins.referencia}` : ''}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <p className="font-mono font-bold text-emerald-400">
+                                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(ins.monto)}
+                                                                    </p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Aplicaciones o Desglose */}
+                                                    <div>
+                                                        {mov.metadata?.desglose ? (
+                                                            <>
+                                                                <h4 className="text-[10px] uppercase font-bold text-amber-500 mb-3 tracking-widest flex items-center gap-2">
+                                                                    <Tag className="w-3 h-3" /> Desglose Administrativo (Split)
+                                                                </h4>
+                                                                <div className="space-y-2">
+                                                                    {mov.metadata.desglose.map((item: any, idx: number) => (
+                                                                        <div key={idx} className="flex justify-between items-center p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg text-xs">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Badge variant="outline" className={`text-[8px] uppercase ${item.tipo === 'activo' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}`}>
+                                                                                    {item.tipo}
+                                                                                </Badge>
+                                                                                <p className="font-bold text-gray-300">{item.concepto}</p>
+                                                                            </div>
+                                                                            <p className="font-mono font-bold text-white">
+                                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(item.monto)}
+                                                                            </p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <h4 className="text-[10px] uppercase font-bold text-gray-500 mb-3 tracking-widest">Facturas Canceladas / Imputadas</h4>
+                                                                <div className="space-y-2">
+                                                                    {mov.aplicaciones_pago.length > 0 ? (
+                                                                        mov.aplicaciones_pago.map((app: any, idx: number) => (
+                                                                            <div key={idx} className="flex justify-between items-center p-3 bg-gray-950 border border-gray-800 rounded-lg text-xs">
+                                                                                <div>
+                                                                                    <p className="font-bold text-gray-300">{app.comprobantes?.numero}</p>
+                                                                                    <p className="text-[10px] text-gray-500 uppercase">{app.comprobantes?.tipo.replace('_', ' ')}</p>
+                                                                                </div>
+                                                                                <p className="font-mono font-bold text-blue-400">
+                                                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(app.monto_aplicado)}
+                                                                                </p>
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <p className="text-[10px] text-gray-600 italic">Movimiento directo sin imputación de facturas.</p>
+                                                                    )}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
         </Card>
     )
 }
