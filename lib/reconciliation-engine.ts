@@ -173,12 +173,28 @@ export class ReconciliationEngine {
 
                     const mov = m.movimientos_tesoreria;
                     const movEntidad = mov?.entidades;
-
-                    // Verificamos si hay referencias cruzadas de factura en la descripcion del banco
-                    let hasReferenceMatch = false;
                     const descUpper = (trans.descripcion || '').toUpperCase();
 
-                    // 1. Check aplicaciones_pago for invoice numbers
+                    // 0. Check Payment Reference Match (Ej: Numero de cheque, numero de transferencia que detalla el recibo)
+                    let hasPaymentRefMatch = false;
+                    const memRef = (m.referencia || '').toUpperCase().trim();
+                    if (memRef && memRef.length >= 4) {
+                        // Buscamos si la referencia del recibo está textualmente en el banco
+                        if (descUpper.includes(memRef) || (trans.numero_cheque && trans.numero_cheque.toUpperCase().includes(memRef))) {
+                            hasPaymentRefMatch = true;
+                        } else {
+                            // Intentamos solo con los números de la referencia (ej: de "TRF-1234" buscamos "1234")
+                            const refNums = memRef.replace(/\D/g, '');
+                            if (refNums.length >= 4 && descUpper.includes(refNums)) {
+                                hasPaymentRefMatch = true;
+                            }
+                        }
+                    }
+
+                    // 1. Verificamos si hay referencias cruzadas de factura en la descripcion del banco
+                    let hasReferenceMatch = false;
+
+                    // 1.a Check aplicaciones_pago for invoice numbers
                     if (mov?.aplicaciones_pago && Array.isArray(mov.aplicaciones_pago)) {
                         for (const app of mov.aplicaciones_pago) {
                             const compNum = app.comprobantes?.numero; // ej: 'FAC-A-0001-1234'
@@ -197,7 +213,7 @@ export class ReconciliationEngine {
                         }
                     }
 
-                    // 2. Check observaciones del movimiento (fallback manual)
+                    // 1.b Check observaciones del movimiento (fallback manual)
                     if (!hasReferenceMatch && mov?.observaciones) {
                         const obsMatch = mov.observaciones.match(/[A-Z]+-?\d{1,4}-?(\d{4,8})/); // Catch patterns like FAC-0001-1234
                         if (obsMatch && obsMatch[1]) {
@@ -210,21 +226,28 @@ export class ReconciliationEngine {
                         }
                     }
 
-                    // Si hay match por referencia de factura Y el monto coincide, es MATCH SEGURO Nivel 0 (Absoluto)
-                    if (hasReferenceMatch) {
+                    // --- EVALUACIÓN FINAL DE COINCIDENCIA DE 1 A 1 ---
+
+                    // Si el Banco + Recibo comparten la REFERENCIA DE PAGO (Nº Transf, Nº Cheque) Y el MONTO: Match Absoluto.
+                    if (hasPaymentRefMatch) return true;
+
+                    // Si el Banco menciona la FACTURA pagada Y el MONTO coincide: Match Absoluto (Permite CUITs de terceros).
+                    if (hasReferenceMatch) return true;
+
+                    // Fallback: Si no escribieron referencia clara ni comprobante, requerimos que el CUIT o Nombre coincida
+                    if (txCuitNormalized && movEntidad?.cuit && normalizeCuit(movEntidad.cuit) === txCuitNormalized) {
                         return true;
                     }
 
-                    // Si los montos coinciden exactamente para un Recibo/OP, lo consideramos un match seguro 
-                    // ya que el administrativo cargó el monto explícito para esta operación bancaria.
-                    // Relajamos la restricción estricta de CUIT vs texto para evitar falsos negativos
-                    if (txCuitNormalized && movEntidad?.cuit) {
-                        if (normalizeCuit(movEntidad.cuit) !== txCuitNormalized) {
-                            console.warn(`[RECON_MATCH_WARN] Amount matches, but CUIT differs for Mov ${m.id}. Tx: ${txCuitNormalized}, Mov: ${normalizeCuit(movEntidad.cuit)}. Accepting anyway due to Architect Pivot.`);
-                        }
+                    const razonSocial = (movEntidad?.razon_social || '').toUpperCase();
+                    if (razonSocial) {
+                        const words = razonSocial.split(/\s+/).filter((w: string) => w.length > 3);
+                        if (words.some((w: string) => descUpper.includes(w))) return true;
                     }
 
-                    return true; // Amount matches -> it's a match
+                    // Si solo coinciden los montos pero no hay referencias cruzadas, 
+                    // ni cuit igual, ni la razón social en la descripción, es demasiado riesgoso asumirlo como Match 100% automático.
+                    return false;
                 });
 
                 if (movementMatch) {
