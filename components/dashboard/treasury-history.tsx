@@ -275,18 +275,17 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                     <p className="text-sm text-gray-500">{subtitle}</p>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
-                    {selectedIds.size > 0 && (
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            className="gap-2 h-9 shadow-lg animate-in zoom-in-95 duration-200"
-                            onClick={handleBulkDelete}
-                            disabled={isDeletingBulk}
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            {isDeletingBulk ? 'Borrando...' : `Eliminar ${selectedIds.size}`}
-                        </Button>
-                    )}
+                    <Button
+                        variant={selectedIds.size > 0 ? "destructive" : "outline"}
+                        size="sm"
+                        className={`gap-2 h-9 duration-200 ${selectedIds.size > 0 ? 'shadow-lg animate-in zoom-in-95' : 'opacity-40 border-dashed text-gray-500 bg-transparent hover:bg-transparent hover:text-gray-500 border-gray-700'}`}
+                        onClick={handleBulkDelete}
+                        disabled={isDeletingBulk || selectedIds.size === 0}
+                        title={selectedIds.size === 0 ? "Marca las casillas a la izquierda de cada fila para activar este botón" : "Eliminar seleccionados"}
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        {isDeletingBulk ? 'Borrando...' : (selectedIds.size > 0 ? `Eliminar ${selectedIds.size}` : 'Selecciona para eliminar')}
+                    </Button>
 
                     <input
                         type="file"
