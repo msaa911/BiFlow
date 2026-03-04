@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -98,9 +98,9 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         }
     }
 
-    useState(() => {
+    useEffect(() => {
         fetchGlobalSuggestions()
-    })
+    }, [])
 
     const fetchEntities = async () => {
         setLoadingEntities(true)
@@ -172,6 +172,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             const { data: instruments, error: insError } = await supabase
                 .from('instrumentos_pago')
                 .select('*, movimientos_tesoreria(*, entidades(razon_social))')
+                .eq('organization_id', orgId)
                 .lte('monto', txAmount * 1.2) // Increased tolerance to 20% for manual suggestions
 
             if (!insError && instruments) {
