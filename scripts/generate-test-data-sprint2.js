@@ -75,7 +75,7 @@ for (let i = 0; i < 25; i++) {
     if (Math.random() > 0.2) {
         const fechaPago = new Date(fechaEmision.getTime() + randomInt(2, 10) * 864e5);
         if (fechaPago <= endFeb) {
-            const numeroRecibo = `REC-${idRecibos++}`;
+            const numeroRecibo = `0001-${String(idRecibos++).padStart(8, '0')}`;
             const esCheque = Math.random() > 0.6; // 40% Cheques
             const medio = esCheque ? 'Cheque' : 'Transferencia';
             const bancoNombre = bancosAR[randomInt(0, bancosAR.length - 1)];
@@ -167,7 +167,7 @@ for (let i = 0; i < 20; i++) {
     if (Math.random() > 0.1 || i === 5) {
         const fechaPago = new Date(fechaEmision.getTime() + randomInt(5, 20) * 864e5);
         if (fechaPago <= endFeb) {
-            const numeroOP = `OP-${idOP++}`;
+            const numeroOP = `0001-${String(idOP++).padStart(8, '0')}`;
             const refTx = `TRF-${randomInt(100000, 999999)}`;
 
             let pagoCBU = prov.cbu;
