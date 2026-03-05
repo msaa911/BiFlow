@@ -408,14 +408,17 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     {inv.monto_pendiente > 0 ? (
                                         new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)
                                     ) : (
-                                        inv.metadata?.reconciled_v2 || inv.metadata?.last_auto_reconciled ? (
+                                        inv.estado === 'conciliado' || inv.metadata?.reconciled_v2 || inv.metadata?.last_auto_reconciled ? (
                                             <div className="flex flex-col items-end gap-1">
                                                 <div className="flex items-center justify-end gap-1 text-emerald-400 text-xs">
-                                                    <CheckCircle2 className="w-3 h-3" />
-                                                    AUTO-CONCILIADO
+                                                    <div className="flex -space-x-1 mr-1">
+                                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                                                    </div>
+                                                    {view === 'AR' ? 'COBRADO Y CONCILIADO' : 'PAGADO Y CONCILIADO'}
                                                 </div>
-                                                <span className="text-[9px] text-gray-500 font-normal max-w-[150px] truncate" title={inv.metadata?.desc_transaccion}>
-                                                    Pago detectado en extracto bancario
+                                                <span className="text-[9px] text-gray-500 font-normal max-w-[170px] truncate" title={inv.metadata?.desc_transaccion || 'Confirmado por banco'}>
+                                                    Match confirmado en extracto bancario
                                                 </span>
                                             </div>
                                         ) : (

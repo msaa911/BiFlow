@@ -316,6 +316,20 @@ export class ReconciliationEngine {
                             .update({ estado: 'acreditado' })
                             .eq('id', finalMovementMatch.id);
 
+                        // 1.b Propagate 'conciliado' state to linked invoices
+                        const { data: apps } = await adminSupabase
+                            .from('aplicaciones_pago')
+                            .select('comprobante_id')
+                            .eq('movimiento_id', movId);
+
+                        if (apps && apps.length > 0) {
+                            const invoiceIds = apps.map(a => a.comprobante_id);
+                            await adminSupabase
+                                .from('comprobantes')
+                                .update({ estado: 'conciliado' })
+                                .in('id', invoiceIds);
+                        }
+
                         // 2. Link Transaction
                         const newMontoUsado = previouslyUsedRefreshed + availableTransAmount;
                         const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05;
