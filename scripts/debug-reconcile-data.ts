@@ -5,6 +5,12 @@ async function debugData() {
     const supabase = createAdminClient();
 
     const { data: orgs } = await supabase.from('organizations').select('id, name').limit(1);
+
+    if (!orgs || orgs.length === 0) {
+        console.error("No organizations found");
+        return;
+    }
+
     const orgId = orgs[0].id;
     console.log(`--- DEBUGGING ORG: ${orgs[0].name} (${orgId}) ---`);
 
