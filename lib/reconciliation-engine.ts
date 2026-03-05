@@ -189,7 +189,7 @@ export class ReconciliationEngine {
 
                     // 0. Check Payment Reference Match (Ej: Numero de cheque, numero de transferencia que detalla el recibo)
                     let hasPaymentRefMatch = false;
-                    const memRef = (m.detalle_referencia || '').toUpperCase().trim();
+                    const memRef = (m.referencia || '').toUpperCase().trim();
                     if (memRef && memRef.length >= 4) {
                         // Buscamos si la referencia del recibo está textualmente en el banco
                         if (descUpper.includes(memRef) || (trans.numero_cheque && trans.numero_cheque.toUpperCase().includes(memRef))) {
@@ -205,18 +205,25 @@ export class ReconciliationEngine {
 
                     // --- EVALUACIÓN FINAL DE COINCIDENCIA DE 1 A 1 ---
                     const transDescClean = this.normalizeReference(trans.descripcion || '');
-                    const instrRefClean = this.normalizeReference(m.detalle_referencia || '');
+                    const instrRefClean = this.normalizeReference(m.referencia || '');
 
                     console.log(`[RECONCILIATION] Testing match: Trans(${trans.id}, amt:${availableTransAmount}) [CleanDesc: ${transDescClean}] vs Mov(${m.id}, amt:${mAmount}) [CleanRef: ${instrRefClean}]`);
 
                     // 1. Check if CLEAN REF is contained in CLEAN DESC (High confidence)
-                    if (instrRefClean && instrRefClean.length >= 4 && transDescClean.includes(instrRefClean)) {
+                    if (instrRefClean && instrRefClean.length >= 3 && transDescClean.includes(instrRefClean)) {
                         console.log(`[RECONCILIATION] >> MATCH FOUND: Reference ${instrRefClean} found in description ${transDescClean}`);
                         return true;
                     }
 
+                    // 1b. EXTRA: Literal check for numbers (To catch references like '123' inside 'TRF-123')
+                    const rawInstrRef = (m.referencia || '').trim();
+                    if (rawInstrRef && rawInstrRef.length >= 3 && descUpper.includes(rawInstrRef.toUpperCase())) {
+                        console.log(`[RECONCILIATION] >> MATCH FOUND: Literal Reference ${rawInstrRef} found in description`);
+                        return true;
+                    }
+
                     // 2. Check if Bank Check Number matches
-                    if (trans.numero_cheque && m.detalle_referencia && trans.numero_cheque.includes(m.detalle_referencia)) {
+                    if (trans.numero_cheque && m.referencia && trans.numero_cheque.includes(m.referencia)) {
                         console.log(`[RECONCILIATION] >> MATCH FOUND: Check Number Match!`);
                         return true;
                     }
@@ -597,9 +604,10 @@ export class ReconciliationEngine {
 
     private static normalizeReference(ref: string): string {
         if (!ref) return '';
-        return ref.toUpperCase()
-            .replace(/^(TRF|TRANSF|TRANSFERENCIA|CHQ|CHEQUE|DEP|DEPOSITO|RECIBO|RE|OP|PAGO|COBRO)[:\s-]*/i, '')
-            .replace(/[^A-Z0-9]/gi, '') // Solo alfanuméricos (Fixed regex from 0-0 to 0-9)
-            .trim();
+        const upper = ref.toUpperCase().trim();
+        // Solo despojar prefijos si la referencia resultante tiene sentido
+        const stripped = upper.replace(/^(TRF|TRANSF|TRANSFERENCIA|CHQ|CHEQUE|DEP|DEPOSITO|RECIBO|RE|OP|PAGO|COBRO)[:\s-]*/i, '');
+        const final = stripped.length >= 3 ? stripped : upper;
+        return final.replace(/[^A-Z0-9]/gi, '').trim();
     }
 }

@@ -455,7 +455,7 @@ export async function POST(request: Request) {
                                     monto: Math.abs(rawRow.monto),
                                     banco: rawRow.banco || rawRow.metadata?.banco || null,
                                     fecha_disponibilidad: rawRow.vencimiento || rawRow.fecha,
-                                    referencia: rawRow.metadata?.referencia || rawRow.numero_cheque || rawRow.referencia || null,
+                                    detalle_referencia: rawRow.referencia || rawRow.metadata?.referencia || rawRow.numero_cheque || null,
                                     estado: 'pendiente'
                                 })
                             })
@@ -694,7 +694,8 @@ function parseTreasuryExcelServer(buffer: Buffer, orgId: string, type: 'cobro' |
                 razon_social: razonSocial,
                 vencimiento: disponibilidad,
                 banco,
-                numero_cheque: referencia, // Map ref to numero_cheque for the pipeline
+                numero_cheque: referencia,
+                referencia: referencia, // Ensure it's in the top level
                 metadata: {
                     metodo: medio,
                     referencia,
