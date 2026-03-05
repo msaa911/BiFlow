@@ -46,9 +46,9 @@ export function ReconciliationAlerts() {
             // For now, we simulate the success
             await new Promise(resolve => setTimeout(resolve, 800))
             setSuggestions(prev => prev.filter(s => s.transId !== suggestion.transId))
-            toast.success('Conciliación aprobada con éxito')
+            toast.success('Imputación aprobada con éxito')
         } catch (error) {
-            toast.error('Error al conciliar')
+            toast.error('Error al imputar')
         } finally {
             setProcessing(null)
         }
@@ -68,7 +68,7 @@ export function ReconciliationAlerts() {
         <Card className="bg-gray-900 border-gray-800 shadow-2xl overflow-hidden">
             <CardHeader className="bg-emerald-500/5 pb-3">
                 <CardTitle className="text-xs font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" /> Sugerencias de Conciliación (IA)
+                    <Sparkles className="w-4 h-4" /> Sugerencias de Imputación (IA)
                 </CardTitle>
                 <p className="text-[10px] text-gray-500">Detectamos {suggestions.length} movimientos con alta probabilidad de coincidencia.</p>
             </CardHeader>
@@ -121,7 +121,7 @@ export function ReconciliationAlerts() {
                 </div>
                 <div className="p-3 bg-gray-900 border-t border-gray-800">
                     <Button variant="ghost" className="w-full text-[10px] uppercase font-bold text-gray-500 hover:text-emerald-500 transition-colors">
-                        Ver historial de conciliación
+                        Ver historial de imputación
                     </Button>
                 </div>
             </CardContent>

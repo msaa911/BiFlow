@@ -109,14 +109,14 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             }
 
             if (data.matched > 0) {
-                alert(`¡Éxito! Se conciliaron ${data.matched} comprobantes automáticamente.`)
+                alert(`¡Éxito! Se imputaron ${data.matched} comprobantes automáticamente.`)
             } else {
-                alert(`Proceso finalizado. No se encontraron nuevos matches (0 coincidencias).`)
+                alert(`Proceso finalizado. No se encontraron nuevas imputaciones (0 coincidencias).`)
             }
             await fetchData()
         } catch (error) {
             console.error('Reconciliation failed:', error)
-            alert('Error al ejecutar la conciliación.')
+            alert('Error al ejecutar la imputación.')
         } finally {
             setReconciling(false)
         }
@@ -158,7 +158,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 }`}
                         >
                             <TrendingUp className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
-                            {reconciling ? 'Procesando...' : 'Conciliación'}
+                            {reconciling ? 'Procesando...' : 'Imputación Ágil'}
                         </button>
                     </div>
                 </Card>
