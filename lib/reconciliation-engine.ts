@@ -13,8 +13,9 @@ export class ReconciliationEngine {
         console.log(`[RECONCILIATION v3.1] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
 
         // --- NEW: PHASE -1: Administrative Sync (Invoices <-> Receipts/OP) ---
+        let adminMatches = 0;
         if (!dryRun) {
-            await this.matchAdministrative(supabase, organizationId);
+            adminMatches = await this.matchAdministrative(supabase, organizationId);
         }
 
         // 1. PHASE 0: Repair Orphaned Transactions (linked but stuck in 'pendiente')
@@ -42,16 +43,23 @@ export class ReconciliationEngine {
         }
 
         // 2. Fetch pending invoices (AP/AR) -> Order by due date to apply FIFO if multiple
-        const { data: pendingInvoices, error: invError } = await supabase
+        const { data: pendingInvoices, error: invError } = await adminSupabase
             .from('comprobantes')
             .select('*')
             .eq('organization_id', organizationId)
             .in('tipo', ['factura_venta', 'factura_compra', 'nota_debito', 'nota_credito', 'ingreso_vario', 'egreso_vario'])
-            .neq('estado', 'pagado')
+            .neq('estado', 'conciliado') // Fetch everything not already finalized
+            .or('monto_pendiente.is.null,monto_pendiente.gt.0')
             .order('fecha_vencimiento', { ascending: true })
 
+        if (invError || !pendingInvoices) {
+            console.log(`[RECONCILIATION] Warning: No pending invoices found in database.`);
+        }
+
+        const invoicesList = pendingInvoices || [];
+
         // 2.b Fetch pending movements (Receipts/OPs)
-        const { data: pendingMovements } = await supabase
+        const { data: pendingMovements } = await adminSupabase
             .from('instrumentos_pago')
             .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(nro_factura)))')
             .eq('organization_id', organizationId)
@@ -61,7 +69,7 @@ export class ReconciliationEngine {
         console.log(`[RECONCILIATION] Fetched ${pendingMovements?.length || 0} pending payment instruments.`);
 
         // 3. Fetch unlinked bank transactions
-        const { data: pendingTrans, error: transError } = await supabase
+        const { data: pendingTrans, error: transError } = await adminSupabase
             .from('transacciones')
             .select('*')
             .eq('organization_id', organizationId)
@@ -75,7 +83,7 @@ export class ReconciliationEngine {
         // 3. Fetch Trust Ledger
         let trustLedgerMap = new Map<string, string>();
         try {
-            const { data: pastMatches } = await supabase
+            const { data: pastMatches } = await adminSupabase
                 .rpc('get_trust_ledger', { org_id: organizationId });
 
             if (pastMatches) {
@@ -100,7 +108,7 @@ export class ReconciliationEngine {
                 ? ['factura_venta', 'nota_debito', 'ingreso_vario']
                 : ['factura_compra', 'nota_credito', 'egreso_vario'];
 
-            let targetInvoices: any[] = pendingInvoices.filter((i: any) => targetTipos.includes(i.tipo));
+            let targetInvoices: any[] = invoicesList.filter((i: any) => targetTipos.includes(i.tipo));
             let matchLevel = 0;
 
             // Anomalies
@@ -139,7 +147,7 @@ export class ReconciliationEngine {
                     matchLevel = 2;
                 }
             } else {
-                const fuzzyClientCuit = this.findClientByFuzzy(trans.descripcion || '', targetInvoices);
+                const fuzzyClientCuit = this.findClientByFuzzy(trans.descripcion || '', invoicesList);
                 if (fuzzyClientCuit) {
                     const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === normalizeCuit(fuzzyClientCuit));
                     if (exactCuitInvoices.length > 0) {
@@ -168,8 +176,9 @@ export class ReconciliationEngine {
 
                 // 1-a-1 Exact Movement Match
                 const movementMatch = targetMovements.find((m: any) => {
-                    const mAmount = Number(m.monto);
-                    const amountMatches = Math.abs(mAmount - availableTransAmount) < 0.05;
+                    const mAmount = Math.abs(Number(m.monto || 0));
+                    const currentAvailable = Math.abs(Number(availableTransAmount || 0));
+                    const amountMatches = Math.abs(mAmount - currentAvailable) < 0.05;
 
                     if (!amountMatches) return false;
 
@@ -409,8 +418,8 @@ export class ReconciliationEngine {
             }
         }
 
-        console.log(`[RECONCILIATION] Finished. Matched: ${matchedCount}. Total Results: ${results.length}`);
-        return { matched: matchedCount, actions: results };
+        console.log(`[RECONCILIATION] Finished. Admin Matched: ${adminMatches}. Bank Matched: ${matchedCount}. Total Results: ${results.length}`);
+        return { matched: matchedCount + adminMatches, actions: results };
     }
 
     private static findClientByFuzzy(desc: string, invoices: any[]): string | null {
@@ -455,9 +464,10 @@ export class ReconciliationEngine {
         return backtrack(0, 0, []);
     }
 
-    private static async matchAdministrative(supabase: any, organizationId: string) {
+    private static async matchAdministrative(supabase: any, organizationId: string): Promise<number> {
         console.log(`[RECONCILIATION] Starting Administrative Phase (Invoices <-> Receipts/OP)`);
         const adminSupabase = createAdminClient();
+        let matched = 0;
 
         // 1. Fetch movements that might need linking (cobros/pagos)
         const { data: movements } = await adminSupabase
@@ -466,21 +476,28 @@ export class ReconciliationEngine {
             .eq('organization_id', organizationId)
             .order('fecha', { ascending: true });
 
-        // 2. Fetch pending invoices
+        // 2. Fetch pending invoices (Saldo > 0 or NULL which means unpaid)
         const { data: invoices } = await adminSupabase
             .from('comprobantes')
             .select('*')
             .eq('organization_id', organizationId)
-            .gt('monto_pendiente', 0)
+            .or('monto_pendiente.is.null,monto_pendiente.gt.0')
             .order('fecha_emision', { ascending: true });
 
-        if (!movements || !invoices) return;
+        if (!movements || !invoices) {
+            console.log(`[RECONCILIATION] Administrative Phase: No candidates found. (Movements: ${movements?.length || 0}, Invoices: ${invoices?.length || 0})`);
+            return 0;
+        }
+
+        console.log(`[RECONCILIATION] Administrative Phase: Testing ${movements.length} movements against ${invoices.length} invoices.`);
 
         for (const mov of movements) {
             // Skip if already has applications
             if (mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0) continue;
 
-            const movAmount = Math.abs(Number(mov.importe));
+            const movAmount = Math.abs(Number(mov.importe || 0));
+            if (movAmount === 0) continue;
+
             const isRecibo = mov.tipo === 'cobro';
             const targetType = isRecibo ? 'factura_venta' : 'factura_compra';
 
@@ -490,48 +507,62 @@ export class ReconciliationEngine {
             const matchingInvoice = invoices.find(inv => {
                 if (inv.tipo !== targetType) return false;
 
-                // Match amount (allow 1-to-1 exact for this auto-sync)
-                if (Math.abs(Number(inv.monto_pendiente) - movAmount) > 0.05) return false;
+                // If amount_pending is null, assume total amount
+                const pending = Math.abs(inv.monto_pendiente !== null ? Number(inv.monto_pendiente) : Number(inv.monto || 0));
+
+                // Match amount (allow 1-to-1 exact)
+                if (Math.abs(pending - movAmount) > 0.05) return false;
 
                 const nroFactura = (inv.nro_factura || '').toUpperCase();
                 if (!nroFactura) return false;
 
-                // Extract relevant parts (last 4-8 digits)
-                const lastPart = nroFactura.split('-').pop()?.replace(/^0+/, '');
+                const cleanFact = this.normalizeReference(nroFactura);
+                const lastDigits = nroFactura.split('-').pop()?.replace(/^0+/, '');
 
-                return searchText.includes(nroFactura) || (lastPart && lastPart.length >= 4 && searchText.includes(lastPart));
+                return searchText.includes(nroFactura) ||
+                    (cleanFact && cleanFact.length >= 4 && searchText.includes(cleanFact)) ||
+                    (lastDigits && lastDigits.length >= 4 && searchText.includes(lastDigits));
             });
 
             if (matchingInvoice) {
-                console.log(`[RECONCILIATION] >> ADMIN MATCH FOUND: Mov ${mov.id} -> Inv ${matchingInvoice.id} (${matchingInvoice.nro_factura})`);
+                console.log(`[RECONCILIATION] >> ADMIN MATCH FOUND: Mov ${mov.id} ($${movAmount}) -> Inv ${matchingInvoice.id} (${matchingInvoice.nro_factura})`);
 
-                // 1. Create Application
-                await adminSupabase
-                    .from('aplicaciones_pago')
-                    .insert({
-                        organization_id: organizationId,
-                        movimiento_id: mov.id,
-                        comprobante_id: matchingInvoice.id,
-                        monto: movAmount
-                    });
+                try {
+                    // 1. Create Application
+                    await adminSupabase
+                        .from('aplicaciones_pago')
+                        .insert({
+                            organization_id: organizationId,
+                            movimiento_id: mov.id,
+                            comprobante_id: matchingInvoice.id,
+                            monto: movAmount
+                        });
 
-                // 2. Update Invoice Status
-                const newMontoPendiente = Math.max(0, Number(matchingInvoice.monto_pendiente) - movAmount);
-                const isFullyPaid = newMontoPendiente <= 0.05;
-                const newEstado = isFullyPaid ? (isRecibo ? 'cobrado' : 'pagado') : matchingInvoice.estado;
+                    // 2. Update Invoice Status
+                    const currentPending = Math.abs(matchingInvoice.monto_pendiente !== null ? Number(matchingInvoice.monto_pendiente) : Number(matchingInvoice.monto || 0));
+                    const newMontoPendiente = Math.max(0, currentPending - movAmount);
+                    const isFullyPaid = newMontoPendiente <= 0.05;
+                    const newEstado = isFullyPaid ? (isRecibo ? 'cobrado' : 'pagado') : matchingInvoice.estado;
 
-                await adminSupabase
-                    .from('comprobantes')
-                    .update({
-                        monto_pendiente: newMontoPendiente,
-                        estado: newEstado
-                    })
-                    .eq('id', matchingInvoice.id);
+                    await adminSupabase
+                        .from('comprobantes')
+                        .update({
+                            monto_pendiente: newMontoPendiente,
+                            estado: newEstado
+                        })
+                        .eq('id', matchingInvoice.id);
 
-                // Update local object to avoid double matching
-                matchingInvoice.monto_pendiente = newMontoPendiente;
+                    // Update local object to avoid double matching
+                    matchingInvoice.monto_pendiente = newMontoPendiente;
+                    matched++;
+                } catch (e: any) {
+                    console.error(`[RECONCILIATION] Error applying admin match for mov ${mov.id}:`, e.message);
+                }
             }
         }
+
+        console.log(`[RECONCILIATION] Administrative Phase Completed. Links created: ${matched}`);
+        return matched;
     }
 
     private static normalizeReference(ref: string): string {
