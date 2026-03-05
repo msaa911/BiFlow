@@ -409,29 +409,38 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                 <td className="px-6 py-3 text-right font-medium text-gray-400 text-xs">
                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_total)}
                                 </td>
-                                <td className={`px-6 py-4 text-right font-bold ${inv.monto_pendiente > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                <td className={`px-6 py-4 text-right font-bold`}>
                                     {inv.monto_pendiente > 0 ? (
-                                        new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-amber-400 font-bold">
+                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
+                                            </span>
+                                            <span className="text-[9px] text-gray-500 font-medium uppercase mt-0.5">Pendiente</span>
+                                        </div>
                                     ) : (
-                                        inv.estado === 'conciliado' || inv.metadata?.reconciled_v2 || inv.metadata?.last_auto_reconciled ? (
-                                            <div className="flex flex-col items-end gap-1">
-                                                <div className="flex items-center justify-end gap-1 text-emerald-400 text-xs">
-                                                    <div className="flex -space-x-1 mr-1">
-                                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                                        <div className="flex flex-col items-end">
+                                            {inv.estado === 'conciliado' || inv.metadata?.reconciled_v2 || inv.metadata?.last_auto_reconciled ? (
+                                                <div className="flex items-center justify-end gap-1.5 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg">
+                                                    <div className="flex -space-x-1">
+                                                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
+                                                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
                                                     </div>
-                                                    {view === 'AR' ? 'COBRADO Y CONCILIADO' : 'PAGADO Y CONCILIADO'}
+                                                    <span className="text-blue-400 text-[10px] font-black tracking-tight">
+                                                        {view === 'AR' ? 'COBRADO Y CONCILIADO' : 'PAGADO Y CONCILIADO'}
+                                                    </span>
                                                 </div>
-                                                <span className="text-[9px] text-gray-500 font-normal max-w-[170px] truncate" title={inv.metadata?.desc_transaccion || 'Confirmado por banco'}>
-                                                    Match confirmado en extracto bancario
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-end gap-1 text-emerald-400 text-xs font-bold">
-                                                <CheckCircle2 className="w-3 h-3" />
-                                                {view === 'AR' ? 'COBRADO' : 'PAGADO'}
-                                            </div>
-                                        )
+                                            ) : (
+                                                <div className="flex items-center justify-end gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
+                                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                                    <span className="text-emerald-400 text-[10px] font-black tracking-tight">
+                                                        {view === 'AR' ? 'COBRADO' : 'PAGADO'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <span className="text-[9px] text-gray-500 font-medium mt-1 truncate max-w-[150px]" title={inv.metadata?.desc_transaccion || 'Saldo cancelado administrativamente'}>
+                                                {inv.estado === 'conciliado' ? 'Confirmado por banco' : 'Pendiente cruce bancario'}
+                                            </span>
+                                        </div>
                                     )}
                                 </td>
                                 <td className="px-6 py-4">

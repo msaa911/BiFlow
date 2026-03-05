@@ -12,12 +12,6 @@ export class ReconciliationEngine {
         const adminSupabase = createAdminClient();
         console.log(`[RECONCILIATION v3.1] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
 
-        // --- NEW: PHASE -1: Administrative Sync (Invoices <-> Receipts/OP) ---
-        let adminMatches = 0;
-        if (!dryRun) {
-            adminMatches = await this.matchAdministrative(supabase, organizationId);
-        }
-
         // 1. PHASE 0: Repair Orphaned Transactions (linked but stuck in 'pendiente')
         console.log(`[RECONCILIATION] Phase 0: Checking for orphans...`)
         const { data: orphans } = await adminSupabase
@@ -42,13 +36,21 @@ export class ReconciliationEngine {
             }
         }
 
-        // 2. Fetch pending invoices (AP/AR) -> Order by due date to apply FIFO if multiple
+        // --- NEW: PHASE 1: Administrative Sync (Invoices <-> Receipts/OP) ---
+        // This is done BEFORE fetching pendingInvoices/Movements for Phase 2
+        let adminMatches = 0;
+        if (!dryRun) {
+            adminMatches = await this.matchAdministrative(supabase, organizationId);
+        }
+
+        // 2. Fetch DATA FOR PHASE 2 (Bank Phase)
+        // We fetch it HERE so we see the changes made by Phase 1
         const { data: pendingInvoices, error: invError } = await adminSupabase
             .from('comprobantes')
             .select('*')
             .eq('organization_id', organizationId)
             .in('tipo', ['factura_venta', 'factura_compra', 'nota_debito', 'nota_credito', 'ingreso_vario', 'egreso_vario'])
-            .neq('estado', 'conciliado') // Fetch everything not already finalized
+            .neq('estado', 'conciliado')
             .or('monto_pendiente.is.null,monto_pendiente.gt.0')
             .order('fecha_vencimiento', { ascending: true })
 
@@ -58,7 +60,6 @@ export class ReconciliationEngine {
 
         const invoicesList = pendingInvoices || [];
 
-        // 2.b Fetch pending movements (Receipts/OPs)
         const { data: pendingMovements } = await adminSupabase
             .from('instrumentos_pago')
             .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(numero)))')
@@ -66,7 +67,7 @@ export class ReconciliationEngine {
             .in('estado', ['pendiente', 'parcial'])
             .order('fecha_disponibilidad', { ascending: true });
 
-        console.log(`[RECONCILIATION] Fetched ${pendingMovements?.length || 0} pending payment instruments.`);
+        console.log(`[RECONCILIATION] Phase 2: Fetched ${invoicesList.length} invoices and ${pendingMovements?.length || 0} payment instruments.`);
 
         // 3. Fetch unlinked bank transactions
         const { data: pendingTrans, error: transError } = await adminSupabase

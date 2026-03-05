@@ -45,7 +45,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 .eq('organization_id', orgId),
             supabase
                 .from('transacciones')
-                .select('id, monto, metadata, fecha, created_at')
+                .select('id, monto, metadata, fecha, created_at, estado, descripcion')
                 .eq('organization_id', orgId)
                 .order('fecha', { ascending: false })
         ])
