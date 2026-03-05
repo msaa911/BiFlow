@@ -19,13 +19,14 @@ interface BanksTabProps {
     pendingTransactions?: any[]
     onRefresh?: () => void
     isReconciling?: boolean
+    bankAccounts?: any[]
 }
 
 const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-export function BanksTab({ orgId, initialTransactions, pendingTransactions = [], onRefresh }: BanksTabProps) {
+export function BanksTab({ orgId, initialTransactions, pendingTransactions = [], bankAccounts = [], onRefresh }: BanksTabProps) {
     const [activeTab, setActiveTab] = useState('summary')
     const [showFormatBuilder, setShowFormatBuilder] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -34,6 +35,13 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const [reconciling, setReconciling] = useState(false)
     const supabase = createClient()
+
+    // Dashboard Calculations
+    const initialSum = bankAccounts.reduce((acc, curr) => acc + (Number(curr.saldo_inicial) || 0), 0)
+    const txsSum = initialTransactions.reduce((acc, t) => acc + (Number(t.monto) || 0), 0)
+    const realBalance = initialSum + txsSum
+    const latestTx = initialTransactions.length > 0 ? initialTransactions[0] : null
+    const latestTxDate = latestTx ? formatDate(latestTx.fecha) : 'N/A'
 
     const incomes = initialTransactions.filter(t => t.monto > 0)
     const expenses = initialTransactions.filter(t => t.monto < 0)
@@ -176,157 +184,341 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     }
 
     return (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <TabsList className="bg-gray-900 border border-gray-800 p-1 h-12 gap-1 w-full md:w-auto">
-                    <TabsTrigger
-                        value="summary"
-                        className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
-                    >
-                        <LayoutDashboard className="w-4 h-4" />
-                        Resumen
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="transactions"
-                        className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 gap-2 px-6"
-                    >
-                        <List className="w-4 h-4" />
-                        Transacciones
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="portfolio"
-                        className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400 gap-2 px-6"
-                    >
-                        <Banknote className="w-4 h-4" />
-                        Cartera
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="reconciliation"
-                        className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400 gap-2 px-6"
-                    >
-                        <AlertCircle className="w-4 h-4" />
-                        Pendientes de Conciliación
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="audit"
-                        className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
-                    >
-                        <FileText className="w-4 h-4" />
-                        Notas Bancarias
-                    </TabsTrigger>
-                </TabsList>
-
-                <div className="flex flex-col md:flex-row items-center gap-3">
-                    <div className="relative w-full md:w-auto">
-                        <Button
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6 px-6 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-3 transition-all active:scale-95"
-                        >
-                            <FileUp className="w-5 h-5" />
-                            CARGA DE EXTRACTO
-                            <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
-                        </Button>
-
-                        {isMenuOpen && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
-                                <div className="absolute right-0 mt-3 w-64 bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl z-50 py-3 animate-in fade-in slide-in-from-top-4 duration-300">
-                                    <div className="px-4 py-2 mb-1">
-                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">Opciones de Entrada</p>
-                                    </div>
-                                    <Link
-                                        href="/dashboard/upload?context=bank"
-                                        className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-900 hover:text-emerald-400 transition-all group"
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        <div className="p-2 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                                            <FileUp className="w-4 h-4" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-bold">Carga Tradicional</span>
-                                            <span className="text-[10px] text-gray-500">Detección Inteligente v4.0</span>
-                                        </div>
-                                    </Link>
-
-                                    <div className="h-px bg-gray-900 my-2 mx-3" />
-
-                                    <button
-                                        onClick={() => {
-                                            setShowFormatBuilder(true)
-                                            setIsMenuOpen(false)
-                                        }}
-                                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-900 hover:text-blue-400 transition-all group"
-                                    >
-                                        <div className="p-2 bg-blue-500/10 rounded-lg group-hover:bg-blue-500 group-hover:text-white transition-all">
-                                            <Settings className="w-4 h-4" />
-                                        </div>
-                                        <div className="flex flex-col text-left">
-                                            <span className="font-bold">Formato Manual</span>
-                                            <span className="text-[10px] text-gray-500">Para extractos no reconocidos</span>
-                                        </div>
-                                    </button>
-                                </div>
-                            </>
-                        )}
+        <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+                {/* Card 1: Conciliación */}
+                <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl flex flex-col justify-center gap-4">
+                    <div>
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Banknote className="w-5 h-5 text-amber-400 shrink-0" />
+                            Conciliación Bancaria
+                        </h3>
+                        <p className="text-gray-400 text-xs mt-1">
+                            Cruce de extractos vs Movimientos de Tesorería
+                        </p>
                     </div>
-
                     <Button
                         onClick={handleReconcile}
                         disabled={reconciling}
                         className={`
-                            w-full md:w-auto 
+                            w-full 
                             bg-amber-600 hover:bg-amber-500 
-                            text-white font-bold py-6 px-8 rounded-xl
-                            shadow-lg shadow-amber-500/20 
-                            flex items-center gap-3 transition-all active:scale-95
+                            text-white font-bold py-2 px-4 rounded-lg
+                            shadow-md shadow-amber-900/20 
+                            flex items-center justify-center gap-2 transition-all active:scale-95
                             ${reconciling ? 'animate-pulse cursor-wait opacity-80' : ''}
                         `}
                     >
                         {reconciling ? (
                             <>
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                CONCILIANDO...
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                PROCESANDO...
                             </>
                         ) : (
                             <>
-                                <Banknote className="w-5 h-5 text-amber-200" />
+                                <TrendingUp className="w-4 h-4" />
                                 CONCILIACIÓN BANCARIA
                             </>
                         )}
                     </Button>
                 </div>
+
+                {/* Card 2: Saldo Inicial */}
+                <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl flex items-center gap-4">
+                    <div className="p-3 bg-blue-500/10 rounded-xl">
+                        <Clock className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo Inicial Consol.</p>
+                        <h3 className="text-2xl font-bold text-white">
+                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(initialSum)}
+                        </h3>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Suma de configuraciones</p>
+                    </div>
+                </div>
+
+                {/* Card 3: Saldo Actual */}
+                <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl flex items-center gap-4">
+                    <div className="p-3 bg-emerald-500/10 rounded-xl">
+                        <TrendingUp className="w-6 h-6 text-emerald-500" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo Real en Banco</p>
+                        <h3 className="text-2xl font-bold text-white">
+                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(realBalance)}
+                        </h3>
+                        <p className="text-[10px] text-emerald-500/70 font-medium mt-0.5 uppercase tracking-wide">
+                            Última tx: {latestTxDate}
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            {showFormatBuilder && (
-                <SmartFormatBuilder
-                    onClose={() => setShowFormatBuilder(false)}
-                    onFormatSaved={() => {
-                        setShowFormatBuilder(false)
-                        window.location.reload() // Refresh to show new data
-                    }}
-                />
-            )}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <TabsList className="bg-gray-900 border border-gray-800 p-1 h-12 gap-1 w-full md:w-auto">
+                        <TabsTrigger
+                            value="summary"
+                            className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
+                        >
+                            <LayoutDashboard className="w-4 h-4" />
+                            Resumen
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="transactions"
+                            className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 gap-2 px-6"
+                        >
+                            <List className="w-4 h-4" />
+                            Transacciones
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="portfolio"
+                            className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400 gap-2 px-6"
+                        >
+                            <Banknote className="w-4 h-4" />
+                            Cartera
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="reconciliation"
+                            className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400 gap-2 px-6"
+                        >
+                            <AlertCircle className="w-4 h-4" />
+                            Pendientes de Conciliación
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="audit"
+                            className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
+                        >
+                            <FileText className="w-4 h-4" />
+                            Notas Bancarias
+                        </TabsTrigger>
+                    </TabsList>
 
-            <TabsContent value="summary" className="space-y-6 animate-in fade-in duration-500">
-                <div className="grid gap-6 md:grid-cols-2">
-                    {/* Recent Transactions Table (from Dashboard) */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[450px] flex flex-col">
-                        <div className="p-4 border-b border-gray-800 flex justify-between bg-gray-800/20">
-                            <h3 className="font-bold text-white text-xs flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-blue-400" /> Movimientos Recientes
-                            </h3>
+                    <div className="flex flex-col md:flex-row items-center gap-3">
+                        <div className="relative w-full md:w-auto">
+                            <Button
+                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6 px-6 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-3 transition-all active:scale-95"
+                            >
+                                <FileUp className="w-5 h-5" />
+                                CARGA DE EXTRACTO
+                                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
+                            </Button>
+
+                            {isMenuOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                                    <div className="absolute right-0 mt-3 w-64 bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl z-50 py-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                                        <div className="px-4 py-2 mb-1">
+                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">Opciones de Entrada</p>
+                                        </div>
+                                        <Link
+                                            href="/dashboard/upload?context=bank"
+                                            className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-900 hover:text-emerald-400 transition-all group"
+                                            onClick={() => setIsMenuOpen(false)}
+                                        >
+                                            <div className="p-2 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                                                <FileUp className="w-4 h-4" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold">Carga Tradicional</span>
+                                                <span className="text-[10px] text-gray-500">Detección Inteligente v4.0</span>
+                                            </div>
+                                        </Link>
+
+                                        <div className="h-px bg-gray-900 my-2 mx-3" />
+
+                                        <button
+                                            onClick={() => {
+                                                setShowFormatBuilder(true)
+                                                setIsMenuOpen(false)
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-900 hover:text-blue-400 transition-all group"
+                                        >
+                                            <div className="p-2 bg-blue-500/10 rounded-lg group-hover:bg-blue-500 group-hover:text-white transition-all">
+                                                <Settings className="w-4 h-4" />
+                                            </div>
+                                            <div className="flex flex-col text-left">
+                                                <span className="font-bold">Formato Manual</span>
+                                                <span className="text-[10px] text-gray-500">Para extractos no reconocidos</span>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
-                        <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                            <table className="w-full text-left text-xs text-gray-400">
-                                <tbody className="divide-y divide-gray-800">
-                                    {initialTransactions.slice(0, 20).map((t: any) => (
-                                        <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
-                                            <td className="px-4 py-3 font-mono text-gray-500">
+                    </div>
+                </div>
+
+                {showFormatBuilder && (
+                    <SmartFormatBuilder
+                        onClose={() => setShowFormatBuilder(false)}
+                        onFormatSaved={() => {
+                            setShowFormatBuilder(false)
+                            window.location.reload() // Refresh to show new data
+                        }}
+                    />
+                )}
+
+                <TabsContent value="summary" className="space-y-6 animate-in fade-in duration-500">
+                    <div className="grid gap-6 md:grid-cols-2">
+                        {/* Recent Transactions Table (from Dashboard) */}
+                        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl h-[450px] flex flex-col">
+                            <div className="p-4 border-b border-gray-800 flex justify-between bg-gray-800/20">
+                                <h3 className="font-bold text-white text-xs flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-blue-400" /> Movimientos Recientes
+                                </h3>
+                            </div>
+                            <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                                <table className="w-full text-left text-xs text-gray-400">
+                                    <tbody className="divide-y divide-gray-800">
+                                        {initialTransactions.slice(0, 20).map((t: any) => (
+                                            <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
+                                                <td className="px-4 py-3 font-mono text-gray-500">
+                                                    {formatDate(t.fecha)}
+                                                </td>
+                                                <td className="px-4 py-3 text-white font-medium truncate max-w-[180px]">{t.descripcion}</td>
+                                                <td className={`px-4 py-3 text-right font-black ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Incomes & Expenses Split (from Dashboard) */}
+                        <div className="grid grid-rows-2 gap-6 h-[450px]">
+                            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+                                <div className="p-3 border-b border-gray-800 bg-emerald-500/5">
+                                    <h3 className="font-bold text-white text-[11px] uppercase flex items-center gap-2">
+                                        <TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos
+                                    </h3>
+                                </div>
+                                <div className="border border-gray-800 rounded-xl overflow-hidden max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-gray-800 sticky top-0 z-10">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Fecha</th>
+                                                <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Descripción</th>
+                                                <th className="px-4 py-3 text-right font-bold uppercase text-[10px] text-gray-400 tracking-widest">Monto</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-800">
+                                            {incomes.slice(0, 15).map((t: any) => (
+                                                <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
+                                                    <td className="px-4 py-2 font-mono">{formatDate(t.fecha)}</td>
+                                                    <td className="px-4 py-2 text-white truncate max-w-[150px]">{t.descripcion}</td>
+                                                    <td className="px-4 py-2 text-right font-black text-emerald-400">
+                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+                                <div className="p-3 border-b border-gray-800 bg-red-500/5">
+                                    <h3 className="font-bold text-white text-[11px] uppercase flex items-center gap-2">
+                                        <TrendingDown className="w-3 h-3 text-red-500" /> Egresos
+                                    </h3>
+                                </div>
+                                <div className="border border-gray-800 rounded-xl overflow-hidden max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-red-500/20 hover:scrollbar-thumb-red-500/40">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-gray-800 sticky top-0 z-10">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Fecha</th>
+                                                <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Descripción</th>
+                                                <th className="px-4 py-3 text-right font-bold uppercase text-[10px] text-gray-400 tracking-widest">Monto</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-800">
+                                            {expenses.slice(0, 15).map((t: any) => (
+                                                <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
+                                                    <td className="px-4 py-2 font-mono">{formatDate(t.fecha)}</td>
+                                                    <td className="px-4 py-2 text-white truncate max-w-[150px]">{t.descripcion}</td>
+                                                    <td className="px-4 py-2 text-right font-black text-red-400">
+                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="transactions" className="space-y-6 animate-in fade-in duration-500">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-800/20">
+                            <h3 className="font-bold text-white text-xs flex items-center gap-2 uppercase tracking-tighter">
+                                <List className="w-4 h-4 text-emerald-400" /> Listado Completo de Movimientos
+                            </h3>
+                            <div className="flex gap-2">
+                                <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                    {initialTransactions.length} registros
+                                </Badge>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-800/50 text-[10px] uppercase font-black text-gray-500 tracking-widest border-b border-gray-800">
+                                        <th className="pl-4 pr-1 py-4 font-black">Estado</th>
+                                        <th className="px-1 py-4 font-black">Fecha</th>
+                                        <th className="px-1 py-4 font-black">Descripción / Concepto</th>
+                                        <th className="px-1 py-4 font-black">Referencia</th>
+                                        <th className="px-1 py-4 font-black">Categoría</th>
+                                        <th className="pr-4 pl-1 py-4 text-right font-black">Monto (ARS)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-800/50">
+                                    {initialTransactions.map((t: any) => (
+                                        <tr key={t.id} className="group hover:bg-emerald-500/[0.02] transition-colors">
+                                            <td className="pl-4 pr-1 py-2.5">
+                                                <span className={`
+                                                    inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter
+                                                    ${t.estado === 'conciliado' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}
+                                                `}>
+                                                    {t.estado}
+                                                </span>
+                                            </td>
+                                            <td className="px-1 py-2.5 font-mono text-[11px] text-gray-500 tracking-tighter">
                                                 {formatDate(t.fecha)}
                                             </td>
-                                            <td className="px-4 py-3 text-white font-medium truncate max-w-[180px]">{t.descripcion}</td>
-                                            <td className={`px-4 py-3 text-right font-black ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                            <td className="px-1 py-2.5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-white transition-colors group-hover:text-emerald-400 truncate max-w-[300px]">
+                                                        {t.descripcion}
+                                                    </span>
+                                                    <span className="text-[9px] text-gray-600 font-mono tracking-tighter uppercase">ID: {t.id.split('-')[0]}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-1 py-2.5 font-mono text-[10px] text-gray-400">
+                                                {t.metadata?.referencia || t.metadata?.external_ref || '-'}
+                                            </td>
+                                            <td className="px-1 py-2.5">
+                                                <span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700 block w-fit truncate max-w-full">
+                                                    {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
+                                                </span>
+                                            </td>
+                                            <td className={`pr-4 pl-1 py-2.5 text-right font-black tabular-nums transition-colors text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap flex items-center justify-end gap-3`}>
                                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
+                                                {t.estado === 'conciliado' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6 text-gray-500 hover:text-amber-500 hover:bg-amber-500/10"
+                                                        onClick={() => handleUnreconcile(t)}
+                                                        title="Revertir Conciliación (Desarmar)"
+                                                    >
+                                                        <RotateCcw className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -334,220 +526,36 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             </table>
                         </div>
                     </div>
+                </TabsContent>
 
-                    {/* Incomes & Expenses Split (from Dashboard) */}
-                    <div className="grid grid-rows-2 gap-6 h-[450px]">
-                        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-                            <div className="p-3 border-b border-gray-800 bg-emerald-500/5">
-                                <h3 className="font-bold text-white text-[11px] uppercase flex items-center gap-2">
-                                    <TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos
-                                </h3>
-                            </div>
-                            <div className="border border-gray-800 rounded-xl overflow-hidden max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40">
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-gray-800 sticky top-0 z-10">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Fecha</th>
-                                            <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Descripción</th>
-                                            <th className="px-4 py-3 text-right font-bold uppercase text-[10px] text-gray-400 tracking-widest">Monto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-800">
-                                        {incomes.slice(0, 15).map((t: any) => (
-                                            <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
-                                                <td className="px-4 py-2 font-mono">{formatDate(t.fecha)}</td>
-                                                <td className="px-4 py-2 text-white truncate max-w-[150px]">{t.descripcion}</td>
-                                                <td className="px-4 py-2 text-right font-black text-emerald-400">
-                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                <TabsContent value="portfolio" className="animate-in fade-in duration-500">
+                    <CheckPortfolio orgId={orgId} />
+                </TabsContent>
+
+                <TabsContent value="reconciliation" className="animate-in fade-in duration-500">
+                    <UnreconciledPanel orgId={orgId} transactions={pendingTransactions} onRefresh={onRefresh} />
+                </TabsContent>
+
+                <TabsContent value="audit" className="animate-in fade-in duration-500">
+                    <div className="space-y-6">
+                        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-emerald-500/20 rounded-lg">
+                                    <FileText className="w-5 h-5 text-emerald-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-white">Notas Bancarias (NDB/NCB)</h3>
+                                    <p className="text-xs text-gray-400">Consulta y exporta los movimientos generados directamente desde el extracto (Impuestos, Comisiones, Intereses).</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-                            <div className="p-3 border-b border-gray-800 bg-red-500/5">
-                                <h3 className="font-bold text-white text-[11px] uppercase flex items-center gap-2">
-                                    <TrendingDown className="w-3 h-3 text-red-500" /> Egresos
-                                </h3>
-                            </div>
-                            <div className="border border-gray-800 rounded-xl overflow-hidden max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-red-500/20 hover:scrollbar-thumb-red-500/40">
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-gray-800 sticky top-0 z-10">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Fecha</th>
-                                            <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Descripción</th>
-                                            <th className="px-4 py-3 text-right font-bold uppercase text-[10px] text-gray-400 tracking-widest">Monto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-800">
-                                        {expenses.slice(0, 15).map((t: any) => (
-                                            <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
-                                                <td className="px-4 py-2 font-mono">{formatDate(t.fecha)}</td>
-                                                <td className="px-4 py-2 text-white truncate max-w-[150px]">{t.descripcion}</td>
-                                                <td className="px-4 py-2 text-right font-black text-red-400">
-                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                        {/* Reuse TreasuryHistory with filter for NDB/NCB */}
+                        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
+                            <TreasuryHistory orgId={orgId} claseDocumentoFilter={['NDB', 'NCB']} />
                         </div>
                     </div>
-                </div>
-            </TabsContent>
-
-            <TabsContent value="transactions" className="animate-in fade-in duration-500">
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
-                    {/* Barra de acciones y filtros movida fuera de la tabla */}
-                    <div className="p-4 bg-gray-900 border-b border-gray-800 flex flex-wrap gap-2 justify-between items-center w-full">
-                        <div className="flex gap-2">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setFilterStatus('all')}
-                                className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'all' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
-                            >
-                                Todos ({initialTransactions.length})
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setFilterStatus('pending')}
-                                className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-gray-300'}`}
-                            >
-                                Pendientes ({initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length})
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setFilterStatus('reconciled')}
-                                className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'reconciled' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}
-                            >
-                                Conciliados ({initialTransactions.filter(t => t.estado === 'conciliado').length})
-                            </Button>
-                        </div>
-                        <Button
-                            variant={selectedTxIds.size > 0 ? "destructive" : "outline"}
-                            size="sm"
-                            className={`gap-2 h-8 text-[10px] font-bold uppercase transition-all ${selectedTxIds.size > 0 ? 'shadow-lg' : 'opacity-40 border-dashed text-gray-500 bg-transparent hover:bg-transparent hover:text-gray-500 border-gray-700'}`}
-                            onClick={handleBulkDelete}
-                            disabled={isDeletingBulk || selectedTxIds.size === 0}
-                            title={selectedTxIds.size === 0 ? "Marca las casillas de las transacciones para activar este botón" : "Eliminar seleccionados"}
-                        >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            {isDeletingBulk ? 'Borrando...' : (selectedTxIds.size > 0 ? `Eliminar ${selectedTxIds.size}` : 'Seleccionados')}
-                        </Button>
-                    </div>
-
-                    <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40">
-                        <table className="w-full text-left text-xs text-gray-400 border-separate border-spacing-0">
-                            <thead className="bg-gray-800 sticky top-0 z-20">
-                                <tr className="divide-x divide-gray-800/10">
-                                    <th className="py-3 w-[30px] text-center border-b border-gray-800 px-0">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
-                                            checked={filteredTx.length > 0 && selectedTxIds.size === filteredTx.length}
-                                            onChange={handleSelectAll}
-                                            title="Seleccionar todas las visibles"
-                                        />
-                                    </th>
-                                    <th className="px-1 py-3 w-[70px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800 text-center">Fecha</th>
-                                    <th className="px-3 py-3 font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Descripción</th>
-                                    <th className="px-1 py-3 w-[90px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800 text-center">Estado</th>
-                                    <th className="px-2 py-3 w-[110px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Categoría</th>
-                                    <th className="pr-4 pl-1 py-3 w-[150px] text-right font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Monto</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-800">
-                                {filteredTx.map((t) => (
-                                    <tr key={t.id} className={`hover:bg-gray-800/50 transition-all group border-b border-gray-800/30 last:border-0 ${selectedTxIds.has(t.id) ? 'bg-emerald-500/10' : ''}`}>
-                                        <td className="py-2.5 text-center align-middle px-0">
-                                            <input
-                                                type="checkbox"
-                                                className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
-                                                checked={selectedTxIds.has(t.id)}
-                                                onChange={(e) => handleSelect(t.id, e.target.checked)}
-                                            />
-                                        </td>
-                                        <td className="px-1 py-2.5 whitespace-nowrap text-gray-400 font-mono text-[9px] text-center">
-                                            {formatDate(t.fecha)}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-white font-medium truncate max-w-[200px] lg:max-w-none">
-                                            {t.descripcion}
-                                        </td>
-                                        <td className="px-1 py-2.5 text-center">
-                                            {t.estado === 'conciliado' ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[8px] font-bold uppercase px-1 h-3.5">
-                                                    Conciliado
-                                                </Badge>
-                                            ) : t.estado === 'parcial' ? (
-                                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[8px] font-bold uppercase px-1 h-3.5">
-                                                    Parcial
-                                                </Badge>
-                                            ) : (
-                                                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[8px] font-bold uppercase px-1 h-3.5">
-                                                    Pendiente
-                                                </Badge>
-                                            )}
-                                        </td>
-                                        <td className="px-1 py-2.5">
-                                            <span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700 block w-fit truncate max-w-full">
-                                                {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
-                                            </span>
-                                        </td>
-                                        <td className={`pr-4 pl-1 py-2.5 text-right font-black tabular-nums transition-colors text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap flex items-center justify-end gap-3`}>
-                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
-                                            {t.estado === 'conciliado' && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 text-gray-500 hover:text-amber-500 hover:bg-amber-500/10"
-                                                    onClick={() => handleUnreconcile(t)}
-                                                    title="Revertir Conciliación (Desarmar)"
-                                                >
-                                                    <RotateCcw className="w-3.5 h-3.5" />
-                                                </Button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </TabsContent>
-
-            <TabsContent value="portfolio" className="animate-in fade-in duration-500">
-                <CheckPortfolio orgId={orgId} />
-            </TabsContent>
-
-            <TabsContent value="reconciliation" className="animate-in fade-in duration-500">
-                <UnreconciledPanel orgId={orgId} transactions={pendingTransactions} onRefresh={onRefresh} />
-            </TabsContent>
-
-            <TabsContent value="audit" className="animate-in fade-in duration-500">
-                <div className="space-y-6">
-                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-6">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-emerald-500/20 rounded-lg">
-                                <FileText className="w-5 h-5 text-emerald-400" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-white">Notas Bancarias (NDB/NCB)</h3>
-                                <p className="text-xs text-gray-400">Consulta y exporta los movimientos generados directamente desde el extracto (Impuestos, Comisiones, Intereses).</p>
-                            </div>
-                        </div>
-                    </div>
-                    {/* Reuse TreasuryHistory with filter for NDB/NCB */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
-                        <TreasuryHistory orgId={orgId} claseDocumentoFilter={['NDB', 'NCB']} />
-                    </div>
-                </div>
-            </TabsContent>
-        </Tabs>
+                </TabsContent>
+            </Tabs>
+        </div>
     )
 }

@@ -12,12 +12,13 @@ interface BanksClientPageProps {
 export function BanksClientPage({ orgId, initialTransactions }: BanksClientPageProps) {
     const [transactions, setTransactions] = useState(initialTransactions)
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
+    const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
     const supabase = createClient()
 
     const fetchData = useCallback(async () => {
         setLoading(true)
-        const [txRes, pendingRes] = await Promise.all([
+        const [txRes, pendingRes, bankRes] = await Promise.all([
             supabase
                 .from('transacciones')
                 .select('*')
@@ -29,11 +30,16 @@ export function BanksClientPage({ orgId, initialTransactions }: BanksClientPageP
                 .eq('organization_id', orgId)
                 .in('estado', ['pendiente', 'parcial'])
                 .order('fecha', { ascending: false })
-                .limit(200)
+                .limit(200),
+            supabase
+                .from('cuentas_bancarias')
+                .select('id, nombre, saldo_inicial')
+                .eq('organization_id', orgId)
         ])
 
         if (txRes.data) setTransactions(txRes.data)
         if (pendingRes.data) setPendingTransactions(pendingRes.data)
+        if (bankRes.data) setBankAccounts(bankRes.data)
         setLoading(false)
     }, [orgId, supabase])
 
@@ -46,6 +52,7 @@ export function BanksClientPage({ orgId, initialTransactions }: BanksClientPageP
             orgId={orgId}
             initialTransactions={transactions}
             pendingTransactions={pendingTransactions}
+            bankAccounts={bankAccounts}
             onRefresh={fetchData}
         />
     )
