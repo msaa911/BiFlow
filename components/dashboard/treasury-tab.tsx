@@ -165,8 +165,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                     : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
                                     }`}
                             >
-                                <Calculator className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
-                                {reconciling ? 'Procesando...' : 'Vincular facturas con cobros/pagos'}
+                                {reconciling ? 'Procesando...' : 'Vincular Facturas Con Cobros/Pagos'}
                             </button>
                             <button
                                 onClick={() => handleReconcile('bank')}
@@ -177,8 +176,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                     : 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20 active:scale-95'
                                     }`}
                             >
-                                <TrendingUp className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
-                                {reconciling ? 'Procesando...' : 'Conciliación bancaria'}
+                                {reconciling ? 'Procesando...' : 'Conciliación Bancaria'}
                             </button>
                         </div>
                     </div>

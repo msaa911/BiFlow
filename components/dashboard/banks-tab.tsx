@@ -209,18 +209,19 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             text-white font-bold py-2 px-4 rounded-lg
                             shadow-md shadow-amber-900/20 
                             flex items-center justify-center gap-2 transition-all active:scale-95
+                            text-sm
                             ${reconciling ? 'animate-pulse cursor-wait opacity-80' : ''}
                         `}
                     >
                         {reconciling ? (
                             <>
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                PROCESANDO...
+                                Procesando...
                             </>
                         ) : (
                             <>
                                 <TrendingUp className="w-4 h-4" />
-                                CONCILIACIÓN BANCARIA
+                                Conciliación Bancaria
                             </>
                         )}
                     </Button>
@@ -301,10 +302,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <div className="relative w-full md:w-auto">
                             <Button
                                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6 px-6 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-3 transition-all active:scale-95"
+                                className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6 px-6 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-3 transition-all active:scale-95 text-sm"
                             >
                                 <FileUp className="w-5 h-5" />
-                                CARGA DE EXTRACTO
+                                Carga De Extracto
                                 <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
                             </Button>
 

@@ -475,14 +475,14 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                         <Button variant="ghost" onClick={onClose} disabled={loading} className="text-gray-500 hover:text-white">Cancelar</Button>
                         {step === 2 && <Button variant="outline" onClick={() => setStep(1)} disabled={loading} className="border-gray-800 text-gray-400"><ChevronLeft className="w-4 h-4 mr-2" /> Atrás</Button>}
                         {step === 1 ? (
-                            <Button onClick={() => setStep(2)} disabled={selectedInvoices.length === 0} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold">Siguiente <ChevronRight className="w-4 h-4 ml-2" /></Button>
+                            <Button onClick={() => setStep(2)} disabled={selectedInvoices.length === 0} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm">Siguiente <ChevronRight className="w-4 h-4 ml-2" /></Button>
                         ) : (
                             <Button
                                 onClick={handleConfirm}
                                 disabled={totalInstruments === 0 || loading || isOverPayment || instruments.some(i => i.limitExceeded)}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 shadow-lg shadow-emerald-900/20"
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 shadow-lg shadow-emerald-900/20 text-sm"
                             >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} Finalizar y Confirmar
+                                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} Finalizar Y Confirmar
                             </Button>
                         )}
                     </div>

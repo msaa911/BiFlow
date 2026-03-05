@@ -567,7 +567,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 shadow-lg shadow-emerald-500/20"
                                 >
                                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                                    REGISTRAR {tipo === 'cobro' ? 'RECIBO' : 'O.P.'}
+                                    Registrar {tipo === 'cobro' ? 'Recibo' : 'Orden De Pago'}
                                 </Button>
                             </>
                         )}

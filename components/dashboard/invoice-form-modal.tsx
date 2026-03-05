@@ -528,7 +528,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                             <Button type="button" variant="ghost" onClick={onClose} disabled={loading} className="text-gray-400">
                                 Cancelar
                             </Button>
-                            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white" disabled={loading}>
+                            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm" disabled={loading}>
                                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                                 {invoice ? 'Guardar Cambios' : 'Registrar'}
                             </Button>

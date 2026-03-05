@@ -454,7 +454,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     <div className="flex justify-center gap-2">
                                         <Button
                                             size="sm"
-                                            className={`h-8 font-bold text-white ${view === 'AR' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'}`}
+                                            className={`h-8 font-bold text-white text-sm ${view === 'AR' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'}`}
                                             disabled={inv.monto_pendiente <= 0}
                                             onClick={() => {
                                                 setSelectedInvoice(inv)
@@ -465,7 +465,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                         </Button>
                                         <Button
                                             size="sm"
-                                            className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/20"
+                                            className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/20 text-sm"
                                             disabled={inv.monto_pendiente <= 0}
                                             onClick={() => {
                                                 setSelectedInvoice(inv)
@@ -571,7 +571,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                     </div>
                     <Button
                         size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold"
                     >
                         Compensar Ahora
                         <ArrowRight className="w-3 h-3 ml-2" />

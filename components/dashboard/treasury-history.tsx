@@ -249,15 +249,27 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         <span className="hidden sm:inline">Importar</span>
                     </Button>
 
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2 h-9 font-bold px-4" onClick={() => setIsManualEntryOpen(true)}>
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2 h-9 font-bold px-4 text-sm" onClick={() => setIsManualEntryOpen(true)}>
                         <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">{typeFilter === 'cobro' ? 'Emitir Recibo' : 'Emitir OP'}</span>
+                        <span className="hidden sm:inline">{typeFilter === 'cobro' ? 'Emitir Recibo' : 'Emitir Orden De Pago'}</span>
                     </Button>
 
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
                         <Input placeholder="Buscar..." className="bg-gray-900 border-gray-800 pl-9 text-xs h-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
+                </div>
+            </div>
+
+            {/* Color Legend */}
+            <div className="flex flex-wrap gap-4 mb-3 justify-end px-1">
+                <div className="flex items-center gap-1.5 bg-gray-900/50 px-2 py-1 rounded-md border border-gray-800">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.5)]"></div>
+                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Concepto Manual (Sin imputar)</span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-gray-900/50 px-2 py-1 rounded-md border border-gray-800">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.5)]"></div>
+                    <span className="text-[10px] text-emerald-500/80 font-medium uppercase tracking-wider">Factura Imputada</span>
                 </div>
             </div>
 
@@ -312,13 +324,17 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                             <span
                                                                 key={idx}
                                                                 className="text-xs font-bold text-emerald-400 uppercase tracking-tight"
+                                                                title="Factura imputada administrativamente"
                                                             >
                                                                 {app.comprobantes?.nro_factura || app.comprobantes?.numero}
                                                                 {idx < mov.aplicaciones_pago.length - 1 ? " | " : ""}
                                                             </span>
                                                         ))
                                                     ) : (
-                                                        <span className="text-xs font-bold text-white uppercase tracking-tight">
+                                                        <span
+                                                            className="text-xs font-bold text-white uppercase tracking-tight cursor-help"
+                                                            title="Concepto manual (Sin imputar a ningún comprobante)"
+                                                        >
                                                             {mov.concepto || mov.categoria || 'Sin concepto'}
                                                         </span>
                                                     )}
