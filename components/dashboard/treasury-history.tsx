@@ -60,6 +60,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 *,
                 entidades (razon_social),
                 instrumentos_pago (*),
+                transacciones (id),
                 aplicaciones_pago (
                     monto_aplicado,
                     comprobante_id,
@@ -127,7 +128,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
 
     const filteredMovements = movements.filter(m =>
         m.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (m.nro_comprobante || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.nro_comprobante || m.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -302,19 +303,19 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                 </div>
                                             </TableCell>
                                             <TableCell className="font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</TableCell>
-                                            <TableCell><Badge className="text-[9px] uppercase">{mov.nro_comprobante || 'S/N'}</Badge></TableCell>
+                                            <TableCell><Badge className="text-[9px] uppercase">{mov.nro_comprobante || mov.numero || 'S/N'}</Badge></TableCell>
                                             <TableCell className="font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</TableCell>
                                             <TableCell>
                                                 {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1">
                                                         {mov.aplicaciones_pago.map((app: any, idx: number) => (
                                                             <Badge key={idx} variant="outline" className="text-[10px] border-emerald-500/20 text-emerald-400">
-                                                                {app.comprobantes?.nro_factura}
+                                                                {app.comprobantes?.nro_factura || app.comprobantes?.numero}
                                                             </Badge>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[10px] text-gray-500">{mov.concepto}</span>
+                                                    <span className="text-[10px] text-gray-500">{mov.concepto || mov.categoria}</span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right font-mono font-bold text-white text-xs">
@@ -348,7 +349,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                                             <div key={idx} className="flex justify-between items-center p-2.5 bg-gray-950/50 rounded-lg border border-gray-800">
                                                                                 <div className="flex flex-col">
                                                                                     <span className="text-xs font-bold text-gray-200 uppercase">{inst.metodo}</span>
-                                                                                    {inst.banco && <span className="text-[10px] text-gray-500 uppercase">{inst.banco} {inst.detalle_referencia ? `#${inst.detalle_referencia}` : ''}</span>}
+                                                                                    {inst.banco && <span className="text-[10px] text-gray-500 uppercase">{inst.banco} {(inst.detalle_referencia || inst.numero_cheque || inst.referencia) ? `#${inst.detalle_referencia || inst.numero_cheque || inst.referencia}` : ''}</span>}
                                                                                 </div>
                                                                                 <span className="font-mono text-sm font-bold text-white">
                                                                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inst.monto)}
