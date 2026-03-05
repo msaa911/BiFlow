@@ -53,10 +53,7 @@ export class ReconciliationEngine {
             .in('estado', ['pendiente', 'parcial'])
             .order('fecha_disponibilidad', { ascending: true });
 
-        if (invError && !pendingMovements) {
-            console.log(`[RECONCILIATION] No pending data found.`)
-            return { matched: 0, actions: [], repaired: orphans?.length || 0 }
-        }
+        console.log(`[RECONCILIATION] Fetched ${pendingMovements?.length || 0} pending payment instruments.`);
 
         // 3. Fetch unlinked bank transactions
         const { data: pendingTrans, error: transError } = await supabase
@@ -191,62 +188,58 @@ export class ReconciliationEngine {
                         }
                     }
 
-                    // 1. Verificamos si hay referencias cruzadas de factura en la descripcion del banco
-                    let hasReferenceMatch = false;
+                    // --- EVALUACIÓN FINAL DE COINCIDENCIA DE 1 A 1 ---
+                    const transDescClean = this.normalizeReference(trans.descripcion || '');
+                    const instrRefClean = this.normalizeReference(m.detalle_referencia || '');
 
-                    // 1.a Check aplicaciones_pago for invoice numbers
+                    console.log(`[RECONCILIATION] Testing match: Trans(${trans.id}, amt:${availableTransAmount}) [CleanDesc: ${transDescClean}] vs Mov(${m.id}, amt:${mAmount}) [CleanRef: ${instrRefClean}]`);
+
+                    // 1. Check if CLEAN REF is contained in CLEAN DESC (High confidence)
+                    if (instrRefClean && instrRefClean.length >= 4 && transDescClean.includes(instrRefClean)) {
+                        console.log(`[RECONCILIATION] >> MATCH FOUND: Reference ${instrRefClean} found in description ${transDescClean}`);
+                        return true;
+                    }
+
+                    // 2. Check if Bank Check Number matches
+                    if (trans.numero_cheque && m.detalle_referencia && trans.numero_cheque.includes(m.detalle_referencia)) {
+                        console.log(`[RECONCILIATION] >> MATCH FOUND: Check Number Match!`);
+                        return true;
+                    }
+
+                    // 3. Verificamos si hay referencias de factura vinculadas al movimiento
                     if (mov?.aplicaciones_pago && Array.isArray(mov.aplicaciones_pago)) {
                         for (const app of mov.aplicaciones_pago) {
-                            const compNum = app.comprobantes?.nro_factura; // ej: 'FAC-A-0001-1234'
+                            const compNum = app.comprobantes?.nro_factura;
                             if (compNum) {
-                                // Extract the meaningful part of the invoice (last digits, ignoring zeros)
-                                const parts = compNum.split('-');
-                                const lastPart = parts[parts.length - 1]; // '1234'
-                                if (lastPart && lastPart.length >= 3) {
-                                    const regex = new RegExp(`\\b0*${Number(lastPart)}\\b`); // match 1234, 01234, 001234
-                                    if (regex.test(descUpper) || descUpper.includes(lastPart)) {
-                                        hasReferenceMatch = true;
-                                        break;
-                                    }
+                                // Buscamos tanto la versión normalizada como el número final (ej: '1234' de 'FAC-0001-1234')
+                                const cleanFact = this.normalizeReference(compNum);
+                                const lastDigits = compNum.split('-').pop()?.replace(/^0+/, '');
+
+                                if ((cleanFact && cleanFact.length >= 4 && transDescClean.includes(cleanFact)) ||
+                                    (lastDigits && lastDigits.length >= 4 && transDescClean.includes(lastDigits))) {
+                                    console.log(`[RECONCILIATION] >> MATCH FOUND: Invoice ${compNum} Match!`);
+                                    return true;
                                 }
                             }
                         }
                     }
 
-                    // 1.b Check observaciones del movimiento (fallback manual)
-                    if (!hasReferenceMatch && mov?.observaciones) {
-                        const obsMatch = mov.observaciones.match(/[A-Z]+-?\d{1,4}-?(\d{4,8})/); // Catch patterns like FAC-0001-1234
-                        if (obsMatch && obsMatch[1]) {
-                            const lastPart = obsMatch[1];
-                            const numericVal = Number(lastPart);
-                            const regex = new RegExp(`\\b0*${numericVal}\\b`);
-                            if (numericVal > 0 && (regex.test(descUpper) || descUpper.includes(lastPart))) {
-                                hasReferenceMatch = true;
-                            }
-                        }
-                    }
-
-                    // --- EVALUACIÓN FINAL DE COINCIDENCIA DE 1 A 1 ---
-
-                    // Si el Banco + Recibo comparten la REFERENCIA DE PAGO (Nº Transf, Nº Cheque) Y el MONTO: Match Absoluto.
-                    if (hasPaymentRefMatch) return true;
-
-                    // Si el Banco menciona la FACTURA pagada Y el MONTO coincide: Match Absoluto (Permite CUITs de terceros).
-                    if (hasReferenceMatch) return true;
-
-                    // Fallback: Si no escribieron referencia clara ni comprobante, requerimos que el CUIT o Nombre coincida
+                    // 4. Fallback: CUIT match (Only if monto matches and we have CUIT)
                     if (txCuitNormalized && movEntidad?.cuit && normalizeCuit(movEntidad.cuit) === txCuitNormalized) {
+                        console.log(`[RECONCILIATION] >> MATCH FOUND: CUIT Match!`);
                         return true;
                     }
 
+                    // 5. Fallback: Razon Social (Last resort)
                     const razonSocial = (movEntidad?.razon_social || '').toUpperCase();
                     if (razonSocial) {
                         const words = razonSocial.split(/\s+/).filter((w: string) => w.length > 3);
-                        if (words.some((w: string) => descUpper.includes(w))) return true;
+                        if (words.some((w: string) => descUpper.includes(w))) {
+                            console.log(`[RECONCILIATION] >> MATCH FOUND: Razon Social Match!`);
+                            return true;
+                        }
                     }
 
-                    // Si solo coinciden los montos pero no hay referencias cruzadas, 
-                    // ni cuit igual, ni la razón social en la descripción, es demasiado riesgoso asumirlo como Match 100% automático.
                     return false;
                 });
 
@@ -455,5 +448,13 @@ export class ReconciliationEngine {
         }
 
         return backtrack(0, 0, []);
+    }
+
+    private static normalizeReference(ref: string): string {
+        if (!ref) return '';
+        return ref.toUpperCase()
+            .replace(/^(TRF|TRANSF|TRANSFERENCIA|CHQ|CHEQUE|DEP|DEPOSITO|RECIBO|RE|OP|PAGO|COBRO)[:\s-]*/i, '')
+            .replace(/[^A-Z0-0]/gi, '') // Solo alfanuméricos
+            .trim();
     }
 }
