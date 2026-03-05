@@ -45,6 +45,8 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState<'pendiente' | 'depositado' | 'rechazado' | 'endosado' | 'all'>('all')
     const [selectedChecks, setSelectedChecks] = useState<string[]>([])
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(100)
 
     // Modals state
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
@@ -94,6 +96,12 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
         (c.movimientos_tesoreria?.entidades?.razon_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.detalle_referencia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.banco || '').toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    const totalPages = Math.ceil(filteredChecks.length / itemsPerPage)
+    const paginatedChecks = filteredChecks.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     )
 
     // KPI Calculations
@@ -309,150 +317,204 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                     </div>
                 </div>
 
-                <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50 shadow-2xl overflow-x-auto">
-                    <Table>
-                        <TableHeader className="bg-gray-900">
-                            <TableRow className="hover:bg-transparent border-gray-800 text-white/50">
-                                <TableHead className="w-[40px] px-4">
-                                    <input
-                                        type="checkbox"
-                                        className="rounded border-gray-700 bg-gray-800 text-emerald-500 checked:bg-emerald-500"
-                                        checked={selectedChecks.length === filteredChecks.length && filteredChecks.length > 0}
-                                        onChange={toggleSelectAll}
-                                    />
-                                </TableHead>
-                                <TableHead className="font-bold uppercase text-[10px]">Vto / Disponib.</TableHead>
-                                <TableHead className="font-bold uppercase text-[10px]">Número / Banco</TableHead>
-                                <TableHead className="font-bold uppercase text-[10px]">Origen (Cliente)</TableHead>
-                                <TableHead className="font-bold uppercase text-[10px] text-right">Importe</TableHead>
-                                <TableHead className="font-bold uppercase text-[10px] text-center">Estado</TableHead>
-                                <TableHead className="font-bold uppercase text-[10px] text-center">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center text-gray-500 italic">Cargando cartera escalable...</TableCell>
-                                </TableRow>
-                            ) : filteredChecks.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center text-gray-500 italic">No se encontraron valores en los criterios actuales.</TableCell>
-                                </TableRow>
-                            ) : filteredChecks.map(check => (
-                                <TableRow
-                                    key={check.id}
-                                    className={`border-gray-800 hover:bg-white/5 transition-colors ${selectedChecks.includes(check.id) ? 'bg-emerald-500/10' : ''}`}
-                                >
-                                    <TableCell className="px-4">
+                <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50 shadow-2xl">
+                    <div className="max-h-[600px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
+                        <Table>
+                            <TableHeader className="bg-gray-800 sticky top-0 z-10">
+                                <TableRow className="hover:bg-transparent border-gray-800 text-white/50">
+                                    <TableHead className="w-[40px] px-4">
                                         <input
                                             type="checkbox"
-                                            className="rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
-                                            checked={selectedChecks.includes(check.id)}
-                                            onChange={() => toggleSelectCheck(check.id)}
+                                            className="rounded border-gray-700 bg-gray-800 text-emerald-500 checked:bg-emerald-500"
+                                            checked={selectedChecks.length === filteredChecks.length && filteredChecks.length > 0}
+                                            onChange={toggleSelectAll}
                                         />
-                                    </TableCell>
-                                    <TableCell className="font-mono text-xs">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-gray-200">{new Date(check.fecha_disponibilidad).toLocaleDateString('es-AR')}</span>
-                                            <span className="text-[10px] text-gray-500 italic">
-                                                {new Date(check.fecha_disponibilidad) > today ? 'Diferido' : 'Al día'}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-white uppercase">{check.detalle_referencia || 'S/N'}</span>
-                                            <span className="text-[10px] text-gray-400/70 uppercase">{check.banco || 'Varios'}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-xs text-gray-400">
-                                        {check.movimientos_tesoreria?.entidades?.razon_social}
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono font-bold text-emerald-400 text-sm">
-                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(check.monto)}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <Badge className={`uppercase text-[9px] font-bold border ${check.estado === 'pendiente' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                            check.estado === 'depositado' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                check.estado === 'endosado' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                                    check.estado === 'rechazado' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                        check.estado === 'acreditado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                            'bg-gray-500/10 text-gray-400 border-gray-800'
-                                            }`}>
-                                            {check.estado === 'pendiente' ? 'En Cartera' : check.estado}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex justify-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 transition-all rounded-lg"
-                                                title="Ver Historial"
-                                                onClick={() => handleHistoryClick(check)}
-                                            >
-                                                <History className="w-4 h-4" />
-                                            </Button>
-                                            {check.estado === 'pendiente' && (
-                                                <>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 transition-all rounded-lg"
-                                                        title="Marcar como Depositado"
-                                                        onClick={() => {
-                                                            setSelectedChecks([check.id])
-                                                            setIsDepositModalOpen(true)
-                                                        }}
-                                                    >
-                                                        <ArrowUpRight className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all rounded-lg"
-                                                        title="Gestionar Rechazo"
-                                                        onClick={() => {
-                                                            setCheckToReject(check)
-                                                            setIsRejectionModalOpen(true)
-                                                        }}
-                                                    >
-                                                        <Ban className="w-4 h-4" />
-                                                    </Button>
-                                                </>
-                                            )}
-                                            {check.estado === 'depositado' && (
-                                                <>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 transition-all rounded-lg"
-                                                        title="Acreditar"
-                                                        onClick={() => handleUpdateStatus(check.id, 'acreditado')}
-                                                    >
-                                                        <CheckCircle2 className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all rounded-lg"
-                                                        title="Marcar como Rechazado"
-                                                        onClick={() => {
-                                                            setCheckToReject(check)
-                                                            setIsRejectionModalOpen(true)
-                                                        }}
-                                                    >
-                                                        <Ban className="w-4 h-4" />
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </TableCell>
+                                    </TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest">Vto / Disponib.</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest">Número / Banco</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest">Origen (Cliente)</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest text-right">Importe</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest text-center">Estado</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest text-center">Acciones</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-32 text-center text-gray-500 italic">Cargando cartera escalable...</TableCell>
+                                    </TableRow>
+                                ) : filteredChecks.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-32 text-center text-gray-500 italic">No se encontraron valores en los criterios actuales.</TableCell>
+                                    </TableRow>
+                                ) : paginatedChecks.map(check => (
+                                    <TableRow
+                                        key={check.id}
+                                        className={`border-gray-800 hover:bg-white/5 transition-colors ${selectedChecks.includes(check.id) ? 'bg-emerald-500/10' : ''}`}
+                                    >
+                                        <TableCell className="px-4">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
+                                                checked={selectedChecks.includes(check.id)}
+                                                onChange={() => toggleSelectCheck(check.id)}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-gray-200">{new Date(check.fecha_disponibilidad).toLocaleDateString('es-AR')}</span>
+                                                <span className="text-[10px] text-gray-500 italic">
+                                                    {new Date(check.fecha_disponibilidad) > today ? 'Diferido' : 'Al día'}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-white uppercase">{check.detalle_referencia || 'S/N'}</span>
+                                                <span className="text-[10px] text-gray-400/70 uppercase">{check.banco || 'Varios'}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-400">
+                                            {check.movimientos_tesoreria?.entidades?.razon_social}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono font-bold text-emerald-400 text-sm">
+                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(check.monto)}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge className={`uppercase text-[9px] font-bold border ${check.estado === 'pendiente' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                check.estado === 'depositado' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                    check.estado === 'endosado' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                        check.estado === 'rechazado' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                            check.estado === 'acreditado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                                                'bg-gray-500/10 text-gray-400 border-gray-800'
+                                                }`}>
+                                                {check.estado === 'pendiente' ? 'En Cartera' : check.estado}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex justify-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 transition-all rounded-lg"
+                                                    title="Ver Historial"
+                                                    onClick={() => handleHistoryClick(check)}
+                                                >
+                                                    <History className="w-4 h-4" />
+                                                </Button>
+                                                {check.estado === 'pendiente' && (
+                                                    <>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 transition-all rounded-lg"
+                                                            title="Marcar como Depositado"
+                                                            onClick={() => {
+                                                                setSelectedChecks([check.id])
+                                                                setIsDepositModalOpen(true)
+                                                            }}
+                                                        >
+                                                            <ArrowUpRight className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all rounded-lg"
+                                                            title="Gestionar Rechazo"
+                                                            onClick={() => {
+                                                                setCheckToReject(check)
+                                                                setIsRejectionModalOpen(true)
+                                                            }}
+                                                        >
+                                                            <Ban className="w-4 h-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                                {check.estado === 'depositado' && (
+                                                    <>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 transition-all rounded-lg"
+                                                            title="Acreditar"
+                                                            onClick={() => handleUpdateStatus(check.id, 'acreditado')}
+                                                        >
+                                                            <CheckCircle2 className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all rounded-lg"
+                                                            title="Marcar como Rechazado"
+                                                            onClick={() => {
+                                                                setCheckToReject(check)
+                                                                setIsRejectionModalOpen(true)
+                                                            }}
+                                                        >
+                                                            <Ban className="w-4 h-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Paginación */}
+                    <div className="p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="text-[11px] text-gray-500 font-medium flex items-center gap-4">
+                            <span>
+                                Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredChecks.length)}</span> de <span className="text-gray-300">{filteredChecks.length}</span> registros
+                            </span>
+
+                            <div className="flex items-center gap-2 border-l border-gray-800 pl-4">
+                                <span className="text-gray-600">Ver:</span>
+                                {[20, 25, 50, 100, 200].map(size => (
+                                    <button
+                                        key={size}
+                                        onClick={() => {
+                                            setItemsPerPage(size)
+                                            setCurrentPage(1)
+                                        }}
+                                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${itemsPerPage === size ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-gray-600 hover:text-gray-400'}`}
+                                    >
+                                        {size}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {totalPages > 1 && (
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="h-8 px-3 border-gray-800 bg-gray-900 hover:bg-gray-800 text-gray-300 text-[10px] font-bold uppercase transition-all"
+                                >
+                                    Anterior
+                                </Button>
+                                <div className="flex items-center gap-1 px-3">
+                                    <span className="text-[10px] font-bold text-emerald-500">{currentPage}</span>
+                                    <span className="text-[10px] font-bold text-gray-600">/</span>
+                                    <span className="text-[10px] font-bold text-gray-400">{totalPages}</span>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="h-8 px-3 border-gray-800 bg-gray-900 hover:bg-gray-800 text-gray-300 text-[10px] font-bold uppercase transition-all"
+                                >
+                                    Siguiente
+                                </Button>
+                            </div>
+                        )}
+                    </div>
             </Card>
 
             {/* Modals */}

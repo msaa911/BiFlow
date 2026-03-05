@@ -23,6 +23,8 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     const [searchTerm, setSearchTerm] = useState('')
     const [isEntityModalOpen, setIsEntityModalOpen] = useState(false)
     const [selectedEntity, setSelectedEntity] = useState<any>(null)
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(100)
     const [importData, setImportData] = useState<any[]>([])
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
     const [currentFileName, setCurrentFileName] = useState<string>('')
@@ -65,6 +67,12 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     const filteredSuppliers = suppliers.filter(s =>
         s.razon_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.cuit.includes(searchTerm)
+    )
+
+    const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage)
+    const paginatedSuppliers = filteredSuppliers.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     )
 
     const handleDelete = async (id: string, name: string, currentCategory: string) => {
@@ -469,77 +477,145 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-1">
-                {loading ? (
-                    <div className="p-12 text-center text-gray-500">Cargando directorio...</div>
-                ) : filteredSuppliers.length === 0 ? (
-                    <Card className="p-12 text-center bg-gray-900 border-gray-800">
-                        <Users className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-white mb-2">No se encontraron {category === 'cliente' ? 'clientes' : 'proveedores'}</h3>
-                        <p className="text-gray-500 max-w-md mx-auto">
-                            Agrega un nuevo socio manualmente para comenzar a gestionar sus comprobantes.
-                        </p>
-                    </Card>
-                ) : (
-                    filteredSuppliers.map(supplier => (
-                        <Card key={supplier.id} className="p-6 bg-gray-900 border-gray-800 hover:border-emerald-500/30 transition-colors">
-                            <div className="flex flex-col md:flex-row justify-between gap-4">
-                                <div className="space-y-1 flex-1">
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="text-lg font-bold text-white">{supplier.razon_social}</h3>
-                                        <Badge className={`${category === 'cliente' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
-                                            {supplier.categoria?.toUpperCase()}
-                                        </Badge>
-                                        <div className="flex items-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-gray-500 hover:text-white"
-                                                onClick={() => {
-                                                    setSelectedEntity(supplier)
-                                                    setIsEntityModalOpen(true)
-                                                }}
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-gray-500 hover:text-red-400"
-                                                onClick={() => handleDelete(supplier.id, supplier.razon_social, supplier.categoria)}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+            <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50">
+                <div className="max-h-[600px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
+                    <table className="w-full text-left text-xs border-separate border-spacing-0">
+                        <thead className="bg-gray-800 text-[10px] uppercase font-bold text-gray-400 tracking-widest sticky top-0 z-10">
+                            <tr>
+                                <th className="px-6 py-4">Razón Social / CUIT</th>
+                                <th className="px-6 py-4">Categoría</th>
+                                <th className="px-6 py-4">CBU / CVU Principales</th>
+                                <th className="px-6 py-4 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={4} className="p-12 text-center text-gray-500 italic">Cargando directorio...</td>
+                                </tr>
+                            ) : paginatedSuppliers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="p-12 text-center">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Users className="w-12 h-12 text-gray-700" />
+                                            <h3 className="text-sm font-semibold text-white">No se encontraron {category === 'cliente' ? 'clientes' : 'proveedores'}</h3>
+                                            <p className="text-xs text-gray-500">Agrega un nuevo socio manualmente para comenzar.</p>
                                         </div>
-                                    </div>
-                                    <p className="text-sm text-gray-400 font-mono">CUIT: {supplier.cuit}</p>
-                                </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                paginatedSuppliers.map(supplier => (
+                                    <tr key={supplier.id} className="hover:bg-white/5 transition-colors group">
+                                        <td className="px-6 py-3">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-white text-sm">{supplier.razon_social}</span>
+                                                <span className="text-[10px] text-gray-500 font-mono">CUIT: {supplier.cuit}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-3">
+                                            <Badge className={`text-[9px] font-bold uppercase ${supplier.categoria === 'cliente' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                                                {supplier.categoria}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-6 py-3">
+                                            <div className="flex flex-col gap-1">
+                                                {supplier.trusted_cbus.slice(0, 2).map((t: any) => (
+                                                    <div key={t.cbu} className="flex items-center gap-2">
+                                                        <Landmark className="h-3 w-3 text-gray-600" />
+                                                        <code className="text-[10px] text-gray-300 font-mono">{t.cbu}</code>
+                                                        <ShieldCheck className="h-3 w-3 text-emerald-500" />
+                                                    </div>
+                                                ))}
+                                                {supplier.trusted_cbus.length === 0 && (
+                                                    <span className="text-[10px] text-gray-600 italic">Sin CBU validado</span>
+                                                )}
+                                                {supplier.trusted_cbus.length > 2 && (
+                                                    <span className="text-[9px] text-emerald-500 font-bold">+{supplier.trusted_cbus.length - 2} más</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-3">
+                                            <div className="flex justify-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-gray-500 hover:text-white hover:bg-white/10"
+                                                    onClick={() => {
+                                                        setSelectedEntity(supplier)
+                                                        setIsEntityModalOpen(true)
+                                                    }}
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-gray-500 hover:text-red-400 hover:bg-red-400/10"
+                                                    onClick={() => handleDelete(supplier.id, supplier.razon_social, supplier.categoria)}
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                                <div className="space-y-3">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">CBUs / CVUs de Confianza</p>
-                                    <div className="space-y-2">
-                                        {supplier.trusted_cbus.length > 0 ? (
-                                            supplier.trusted_cbus.map((t: any) => (
-                                                <div key={t.cbu} className="flex items-center justify-between gap-4 p-2 bg-gray-800/50 rounded-lg border border-gray-800">
-                                                    <div className="flex items-center gap-2">
-                                                        <Landmark className="h-4 w-4 text-gray-500" />
-                                                        <code className="text-xs text-white font-mono">{t.cbu}</code>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase">
-                                                        <ShieldCheck className="h-3.5 w-3.5" />
-                                                        Validado
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-xs text-amber-500/70 italic">Sin CBU detectado aún</p>
-                                        )}
-                                    </div>
-                                </div>
+                {/* Paginación */}
+                <div className="p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="text-[11px] text-gray-500 font-medium flex items-center gap-4">
+                        <span>
+                            Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredSuppliers.length)}</span> de <span className="text-gray-300">{filteredSuppliers.length}</span> socios
+                        </span>
+
+                        <div className="flex items-center gap-2 border-l border-gray-800 pl-4">
+                            <span className="text-gray-600">Ver:</span>
+                            {[20, 25, 50, 100, 200].map(size => (
+                                <button
+                                    key={size}
+                                    onClick={() => {
+                                        setItemsPerPage(size)
+                                        setCurrentPage(1)
+                                    }}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${itemsPerPage === size ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-gray-600 hover:text-gray-400'}`}
+                                >
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {totalPages > 1 && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="h-8 px-3 border-gray-800 bg-gray-900 hover:bg-gray-800 text-gray-300 text-[10px] font-bold uppercase transition-all"
+                            >
+                                Anterior
+                            </Button>
+                            <div className="flex items-center gap-1 px-3">
+                                <span className="text-[10px] font-bold text-emerald-500">{currentPage}</span>
+                                <span className="text-[10px] font-bold text-gray-600">/</span>
+                                <span className="text-[10px] font-bold text-gray-400">{totalPages}</span>
                             </div>
-                        </Card>
-                    ))
-                )}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="h-8 px-3 border-gray-800 bg-gray-900 hover:bg-gray-800 text-gray-300 text-[10px] font-bold uppercase transition-all"
+                            >
+                                Siguiente
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </div>
             <EntityModal
                 isOpen={isEntityModalOpen}

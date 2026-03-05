@@ -220,8 +220,15 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     <TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos
                                 </h3>
                             </div>
-                            <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                                <table className="w-full text-left text-[10px] text-gray-400">
+                            <div className="border border-gray-800 rounded-xl overflow-hidden max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40">
+                                <table className="w-full text-xs text-left">
+                                    <thead className="bg-gray-800 sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Fecha</th>
+                                            <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Descripción</th>
+                                            <th className="px-4 py-3 text-right font-bold uppercase text-[10px] text-gray-400 tracking-widest">Monto</th>
+                                        </tr>
+                                    </thead>
                                     <tbody className="divide-y divide-gray-800">
                                         {incomes.slice(0, 15).map((t: any) => (
                                             <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
@@ -242,8 +249,15 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     <TrendingDown className="w-3 h-3 text-red-500" /> Egresos
                                 </h3>
                             </div>
-                            <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                                <table className="w-full text-left text-[10px] text-gray-400">
+                            <div className="border border-gray-800 rounded-xl overflow-hidden max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-red-500/20 hover:scrollbar-thumb-red-500/40">
+                                <table className="w-full text-xs text-left">
+                                    <thead className="bg-gray-800 sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Fecha</th>
+                                            <th className="px-4 py-3 text-left font-bold uppercase text-[10px] text-gray-400 tracking-widest">Descripción</th>
+                                            <th className="px-4 py-3 text-right font-bold uppercase text-[10px] text-gray-400 tracking-widest">Monto</th>
+                                        </tr>
+                                    </thead>
                                     <tbody className="divide-y divide-gray-800">
                                         {expenses.slice(0, 15).map((t: any) => (
                                             <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">

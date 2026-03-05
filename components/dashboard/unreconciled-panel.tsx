@@ -1269,68 +1269,79 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                         )}
                                     </div>
                                 </div>
-                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {loadingInvoices ? (
-                                        <div className="py-12 text-center text-gray-500">
-                                            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                                            Buscando coincidencias...
-                                        </div>
-                                    ) : availableInvoices.length > 0 ? (
-                                        availableInvoices.map(inv => {
-                                            const requiredAmount = Math.abs(selectedTx?.monto || 0) - (selectedTx?.monto_usado || 0)
-                                            const isExactMatch = requiredAmount === Math.abs(inv.monto_pendiente)
-                                            const isSuggested = aiSuggestions.includes(inv.id)
-                                            const isSelected = selectedInvoiceIds.includes(inv.id)
+                                <div className="border border-gray-800 rounded-lg overflow-hidden max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-500/20 hover:scrollbar-thumb-blue-500/40">
+                                    <table className="w-full text-[11px] text-left border-separate border-spacing-0">
+                                        <thead className="bg-gray-800 sticky top-0 z-10">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left font-bold uppercase text-[9px] text-gray-400 tracking-widest">Fecha/Vto</th>
+                                                <th className="px-3 py-2 text-left font-bold uppercase text-[9px] text-gray-400 tracking-widest">Número</th>
+                                                <th className="px-3 py-2 text-right font-bold uppercase text-[9px] text-gray-400 tracking-widest">Pendiente</th>
+                                                <th className="px-3 py-2 text-center font-bold uppercase text-[9px] text-gray-400 tracking-widest">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {loadingInvoices ? (
+                                                <tr>
+                                                    <td colSpan={4} className="py-12 text-center text-gray-500">
+                                                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                                                        Buscando coincidencias...
+                                                    </td>
+                                                </tr>
+                                            ) : availableInvoices.length > 0 ? (
+                                                availableInvoices.map(inv => {
+                                                    const requiredAmount = Math.abs(selectedTx?.monto || 0) - (selectedTx?.monto_usado || 0)
+                                                    const isExactMatch = requiredAmount === Math.abs(inv.monto_pendiente)
+                                                    const isSuggested = aiSuggestions.includes(inv.id)
+                                                    const isSelected = selectedInvoiceIds.includes(inv.id)
 
-                                            return (
-                                                <button
-                                                    key={inv.id}
-                                                    onClick={() => {
-                                                        if (isSelected) {
-                                                            setSelectedInvoiceIds(prev => prev.filter(id => id !== inv.id))
-                                                        } else {
-                                                            setSelectedInvoiceIds(prev => [...prev, inv.id])
-                                                        }
-                                                    }}
-                                                    disabled={isSubmitting}
-                                                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group
-                                                        ${isSelected ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10'
-                                                            : isSuggested ? 'border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10'
-                                                                : isExactMatch ? 'border-emerald-500/50 bg-emerald-500/5 hover:bg-emerald-500/10'
-                                                                    : 'border-gray-800 bg-gray-900/40 hover:border-gray-700 hover:bg-gray-800/60'
-                                                        }`}
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`flex items-center justify-center w-5 h-5 rounded-md border ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-600 bg-gray-900 group-hover:border-gray-500'}`}>
-                                                            {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
-                                                        </div>
-                                                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-500/20 text-blue-400' : isSuggested ? 'bg-amber-500/20 text-amber-500' : 'bg-gray-800 text-gray-500'}`}>
-                                                            <FileDown className="w-4 h-4" />
-                                                        </div>
-                                                        <div>
-                                                            <p className={`text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
-                                                                {inv.razon_social_socio} {isSuggested && <span className="ml-2 text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Sugerencia IA</span>}
-                                                            </p>
-                                                            <p className="text-[10px] text-gray-500">
-                                                                {inv.tipo} • {inv.numero} • Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}
-                                                                {inv.estado === 'parcial' && <span className="ml-2 text-blue-400 bg-blue-500/10 px-1 rounded">Pago Parcial</span>}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className={`text-sm font-black ${isSelected ? 'text-blue-400' : 'text-white'}`}>
-                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
-                                                        </p>
-                                                        {isExactMatch && !isSuggested && <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-1.5 rounded uppercase mt-1 inline-block">Monto Exacto</span>}
-                                                    </div>
-                                                </button>
-                                            )
-                                        })
-                                    ) : (
-                                        <div className="py-12 text-center text-gray-600 border border-dashed border-gray-800 rounded-xl">
-                                            No hay comprobantes pendientes que coincidan con este flujo.
-                                        </div>
-                                    )}
+                                                    return (
+                                                        <tr
+                                                            key={inv.id}
+                                                            className={`group border-b border-gray-800 last:border-b-0 transition-colors
+                                                                ${isSelected ? 'bg-blue-500/10' : 'hover:bg-gray-800/50'}`}
+                                                        >
+                                                            <td className="px-3 py-2">
+                                                                <p className="text-white font-medium">{new Date(inv.fecha).toLocaleDateString()}</p>
+                                                                <p className="text-[9px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</p>
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <p className="text-white font-medium">{inv.tipo} {inv.numero}</p>
+                                                                <p className="text-[9px] text-gray-500">{inv.razon_social_socio}</p>
+                                                            </td>
+                                                            <td className="px-3 py-2 text-right">
+                                                                <p className={`font-bold ${isSelected ? 'text-blue-400' : 'text-white'}`}>
+                                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
+                                                                </p>
+                                                                {isExactMatch && !isSuggested && <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-1 rounded uppercase mt-1 inline-block">Monto Exacto</span>}
+                                                            </td>
+                                                            <td className="px-3 py-2 text-center">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (isSelected) {
+                                                                            setSelectedInvoiceIds(prev => prev.filter(id => id !== inv.id))
+                                                                        } else {
+                                                                            setSelectedInvoiceIds(prev => [...prev, inv.id])
+                                                                        }
+                                                                    }}
+                                                                    disabled={isSubmitting}
+                                                                    className={`w-6 h-6 rounded-full border flex items-center justify-center transition-colors
+                                                                        ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-600 bg-gray-900 group-hover:border-blue-500'}`}
+                                                                >
+                                                                    {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={4} className="py-12 text-center text-gray-600">
+                                                        No hay comprobantes pendientes que coincidan con este flujo.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         ) : (
