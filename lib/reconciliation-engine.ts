@@ -495,21 +495,21 @@ export class ReconciliationEngine {
             // Skip if already has applications
             if (mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0) continue;
 
-            const movAmount = Math.abs(Number(mov.importe || 0));
+            const movAmount = Math.abs(Number(mov.monto_total || 0));
             if (movAmount === 0) continue;
 
             const isRecibo = mov.tipo === 'cobro';
             const targetType = isRecibo ? 'factura_venta' : 'factura_compra';
 
             // WE LOOK INTO BOTH CONCEPT AND OBSERVATIONS
-            const searchText = ((mov.concepto || '') + ' ' + (mov.observaciones || '')).toUpperCase();
+            const searchText = ((mov.concepto || '') + ' ' + (mov.observaciones || '') + ' ' + (mov.numero || '')).toUpperCase();
 
             // Try to find matching invoice
             const matchingInvoice = invoices.find(inv => {
                 if (inv.tipo !== targetType) return false;
 
                 // If amount_pending is null, assume total amount
-                const pending = Math.abs(inv.monto_pendiente !== null ? Number(inv.monto_pendiente) : Number(inv.monto || 0));
+                const pending = Math.abs(inv.monto_pendiente !== null ? Number(inv.monto_pendiente) : Number(inv.monto_total || 0));
 
                 // Match amount (allow 1-to-1 exact)
                 if (Math.abs(pending - movAmount) > 0.05) return false;
@@ -540,7 +540,7 @@ export class ReconciliationEngine {
                         });
 
                     // 2. Update Invoice Status
-                    const currentPending = Math.abs(matchingInvoice.monto_pendiente !== null ? Number(matchingInvoice.monto_pendiente) : Number(matchingInvoice.monto || 0));
+                    const currentPending = Math.abs(matchingInvoice.monto_pendiente !== null ? Number(matchingInvoice.monto_pendiente) : Number(matchingInvoice.monto_total || 0));
                     const newMontoPendiente = Math.max(0, currentPending - movAmount);
                     const isFullyPaid = newMontoPendiente <= 0.05;
                     const newEstado = isFullyPaid ? (isRecibo ? 'cobrado' : 'pagado') : matchingInvoice.estado;
