@@ -259,8 +259,16 @@ export class ReconciliationEngine {
                 });
 
                 if (movementMatch) {
-                    finalMovementMatch = movementMatch;
-                    matchLevel = 1; // Movement matches are high confidence
+                    finalMovementMatch = [movementMatch]; // Convert to array for unified handling
+                    matchLevel = 1;
+                } else if (targetMovements.length > 1 && targetMovements.length <= 15) {
+                    // 1-a-N Movement Match (Agrupación de recibos en un solo depósito)
+                    const subsetMatch = this.findSubsetSum(targetMovements, availableTransAmount, 'monto');
+                    if (subsetMatch) {
+                        finalMovementMatch = subsetMatch;
+                        matchLevel = 2;
+                        console.log(`[RECONCILIATION] >> BATCH MATCH FOUND: ${subsetMatch.length} movements sum exactly to balance!`);
+                    }
                 }
             }
 
@@ -292,7 +300,7 @@ export class ReconciliationEngine {
                         transDesc: trans.descripcion,
                         monto: availableTransAmount,
                         invoiceIds: finalMatch ? finalMatch.map((i: any) => i.id) : [],
-                        movementId: finalMovementMatch ? finalMovementMatch.movimiento_id : null,
+                        movementIds: finalMovementMatch ? finalMovementMatch.map((m: any) => m.movimiento_id) : [],
                         level: matchLevel,
                         auto: true
                     });
@@ -314,21 +322,22 @@ export class ReconciliationEngine {
 
                     const previouslyUsedRefreshed = Number(currentTx.monto_usado || 0);
 
-                    // CASE 1: MATCH WITH EXISTING MOVEMENT
-                    if (finalMovementMatch) {
-                        const movId = finalMovementMatch.movimiento_id;
+                    // CASE 1: MATCH WITH EXISTING MOVEMENT(S)
+                    if (finalMovementMatch && finalMovementMatch.length > 0) {
+                        const movementIds = finalMovementMatch.map((m: any) => m.movimiento_id);
+                        const instrumentIds = finalMovementMatch.map((m: any) => m.id);
 
-                        // 1. Update Instrument state
+                        // 1. Update Instrument states
                         await adminSupabase
                             .from('instrumentos_pago')
                             .update({ estado: 'acreditado' })
-                            .eq('id', finalMovementMatch.id);
+                            .in('id', instrumentIds);
 
-                        // 1.b Propagate 'conciliado' state to linked invoices
+                        // 1.b Propagate 'conciliado' state to linked invoices for ALL movements
                         const { data: apps } = await adminSupabase
                             .from('aplicaciones_pago')
                             .select('comprobante_id')
-                            .eq('movimiento_id', movId);
+                            .in('movimiento_id', movementIds);
 
                         if (apps && apps.length > 0) {
                             const invoiceIds = apps.map(a => a.comprobante_id);
@@ -347,7 +356,7 @@ export class ReconciliationEngine {
                         await adminSupabase
                             .from('transacciones')
                             .update({
-                                movimiento_id: movId,
+                                movimiento_id: movementIds[0], // Reference the first one for tracking
                                 estado: isFullyUsed ? 'conciliado' : 'parcial',
                                 monto_usado: newMontoUsado,
                                 tags
@@ -359,7 +368,8 @@ export class ReconciliationEngine {
                         results.push({
                             transId: trans.id,
                             monto: availableTransAmount,
-                            movimientoId: movId,
+                            movimientoId: movementIds[0],
+                            allMovementIds: movementIds,
                             level: matchLevel,
                             auto: true,
                             type: 'movement'
@@ -449,19 +459,28 @@ export class ReconciliationEngine {
         });
     }
 
-    private static findSubsetSum(invoices: any[], target: number): any[] | null {
-        const tolerance = 0.05;
-        const n = invoices.length;
+    private static findSubsetSum(items: any[], target: number, amountField: string = 'monto_pendiente'): any[] | null {
+        const n = items.length;
+        const memo = new Map<string, any[] | null>();
 
-        function backtrack(idx: number, currentSum: number, selected: any[]): any[] | null {
-            if (Math.abs(currentSum - target) < tolerance) return selected;
-            if (currentSum > target + tolerance || idx >= n) return null;
+        function backtrack(index: number, currentSum: number, selected: any[]): any[] | null {
+            const state = `${index}-${currentSum.toFixed(2)}`;
+            if (memo.has(state)) return memo.get(state) || null;
 
-            for (let i = idx; i < n; i++) {
-                const result = backtrack(i + 1, currentSum + Number(invoices[i].monto_pendiente), [...selected, invoices[i]]);
-                if (result) return result;
+            if (Math.abs(currentSum - target) < 0.05) return selected;
+            if (index >= n || currentSum > target + 0.05) return null;
+
+            // Option 1: Include item
+            const withItem = backtrack(index + 1, currentSum + Number(items[index][amountField] || 0), [...selected, items[index]]);
+            if (withItem) {
+                memo.set(state, withItem);
+                return withItem;
             }
-            return null;
+
+            // Option 2: Skip item
+            const withoutItem = backtrack(index + 1, currentSum, selected);
+            memo.set(state, withoutItem);
+            return withoutItem;
         }
 
         return backtrack(0, 0, []);
