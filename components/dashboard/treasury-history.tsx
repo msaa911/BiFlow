@@ -318,7 +318,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                             </span>
                                                         ))
                                                     ) : (
-                                                        <span className="text-xs font-bold text-gray-200 uppercase tracking-tight">
+                                                        <span className="text-xs font-bold text-white uppercase tracking-tight">
                                                             {mov.concepto || mov.categoria || 'Sin concepto'}
                                                         </span>
                                                     )}
