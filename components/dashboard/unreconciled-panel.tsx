@@ -358,37 +358,55 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             // CASE 1: Direct link to existing Movements (Recibos/OPs) - Batch Support
             if (selectedMovementIds.length > 0) {
-                // If there are multiple, we assume they all belong to this transaction
-                // We link each movement_id to the transaction in separate updates or a single one if it's many-to-one
-                // Note: Currently transaction table has movement_id (1-to-1).
-                // If the user selects multiple, it's a "Batch" (Lote).
-                // Contablemente, si es un lote, vinculamos el primero y registramos los otros en el metadata,
-                // o creamos un movimiento contenedor si fuera necesario. 
-                // Pero lo más limpio para el usuario es vincular el 'movimiento_id' principal.
+                // Determine the total amount of selected movements for validation
+                const selectedMovementTotal = suggestedMovements
+                    .filter(m => selectedMovementIds.includes(m.id))
+                    .reduce((acc, curr) => acc + Number(curr.monto), 0)
 
-                // TODO: Support many-to-one mapping in DB if required. For now, we link the first 
-                // and mark the others as linked in metadata.
+                // Update Bank Transaction with multiple movement IDs in metadata
                 const { error: txLinkErr } = await supabase
                     .from('transacciones')
                     .update({
-                        movimiento_id: selectedMovementIds[0], // Primary link
+                        movimiento_id: selectedMovementIds[0], // Primary link for standard relations
                         estado: 'conciliado',
-                        monto_usado: totalBankAmount, // Total match
+                        monto_usado: totalBankAmount, // Total match assumed in batch
                         metadata: {
                             ...((selectedTx as any).metadata || {}),
                             linked_at: new Date().toISOString(),
                             link_method: 'batch_match',
-                            all_movement_ids: selectedMovementIds
+                            all_movement_ids: selectedMovementIds,
+                            original_bank_monto: selectedTx.monto
                         }
                     })
                     .eq('id', selectedTx.id)
 
                 if (txLinkErr) throw txLinkErr
 
-                // Also update other movements to be "conciliados" if they have that flag
-                // (Logic depends on business rules, for now linking the TX is enough)
+                // 1. Update EVERY instrument of these movements to 'acreditado'
+                const { error: insUpdateErr } = await supabase
+                    .from('instrumentos_pago')
+                    .update({ estado: 'acreditado' })
+                    .in('movimiento_id', selectedMovementIds)
 
-                toast.success(`${selectedMovementIds.length} movimientos vinculados con el banco.`)
+                if (insUpdateErr) console.warn('Warning: Some instruments could not be marked as accredited', insUpdateErr)
+
+                // 2. Propagate 'conciliado' state to linked invoices for ALL selected movements
+                const { data: apps } = await supabase
+                    .from('aplicaciones_pago')
+                    .select('comprobante_id')
+                    .in('movimiento_id', selectedMovementIds)
+
+                if (apps && apps.length > 0) {
+                    const invoiceIds = apps.map(a => a.comprobante_id)
+                    const { error: propError } = await supabase
+                        .from('comprobantes')
+                        .update({ estado: 'conciliado' })
+                        .in('id', invoiceIds)
+
+                    if (propError) console.error(`[RECONCILIATION] Error propagating 'conciliado' state:`, propError.message)
+                }
+
+                toast.success(`${selectedMovementIds.length} movimientos vinculados y conciliados exitosamente.`)
                 setIsConciliating(false)
                 setSelectedMovementIds([])
                 setSelectedInvoiceIds([])

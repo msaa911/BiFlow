@@ -334,11 +334,11 @@ export class ReconciliationEngine {
                         const movementIds = finalMovementMatch.map((m: any) => m.movimiento_id);
                         const instrumentIds = finalMovementMatch.map((m: any) => m.id);
 
-                        // 1. Update Instrument states
+                        // 1. Update EVERY instrument of these movements to 'acreditado'
                         await adminSupabase
                             .from('instrumentos_pago')
                             .update({ estado: 'acreditado' })
-                            .in('id', instrumentIds);
+                            .in('movimiento_id', movementIds);
 
                         // 1.b Propagate 'conciliado' state to linked invoices for ALL movements
                         const { data: apps } = await adminSupabase
@@ -366,7 +366,13 @@ export class ReconciliationEngine {
                                 movimiento_id: movementIds[0], // Reference the first one for tracking
                                 estado: isFullyUsed ? 'conciliado' : 'parcial',
                                 monto_usado: newMontoUsado,
-                                tags
+                                tags,
+                                metadata: {
+                                    ...((trans as any).metadata || {}),
+                                    linked_at: new Date().toISOString(),
+                                    link_method: 'auto_batch_match',
+                                    all_movement_ids: movementIds
+                                }
                             })
                             .eq('id', trans.id)
                             .eq('organization_id', organizationId);
@@ -575,8 +581,8 @@ export class ReconciliationEngine {
                     const newMontoPendiente = Math.max(0, currentPending - movAmount);
                     const isFullyPaid = newMontoPendiente <= 0.05;
 
-                    // DB constraint comprobantes_estado_check only allows: pendiente, pagado, parcial, rechazado, conciliado
-                    // So we use 'pagado' even for sales (AR).
+                    // Administrative phase marks as 'pagado' (for AR/AP sync)
+                    // The 'conciliado' state is reserved for Bank Sync
                     const newEstado = isFullyPaid ? 'pagado' : matchingInvoice.estado;
 
                     const { error: compError } = await adminSupabase
