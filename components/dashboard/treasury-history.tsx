@@ -60,6 +60,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 *,
                 entidades (razon_social),
                 instrumentos_pago (*),
+                transacciones (*),
                 aplicaciones_pago (
                     monto_aplicado,
                     comprobante_id,
@@ -266,6 +267,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         <TableHeader className="bg-gray-800 sticky top-0 z-10">
                             <TableRow className="border-gray-800 hover:bg-transparent">
                                 <TableHead className="w-[40px]"><input type="checkbox" checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0} onChange={toggleSelectAll} /></TableHead>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-center w-[30px]">C</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Fecha</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Comprobante</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Socio</TableHead>
@@ -277,34 +279,122 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         <TableBody>
                             {loading ? (
                                 <TableRow><TableCell colSpan={7} className="h-32 text-center text-gray-500">Cargando...</TableCell></TableRow>
-                            ) : paginatedMovements.map(mov => (
-                                <TableRow key={mov.id} className="border-gray-800 hover:bg-gray-800/30">
-                                    <TableCell><input type="checkbox" checked={selectedIds.has(mov.id)} onChange={() => toggleSelect(mov.id)} /></TableCell>
-                                    <TableCell className="font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</TableCell>
-                                    <TableCell><Badge className="text-[9px] uppercase">{mov.numero || 'S/N'}</Badge></TableCell>
-                                    <TableCell className="font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</TableCell>
-                                    <TableCell>
-                                        {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
-                                            mov.aplicaciones_pago.map((app: any, idx: number) => (
-                                                <Badge key={idx} variant="outline" className="text-[10px] border-emerald-500/20 text-emerald-400">
-                                                    {app.comprobantes?.numero}
-                                                </Badge>
-                                            ))
-                                        ) : (
-                                            <span className="text-[10px] text-gray-500">{mov.categoria}</span>
+                            ) : paginatedMovements.map(mov => {
+                                const isConciliated = mov.transacciones && mov.transacciones.length > 0;
+                                const isExpanded = expandedMov === mov.id;
+
+                                return (
+                                    <>
+                                        <TableRow
+                                            key={mov.id}
+                                            className={`border-gray-800 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-500/5' : 'hover:bg-gray-800/30'}`}
+                                            onClick={() => setExpandedMov(isExpanded ? null : mov.id)}
+                                        >
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                                <input type="checkbox" checked={selectedIds.has(mov.id)} onChange={() => toggleSelect(mov.id)} />
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <div className={`
+                                                    w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black
+                                                    ${isConciliated ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800/50 text-gray-600 border border-gray-800'}
+                                                `}>
+                                                    C
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</TableCell>
+                                            <TableCell><Badge className="text-[9px] uppercase">{mov.numero || 'S/N'}</Badge></TableCell>
+                                            <TableCell className="font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</TableCell>
+                                            <TableCell>
+                                                {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {mov.aplicaciones_pago.map((app: any, idx: number) => (
+                                                            <Badge key={idx} variant="outline" className="text-[10px] border-emerald-500/20 text-emerald-400">
+                                                                {app.comprobantes?.numero}
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[10px] text-gray-500">{mov.categoria}</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono font-bold text-white text-xs">
+                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}
+                                            </TableCell>
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex justify-center gap-1">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400" onClick={() => exportTreasuryMovementToExcel(mov)}><Download className="w-4 h-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleDelete(mov.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+
+                                        {isExpanded && (
+                                            <TableRow className="bg-gray-950/80 border-gray-800/50">
+                                                <TableCell colSpan={8} className="p-0">
+                                                    <div className="p-6 border-l-2 border-emerald-500 bg-gray-900/40 animate-in slide-in-from-top-2 duration-200">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                            {/* Detalles de Instrumentos */}
+                                                            <div>
+                                                                <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                                                    <Tag className="w-3 h-3" /> Medios de Cobro / Pago
+                                                                </h4>
+                                                                <div className="space-y-2">
+                                                                    {mov.instrumentos_pago && mov.instrumentos_pago.length > 0 ? (
+                                                                        mov.instrumentos_pago.map((inst: any, idx: number) => (
+                                                                            <div key={idx} className="flex justify-between items-center p-2.5 bg-gray-950/50 rounded-lg border border-gray-800">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="text-xs font-bold text-gray-200 uppercase">{inst.metodo}</span>
+                                                                                    {inst.banco && <span className="text-[10px] text-gray-500 uppercase">{inst.banco} {inst.numero_cheque ? `#${inst.numero_cheque}` : ''}</span>}
+                                                                                </div>
+                                                                                <span className="font-mono text-sm font-bold text-white">
+                                                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inst.monto)}
+                                                                                </span>
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="text-xs text-gray-600 italic">No hay instrumentos detallados</div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Detalles de Aplicaciones (Facturas) */}
+                                                            <div>
+                                                                <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                                                    <FileText className="w-3 h-3" /> Facturas Imputadas
+                                                                </h4>
+                                                                <div className="space-y-2">
+                                                                    {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
+                                                                        mov.aplicaciones_pago.map((app: any, idx: number) => (
+                                                                            <div key={idx} className="flex justify-between items-center p-2.5 bg-gray-950/50 rounded-lg border border-gray-800">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="text-xs font-medium text-gray-300 uppercase">{app.comprobantes?.numero}</span>
+                                                                                    <span className="text-[9px] text-gray-500 uppercase">{app.comprobantes?.tipo}</span>
+                                                                                </div>
+                                                                                <span className="font-mono text-xs font-bold text-emerald-400">
+                                                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(app.monto_aplicado)}
+                                                                                </span>
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="text-xs text-gray-600 italic">Movimiento sin aplicaciones directas (Gasto/Concepto libre)</div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {mov.observaciones && (
+                                                            <div className="mt-6 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10">
+                                                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Notas Administrativas</p>
+                                                                <p className="text-xs text-gray-400">{mov.observaciones}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
                                         )}
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono font-bold text-white text-xs">
-                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex justify-center gap-1">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400" onClick={() => exportTreasuryMovementToExcel(mov)}><Download className="w-4 h-4" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleDelete(mov.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                                    </>
+                                );
+                            })
                         </TableBody>
                     </Table>
                 </div>
