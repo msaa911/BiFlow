@@ -160,25 +160,25 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 onClick={() => handleReconcile('admin')}
                                 disabled={reconciling}
                                 title="Vincula automáticamente Recibos/OP pendientes con Facturas por monto y referencia."
-                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm ${reconciling
+                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-[10px] transition-all shadow-sm uppercase ${reconciling
                                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                                     : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
                                     }`}
                             >
                                 <Calculator className={`w-3.5 h-3.5 ${reconciling ? 'animate-spin' : ''}`} />
-                                {reconciling ? 'Procesando...' : 'Vincular Facturas'}
+                                {reconciling ? 'Procesando...' : 'VINCULAR FACTURAS CON COBROS/PAGOS'}
                             </button>
                             <button
                                 onClick={() => handleReconcile('bank')}
                                 disabled={reconciling}
                                 title="Cruza los movimientos de Tesorería con las transacciones del Banco (Genera marca 'C')."
-                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm ${reconciling
+                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-[10px] transition-all shadow-sm uppercase ${reconciling
                                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                    : 'bg-emerald-700 hover:bg-emerald-600 text-white shadow-emerald-900/40 active:scale-95'
+                                    : 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20 active:scale-95'
                                     }`}
                             >
                                 <TrendingUp className={`w-3.5 h-3.5 ${reconciling ? 'animate-spin' : ''}`} />
-                                {reconciling ? 'Procesando...' : 'Cruce Bancario (Auto)'}
+                                {reconciling ? 'Procesando...' : 'CONCILIACIÓN BANCARIA'}
                             </button>
                         </div>
                     </div>

@@ -311,14 +311,14 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                         mov.aplicaciones_pago.map((app: any, idx: number) => (
                                                             <span
                                                                 key={idx}
-                                                                className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight"
+                                                                className="text-xs font-bold text-emerald-400 uppercase tracking-tight"
                                                             >
                                                                 {app.comprobantes?.nro_factura || app.comprobantes?.numero}
-                                                                {idx < mov.aplicaciones_pago.length - 1 ? "," : ""}
+                                                                {idx < mov.aplicaciones_pago.length - 1 ? " | " : ""}
                                                             </span>
                                                         ))
                                                     ) : (
-                                                        <span className="text-[10px] font-bold text-gray-300 uppercase tracking-tight">
+                                                        <span className="text-xs font-bold text-gray-200 uppercase tracking-tight">
                                                             {mov.concepto || mov.categoria || 'Sin concepto'}
                                                         </span>
                                                     )}
