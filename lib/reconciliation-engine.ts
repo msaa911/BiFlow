@@ -12,6 +12,11 @@ export class ReconciliationEngine {
         const adminSupabase = createAdminClient();
         console.log(`[RECONCILIATION v3.1] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
 
+        // --- NEW: PHASE -1: Administrative Sync (Invoices <-> Receipts/OP) ---
+        if (!dryRun) {
+            await this.matchAdministrative(supabase, organizationId);
+        }
+
         // 1. PHASE 0: Repair Orphaned Transactions (linked but stuck in 'pendiente')
         console.log(`[RECONCILIATION] Phase 0: Checking for orphans...`)
         const { data: orphans } = await adminSupabase
@@ -448,6 +453,85 @@ export class ReconciliationEngine {
         }
 
         return backtrack(0, 0, []);
+    }
+
+    private static async matchAdministrative(supabase: any, organizationId: string) {
+        console.log(`[RECONCILIATION] Starting Administrative Phase (Invoices <-> Receipts/OP)`);
+        const adminSupabase = createAdminClient();
+
+        // 1. Fetch movements that might need linking (cobros/pagos)
+        const { data: movements } = await adminSupabase
+            .from('movimientos_tesoreria')
+            .select('*, aplicaciones_pago(id)')
+            .eq('organization_id', organizationId)
+            .order('fecha', { ascending: true });
+
+        // 2. Fetch pending invoices
+        const { data: invoices } = await adminSupabase
+            .from('comprobantes')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .gt('monto_pendiente', 0)
+            .order('fecha_emision', { ascending: true });
+
+        if (!movements || !invoices) return;
+
+        for (const mov of movements) {
+            // Skip if already has applications
+            if (mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0) continue;
+
+            const movAmount = Math.abs(Number(mov.importe));
+            const isRecibo = mov.tipo === 'cobro';
+            const targetType = isRecibo ? 'factura_venta' : 'factura_compra';
+
+            const searchText = ((mov.concepto || '') + ' ' + (mov.observaciones || '')).toUpperCase();
+
+            // Try to find matching invoice
+            const matchingInvoice = invoices.find(inv => {
+                if (inv.tipo !== targetType) return false;
+
+                // Match amount (allow 1-to-1 exact for this auto-sync)
+                if (Math.abs(Number(inv.monto_pendiente) - movAmount) > 0.05) return false;
+
+                const nroFactura = (inv.nro_factura || '').toUpperCase();
+                if (!nroFactura) return false;
+
+                // Extract relevant parts (last 4-8 digits)
+                const lastPart = nroFactura.split('-').pop()?.replace(/^0+/, '');
+
+                return searchText.includes(nroFactura) || (lastPart && lastPart.length >= 4 && searchText.includes(lastPart));
+            });
+
+            if (matchingInvoice) {
+                console.log(`[RECONCILIATION] >> ADMIN MATCH FOUND: Mov ${mov.id} -> Inv ${matchingInvoice.id} (${matchingInvoice.nro_factura})`);
+
+                // 1. Create Application
+                await adminSupabase
+                    .from('aplicaciones_pago')
+                    .insert({
+                        organization_id: organizationId,
+                        movimiento_id: mov.id,
+                        comprobante_id: matchingInvoice.id,
+                        monto: movAmount
+                    });
+
+                // 2. Update Invoice Status
+                const newMontoPendiente = Math.max(0, Number(matchingInvoice.monto_pendiente) - movAmount);
+                const isFullyPaid = newMontoPendiente <= 0.05;
+                const newEstado = isFullyPaid ? (isRecibo ? 'cobrado' : 'pagado') : matchingInvoice.estado;
+
+                await adminSupabase
+                    .from('comprobantes')
+                    .update({
+                        monto_pendiente: newMontoPendiente,
+                        estado: newEstado
+                    })
+                    .eq('id', matchingInvoice.id);
+
+                // Update local object to avoid double matching
+                matchingInvoice.monto_pendiente = newMontoPendiente;
+            }
+        }
     }
 
     private static normalizeReference(ref: string): string {
