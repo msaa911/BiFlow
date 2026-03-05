@@ -60,11 +60,10 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 *,
                 entidades (razon_social),
                 instrumentos_pago (*),
-                transacciones (*),
                 aplicaciones_pago (
                     monto_aplicado,
                     comprobante_id,
-                    comprobantes (nro_factura, tipo)
+                    comprobantes (*)
                 )
             `)
             .eq('organization_id', orgId)
