@@ -48,7 +48,7 @@ export class ReconciliationEngine {
         // 2.b Fetch pending movements (Receipts/OPs)
         const { data: pendingMovements } = await supabase
             .from('instrumentos_pago')
-            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(numero)))')
+            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(nro_factura)))')
             .eq('organization_id', organizationId)
             .in('estado', ['pendiente', 'parcial'])
             .order('fecha_disponibilidad', { ascending: true });
