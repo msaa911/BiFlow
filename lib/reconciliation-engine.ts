@@ -61,7 +61,7 @@ export class ReconciliationEngine {
         // 2.b Fetch pending movements (Receipts/OPs)
         const { data: pendingMovements } = await adminSupabase
             .from('instrumentos_pago')
-            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(numero))))')
+            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(numero)))')
             .eq('organization_id', organizationId)
             .in('estado', ['pendiente', 'parcial'])
             .order('fecha_disponibilidad', { ascending: true });
@@ -506,7 +506,7 @@ export class ReconciliationEngine {
 
             // Try to find matching invoice
             const matchingInvoice = invoices.find(inv => {
-                if (inv.tipo !== targetType) return false;
+                if (inv.tipo !== targetType && !['cobrado', 'pagado'].includes(inv.estado)) return false; // Relaxed filter for 'cobrado'/'pagado'
 
                 // If amount_pending is null, assume total amount
                 const pending = Math.abs(inv.monto_pendiente !== null ? Number(inv.monto_pendiente) : Number(inv.monto_total || 0));

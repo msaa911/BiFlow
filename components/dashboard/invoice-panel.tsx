@@ -211,14 +211,17 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     const filteredInvoices = invoices.filter(inv => {
         let typeMatch = false
         if (view === 'AR') {
+            // Documentos de Ingreso (Ventas, etc.)
             if (['factura_venta', 'ingreso_vario', 'ncb_bancaria'].includes(inv.tipo)) typeMatch = true
-            // NC/ND: mostrar en AR si está vinculada a una factura_venta/ingreso_vario, o si la entidad es cliente
+            // Notas de crédito/débito de ingresos
             else if (['nota_credito', 'nota_debito'].includes(inv.tipo)) {
                 const vinculado = inv.vinculado_id ? invoices.find(i => i.id === inv.vinculado_id) : null
                 typeMatch = vinculado ? ['factura_venta', 'ingreso_vario', 'ncb_bancaria'].includes(vinculado.tipo) : (!inv.tipo.includes('compra') && !inv.tipo.includes('egreso'))
             }
         } else {
+            // Documentos de Egreso (Compras, etc.)
             if (['factura_compra', 'egreso_vario', 'ndb_bancaria'].includes(inv.tipo)) typeMatch = true
+            // Notas de crédito/débito de egresos
             else if (['nota_credito', 'nota_debito'].includes(inv.tipo)) {
                 const vinculado = inv.vinculado_id ? invoices.find(i => i.id === inv.vinculado_id) : null
                 typeMatch = vinculado ? ['factura_compra', 'egreso_vario', 'ndb_bancaria'].includes(vinculado.tipo) : (!inv.tipo.includes('venta') && !inv.tipo.includes('ingreso'))
@@ -226,7 +229,9 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
         }
 
         const searchMatch = (inv.razon_social_socio || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (inv.numero || '').toLowerCase().includes(searchTerm.toLowerCase())
+            (inv.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (inv.cuit_socio || '').toLowerCase().includes(searchTerm.toLowerCase())
+
         return typeMatch && searchMatch
     })
 
