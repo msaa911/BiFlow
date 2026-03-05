@@ -61,7 +61,7 @@ export class ReconciliationEngine {
         // 2.b Fetch pending movements (Receipts/OPs)
         const { data: pendingMovements } = await adminSupabase
             .from('instrumentos_pago')
-            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(nro_factura)))')
+            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(numero))))')
             .eq('organization_id', organizationId)
             .in('estado', ['pendiente', 'parcial'])
             .order('fecha_disponibilidad', { ascending: true });
@@ -223,7 +223,7 @@ export class ReconciliationEngine {
                     // 3. Verificamos si hay referencias de factura vinculadas al movimiento
                     if (mov?.aplicaciones_pago && Array.isArray(mov.aplicaciones_pago)) {
                         for (const app of mov.aplicaciones_pago) {
-                            const compNum = app.comprobantes?.nro_factura;
+                            const compNum = app.comprobantes?.numero;
                             if (compNum) {
                                 // Buscamos tanto la versión normalizada como el número final (ej: '1234' de 'FAC-0001-1234')
                                 const cleanFact = this.normalizeReference(compNum);
@@ -513,7 +513,7 @@ export class ReconciliationEngine {
                 // Match amount (allow 1-to-1 exact)
                 if (Math.abs(pending - movAmount) > 0.05) return false;
 
-                const nroFactura = (inv.nro_factura || '').toUpperCase();
+                const nroFactura = (inv.numero || '').toUpperCase();
                 if (!nroFactura) return false;
 
                 const cleanFact = this.normalizeReference(nroFactura);
@@ -525,7 +525,7 @@ export class ReconciliationEngine {
             });
 
             if (matchingInvoice) {
-                console.log(`[RECONCILIATION] >> ADMIN MATCH FOUND: Mov ${mov.id} ($${movAmount}) -> Inv ${matchingInvoice.id} (${matchingInvoice.nro_factura})`);
+                console.log(`[RECONCILIATION] >> ADMIN MATCH FOUND: Mov ${mov.id} ($${movAmount}) -> Inv ${matchingInvoice.id} (${matchingInvoice.numero})`);
 
                 try {
                     // 1. Create Application
