@@ -22,6 +22,7 @@ interface Transaction {
     monto_usado?: number
     categoria?: string
     movimiento_id?: string
+    metadata?: any
 }
 
 interface UnreconciledPanelProps {

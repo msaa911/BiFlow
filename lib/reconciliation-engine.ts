@@ -401,18 +401,24 @@ export class ReconciliationEngine {
                         continue;
                     }
 
-                    // CASE 2: MATCH WITH INVOICES (Traditional Flow - DEPRECATED)
+                    // CASE 2: MATCH WITH INVOICES (Traditional Flow - DEPRECATED for Auto)
                     // PIVOT ARQUITECTÓNICO: Ya no creamos recibos/órdenes de pago automáticamente
-                    // basándonos solo en facturas. En su lugar, simplemente lo pasamos como sugerencia.
+                    // para evitar duplicidad. Se registran como sugerencias para que el usuario 
+                    // los confirme manualmente desde el panel de conciliación.
                     if (finalMatch && finalMatch.length > 0) {
-                        console.log(`[RECONCILIATION] Pivot: Skipping auto-creation for invoice match on Tx ${trans.id}. Added as suggestion.`);
+                        console.log(`[RECONCILIATION] Pivot: Recording invoice match suggestion for Tx ${trans.id}.`);
                         results.push({
                             transId: trans.id,
                             transDesc: trans.descripcion,
                             monto: availableTransAmount,
                             invoiceIds: finalMatch.map(i => i.id),
                             level: matchLevel,
-                            auto: false
+                            auto: false, // Mark as manual to prevent auto-creation in background
+                            metadata: {
+                                ...(trans.metadata || {}),
+                                suggestion_source: 'subset_sum_exact',
+                                suggested_at: new Date().toISOString()
+                            }
                         });
                         continue;
                     }
