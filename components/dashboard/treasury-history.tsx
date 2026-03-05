@@ -48,7 +48,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
     const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const [isManualEntryOpen, setIsManualEntryOpen] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
-    const itemsPerPage = 100
+    const [itemsPerPage, setItemsPerPage] = useState(100)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
@@ -261,7 +261,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
             </div>
 
             <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50">
-                <div className="max-h-[500px] overflow-y-auto">
+                <div className="max-h-[500px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
                     <Table>
                         <TableHeader className="bg-gray-900 sticky top-0 z-10">
                             <TableRow className="border-gray-800 hover:bg-transparent">
@@ -312,8 +312,26 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
 
             {/* Paginación */}
             <div className="mt-4 p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4 rounded-xl">
-                <div className="text-[11px] text-gray-500 font-medium">
-                    Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredMovements.length)}</span> de <span className="text-gray-300">{filteredMovements.length}</span> registros
+                <div className="text-[11px] text-gray-500 font-medium flex items-center gap-4">
+                    <span>
+                        Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredMovements.length)}</span> de <span className="text-gray-300">{filteredMovements.length}</span> registros
+                    </span>
+
+                    <div className="flex items-center gap-2 border-l border-gray-800 pl-4">
+                        <span className="text-gray-600">Ver:</span>
+                        {[20, 25, 50, 100, 200].map(size => (
+                            <button
+                                key={size}
+                                onClick={() => {
+                                    setItemsPerPage(size)
+                                    setCurrentPage(1)
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${itemsPerPage === size ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-gray-600 hover:text-gray-400'}`}
+                            >
+                                {size}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {totalPages > 1 && (

@@ -39,7 +39,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
-    const itemsPerPage = 100
+    const [itemsPerPage, setItemsPerPage] = useState(100)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
@@ -342,7 +342,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 </div>
             </div>
 
-            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
                 <table className="w-full text-left text-xs border-separate border-spacing-0">
                     <thead className="bg-gray-800/50 text-[10px] uppercase font-bold text-gray-500 tracking-widest sticky top-0 z-10">
                         <tr>
@@ -480,8 +480,26 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
             {/* Paginación */}
             <div className="p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="text-[11px] text-gray-500 font-medium">
-                    Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredInvoices.length)}</span> de <span className="text-gray-300">{filteredInvoices.length}</span> registros
+                <div className="text-[11px] text-gray-500 font-medium flex items-center gap-4">
+                    <span>
+                        Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredInvoices.length)}</span> de <span className="text-gray-300">{filteredInvoices.length}</span> registros
+                    </span>
+
+                    <div className="flex items-center gap-2 border-l border-gray-800 pl-4">
+                        <span className="text-gray-600">Ver:</span>
+                        {[20, 25, 50, 100, 200].map(size => (
+                            <button
+                                key={size}
+                                onClick={() => {
+                                    setItemsPerPage(size)
+                                    setCurrentPage(1)
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${itemsPerPage === size ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-gray-600 hover:text-gray-400'}`}
+                            >
+                                {size}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {totalPages > 1 && (
