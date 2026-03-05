@@ -262,14 +262,14 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
             </div>
 
             {/* Color Legend */}
-            <div className="flex flex-wrap gap-4 mb-3 justify-end px-1">
-                <div className="flex items-center gap-1.5 bg-gray-900/50 px-2 py-1 rounded-md border border-gray-800">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.5)]"></div>
-                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Concepto Manual (Sin imputar)</span>
+            <div className="flex flex-wrap gap-4 mb-3 justify-start px-1 animate-in fade-in slide-in-from-left-2 duration-500">
+                <div className="flex items-center gap-1.5 bg-gray-950 px-2 py-1 rounded-md border border-gray-800 shadow-sm">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.6)]"></div>
+                    <span className="text-[10px] text-gray-400 font-bold tracking-wider">Concepto Manual / No Imputado</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-gray-900/50 px-2 py-1 rounded-md border border-gray-800">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.5)]"></div>
-                    <span className="text-[10px] text-emerald-500/80 font-medium uppercase tracking-wider">Factura Imputada</span>
+                <div className="flex items-center gap-1.5 bg-gray-950 px-2 py-1 rounded-md border border-gray-800 shadow-sm">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>
+                    <span className="text-[10px] text-emerald-500/90 font-bold tracking-wider">Comprobante Imputado</span>
                 </div>
             </div>
 
@@ -283,7 +283,12 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Fecha</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Comprobante</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Socio</TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Concepto</TableHead>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest relative group cursor-help">
+                                    <div className="flex items-center gap-1" title="El color indica si el movimiento está imputado (Verde) o es manual (Blanco)">
+                                        Concepto
+                                        <Info className="w-3 h-3 text-emerald-500/50 group-hover:text-emerald-400 transition-colors" />
+                                    </div>
+                                </TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-right">Total</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-center">Acciones</TableHead>
                                 <TableHead className="w-[30px]"></TableHead>

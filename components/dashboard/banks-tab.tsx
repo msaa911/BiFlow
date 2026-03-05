@@ -396,7 +396,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <div className="grid grid-rows-2 gap-6 h-[450px]">
                             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
                                 <div className="p-3 border-b border-gray-800 bg-emerald-500/5">
-                                    <h3 className="font-bold text-white text-[11px] uppercase flex items-center gap-2">
+                                    <h3 className="font-bold text-white text-[11px] flex items-center gap-2">
                                         <TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos
                                     </h3>
                                 </div>
@@ -425,7 +425,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             </div>
                             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
                                 <div className="p-3 border-b border-gray-800 bg-red-500/5">
-                                    <h3 className="font-bold text-white text-[11px] uppercase flex items-center gap-2">
+                                    <h3 className="font-bold text-white text-[11px] flex items-center gap-2">
                                         <TrendingDown className="w-3 h-3 text-red-500" /> Egresos
                                     </h3>
                                 </div>
