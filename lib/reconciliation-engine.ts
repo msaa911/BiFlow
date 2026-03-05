@@ -332,10 +332,12 @@ export class ReconciliationEngine {
 
                         if (apps && apps.length > 0) {
                             const invoiceIds = apps.map(a => a.comprobante_id);
-                            await adminSupabase
+                            const { error: propError } = await adminSupabase
                                 .from('comprobantes')
                                 .update({ estado: 'conciliado' })
                                 .in('id', invoiceIds);
+
+                            if (propError) console.error(`[RECONCILIATION] Error propagating 'conciliado' state:`, propError.message);
                         }
 
                         // 2. Link Transaction
@@ -507,7 +509,7 @@ export class ReconciliationEngine {
 
             // Try to find matching invoice
             const matchingInvoice = invoices.find(inv => {
-                if (inv.tipo !== targetType && !['cobrado', 'pagado'].includes(inv.estado)) return false; // Relaxed filter for 'cobrado'/'pagado'
+                if (inv.tipo !== targetType && inv.estado !== 'pagado') return false; // Relaxed filter for 'pagado'
 
                 // If amount_pending is null, assume total amount
                 const pending = Math.abs(inv.monto_pendiente !== null ? Number(inv.monto_pendiente) : Number(inv.monto_total || 0));
@@ -531,28 +533,35 @@ export class ReconciliationEngine {
 
                 try {
                     // 1. Create Application
-                    await adminSupabase
+                    const { error: appError } = await adminSupabase
                         .from('aplicaciones_pago')
                         .insert({
                             organization_id: organizationId,
                             movimiento_id: mov.id,
                             comprobante_id: matchingInvoice.id,
-                            monto: movAmount
+                            monto_aplicado: movAmount // Correct column name is monto_aplicado
                         });
+
+                    if (appError) throw new Error(`Insert Application: ${appError.message}`);
 
                     // 2. Update Invoice Status
                     const currentPending = Math.abs(matchingInvoice.monto_pendiente !== null ? Number(matchingInvoice.monto_pendiente) : Number(matchingInvoice.monto_total || 0));
                     const newMontoPendiente = Math.max(0, currentPending - movAmount);
                     const isFullyPaid = newMontoPendiente <= 0.05;
-                    const newEstado = isFullyPaid ? (isRecibo ? 'cobrado' : 'pagado') : matchingInvoice.estado;
 
-                    await adminSupabase
+                    // DB constraint comprobantes_estado_check only allows: pendiente, pagado, parcial, rechazado, conciliado
+                    // So we use 'pagado' even for sales (AR).
+                    const newEstado = isFullyPaid ? 'pagado' : matchingInvoice.estado;
+
+                    const { error: compError } = await adminSupabase
                         .from('comprobantes')
                         .update({
                             monto_pendiente: newMontoPendiente,
                             estado: newEstado
                         })
                         .eq('id', matchingInvoice.id);
+
+                    if (compError) throw new Error(`Update Invoice: ${compError.message}`);
 
                     // Update local object to avoid double matching
                     matchingInvoice.monto_pendiente = newMontoPendiente;
@@ -571,7 +580,7 @@ export class ReconciliationEngine {
         if (!ref) return '';
         return ref.toUpperCase()
             .replace(/^(TRF|TRANSF|TRANSFERENCIA|CHQ|CHEQUE|DEP|DEPOSITO|RECIBO|RE|OP|PAGO|COBRO)[:\s-]*/i, '')
-            .replace(/[^A-Z0-0]/gi, '') // Solo alfanuméricos
+            .replace(/[^A-Z0-9]/gi, '') // Solo alfanuméricos (Fixed regex from 0-0 to 0-9)
             .trim();
     }
 }

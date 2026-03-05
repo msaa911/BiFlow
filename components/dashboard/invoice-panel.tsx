@@ -433,12 +433,13 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                                 <div className="flex items-center justify-end gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
                                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                                                     <span className="text-emerald-400 text-[10px] font-black tracking-tight">
+                                                        {/* Map 'pagado' to 'COBRADO' for AR view */}
                                                         {view === 'AR' ? 'COBRADO' : 'PAGADO'}
                                                     </span>
                                                 </div>
                                             )}
                                             <span className="text-[9px] text-gray-500 font-medium mt-1 truncate max-w-[150px]" title={inv.metadata?.desc_transaccion || 'Saldo cancelado administrativamente'}>
-                                                {inv.estado === 'conciliado' ? 'Confirmado por banco' : 'Pendiente cruce bancario'}
+                                                {inv.estado === 'conciliado' ? 'Confirmado por banco' : 'Pendiente cruce bancario (PAGADO)'}
                                             </span>
                                         </div>
                                     )}
