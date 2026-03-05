@@ -278,7 +278,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow><TableCell colSpan={7} className="h-32 text-center text-gray-500">Cargando...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="h-32 text-center text-gray-500">Cargando...</TableCell></TableRow>
                             ) : paginatedMovements.map(mov => {
                                 const isConciliated = mov.transacciones && mov.transacciones.length > 0;
                                 const isExpanded = expandedMov === mov.id;
@@ -394,7 +394,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                         )}
                                     </>
                                 );
-                            })
+                            })}
                         </TableBody>
                     </Table>
                 </div>
