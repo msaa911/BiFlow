@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
 import {
@@ -274,6 +274,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Concepto</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-right">Total</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-center">Acciones</TableHead>
+                                <TableHead className="w-[30px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -284,7 +285,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                 const isExpanded = expandedMov === mov.id;
 
                                 return (
-                                    <>
+                                    <Fragment key={mov.id}>
                                         <TableRow
                                             key={mov.id}
                                             className={`border-gray-800 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-500/5' : 'hover:bg-gray-800/30'}`}
@@ -326,11 +327,14 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleDelete(mov.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                                 </div>
                                             </TableCell>
+                                            <TableCell>
+                                                {isExpanded ? <ChevronUp className="w-4 h-4 text-emerald-500" /> : <ChevronDown className="w-4 h-4 text-gray-600" />}
+                                            </TableCell>
                                         </TableRow>
 
                                         {isExpanded && (
-                                            <TableRow className="bg-gray-950/80 border-gray-800/50">
-                                                <TableCell colSpan={8} className="p-0">
+                                            <TableRow className="bg-gray-950/80 border-gray-800/50 hover:bg-transparent">
+                                                <TableCell colSpan={9} className="p-0">
                                                     <div className="p-6 border-l-2 border-emerald-500 bg-gray-900/40 animate-in slide-in-from-top-2 duration-200">
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                                             {/* Detalles de Instrumentos */}
@@ -392,7 +396,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                 </TableCell>
                                             </TableRow>
                                         )}
-                                    </>
+                                    </Fragment>
                                 );
                             })}
                         </TableBody>
