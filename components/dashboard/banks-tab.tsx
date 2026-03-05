@@ -221,7 +221,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         ) : (
                             <>
                                 <Banknote className="w-5 h-5 text-amber-200" />
-                                CONCILIAR
+                                CONCILIACIÓN BANCARIA
                             </>
                         )}
                     </Button>
