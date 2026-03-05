@@ -263,7 +263,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
             <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50">
                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
                     <Table>
-                        <TableHeader className="bg-gray-900 sticky top-0 z-10">
+                        <TableHeader className="bg-gray-800 sticky top-0 z-10">
                             <TableRow className="border-gray-800 hover:bg-transparent">
                                 <TableHead className="w-[40px]"><input type="checkbox" checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0} onChange={toggleSelectAll} /></TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Fecha</TableHead>
