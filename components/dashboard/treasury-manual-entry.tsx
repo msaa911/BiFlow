@@ -76,6 +76,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
             setStep(1)
             setSelectedSocio(null)
             setSearchQuery('')
+            setSocios([]) // Clear previous results
             setSelectedInvoices({})
             setInstruments([{
                 id: '1',
@@ -85,8 +86,25 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                 detalle_referencia: '',
                 fecha_disponibilidad: new Date().toISOString().split('T')[0]
             }])
+            fetchInitialSocios()
         }
     }, [isOpen])
+
+    async function fetchInitialSocios() {
+        const supabase = createClient()
+        const targetCat = tipo === 'cobro' ? 'cliente' : 'proveedor'
+        setSearchingSocio(true)
+        const { data } = await supabase
+            .from('entidades')
+            .select('*')
+            .eq('organization_id', orgId)
+            .in('categoria', [targetCat, 'ambos'])
+            .order('razon_social', { ascending: true })
+            .limit(10)
+
+        if (data) setSocios(data)
+        setSearchingSocio(false)
+    }
 
     // Load invoices when socio is selected
     useEffect(() => {
@@ -267,33 +285,53 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                     onChange={async (e) => {
                                                         const term = e.target.value
                                                         setSearchQuery(term)
-                                                        if (term.length < 2) return
+
+                                                        if (term.length < 2) {
+                                                            if (term.length === 0) fetchInitialSocios()
+                                                            else setSocios([])
+                                                            return
+                                                        }
 
                                                         const supabase = createClient()
+                                                        const targetCat = tipo === 'cobro' ? 'cliente' : 'proveedor'
                                                         setSearchingSocio(true)
                                                         const { data } = await supabase
                                                             .from('entidades')
                                                             .select('*')
                                                             .eq('organization_id', orgId)
-                                                            .ilike('razon_social', `%${term}%`)
-                                                            .limit(5)
+                                                            .in('categoria', [targetCat, 'ambos'])
+                                                            .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
+                                                            .limit(10)
                                                         if (data) setSocios(data)
                                                         setSearchingSocio(false)
                                                     }}
+                                                    onFocus={() => {
+                                                        if (searchQuery.length === 0 && socios.length === 0) {
+                                                            fetchInitialSocios()
+                                                        }
+                                                    }}
                                                 />
-                                                {socios.length > 0 && searchQuery.length >= 2 && (
-                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-50">
+                                                {socios.length > 0 && !selectedSocio && (
+                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-emerald-500/30 rounded-lg shadow-2xl z-50 overflow-hidden max-h-[250px] overflow-y-auto">
+                                                        <div className="p-2.5 bg-gray-950 border-b border-gray-800 text-[9px] uppercase font-bold text-gray-500 flex justify-between items-center sticky top-0 z-10">
+                                                            <span>{searchQuery.length >= 2 ? 'Resultados de búsqueda' : 'Seleccione una entidad'}</span>
+                                                            <span className="text-emerald-500">{socios.length} hallados</span>
+                                                        </div>
                                                         {socios.map(s => (
                                                             <div
                                                                 key={s.id}
-                                                                className="p-3 hover:bg-emerald-500/10 cursor-pointer flex justify-between items-center border-b border-gray-800 last:border-0"
+                                                                className="p-3 hover:bg-emerald-500/10 cursor-pointer flex justify-between items-center border-b border-gray-800 last:border-0 transition-colors"
                                                                 onClick={() => {
                                                                     setSelectedSocio(s)
                                                                     setSocios([])
+                                                                    setSearchQuery('')
                                                                 }}
                                                             >
-                                                                <span className="font-bold text-sm">{s.razon_social}</span>
-                                                                <Badge variant="outline" className="text-[10px]">{s.cuit}</Badge>
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-bold text-sm text-white">{s.razon_social}</span>
+                                                                    <span className="text-[10px] text-gray-500 font-mono">{s.cuit}</span>
+                                                                </div>
+                                                                <ChevronRight className="w-4 h-4 text-gray-700" />
                                                             </div>
                                                         ))}
                                                     </div>
