@@ -501,6 +501,7 @@ export class ReconciliationEngine {
             const isRecibo = mov.tipo === 'cobro';
             const targetType = isRecibo ? 'factura_venta' : 'factura_compra';
 
+            // WE LOOK INTO BOTH CONCEPT AND OBSERVATIONS
             const searchText = ((mov.concepto || '') + ' ' + (mov.observaciones || '')).toUpperCase();
 
             // Try to find matching invoice
