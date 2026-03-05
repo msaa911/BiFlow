@@ -278,11 +278,52 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
 
             <TabsContent value="transactions" className="animate-in fade-in duration-500">
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-400">
-                            <thead className="bg-gray-800/50 text-xs uppercase font-medium text-gray-500">
+                    {/* Barra de acciones y filtros movida fuera de la tabla */}
+                    <div className="p-4 bg-gray-900 border-b border-gray-800 flex flex-wrap gap-2 justify-between items-center w-full">
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFilterStatus('all')}
+                                className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'all' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
+                            >
+                                Todos ({initialTransactions.length})
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFilterStatus('pending')}
+                                className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-gray-300'}`}
+                            >
+                                Pendientes ({initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length})
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFilterStatus('reconciled')}
+                                className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'reconciled' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}
+                            >
+                                Conciliados ({initialTransactions.filter(t => t.estado === 'conciliado').length})
+                            </Button>
+                        </div>
+                        <Button
+                            variant={selectedTxIds.size > 0 ? "destructive" : "outline"}
+                            size="sm"
+                            className={`gap-2 h-8 text-[10px] font-bold uppercase transition-all ${selectedTxIds.size > 0 ? 'shadow-lg' : 'opacity-40 border-dashed text-gray-500 bg-transparent hover:bg-transparent hover:text-gray-500 border-gray-700'}`}
+                            onClick={handleBulkDelete}
+                            disabled={isDeletingBulk || selectedTxIds.size === 0}
+                            title={selectedTxIds.size === 0 ? "Marca las casillas de las transacciones para activar este botón" : "Eliminar seleccionados"}
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            {isDeletingBulk ? 'Borrando...' : (selectedTxIds.size > 0 ? `Eliminar ${selectedTxIds.size}` : 'Seleccionados')}
+                        </Button>
+                    </div>
+
+                    <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40">
+                        <table className="w-full text-left text-xs text-gray-400 border-separate border-spacing-0 table-fixed">
+                            <thead className="bg-gray-800 sticky top-0 z-20">
                                 <tr>
-                                    <th className="px-4 py-4 w-12 text-center">
+                                    <th className="px-3 py-3 w-[45px] text-center">
                                         <input
                                             type="checkbox"
                                             className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
@@ -291,56 +332,17 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                             title="Seleccionar todas las visibles"
                                         />
                                     </th>
-                                    <th className="px-4 py-4 w-[110px]">Fecha</th>
-                                    <th className="px-4 py-4">Descripción</th>
-                                    <th className="px-4 py-4 w-[100px]">Estado</th>
-                                    <th className="px-4 py-4 w-[140px]">Categoría</th>
-                                    <th className="px-4 py-4 text-right w-[110px]">Monto</th>
+                                    <th className="px-3 py-3 w-[90px] font-bold uppercase text-[10px] text-gray-400 tracking-widest">Fecha</th>
+                                    <th className="px-3 py-3 font-bold uppercase text-[10px] text-gray-400 tracking-widest">Descripción</th>
+                                    <th className="px-3 py-3 w-[110px] font-bold uppercase text-[10px] text-gray-400 tracking-widest">Estado</th>
+                                    <th className="px-3 py-3 w-[120px] font-bold uppercase text-[10px] text-gray-400 tracking-widest">Categoría</th>
+                                    <th className="px-3 py-3 w-[140px] text-right font-bold uppercase text-[10px] text-gray-400 tracking-widest">Monto</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                <div className="p-4 bg-gray-900 border-b border-gray-800 flex flex-wrap gap-2 justify-between items-center w-full">
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setFilterStatus('all')}
-                                            className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'all' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
-                                        >
-                                            Todos ({initialTransactions.length})
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setFilterStatus('pending')}
-                                            className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-gray-300'}`}
-                                        >
-                                            Pendientes ({initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length})
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setFilterStatus('reconciled')}
-                                            className={`text-[10px] font-bold uppercase transition-all ${filterStatus === 'reconciled' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}
-                                        >
-                                            Conciliados ({initialTransactions.filter(t => t.estado === 'conciliado').length})
-                                        </Button>
-                                    </div>
-                                    <Button
-                                        variant={selectedTxIds.size > 0 ? "destructive" : "outline"}
-                                        size="sm"
-                                        className={`gap-2 h-8 text-[10px] font-bold uppercase transition-all ${selectedTxIds.size > 0 ? 'shadow-lg' : 'opacity-40 border-dashed text-gray-500 bg-transparent hover:bg-transparent hover:text-gray-500 border-gray-700'}`}
-                                        onClick={handleBulkDelete}
-                                        disabled={isDeletingBulk || selectedTxIds.size === 0}
-                                        title={selectedTxIds.size === 0 ? "Marca las casillas de las transacciones para activar este botón" : "Eliminar seleccionados"}
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                        {isDeletingBulk ? 'Borrando...' : (selectedTxIds.size > 0 ? `Eliminar ${selectedTxIds.size}` : 'Seleccionados')}
-                                    </Button>
-                                </div>
                                 {filteredTx.map((t) => (
-                                    <tr key={t.id} className={`hover:bg-gray-800/50 transition-all group ${selectedTxIds.has(t.id) ? 'bg-emerald-500/5 border-l-2 border-emerald-500' : ''}`}>
-                                        <td className="px-4 py-3 text-center align-middle">
+                                    <tr key={t.id} className={`hover:bg-gray-800/50 transition-all group border-b border-gray-800/50 last:border-0 ${selectedTxIds.has(t.id) ? 'bg-emerald-500/5' : ''}`}>
+                                        <td className="px-3 py-3 text-center align-middle">
                                             <input
                                                 type="checkbox"
                                                 className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
@@ -348,33 +350,33 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                                 onChange={(e) => handleSelect(t.id, e.target.checked)}
                                             />
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-gray-300 w-[110px] text-xs">
+                                        <td className="px-3 py-3 whitespace-nowrap text-gray-400 font-mono text-[10px]">
                                             {formatDate(t.fecha)}
                                         </td>
-                                        <td className="px-4 py-3 text-white font-medium max-w-[400px] truncate text-xs">
+                                        <td className="px-3 py-3 text-white font-medium truncate text-xs">
                                             {t.descripcion}
                                         </td>
-                                        <td className="px-4 py-3 w-[100px]">
+                                        <td className="px-3 py-3">
                                             {t.estado === 'conciliado' ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase">
+                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-bold uppercase">
                                                     Conciliado
                                                 </Badge>
                                             ) : t.estado === 'parcial' ? (
-                                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] font-bold uppercase">
+                                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] font-bold uppercase">
                                                     Parcial
                                                 </Badge>
                                             ) : (
-                                                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] font-bold uppercase">
+                                                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[9px] font-bold uppercase">
                                                     Pendiente
                                                 </Badge>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 w-[140px]">
-                                            <span className="px-2 py-0.5 rounded text-[9px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700">
+                                        <td className="px-3 py-3">
+                                            <span className="px-2 py-0.5 rounded text-[9px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700 block w-fit truncate">
                                                 {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
                                             </span>
                                         </td>
-                                        <td className={`px-4 py-3 text-right font-bold tabular-nums text-xs w-[110px] ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                        <td className={`px-3 py-3 text-right font-black tabular-nums transition-colors text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
                                         </td>
                                     </tr>
