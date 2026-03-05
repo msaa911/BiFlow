@@ -515,6 +515,7 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                             </div>
                         )}
                     </div>
+                </div>
             </Card>
 
             {/* Modals */}
