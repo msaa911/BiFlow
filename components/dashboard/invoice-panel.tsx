@@ -38,6 +38,8 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
     const [loadingTransactions, setLoadingTransactions] = useState(false)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [isDeletingBulk, setIsDeletingBulk] = useState(false)
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 100
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
@@ -230,6 +232,13 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
     const nettingOps = TreasuryEngine.detectNettingOpportunities(invoices)
 
+    // Paginación
+    const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage)
+    const paginatedInvoices = filteredInvoices.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    )
+
     return (
         <Card className="bg-gray-900 border-gray-800 overflow-hidden">
             <div className="p-6 border-b border-gray-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -333,9 +342,9 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-800/50 text-xs uppercase font-semibold text-gray-500 tracking-wider">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                <table className="w-full text-left text-xs border-separate border-spacing-0">
+                    <thead className="bg-gray-800/50 text-[10px] uppercase font-bold text-gray-500 tracking-widest sticky top-0 z-10">
                         <tr>
                             <th className="px-6 py-4 w-12 text-center">
                                 <input
@@ -356,10 +365,10 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                     <tbody className="divide-y divide-gray-800">
                         {loading ? (
                             <tr><td colSpan={7} className="px-6 py-24 text-center text-gray-500">Cargando comprobantes...</td></tr>
-                        ) : filteredInvoices.length === 0 ? (
-                            <tr><td colSpan={7} className="px-6 py-24 text-center text-gray-500">No hay comprobantes registrados.</td></tr>
-                        ) : filteredInvoices.map(inv => (
-                            <tr key={inv.id} className={`hover:bg-gray-800/20 transition-colors ${selectedIds.has(inv.id) ? 'bg-emerald-500/5 border-l-2 border-emerald-500' : ''}`}>
+                        ) : paginatedInvoices.length === 0 ? (
+                            <tr><td colSpan={7} className="px-6 py-24 text-center text-gray-500 text-xs">No hay comprobantes registrados.</td></tr>
+                        ) : paginatedInvoices.map(inv => (
+                            <tr key={inv.id} className={`hover:bg-gray-800/30 transition-all border-b border-gray-800/50 ${selectedIds.has(inv.id) ? 'bg-emerald-500/5' : ''}`}>
                                 <td className="px-6 py-4 text-center align-middle">
                                     <input
                                         type="checkbox"
@@ -368,31 +377,31 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                         onChange={(e) => handleSelect(inv.id, e.target.checked)}
                                     />
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-6 py-3">
                                     <div className="flex flex-col">
-                                        <span className="text-white font-bold">{new Date(inv.fecha_emision).toLocaleDateString('es-AR')}</span>
-                                        <span className="text-[10px] text-gray-500 uppercase">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</span>
+                                        <span className="text-white font-bold text-xs">{new Date(inv.fecha_emision).toLocaleDateString('es-AR')}</span>
+                                        <span className="text-[9px] text-gray-500 uppercase font-medium">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-6 py-3">
                                     <div className="flex flex-col">
-                                        <span className="text-white font-semibold">{inv.razon_social_socio}</span>
-                                        <span className="text-xs text-gray-400 font-mono">{inv.cuit_socio}</span>
+                                        <span className="text-white font-semibold text-xs leading-tight">{inv.razon_social_socio}</span>
+                                        <span className="text-[10px] text-gray-400 font-mono mt-0.5">{inv.cuit_socio}</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-6 py-3">
                                     <div className="flex flex-col">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-white truncate max-w-[180px]">{inv.concepto || (inv.numero || 'Sin Número')}</span>
-                                            {inv.tipo === 'nota_credito' && <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[9px]">NC</Badge>}
-                                            {inv.tipo === 'nota_debito' && <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[9px]">ND</Badge>}
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-white truncate max-w-[150px] text-xs" title={inv.concepto || inv.numero}>{inv.concepto || (inv.numero || 'Sin Número')}</span>
+                                            {inv.tipo === 'nota_credito' && <Badge className="bg-red-500/20 text-red-500 border-red-500/30 text-[8px] px-1 h-3.5">NC</Badge>}
+                                            {inv.tipo === 'nota_debito' && <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[8px] px-1 h-3.5">ND</Badge>}
                                         </div>
-                                        <Badge variant="outline" className={`w-fit text-[9px] mt-1 ${inv.condicion === 'contado' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-800 text-gray-400'}`}>
+                                        <Badge variant="outline" className={`w-fit text-[8px] mt-1 h-3.5 font-bold tracking-tight px-1 ${inv.condicion === 'contado' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-800 text-gray-500'}`}>
                                             {inv.condicion?.toUpperCase() || 'CTA CTE'}
                                         </Badge>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-right font-medium text-gray-400">
+                                <td className="px-6 py-3 text-right font-medium text-gray-400 text-xs">
                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_total)}
                                 </td>
                                 <td className={`px-6 py-4 text-right font-bold ${inv.monto_pendiente > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
@@ -467,6 +476,43 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Paginación */}
+            <div className="p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="text-[11px] text-gray-500 font-medium">
+                    Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredInvoices.length)}</span> de <span className="text-gray-300">{filteredInvoices.length}</span> registros
+                </div>
+
+                {totalPages > 1 && (
+                    <div className="flex items-center bg-gray-950 border border-gray-800 rounded-lg p-1 gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-800 text-gray-400"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                        >
+                            <ArrowRight className="w-4 h-4 rotate-180" />
+                        </Button>
+
+                        <div className="flex items-center px-4 gap-2 border-x border-gray-800 px-6">
+                            <span className="text-xs font-bold text-emerald-500">{currentPage}</span>
+                            <span className="text-xs text-gray-600">/</span>
+                            <span className="text-xs text-gray-400 font-medium">{totalPages}</span>
+                        </div>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-800 text-gray-400"
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                        >
+                            <ArrowRight className="w-4 h-4" />
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {nettingOps.length > 0 && (

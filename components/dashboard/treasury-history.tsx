@@ -47,6 +47,8 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const [isManualEntryOpen, setIsManualEntryOpen] = useState(false)
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 100
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
@@ -127,6 +129,13 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
         m.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (m.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    // Paginación
+    const totalPages = Math.ceil(filteredMovements.length / itemsPerPage)
+    const paginatedMovements = filteredMovements.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     )
 
     const toggleSelect = (id: string) => {
@@ -255,20 +264,20 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 <div className="max-h-[500px] overflow-y-auto">
                     <Table>
                         <TableHeader className="bg-gray-900 sticky top-0 z-10">
-                            <TableRow className="border-gray-800">
+                            <TableRow className="border-gray-800 hover:bg-transparent">
                                 <TableHead className="w-[40px]"><input type="checkbox" checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0} onChange={toggleSelectAll} /></TableHead>
-                                <TableHead className="text-gray-400 uppercase text-[10px]">Fecha</TableHead>
-                                <TableHead className="text-gray-400 uppercase text-[10px]">Comprobante</TableHead>
-                                <TableHead className="text-gray-400 uppercase text-[10px]">Socio</TableHead>
-                                <TableHead className="text-gray-400 uppercase text-[10px]">Concepto</TableHead>
-                                <TableHead className="text-gray-400 uppercase text-[10px] text-right">Total</TableHead>
-                                <TableHead className="text-gray-400 uppercase text-[10px] text-center">Acciones</TableHead>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Fecha</TableHead>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Comprobante</TableHead>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Socio</TableHead>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Concepto</TableHead>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-right">Total</TableHead>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-center">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
                                 <TableRow><TableCell colSpan={7} className="h-32 text-center text-gray-500">Cargando...</TableCell></TableRow>
-                            ) : filteredMovements.map(mov => (
+                            ) : paginatedMovements.map(mov => (
                                 <TableRow key={mov.id} className="border-gray-800 hover:bg-gray-800/30">
                                     <TableCell><input type="checkbox" checked={selectedIds.has(mov.id)} onChange={() => toggleSelect(mov.id)} /></TableCell>
                                     <TableCell className="font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</TableCell>
@@ -299,6 +308,43 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         </TableBody>
                     </Table>
                 </div>
+            </div>
+
+            {/* Paginación */}
+            <div className="mt-4 p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4 rounded-xl">
+                <div className="text-[11px] text-gray-500 font-medium">
+                    Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredMovements.length)}</span> de <span className="text-gray-300">{filteredMovements.length}</span> registros
+                </div>
+
+                {totalPages > 1 && (
+                    <div className="flex items-center bg-gray-950 border border-gray-800 rounded-lg p-1 gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-800 text-gray-400"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronDown className="w-4 h-4 rotate-90" />
+                        </Button>
+
+                        <div className="flex items-center px-4 gap-2 border-x border-gray-800 px-6">
+                            <span className="text-xs font-bold text-emerald-500">{currentPage}</span>
+                            <span className="text-xs text-gray-600">/</span>
+                            <span className="text-xs text-gray-400 font-medium">{totalPages}</span>
+                        </div>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-800 text-gray-400"
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                        >
+                            <ChevronDown className="w-4 h-4 -rotate-90" />
+                        </Button>
+                    </div>
+                )}
             </div>
 
             <TreasuryManualEntry

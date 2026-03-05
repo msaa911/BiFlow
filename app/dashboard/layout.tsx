@@ -27,7 +27,7 @@ export default async function DashboardLayout({ children }: PropsWithChildren) {
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <Header />
-                <main className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide">
+                <main className="flex-1 overflow-y-auto p-4 md:p-8">
                     {children}
                 </main>
                 <AIChatAdvisor />
