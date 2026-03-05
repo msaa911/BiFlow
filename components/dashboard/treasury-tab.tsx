@@ -146,7 +146,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 Automatización Financiera
                             </h1>
                             <p className="text-gray-400 text-xs mt-1">
-                                Cruce de extractos vs Ingresos/Egresos
+                                Actualización automatizada de estados de comprobantes
                             </p>
                         </div>
                         <button
