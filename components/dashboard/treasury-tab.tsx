@@ -162,7 +162,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 title="Vincula automáticamente Recibos/OP pendientes con Facturas por monto y referencia."
                                 className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm ${reconciling
                                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20 active:scale-95'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
                                     }`}
                             >
                                 <Calculator className={`w-3.5 h-3.5 ${reconciling ? 'animate-spin' : ''}`} />
@@ -174,7 +174,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 title="Cruza los movimientos de Tesorería con las transacciones del Banco (Genera marca 'C')."
                                 className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm ${reconciling
                                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
+                                    : 'bg-emerald-700 hover:bg-emerald-600 text-white shadow-emerald-900/40 active:scale-95'
                                     }`}
                             >
                                 <TrendingUp className={`w-3.5 h-3.5 ${reconciling ? 'animate-spin' : ''}`} />

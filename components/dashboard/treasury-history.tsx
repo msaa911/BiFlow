@@ -306,23 +306,23 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                             <TableCell><Badge className="text-[9px] uppercase">{mov.nro_comprobante || mov.numero || 'S/N'}</Badge></TableCell>
                                             <TableCell className="font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</TableCell>
                                             <TableCell>
-                                                {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {mov.aplicaciones_pago.map((app: any, idx: number) => (
-                                                            <Badge
+                                                <div className="flex flex-wrap gap-1.5 min-h-[1.2rem] items-center">
+                                                    {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
+                                                        mov.aplicaciones_pago.map((app: any, idx: number) => (
+                                                            <span
                                                                 key={idx}
-                                                                variant="outline"
-                                                                className="text-[10px] bg-emerald-500/10 border-emerald-500/30 text-emerald-300 font-medium px-2"
+                                                                className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight"
                                                             >
                                                                 {app.comprobantes?.nro_factura || app.comprobantes?.numero}
-                                                            </Badge>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[10px] text-gray-300 font-medium italic">
-                                                        {mov.concepto || mov.categoria || 'Sin concepto'}
-                                                    </span>
-                                                )}
+                                                                {idx < mov.aplicaciones_pago.length - 1 ? "," : ""}
+                                                            </span>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-gray-300 uppercase tracking-tight">
+                                                            {mov.concepto || mov.categoria || 'Sin concepto'}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right font-mono font-bold text-white text-xs">
                                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}
