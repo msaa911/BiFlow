@@ -357,11 +357,14 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
 
                                     {/* Invoices List */}
                                     {selectedSocio && (
-                                        <div className="space-y-4 animate-in fade-in duration-300">
-                                            <div className="flex justify-between items-center">
-                                                <Label className="text-xs font-bold uppercase text-gray-500">Comprobantes Pendientes</Label>
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-none font-mono">
-                                                    TOTAL SELECCIONADO: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(totalSelected)}
+                                        <div className="space-y-4 pt-2">
+                                            <div className="flex justify-between items-end">
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs uppercase text-gray-500 font-bold tracking-wider">Facturas Pendientes</Label>
+                                                    <p className="text-[11px] text-gray-400 italic">Seleccione los comprobantes a cancelar</p>
+                                                </div>
+                                                <Badge variant="outline" className="bg-emerald-500/5 text-emerald-400 border-emerald-500/20 px-3 py-1 text-xs font-bold font-mono">
+                                                    {pendingInvoices.length} HALLADAS
                                                 </Badge>
                                             </div>
 
@@ -401,14 +404,14 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                 </div>
                             ) : (
                                 <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                                    <div className="flex items-center justify-between p-4 bg-gray-900 rounded-xl border border-gray-800">
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-gray-500">Resumen de Imputación</p>
-                                            <p className="text-sm font-bold text-white">{selectedSocio?.razon_social}</p>
+                                    <div className="p-5 bg-gray-900/50 border border-gray-800 rounded-xl mb-6 flex justify-between items-center bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/5 via-transparent to-transparent">
+                                        <div className="space-y-1">
+                                            <p className="text-xs uppercase font-bold text-gray-500 tracking-wider">Resumen de Imputación</p>
+                                            <p className="text-lg font-bold text-white tracking-tight">{selectedSocio?.razon_social}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] uppercase font-bold text-gray-500">Total a Cubrir</p>
-                                            <p className="text-xl font-bold text-emerald-400 font-mono">
+                                        <div className="text-right space-y-1">
+                                            <p className="text-xs uppercase font-bold text-gray-400 tracking-wider">Total a Cubrir</p>
+                                            <p className="text-3xl font-black text-emerald-400 font-mono tracking-tighter">
                                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(totalSelected)}
                                             </p>
                                         </div>
@@ -441,7 +444,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                     <div className="flex justify-between items-center gap-4">
                                                         <div className="grid grid-cols-[1.6fr_1fr] gap-4 flex-1">
                                                             <div className="space-y-1.5">
-                                                                <Label className="text-[9px] uppercase text-gray-500 font-bold">Medio</Label>
+                                                                <Label className="text-xs uppercase text-gray-500 font-bold">Medio</Label>
                                                                 <div className="flex gap-1 pb-1">
                                                                     {['efectivo', 'transferencia', 'cheque_terceros', 'cheque_propio'].map(m => (
                                                                         <button
@@ -456,14 +459,14 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                                 </div>
                                                             </div>
                                                             <div className="space-y-1.5">
-                                                                <Label className="text-[9px] uppercase text-gray-500 font-bold">Monto</Label>
+                                                                <Label className="text-xs uppercase text-gray-500 font-bold">Monto</Label>
                                                                 <div className="relative">
                                                                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-bold">$</div>
                                                                     <Input
                                                                         type="number"
                                                                         value={ins.monto || ''}
                                                                         onChange={(e) => updateInstrument(ins.id, { monto: parseFloat(e.target.value) || 0 })}
-                                                                        className="bg-gray-950 border-gray-800 h-8 text-xs font-mono pl-6 text-right font-bold text-white focus:ring-emerald-500/50"
+                                                                        className="bg-gray-950 border-gray-800 h-11 text-sm font-mono pl-6 text-right font-bold text-white focus:ring-emerald-500/50"
                                                                     />
                                                                 </div>
                                                             </div>
@@ -482,38 +485,38 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                     {(ins.metodo.includes('cheque') || ins.metodo === 'transferencia') && (
                                                         <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-800/50">
                                                             <div className="space-y-1">
-                                                                <Label className="text-[9px] uppercase text-gray-500 font-bold">Banco</Label>
+                                                                <Label className="text-xs uppercase text-gray-500 font-bold">Banco</Label>
                                                                 <div className="relative">
-                                                                    <Landmark className="absolute left-2 top-2 w-3 h-3 text-gray-600" />
+                                                                    <Landmark className="absolute left-2 top-3.5 w-4 h-4 text-gray-600" />
                                                                     <Input
                                                                         placeholder="Ej: Galicia"
                                                                         value={ins.banco}
                                                                         onChange={(e) => updateInstrument(ins.id, { banco: e.target.value })}
-                                                                        className="bg-gray-950 border-gray-800 h-7 text-[10px] pl-6"
+                                                                        className="bg-gray-950 border-gray-800 h-11 text-xs pl-8"
                                                                     />
                                                                 </div>
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <Label className="text-[9px] uppercase text-gray-500 font-bold">Nro / Ref</Label>
+                                                                <Label className="text-xs uppercase text-gray-500 font-bold">Nro / Ref</Label>
                                                                 <div className="relative">
-                                                                    <Hash className="absolute left-2 top-2 w-3 h-3 text-gray-600" />
+                                                                    <Hash className="absolute left-2 top-3.5 w-4 h-4 text-gray-600" />
                                                                     <Input
                                                                         placeholder="00012345"
                                                                         value={ins.detalle_referencia}
                                                                         onChange={(e) => updateInstrument(ins.id, { detalle_referencia: e.target.value })}
-                                                                        className="bg-gray-950 border-gray-800 h-7 text-[10px] pl-6 font-mono"
+                                                                        className="bg-gray-950 border-gray-800 h-11 text-xs pl-8 font-mono"
                                                                     />
                                                                 </div>
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <Label className="text-[9px] uppercase text-gray-500 font-bold">Vencimiento</Label>
+                                                                <Label className="text-xs uppercase text-gray-500 font-bold">Vencimiento</Label>
                                                                 <div className="relative">
-                                                                    <Calendar className="absolute left-2 top-2 w-3 h-3 text-gray-600" />
+                                                                    <Calendar className="absolute left-2 top-3.5 w-4 h-4 text-gray-600" />
                                                                     <Input
                                                                         type="date"
                                                                         value={ins.fecha_disponibilidad}
                                                                         onChange={(e) => updateInstrument(ins.id, { fecha_disponibilidad: e.target.value })}
-                                                                        className="bg-gray-950 border-gray-800 h-7 text-[10px] pl-6"
+                                                                        className="bg-gray-950 border-gray-800 h-11 text-xs pl-8"
                                                                     />
                                                                 </div>
                                                             </div>
