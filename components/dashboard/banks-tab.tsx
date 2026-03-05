@@ -323,60 +323,60 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <table className="w-full text-left text-xs text-gray-400 border-separate border-spacing-0">
                             <thead className="bg-gray-800 sticky top-0 z-20">
                                 <tr className="divide-x divide-gray-800/10">
-                                    <th className="py-3 w-[40px] text-center border-b border-gray-800">
+                                    <th className="py-3 w-[30px] text-center border-b border-gray-800 px-0">
                                         <input
                                             type="checkbox"
-                                            className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer"
+                                            className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
                                             checked={filteredTx.length > 0 && selectedTxIds.size === filteredTx.length}
                                             onChange={handleSelectAll}
                                             title="Seleccionar todas las visibles"
                                         />
                                     </th>
-                                    <th className="px-3 py-3 w-[85px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Fecha</th>
+                                    <th className="px-1 py-3 w-[70px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800 text-center">Fecha</th>
                                     <th className="px-3 py-3 font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Descripción</th>
-                                    <th className="px-3 py-3 w-[100px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800 text-center">Estado</th>
-                                    <th className="px-3 py-3 w-[120px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Categoría</th>
-                                    <th className="px-4 py-3 w-[150px] text-right font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Monto</th>
+                                    <th className="px-1 py-3 w-[90px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800 text-center">Estado</th>
+                                    <th className="px-2 py-3 w-[110px] font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Categoría</th>
+                                    <th className="pr-4 pl-1 py-3 w-[150px] text-right font-bold uppercase text-[9px] text-gray-400 tracking-widest border-b border-gray-800">Monto</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
                                 {filteredTx.map((t) => (
-                                    <tr key={t.id} className={`hover:bg-gray-800/50 transition-all group border-b border-gray-800/30 last:border-0 ${selectedTxIds.has(t.id) ? 'bg-emerald-500/5' : ''}`}>
-                                        <td className="py-3 text-center align-middle">
+                                    <tr key={t.id} className={`hover:bg-gray-800/50 transition-all group border-b border-gray-800/30 last:border-0 ${selectedTxIds.has(t.id) ? 'bg-emerald-500/10' : ''}`}>
+                                        <td className="py-2.5 text-center align-middle px-0">
                                             <input
                                                 type="checkbox"
-                                                className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer"
+                                                className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-3 h-3 cursor-pointer"
                                                 checked={selectedTxIds.has(t.id)}
                                                 onChange={(e) => handleSelect(t.id, e.target.checked)}
                                             />
                                         </td>
-                                        <td className="px-3 py-3 whitespace-nowrap text-gray-400 font-mono text-[9px]">
+                                        <td className="px-1 py-2.5 whitespace-nowrap text-gray-400 font-mono text-[9px] text-center">
                                             {formatDate(t.fecha)}
                                         </td>
-                                        <td className="px-3 py-3 text-white font-medium truncate max-w-[0] w-auto">
+                                        <td className="px-3 py-2.5 text-white font-medium truncate max-w-[200px] lg:max-w-none">
                                             {t.descripcion}
                                         </td>
-                                        <td className="px-3 py-3 text-center">
+                                        <td className="px-1 py-2.5 text-center">
                                             {t.estado === 'conciliado' ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[8px] font-bold uppercase px-1 h-4">
+                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[8px] font-bold uppercase px-1 h-3.5">
                                                     Conciliado
                                                 </Badge>
                                             ) : t.estado === 'parcial' ? (
-                                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[8px] font-bold uppercase px-1 h-4">
+                                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[8px] font-bold uppercase px-1 h-3.5">
                                                     Parcial
                                                 </Badge>
                                             ) : (
-                                                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[8px] font-bold uppercase px-1 h-4">
+                                                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[8px] font-bold uppercase px-1 h-3.5">
                                                     Pendiente
                                                 </Badge>
                                             )}
                                         </td>
-                                        <td className="px-3 py-3">
+                                        <td className="px-1 py-2.5">
                                             <span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700 block w-fit truncate max-w-full">
                                                 {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
                                             </span>
                                         </td>
-                                        <td className={`px-4 py-3 text-right font-black tabular-nums transition-colors text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap`}>
+                                        <td className={`pr-4 pl-1 py-2.5 text-right font-black tabular-nums transition-colors text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
                                         </td>
                                     </tr>
