@@ -140,12 +140,18 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
             if (invError) throw invError
 
-            // 6. Update Bank Transaction
+            // 6. Update Bank Transaction (Pivot Architecture)
             const { error: txUpdError } = await supabase
                 .from('transacciones')
                 .update({
                     movimiento_id: movimiento.id,
-                    estado: 'conciliado'
+                    estado: 'conciliado',
+                    metadata: {
+                        ...(tx.metadata || {}),
+                        reconciled_at: new Date().toISOString(),
+                        link_method: 'invoice_reverse_match',
+                        linked_invoice_id: selectedInvoice.id
+                    }
                 })
                 .eq('id', txId)
 

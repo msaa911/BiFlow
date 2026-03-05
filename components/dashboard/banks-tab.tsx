@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2 } from 'lucide-react'
+import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CheckPortfolio } from './check-portfolio'
 import { Button } from '@/components/ui/button'
@@ -103,6 +103,75 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
             toast.error('Error al ejecutar la conciliación.')
         } finally {
             setReconciling(false)
+        }
+    }
+
+    const handleUnreconcile = async (tx: any) => {
+        if (!confirm('¿Seguro que desea revertir esta conciliación? Se eliminarán los recibos/notas generados y las facturas volverán a estar pendientes.')) return
+
+        try {
+            const principalMovId = tx.movimiento_id
+            const allMovIds = (tx.metadata?.all_movement_ids || (principalMovId ? [principalMovId] : [])) as string[]
+
+            if (allMovIds.length > 0) {
+                for (const movId of allMovIds) {
+                    // 1. Get Applications to find Invoices
+                    const { data: apps } = await supabase.from('aplicaciones_pago').select('id, comprobante_id').eq('movimiento_id', movId)
+
+                    if (apps && apps.length > 0) {
+                        for (const app of apps) {
+                            // 2. Reset Invoices
+                            if (app.comprobante_id) {
+                                const { data: comp } = await supabase.from('comprobantes').select('*').eq('id', app.comprobante_id).single()
+                                if (comp) {
+                                    // If it's a bank note or auto-generated, delete it
+                                    if (comp.tipo.includes('_bancaria') || (comp.numero && comp.numero.includes('AUTO-'))) {
+                                        await supabase.from('comprobantes').delete().eq('id', comp.id)
+                                    } else {
+                                        // Otherwise just reset state and balance
+                                        await supabase.from('comprobantes').update({
+                                            estado: 'pendiente',
+                                            monto_pendiente: comp.monto_total
+                                        }).eq('id', comp.id)
+                                    }
+                                }
+                            }
+                            // 3. Delete Application
+                            await supabase.from('aplicaciones_pago').delete().eq('id', app.id)
+                        }
+                    }
+
+                    // 4. Delete Instruments
+                    await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
+
+                    // 5. Delete Movement
+                    await supabase.from('movimientos_tesoreria').delete().eq('id', movId)
+                }
+            }
+
+            // 6. Reset Bank Transaction
+            const { error: txErr } = await supabase
+                .from('transacciones')
+                .update({
+                    movimiento_id: null,
+                    comprobante_id: null,
+                    estado: 'pendiente',
+                    monto_usado: 0,
+                    metadata: {
+                        ...(tx.metadata || {}),
+                        reverted_at: new Date().toISOString(),
+                        previous_state: 'conciliado'
+                    }
+                })
+                .eq('id', tx.id)
+
+            if (txErr) throw txErr
+
+            toast.success('Conciliación revertida exitosamente')
+            if (onRefresh) onRefresh()
+        } catch (error: any) {
+            console.error('Error undoing reconciliation:', error)
+            toast.error('Error al revertir: ' + error.message)
         }
     }
 
@@ -430,8 +499,19 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                                 {(t.metadata && typeof t.metadata === 'object' && 'categoria' in t.metadata) ? (t.metadata as any).categoria : (t.categoria || 'OTROS')}
                                             </span>
                                         </td>
-                                        <td className={`pr-4 pl-1 py-2.5 text-right font-black tabular-nums transition-colors text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap`}>
+                                        <td className={`pr-4 pl-1 py-2.5 text-right font-black tabular-nums transition-colors text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap flex items-center justify-end gap-3`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
+                                            {t.estado === 'conciliado' && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-6 w-6 text-gray-500 hover:text-amber-500 hover:bg-amber-500/10"
+                                                    onClick={() => handleUnreconcile(t)}
+                                                    title="Revertir Conciliación (Desarmar)"
+                                                >
+                                                    <RotateCcw className="w-3.5 h-3.5" />
+                                                </Button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

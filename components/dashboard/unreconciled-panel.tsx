@@ -318,13 +318,20 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             if (insError) throw insError
 
-            // 5. Update Bank Transaction
+            // 5. Update Bank Transaction (Pivot Architecture)
             const { error: txError } = await supabase
                 .from('transacciones')
                 .update({
                     comprobante_id: comprobante.id,
                     movimiento_id: movimiento.id,
-                    estado: 'conciliado'
+                    estado: 'conciliado',
+                    metadata: {
+                        ...(selectedTx.metadata || {}),
+                        reconciled_at: new Date().toISOString(),
+                        link_method: 'quick_create',
+                        generated_mov_id: movimiento.id,
+                        generated_vouch_id: comprobante.id
+                    }
                 })
                 .eq('id', selectedTx.id)
                 .eq('organization_id', orgId)
@@ -630,7 +637,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 }
             }
 
-            // 7. Update Bank Transaction
+            // 7. Update Bank Transaction (Pivot Architecture)
             const newMontoUsado = previouslyUsed + totalAppliedFromBank
             const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05
 
@@ -639,7 +646,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 .update({
                     movimiento_id: movimiento.id,
                     estado: isFullyUsed ? 'conciliado' : 'parcial',
-                    monto_usado: newMontoUsado
+                    monto_usado: newMontoUsado,
+                    metadata: {
+                        ...(selectedTx.metadata || {}),
+                        reconciled_at: new Date().toISOString(),
+                        link_method: 'manual_invoice_match',
+                        all_movement_ids: [movimiento.id, ...(shortfall < -0.05 && processResidualAsGasto ? ['RESIDUAL_GEN'] : [])], // Note: RESIDUAL_GEN is a placeholder if we had the ID
+                        applied_invoices: selectedInvoiceIds,
+                        is_mixed: secondaryPaymentEnabled
+                    }
                 })
                 .eq('id', selectedTx.id)
                 .eq('organization_id', orgId)
@@ -816,13 +831,20 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             if (insError) throw insError
 
-            // 8. Update Bank Transaction
+            // 8. Update Bank Transaction (Pivot Architecture)
             const { error: txError } = await supabase
                 .from('transacciones')
                 .update({
                     categoria: category,
                     movimiento_id: movimiento.id,
-                    estado: 'conciliado'
+                    estado: 'conciliado',
+                    metadata: {
+                        ...(selectedTx.metadata || {}),
+                        reconciled_at: new Date().toISOString(),
+                        link_method: 'direct_note',
+                        generated_voucher_id: voucher.id,
+                        category: category
+                    }
                 })
                 .eq('id', selectedTx.id)
                 .eq('organization_id', orgId)
