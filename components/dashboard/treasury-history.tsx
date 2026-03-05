@@ -64,7 +64,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 aplicaciones_pago (
                     monto_aplicado,
                     comprobante_id,
-                    comprobantes (numero, tipo)
+                    comprobantes (nro_factura, tipo)
                 )
             `)
             .eq('organization_id', orgId)
@@ -128,7 +128,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
 
     const filteredMovements = movements.filter(m =>
         m.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (m.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.nro_comprobante || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -303,19 +303,19 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                 </div>
                                             </TableCell>
                                             <TableCell className="font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</TableCell>
-                                            <TableCell><Badge className="text-[9px] uppercase">{mov.numero || 'S/N'}</Badge></TableCell>
+                                            <TableCell><Badge className="text-[9px] uppercase">{mov.nro_comprobante || 'S/N'}</Badge></TableCell>
                                             <TableCell className="font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</TableCell>
                                             <TableCell>
                                                 {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1">
                                                         {mov.aplicaciones_pago.map((app: any, idx: number) => (
                                                             <Badge key={idx} variant="outline" className="text-[10px] border-emerald-500/20 text-emerald-400">
-                                                                {app.comprobantes?.numero}
+                                                                {app.comprobantes?.nro_factura}
                                                             </Badge>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[10px] text-gray-500">{mov.categoria}</span>
+                                                    <span className="text-[10px] text-gray-500">{mov.concepto}</span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right font-mono font-bold text-white text-xs">
@@ -323,8 +323,9 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                             </TableCell>
                                             <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex justify-center gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400" onClick={() => exportTreasuryMovementToExcel(mov)}><Download className="w-4 h-4" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleDelete(mov.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-400" onClick={() => setExpandedMov(isExpanded ? null : mov.id)} title="Ver Detalles"><FileText className="w-4 h-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400" onClick={() => exportTreasuryMovementToExcel(mov)} title="Descargar EXCEL"><Download className="w-4 h-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleDelete(mov.id)} title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></Button>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -348,7 +349,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                                             <div key={idx} className="flex justify-between items-center p-2.5 bg-gray-950/50 rounded-lg border border-gray-800">
                                                                                 <div className="flex flex-col">
                                                                                     <span className="text-xs font-bold text-gray-200 uppercase">{inst.metodo}</span>
-                                                                                    {inst.banco && <span className="text-[10px] text-gray-500 uppercase">{inst.banco} {inst.numero_cheque ? `#${inst.numero_cheque}` : ''}</span>}
+                                                                                    {inst.banco && <span className="text-[10px] text-gray-500 uppercase">{inst.banco} {inst.detalle_referencia ? `#${inst.detalle_referencia}` : ''}</span>}
                                                                                 </div>
                                                                                 <span className="font-mono text-sm font-bold text-white">
                                                                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inst.monto)}
@@ -371,7 +372,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                                         mov.aplicaciones_pago.map((app: any, idx: number) => (
                                                                             <div key={idx} className="flex justify-between items-center p-2.5 bg-gray-950/50 rounded-lg border border-gray-800">
                                                                                 <div className="flex flex-col">
-                                                                                    <span className="text-xs font-medium text-gray-300 uppercase">{app.comprobantes?.numero}</span>
+                                                                                    <span className="text-xs font-medium text-gray-300 uppercase">{app.comprobantes?.nro_factura}</span>
                                                                                     <span className="text-[9px] text-gray-500 uppercase">{app.comprobantes?.tipo}</span>
                                                                                 </div>
                                                                                 <span className="font-mono text-xs font-bold text-emerald-400">
