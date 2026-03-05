@@ -309,13 +309,19 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                 {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1">
                                                         {mov.aplicaciones_pago.map((app: any, idx: number) => (
-                                                            <Badge key={idx} variant="outline" className="text-[10px] border-emerald-500/20 text-emerald-400">
+                                                            <Badge
+                                                                key={idx}
+                                                                variant="outline"
+                                                                className="text-[10px] bg-emerald-500/10 border-emerald-500/30 text-emerald-300 font-medium px-2"
+                                                            >
                                                                 {app.comprobantes?.nro_factura || app.comprobantes?.numero}
                                                             </Badge>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[10px] text-gray-500">{mov.concepto || mov.categoria}</span>
+                                                    <span className="text-[10px] text-gray-300 font-medium italic">
+                                                        {mov.concepto || mov.categoria || 'Sin concepto'}
+                                                    </span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right font-mono font-bold text-white text-xs">

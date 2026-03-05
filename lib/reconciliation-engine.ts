@@ -7,10 +7,11 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
  * Strategy: Funnel (Reduction) + Subset Sum (1-a-N).
  */
 export class ReconciliationEngine {
-    static async matchAndReconcile(supabase: any, organizationId: string, options?: { dryRun?: boolean }) {
+    static async matchAndReconcile(supabase: any, organizationId: string, options?: { dryRun?: boolean, scope?: 'admin' | 'bank' | 'all' }) {
         const dryRun = options?.dryRun ?? false;
+        const scope = options?.scope ?? 'all';
         const adminSupabase = createAdminClient();
-        console.log(`[RECONCILIATION v3.1] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun})`)
+        console.log(`[RECONCILIATION v3.1] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun}, scope: ${scope})`)
 
         // 1. PHASE 0: Repair Orphaned Transactions (linked but stuck in 'pendiente')
         console.log(`[RECONCILIATION] Phase 0: Checking for orphans...`)
@@ -37,10 +38,15 @@ export class ReconciliationEngine {
         }
 
         // --- NEW: PHASE 1: Administrative Sync (Invoices <-> Receipts/OP) ---
-        // This is done BEFORE fetching pendingInvoices/Movements for Phase 2
         let adminMatches = 0;
-        if (!dryRun) {
+        if (!dryRun && (scope === 'admin' || scope === 'all')) {
             adminMatches = await this.matchAdministrative(supabase, organizationId);
+        }
+
+        // If we only wanted admin match, we stop here
+        if (scope === 'admin') {
+            console.log(`[RECONCILIATION] Scope 'admin' finished. Matched: ${adminMatches}`);
+            return { matched: adminMatches, actions: [] };
         }
 
         // 2. Fetch DATA FOR PHASE 2 (Bank Phase)

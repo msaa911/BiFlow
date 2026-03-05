@@ -92,7 +92,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const handleReconcile = async () => {
         setReconciling(true)
         try {
-            const res = await fetch('/api/reconcile/auto', { method: 'POST' })
+            const res = await fetch('/api/reconcile/auto', {
+                method: 'POST',
+                body: JSON.stringify({ scope: 'bank' })
+            })
             const data = await res.json()
 
             if (!res.ok) {
@@ -101,10 +104,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
             }
 
             if (data.matched > 0) {
-                toast.success(`¡Éxito! Se conciliaron ${data.matched} comprobantes automáticamente.`)
+                toast.success(`¡Éxito! Se conciliaron ${data.matched} movimientos con el extracto bancario.`)
                 if (onRefresh) onRefresh()
             } else {
-                toast.info(`No se encontraron nuevos matches (0 coincidencias).`)
+                toast.info(`Proceso bancario finalizado. No se encontraron nuevos matches (0).`)
             }
         } catch (error) {
             console.error('Reconciliation failed:', error)

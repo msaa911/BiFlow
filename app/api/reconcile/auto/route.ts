@@ -24,7 +24,10 @@ export async function POST(request: Request) {
     }
 
     try {
-        const result = await ReconciliationEngine.matchAndReconcile(supabase, member.organization_id)
+        const body = await request.json().catch(() => ({}));
+        const scope = body.scope || 'all';
+
+        const result = await ReconciliationEngine.matchAndReconcile(supabase, member.organization_id, { scope })
         return NextResponse.json(result)
     } catch (error: any) {
         console.error('[API_RECONCILE_AUTO] Error:', error)

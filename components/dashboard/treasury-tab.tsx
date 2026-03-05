@@ -97,10 +97,13 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         setActiveTab(value)
     }
 
-    const handleReconcile = async () => {
+    const handleReconcile = async (scope: 'admin' | 'bank' | 'all' = 'all') => {
         setReconciling(true)
         try {
-            const res = await fetch('/api/reconcile/auto', { method: 'POST' })
+            const res = await fetch('/api/reconcile/auto', {
+                method: 'POST',
+                body: JSON.stringify({ scope })
+            })
             const data = await res.json()
 
             if (!res.ok) {
@@ -109,14 +112,17 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             }
 
             if (data.matched > 0) {
-                alert(`¡Éxito! Se imputaron ${data.matched} comprobantes automáticamente.`)
+                const message = scope === 'admin'
+                    ? `¡Éxito! Se vincularon ${data.matched} facturas con recibos/OP.`
+                    : `¡Éxito! Se conciliaron ${data.matched} movimientos con el extracto bancario.`;
+                alert(message)
             } else {
-                alert(`Proceso finalizado. No se encontraron nuevas imputaciones (0 coincidencias).`)
+                alert(`Proceso finalizado. No se encontraron nuevas coincidencias (0).`)
             }
             await fetchData()
         } catch (error) {
             console.error('Reconciliation failed:', error)
-            alert('Error al ejecutar la imputación.')
+            alert('Error al ejecutar la acción.')
         } finally {
             setReconciling(false)
         }
@@ -149,17 +155,32 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                                 Actualización automatizada de estados de comprobantes
                             </p>
                         </div>
-                        <button
-                            onClick={handleReconcile}
-                            disabled={reconciling}
-                            className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-md ${reconciling
-                                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
-                                }`}
-                        >
-                            <TrendingUp className={`w-4 h-4 ${reconciling ? 'animate-spin' : ''}`} />
-                            {reconciling ? 'Procesando...' : 'Imputación Ágil'}
-                        </button>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => handleReconcile('admin')}
+                                disabled={reconciling}
+                                title="Vincula automáticamente Recibos/OP pendientes con Facturas por monto y referencia."
+                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm ${reconciling
+                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20 active:scale-95'
+                                    }`}
+                            >
+                                <Calculator className={`w-3.5 h-3.5 ${reconciling ? 'animate-spin' : ''}`} />
+                                {reconciling ? 'Procesando...' : 'Vincular Facturas'}
+                            </button>
+                            <button
+                                onClick={() => handleReconcile('bank')}
+                                disabled={reconciling}
+                                title="Cruza los movimientos de Tesorería con las transacciones del Banco (Genera marca 'C')."
+                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm ${reconciling
+                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
+                                    }`}
+                            >
+                                <TrendingUp className={`w-3.5 h-3.5 ${reconciling ? 'animate-spin' : ''}`} />
+                                {reconciling ? 'Procesando...' : 'Cruce Bancario (Auto)'}
+                            </button>
+                        </div>
                     </div>
                 </Card>
 
