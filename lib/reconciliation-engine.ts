@@ -179,7 +179,8 @@ export class ReconciliationEngine {
                 const movementMatch = targetMovements.find((m: any) => {
                     const mAmount = Math.abs(Number(m.monto || 0));
                     const currentAvailable = Math.abs(Number(availableTransAmount || 0));
-                    const amountMatches = Math.abs(mAmount - currentAvailable) < 0.05;
+                    // Relaxed amount check: ignore decimals / rounding differences up to 1.5
+                    const amountMatches = Math.floor(mAmount) === Math.floor(currentAvailable) || Math.abs(mAmount - currentAvailable) <= 1.5;
 
                     if (!amountMatches) return false;
 
@@ -219,6 +220,13 @@ export class ReconciliationEngine {
                     const rawInstrRef = (m.referencia || '').trim();
                     if (rawInstrRef && rawInstrRef.length >= 3 && descUpper.includes(rawInstrRef.toUpperCase())) {
                         console.log(`[RECONCILIATION] >> MATCH FOUND: Literal Reference ${rawInstrRef} found in description`);
+                        return true;
+                    }
+
+                    // 1c. RELAXED: Compare pure numeric digits if literal match failed (e.g. TRF-123456 -> 123456)
+                    const refNumsOnly = rawInstrRef.replace(/\D/g, '');
+                    if (refNumsOnly && refNumsOnly.length >= 4 && descUpper.includes(refNumsOnly)) {
+                        console.log(`[RECONCILIATION] >> MATCH FOUND: Numeric Reference ${refNumsOnly} found in description`);
                         return true;
                     }
 
@@ -281,8 +289,11 @@ export class ReconciliationEngine {
 
             // --- STRATEGY B: Invoices (Subset Sum) ---
             if (!finalMovementMatch && targetInvoices.length > 0) {
-                // 1-a-1 Exact Match
-                const singleMatch = targetInvoices.find(i => Math.abs(Number(i.monto_pendiente) - availableTransAmount) < 0.05);
+                // 1-a-1 Relaxed Match
+                const singleMatch = targetInvoices.find(i => {
+                    const iPending = Math.abs(Number(i.monto_pendiente));
+                    return Math.floor(iPending) === Math.floor(availableTransAmount) || Math.abs(iPending - availableTransAmount) <= 1.5;
+                });
                 if (singleMatch) {
                     finalMatch = [singleMatch];
                 }
@@ -546,8 +557,8 @@ export class ReconciliationEngine {
                 // If amount_pending is null, assume total amount
                 const pending = Math.abs(inv.monto_pendiente !== null ? Number(inv.monto_pendiente) : Number(inv.monto_total || 0));
 
-                // Match amount (allow 1-to-1 exact)
-                if (Math.abs(pending - movAmount) > 0.05) return false;
+                // Match amount (Relaxed: ignore decimals / rounding differences up to 1.5)
+                if (Math.floor(pending) !== Math.floor(movAmount) && Math.abs(pending - movAmount) > 1.5) return false;
 
                 const nroFactura = (inv.numero || '').toUpperCase();
                 if (!nroFactura) return false;
