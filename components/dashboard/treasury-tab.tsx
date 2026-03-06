@@ -13,6 +13,7 @@ import { TreasuryHistory } from './treasury-history'
 import { Shield, BookUser, History, Landmark, AlertCircle } from 'lucide-react'
 import { CheckPortfolio } from './check-portfolio'
 import { UnreconciledPanel } from './unreconciled-panel'
+import { toast } from 'sonner'
 
 interface TreasuryTabProps {
     orgId: string
@@ -113,7 +114,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             const data = await res.json()
 
             if (!res.ok) {
-                alert(`Error del servidor: ${data.error || 'Autenticación fallida.'}`)
+                toast.error(`Error del servidor: ${data.error || 'Autenticación fallida.'}`)
                 return
             }
 
@@ -121,14 +122,14 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 const message = scope === 'admin'
                     ? `¡Éxito! Se vincularon ${data.matched} facturas con recibos/OP.`
                     : `¡Éxito! Se conciliaron ${data.matched} movimientos con el extracto bancario.`;
-                alert(message)
+                toast.success(message)
             } else {
-                alert(`Proceso finalizado. No se encontraron nuevas coincidencias (0).`)
+                toast.info(`Proceso finalizado. No se encontraron nuevas coincidencias (0).`)
             }
             await fetchData()
         } catch (error) {
             console.error('Reconciliation failed:', error)
-            alert('Error al ejecutar la acción.')
+            toast.error('Error al ejecutar la acción.')
         } finally {
             if (scope === 'admin') setReconcilingAdmin(false)
             if (scope === 'bank') setReconcilingBank(false)
