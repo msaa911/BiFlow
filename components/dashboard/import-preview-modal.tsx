@@ -52,6 +52,10 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
         }
     }
 
+    const handleFieldChange = (row: any, field: string, value: string) => {
+        onRowUpdate({ ...row, [field]: value })
+    }
+
     const validateFieldChange = (row: any, field: string, value: string) => {
         const updatedRow = { ...row, [field]: value }
 
