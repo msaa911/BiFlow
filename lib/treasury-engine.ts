@@ -1,8 +1,8 @@
 export interface Invoice {
     id: string;
     tipo: 'factura_venta' | 'factura_compra' | 'nota_credito' | 'nota_debito';
-    razon_social_socio: string;
-    cuit_socio: string;
+    razon_social_entidad: string;
+    cuit_entidad: string;
     fecha_emision: string;
     fecha_vencimiento: string;
     monto_total: number;
@@ -95,7 +95,7 @@ export class TreasuryEngine {
     }
 
     /**
-     * Assigns a credit rating based on soci name or payment history (simulated for now).
+     * Assigns a credit rating based on entity name or payment history (simulated for now).
      */
     static getClientRating(cuit: string, razonSocial: string): { rating: string; color: string } {
         const name = razonSocial || '';
@@ -109,22 +109,22 @@ export class TreasuryEngine {
     }
 
     /**
-     * Detects if a socio is both a client and a supplier (Netting opportunity).
+     * Detects if an entity is both a client and a supplier (Netting opportunity).
      */
     static detectNettingOpportunities(invoices: Invoice[]): any[] {
-        const salesSocio = new Set(invoices.filter(i => i.tipo === 'factura_venta').map(i => i.cuit_socio));
-        const purchaseSocio = new Set(invoices.filter(i => i.tipo === 'factura_compra').map(i => i.cuit_socio));
+        const salesEntidades = new Set(invoices.filter(i => i.tipo === 'factura_venta').map(i => i.cuit_entidad));
+        const purchaseEntidades = new Set(invoices.filter(i => i.tipo === 'factura_compra').map(i => i.cuit_entidad));
 
-        const intersections = [...salesSocio].filter(cuit => purchaseSocio.has(cuit));
+        const intersections = [...salesEntidades].filter(cuit => purchaseEntidades.has(cuit));
 
         return intersections.map(cuit => {
-            const socio = invoices.find(i => i.cuit_socio === cuit)?.razon_social_socio;
-            const pendingAR = invoices.filter(i => i.cuit_socio === cuit && i.tipo === 'factura_venta' && i.estado !== 'pagado')
+            const entidad_nombre = invoices.find(i => i.cuit_entidad === cuit)?.razon_social_entidad;
+            const pendingAR = invoices.filter(i => i.cuit_entidad === cuit && i.tipo === 'factura_venta' && i.estado !== 'pagado')
                 .reduce((acc, curr) => acc + curr.monto_pendiente, 0);
-            const pendingAP = invoices.filter(i => i.cuit_socio === cuit && i.tipo === 'factura_compra' && i.estado !== 'pagado')
+            const pendingAP = invoices.filter(i => i.cuit_entidad === cuit && i.tipo === 'factura_compra' && i.estado !== 'pagado')
                 .reduce((acc, curr) => acc + curr.monto_pendiente, 0);
 
-            return { cuit, socio, pendingAR, pendingAP, balance: pendingAR - pendingAP };
+            return { cuit, entidad_nombre, entidad: entidad_nombre, pendingAR, pendingAP, balance: pendingAR - pendingAP };
         });
     }
 

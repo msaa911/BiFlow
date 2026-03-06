@@ -323,7 +323,7 @@ export async function POST(request: Request) {
                     // RECEIPTS AND PAYMENT ORDERS
                     const isCobro = uploadContext === 'receipt'
 
-                    // 1. Resolve Entities (Socios)
+                    // 1. Resolve Entities (Entidades)
                     console.log(`[UPLOAD] [TREASURY] Resolving entities for ${transactionsWithLink.length} movements...`)
                     for (const t of transactionsWithLink) {
                         const razonSocial = t.razon_social || t.concepto || 'Sin Razón Social'
@@ -669,7 +669,7 @@ function parseTreasuryExcelServer(buffer: Buffer, orgId: string, type: 'cobro' |
 
         const fecha = getValue(/fecha|^fec$/i, true)
         const numero = getValue(/numero|nro|n°|comprobante|recibo|orden/i)
-        const razonSocial = getValue(/entidad|cliente|proveedor|socio|razon|social|nombre/i)
+        const razonSocial = getValue(/entidad|cliente|proveedor|razon|social|nombre/i)
         const montoRaw = getValue(/monto|total|importe|valor/i)
         const monto = parseFloat(montoRaw.replace(/[^\d.,-]/g, '').replace(',', '.'))
         const medio = getValue(/medio|metodo|instrumento|forma/i).toLowerCase().replace(' ', '_')

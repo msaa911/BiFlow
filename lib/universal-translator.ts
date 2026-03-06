@@ -205,7 +205,7 @@ export class UniversalTranslator {
             fecha: headers.findIndex((h: string) => ['fecha', 'fec', 'date', 'emision', 'emisión', 'emiti'].some(k => h.includes(k))),
             monto: headers.findIndex((h: string) => ['monto', 'importe', 'valor', 'mto', 'total', 'precio', 'neto', 'bruto', 'subtotal', 'pagado'].some(k => h.includes(k))),
             desc: headers.findIndex((h: string) => ['movimiento', 'detalle movimiento', 'concepto', 'descripcion', 'detalle', 'desc', 'referencia', 'leyenda', 'item', 'producto', 'servicio', 'nota', 'obs', 'observacion', 'glosa'].some(k => h.includes(k))),
-            razon_social: headers.findIndex((h: string) => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'socio', 'titular', 'denominacion', 'denominación', 'emisor', 'receptor', 'empresa', 'ente'].some(k => h.includes(k))),
+            razon_social: headers.findIndex((h: string) => ['razon social', 'razón social', 'nombre', 'cliente', 'proveedor', 'titular', 'denominacion', 'denominación', 'emisor', 'receptor', 'empresa', 'ente'].some(k => h.includes(k))),
             cuit: headers.findIndex((h: string) => ['cuit', 'cuil', 'documento', 'id', 'taxid', 'tipo/nro'].some(k => h.includes(k))),
             banco: headers.findIndex((h: string) => ['banco', 'bank', 'entidad', 'origen', 'sucursal'].some(k => h.includes(k))),
             tipo: headers.findIndex((h: string) => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado', 'mod', 'comp'].some(k => h.includes(k))),

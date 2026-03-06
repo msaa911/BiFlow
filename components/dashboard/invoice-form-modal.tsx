@@ -22,10 +22,10 @@ interface InvoiceFormModalProps {
 
 export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSuccess }: InvoiceFormModalProps) {
     const [loading, setLoading] = useState(false)
-    const [socios, setSocios] = useState<any[]>([])
-    const [searchingSocio, setSearchingSocio] = useState(false)
+    const [entidades, setEntidades] = useState<any[]>([])
+    const [searchingEntidad, setSearchingEntidad] = useState(false)
     const [formData, setFormData] = useState({
-        socio_id: '',
+        entidad_id: '',
         tipo: type,
         numero: '',
         monto_total: 0,
@@ -39,8 +39,8 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
     const [originalInvoices, setOriginalInvoices] = useState<any[]>([])
     const [initialized, setInitialized] = useState(false)
 
-    async function fetchInitialSocios() {
-        setSearchingSocio(true)
+    async function fetchInitialEntities() {
+        setSearchingEntidad(true)
         const supabase = createClient()
 
         // Filtrado estricto por categoría
@@ -55,29 +55,29 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             .limit(20)
 
         if (data) {
-            let finalSocios = [...data]
-            // Si el socio de la factura no está en los 20 primeros, lo buscamos específicamente
+            let finalEntidades = [...data]
+            // Si la entidad de la factura no está en los 20 primeros, la buscamos específicamente
             if (invoice?.entidad_id && !data.find(s => s.id === invoice.entidad_id)) {
-                const { data: specificSocio } = await supabase
+                const { data: specificEntidad } = await supabase
                     .from('entidades')
                     .select('id, razon_social, cuit, categoria')
                     .eq('id', invoice.entidad_id)
                     .single()
-                if (specificSocio) finalSocios = [specificSocio, ...finalSocios]
+                if (specificEntidad) finalEntidades = [specificEntidad, ...finalEntidades]
             }
-            setSocios(finalSocios)
+            setEntidades(finalEntidades)
         }
-        setSearchingSocio(false)
+        setSearchingEntidad(false)
     }
 
     useEffect(() => {
         if (isOpen && !initialized) {
             console.log('[InvoiceForm] Initializing form...')
-            fetchInitialSocios()
+            fetchInitialEntities()
 
             if (invoice) {
                 setFormData({
-                    socio_id: invoice.entidad_id || '',
+                    entidad_id: invoice.entidad_id || '',
                     tipo: invoice.tipo || type,
                     numero: invoice.numero || '',
                     monto_total: Number(invoice.monto_total) || 0,
@@ -87,10 +87,10 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                     concepto: invoice.concepto || '',
                     vinculado_id: invoice.vinculado_id || 'none'
                 })
-                setSearchQuery(invoice.razon_social_socio || '')
+                setSearchQuery(invoice.razon_social_entidad || invoice.razon_social_socio || '')
             } else {
                 setFormData({
-                    socio_id: '',
+                    entidad_id: '',
                     tipo: type,
                     numero: '',
                     monto_total: 0,
@@ -107,27 +107,27 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
         if (!isOpen) {
             setInitialized(false)
-            setSocios([])
+            setEntidades([])
             setSearchQuery('')
         }
     }, [invoice, isOpen, orgId, type, initialized])
 
     useEffect(() => {
         async function fetchOriginalInvoices() {
-            if (!formData.socio_id || !['nota_credito', 'nota_debito'].includes(formData.tipo)) return
+            if (!formData.entidad_id || !['nota_credito', 'nota_debito'].includes(formData.tipo)) return
 
             const supabase = createClient()
             const { data } = await supabase
                 .from('comprobantes')
                 .select('id, numero, fecha_emision, monto_total')
-                .eq('entidad_id', formData.socio_id)
+                .eq('entidad_id', formData.entidad_id)
                 .in('tipo', ['factura_venta', 'factura_compra'])
                 .order('fecha_emision', { ascending: false })
 
             if (data) setOriginalInvoices(data)
         }
         fetchOriginalInvoices()
-    }, [formData.socio_id, formData.tipo])
+    }, [formData.entidad_id, formData.tipo])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -135,7 +135,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
         setLoading(true)
 
         try {
-            if (!formData.socio_id || formData.socio_id === 'none') {
+            if (!formData.entidad_id || formData.entidad_id === 'none') {
                 toast.error(`Debe seleccionar un ${(type === 'factura_venta' || type === 'ingreso_vario') ? 'Cliente' : 'Proveedor'}`)
                 setLoading(false)
                 return
@@ -148,31 +148,31 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             }
 
             const supabase = createClient()
-            console.log('[InvoiceForm] Validating socio:', formData.socio_id)
+            console.log('[InvoiceForm] Validating entidad:', formData.entidad_id)
 
-            const { data: selectedSocio, error: socioError } = await supabase
+            const { data: selectedEntidad, error: entidadError } = await supabase
                 .from('entidades')
                 .select('id, razon_social, cuit, categoria')
-                .eq('id', formData.socio_id)
+                .eq('id', formData.entidad_id)
                 .single()
 
-            if (socioError || !selectedSocio) {
-                console.error('[InvoiceForm] Error socio validation:', socioError)
-                toast.error('No se pudo validar el socio seleccionado: ' + (socioError?.message || 'No encontrado'))
+            if (entidadError || !selectedEntidad) {
+                console.error('[InvoiceForm] Error entidad validation:', entidadError)
+                toast.error('No se pudo validar la entidad seleccionada: ' + (entidadError?.message || 'No encontrada'))
                 setLoading(false)
                 return
             }
 
-            if (!selectedSocio) return
+            if (!selectedEntidad) return
 
-            console.log('[InvoiceForm] Socio validado:', selectedSocio.razon_social)
+            console.log('[InvoiceForm] Entidad validada:', selectedEntidad.razon_social)
 
             const upsertData: Record<string, any> = {
                 organization_id: orgId,
-                entidad_id: formData.socio_id,
-                cuit_socio: selectedSocio.cuit,
-                razon_social_socio: selectedSocio.razon_social,
-                nombre_entidad: selectedSocio.razon_social,
+                entidad_id: formData.entidad_id,
+                cuit_socio: selectedEntidad.cuit,
+                razon_social_socio: selectedEntidad.razon_social,
+                nombre_entidad: selectedEntidad.razon_social,
                 tipo: formData.tipo,
                 numero: formData.numero || null,
                 monto_total: formData.monto_total,
@@ -234,7 +234,7 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 // 1. Crear Movimiento de Tesorería
                 const { data: mov, error: movErr } = await supabase.from('movimientos_tesoreria').insert({
                     organization_id: orgId,
-                    entidad_id: formData.socio_id,
+                    entidad_id: formData.entidad_id,
                     tipo: (type === 'factura_venta' || type === 'ingreso_vario') ? 'cobro' : 'pago',
                     monto_total: formData.monto_total,
                     fecha: formData.fecha_emision,
@@ -339,15 +339,15 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                 </Select>
                             </div>
 
-                            {/* 2. Socio (Cliente/Proveedor) */}
+                            {/* Entidad (Cliente/Proveedor) */}
                             <div className="col-span-2 space-y-2">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-xs uppercase text-gray-500 font-bold">
                                         {type === 'factura_venta' ? 'Cliente / Entidad' : 'Proveedor / Entidad'}
                                     </Label>
-                                    {formData.socio_id && (
+                                    {formData.entidad_id && (
                                         <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                                            Socio Seleccionado
+                                            Entidad Seleccionada
                                         </Badge>
                                     )}
                                 </div>
@@ -363,14 +363,14 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                                 setSearchQuery(term)
 
                                                 if (!term || term.length < 2) {
-                                                    setSocios([])
+                                                    setEntidades([])
                                                     return
                                                 }
 
                                                 const supabase = createClient()
                                                 const targetCat = (type === 'factura_venta' || type === 'ingreso_vario') ? 'cliente' : 'proveedor'
 
-                                                setSearchingSocio(true)
+                                                setSearchingEntidad(true)
                                                 const { data } = await supabase
                                                     .from('entidades')
                                                     .select('id, razon_social, cuit, categoria')
@@ -379,18 +379,18 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                                     .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
                                                     .limit(10)
 
-                                                if (data) setSocios(data)
-                                                setSearchingSocio(false)
+                                                if (data) setEntidades(data)
+                                                setSearchingEntidad(false)
                                             }}
                                         />
-                                        {formData.socio_id && (
+                                        {formData.entidad_id && (
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    console.log('[InvoiceForm] Reseting socio search...')
-                                                    setFormData({ ...formData, socio_id: '' })
+                                                    console.log('[InvoiceForm] Reseting entidad search...')
+                                                    setFormData({ ...formData, entidad_id: '' })
                                                     setSearchQuery('')
-                                                    fetchInitialSocios()
+                                                    fetchInitialEntities()
                                                 }}
                                                 className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded hover:bg-red-500/20 font-bold uppercase transition-colors"
                                             >
@@ -400,34 +400,34 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                                     </div>
 
                                     {/* Lista de resultados - Añadido un z-index más agresivo and min-height behavior */}
-                                    {socios.length > 0 && (
+                                    {entidades.length > 0 && (
                                         <div className="absolute top-full left-0 right-0 z-[200] mt-1 bg-gray-950 border border-emerald-500/30 rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden max-h-[180px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
                                             <div className="p-1.5 bg-gray-900/50 border-b border-gray-800 text-[9px] uppercase font-bold text-gray-500 flex justify-between items-center">
                                                 <span>Seleccione una entidad</span>
-                                                <span className="text-emerald-500">{socios.length} hallados</span>
+                                                <span className="text-emerald-500">{entidades.length} hallados</span>
                                             </div>
-                                            {searchingSocio ? (
+                                            {searchingEntidad ? (
                                                 <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
                                                     <Loader2 className="w-3 h-3 animate-spin" />
                                                     Buscando...
                                                 </div>
                                             ) : (
-                                                socios.map(s => (
+                                                entidades.map(s => (
                                                     <div
                                                         key={s.id}
                                                         onClick={() => {
-                                                            console.log('[InvoiceForm] Socio seleccionado:', s.razon_social)
-                                                            setFormData({ ...formData, socio_id: s.id })
+                                                            console.log('[InvoiceForm] Entidad seleccionada:', s.razon_social)
+                                                            setFormData({ ...formData, entidad_id: s.id })
                                                             setSearchQuery(s.razon_social)
-                                                            setSocios([])
+                                                            setEntidades([])
                                                         }}
-                                                        className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.socio_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
+                                                        className={`p-3 cursor-pointer hover:bg-emerald-600/20 border-b border-gray-800/50 transition-all flex justify-between items-center ${formData.entidad_id === s.id ? 'bg-emerald-600/30 border-l-4 border-l-emerald-500 pl-2' : ''}`}
                                                     >
                                                         <div className="flex flex-col text-left">
                                                             <span className="text-sm font-bold text-white leading-none mb-1">{s.razon_social}</span>
                                                             <span className="text-[10px] text-gray-500 font-mono tracking-tight">{s.cuit}</span>
                                                         </div>
-                                                        {formData.socio_id === s.id && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
+                                                        {formData.entidad_id === s.id && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
                                                     </div>
                                                 ))
                                             )}

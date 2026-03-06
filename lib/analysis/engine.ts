@@ -19,8 +19,8 @@ interface Invoice {
     organization_id: string
     tipo: string
     numero: string
-    cuit_socio: string
-    razon_social_socio: string
+    cuit_entidad: string
+    razon_social_entidad: string
     fecha_emision: string
     monto_total: number
     estado: string
@@ -294,7 +294,7 @@ export async function runAnalysis(organizationId: string) {
             const absMonto = Math.abs(inv.monto_total);
             if (stdDev > 0 && absMonto > mean + (3 * stdDev)) {
                 const zScore = (absMonto - mean) / stdDev;
-                console.log(`[ANALYSIS] [INVOICE_OUTLIER] Factura ${inv.numero} is an outlier (${inv.razon_social_socio})`);
+                console.log(`[ANALYSIS] [INVOICE_OUTLIER] Factura ${inv.numero} is an outlier (${inv.razon_social_entidad || inv.razon_social_socio})`);
                 findings.push({
                     organization_id: organizationId,
                     comprobante_id: inv.id,
@@ -307,7 +307,7 @@ export async function runAnalysis(organizationId: string) {
                         monto: inv.monto_total,
                         promedio_empresa: mean,
                         desviacion_estandar: stdDev,
-                        entidad: inv.razon_social_socio
+                        entidad: inv.razon_social_entidad || inv.razon_social_socio
                     }
                 });
             }

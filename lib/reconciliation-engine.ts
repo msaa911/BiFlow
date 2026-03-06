@@ -141,14 +141,14 @@ export class ReconciliationEngine {
             let fallbackInvoices = [...targetInvoices];
 
             if (txCuitNormalized) {
-                const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === txCuitNormalized);
+                const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_entidad || i.cuit_socio) === txCuitNormalized);
                 if (exactCuitInvoices.length > 0) {
                     targetInvoices = exactCuitInvoices;
                     matchLevel = 1;
                 }
             } else if (trans.metadata?.cbu && trustLedgerMap.has(trans.metadata.cbu)) {
                 const deducedCuit = normalizeCuit(trustLedgerMap.get(trans.metadata.cbu));
-                const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === deducedCuit);
+                const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_entidad || i.cuit_socio) === deducedCuit);
                 if (exactCuitInvoices.length > 0) {
                     targetInvoices = exactCuitInvoices;
                     matchLevel = 2;
@@ -156,7 +156,7 @@ export class ReconciliationEngine {
             } else {
                 const fuzzyClientCuit = this.findClientByFuzzy(trans.descripcion || '', invoicesList);
                 if (fuzzyClientCuit) {
-                    const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_socio) === normalizeCuit(fuzzyClientCuit));
+                    const exactCuitInvoices = targetInvoices.filter(i => normalizeCuit(i.cuit_entidad || i.cuit_socio) === normalizeCuit(fuzzyClientCuit));
                     if (exactCuitInvoices.length > 0) {
                         targetInvoices = exactCuitInvoices;
                         matchLevel = 3;
@@ -497,10 +497,10 @@ export class ReconciliationEngine {
     private static findClientByFuzzy(desc: string, invoices: any[]): string | null {
         const normalizedDesc = desc.toLowerCase();
         for (const inv of invoices) {
-            if (inv.razon_social_socio) {
-                const words = inv.razon_social_socio.toLowerCase().split(' ').filter((w: string) => w.length > 3);
+            if (inv.razon_social_entidad || inv.razon_social_socio) {
+                const words = (inv.razon_social_entidad || inv.razon_social_socio).toLowerCase().split(' ').filter((w: string) => w.length > 3);
                 if (words.length > 0 && normalizedDesc.includes(words[0])) {
-                    return inv.cuit_socio;
+                    return inv.cuit_entidad || inv.cuit_socio;
                 }
             }
         }

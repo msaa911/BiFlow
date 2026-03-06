@@ -147,10 +147,13 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                             <thead className="bg-gray-900 text-gray-500 sticky top-0 z-20 border-b border-gray-800">
                                 <tr>
                                     <th className="px-4 py-4 font-bold text-[10px] w-16 sticky top-0 z-20 bg-gray-900">Fila</th>
-                                    <th className="px-4 py-4 font-bold text-[10px] sticky top-0 z-20 bg-gray-900">Razón Social</th>
-                                    <th className="px-4 py-4 font-bold text-[10px] w-40 sticky top-0 z-20 bg-gray-900">CUIT</th>
-                                    <th className="px-4 py-4 font-bold text-[10px] sticky top-0 z-20 bg-gray-900">Ubicación</th>
-                                    <th className="px-4 py-4 font-bold text-[10px] text-center w-40 sticky top-0 z-20 bg-gray-900">Estado / Acción</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] min-w-[200px] sticky top-0 z-20 bg-gray-900">Razón Social</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] w-32 sticky top-0 z-20 bg-gray-900">CUIT</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] min-w-[150px] sticky top-0 z-20 bg-gray-900">Ubicación</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] w-48 sticky top-0 z-20 bg-gray-900">CBU / CVU</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] w-40 sticky top-0 z-20 bg-gray-900">Email</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] w-32 sticky top-0 z-20 bg-gray-900">Teléfono</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] text-center w-32 sticky top-0 z-20 bg-gray-900">Acción</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
@@ -180,10 +183,10 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                             />
                                         </td>
 
-                                        <td className="px-4 py-4 text-gray-400 relative">
+                                        <td className="px-4 py-4">
                                             <div className="flex flex-col">
-                                                <span className="text-white text-sm font-medium">{row.localidad || 'Sin Localidad'}</span>
-                                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">{row.provincia || 'Sin Provincia'}</span>
+                                                <span className="text-white text-sm font-medium">{row.localidad || 'S/L'}</span>
+                                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">{row.provincia || 'S/P'}</span>
                                             </div>
                                             {editingRowId === row.id && (
                                                 <div className="flex flex-col gap-2 mt-2">
@@ -194,19 +197,10 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                             className="h-7 text-[10px] text-blue-400 border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 font-bold"
                                                             onClick={() => setShowLocationPanel(true)}
                                                         >
-                                                            <MapPin className="h-3 w-3 mr-1" /> MODIFICAR UBICACIÓN
+                                                            <MapPin className="h-3 w-3 mr-1" /> EDITAR
                                                         </Button>
                                                     ) : (
-                                                        <div className="absolute right-0 top-full mt-2 bg-gray-900 p-5 rounded-2xl border border-blue-500/40 w-[450px] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                            <div className="flex items-center justify-between mb-4">
-                                                                <div className="flex items-center gap-2 text-blue-400">
-                                                                    <MapPin className="h-4 w-4" />
-                                                                    <span className="text-xs font-bold uppercase tracking-wider">Corregir Ubicación</span>
-                                                                </div>
-                                                                <div className="bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] text-amber-500 font-bold">
-                                                                    DATO ORIGINAL: {editingRowBackup?.localidad}, {editingRowBackup?.provincia}
-                                                                </div>
-                                                            </div>
+                                                        <div className="absolute left-0 top-full mt-2 bg-gray-900 p-5 rounded-2xl border border-blue-500/40 w-[350px] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                                             <HierarchicalLocationSelector
                                                                 formData={{
                                                                     provincia: row.provincia,
@@ -215,20 +209,45 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                                                 }}
                                                                 onChange={(updates) => handleLocationChange(row, updates)}
                                                             />
-                                                            <div className="flex justify-end mt-4">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="text-xs text-gray-400 hover:text-white"
-                                                                    onClick={() => setShowLocationPanel(false)}
-                                                                >
-                                                                    OCULTAR PANEL
-                                                                </Button>
-                                                            </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-xs text-gray-500 hover:text-white mt-2 w-full"
+                                                                onClick={() => setShowLocationPanel(false)}
+                                                            >
+                                                                CERRAR
+                                                            </Button>
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
+                                        </td>
+
+                                        <td className="px-4 py-4">
+                                            <Input
+                                                value={row.cbu_habitual || ''}
+                                                placeholder="22 dígitos"
+                                                onChange={(e) => handleFieldChange(row, 'cbu_habitual', e.target.value)}
+                                                className="h-8 bg-gray-900 border-gray-700 font-mono text-[10px]"
+                                            />
+                                        </td>
+
+                                        <td className="px-4 py-4">
+                                            <Input
+                                                value={row.email || ''}
+                                                placeholder="email@ejemplo.com"
+                                                onChange={(e) => handleFieldChange(row, 'email', e.target.value)}
+                                                className="h-8 bg-gray-900 border-gray-700 text-[10px]"
+                                            />
+                                        </td>
+
+                                        <td className="px-4 py-4">
+                                            <Input
+                                                value={row.telefono_1 || ''}
+                                                placeholder="Teléfono"
+                                                onChange={(e) => handleFieldChange(row, 'telefono_1', e.target.value)}
+                                                className="h-8 bg-gray-900 border-gray-700 text-[10px]"
+                                            />
                                         </td>
 
                                         <td className="px-4 py-4">

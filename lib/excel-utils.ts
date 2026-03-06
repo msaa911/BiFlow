@@ -82,13 +82,8 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
         reader.onload = (e) => {
             try {
                 const data = e.target?.result
-                if (data instanceof ArrayBuffer) {
-                    console.log('[Import] Fichero leído. Tamaño:', data.byteLength)
-                }
-
                 const workbook = XLSX.read(data, { type: 'array' })
 
-                // Intelligent sheet selection
                 const targetSheetName = workbook.SheetNames.find(n =>
                     /entidades|proveedores|clientes|plantilla|biflow/i.test(n)
                 ) || workbook.SheetNames[0]
@@ -97,22 +92,10 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
 
                 const sheet = workbook.Sheets[targetSheetName]
                 const json = XLSX.utils.sheet_to_json(sheet)
-                console.log('[Import] Hojas:', workbook.SheetNames, 'Seleccionada:', targetSheetName)
-                console.log('[Import] Filas detectadas:', json.length)
 
                 if (json.length === 0) {
                     resolve({ data: [], errors: ['El archivo no contiene filas de datos o está vacío.'] })
                     return
-                }
-
-                // Check for at least ONE recognizable header to avoid "blind" imports
-                const firstRow = json[0] as any
-                const hasHeaders = Object.keys(firstRow).some(k =>
-                    /razon|social|nombre|cuit|empresa/i.test(k)
-                )
-
-                if (!hasHeaders) {
-                    console.warn('[Import] No se detectaron cabeceras reconocibles. Columnas encontradas:', Object.keys(firstRow))
                 }
 
                 const results: any[] = []
@@ -122,21 +105,20 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
 
                     const getValue = (pattern: RegExp) => {
                         const foundKey = keys.find(k => {
-                            // Normalize key: lowercase and remove accents
                             const nk = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                             return pattern.test(nk)
                         })
                         return foundKey ? String(row[foundKey]).trim() : ''
                     }
 
-                    const rawCuit = getValue(/cuit|cuil|id|identificacion/i)
+                    const rawCuit = getValue(/cuit|cuil|id|identificacion|dni/i)
                     const cleanCuit = rawCuit.replace(/[^\d]/g, '')
                     const razonSocial = getValue(/cliente|proveedor|razon|social|nombre|empresa|denominacion/i)
 
                     const itemErrors: string[] = []
                     if (!razonSocial) itemErrors.push('Falta Razón Social')
                     if (!cleanCuit) itemErrors.push('Falta CUIT')
-                    else if (cleanCuit.length !== 11) itemErrors.push('CUIT debe tener 11 dígitos')
+                    else if (cleanCuit.length < 7) itemErrors.push('Identificación inválida')
 
                     results.push({
                         id: `row-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
@@ -160,50 +142,33 @@ export async function parseEntityExcel(file: File): Promise<{ data: any[], error
                 })
                 resolve({ data: results, errors: [] })
             } catch (err) {
-                console.error('[Import] Error parseando Excel:', err)
                 reject(err)
             }
         }
-        reader.onerror = (err) => reject(new Error('Error de lectura física del archivo.'))
         reader.readAsArrayBuffer(file)
     })
 }
 
 export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra') {
     const isVenta = type === 'factura_venta'
-    const headers = ['Tipo Documento', 'Fecha Emisión', 'Fecha Vencimiento', 'Entidad (Nombre o CUIT)', 'CUIT Cliente', 'Número Comprobante', 'Concepto / Descripción', 'Monto Total', 'Condición']
+    const headers = ['Tipo Documento', 'Fecha Emisión', 'Fecha Vencimiento', 'Entidad (Nombre o CUIT)', 'CUIT Entidad', 'Número Comprobante', 'Concepto / Descripción', 'Monto Total', 'Condición']
 
-    const rows = isVenta ? [
-        {
-            'Tipo Documento': 'Factura',
-            'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
-            'Fecha Vencimiento': new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
-            'Entidad (Nombre o CUIT)': 'CLIENTE EJEMPLO S.A.',
-            'CUIT Cliente': '30-11223344-5',
-            'Número Comprobante': '0001-00001234',
-            'Concepto / Descripción': 'Venta de mercaderías varias',
-            'Monto Total': 1500.50,
-            'Condición': 'Contado'
-        }
-    ] : [
-        {
-            'Tipo Documento': 'Factura',
-            'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
-            'Fecha Vencimiento': new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
-            'Entidad (Nombre o CUIT)': 'PROVEEDOR EJEMPLO S.R.L.',
-            'CUIT Cliente': '30-99887766-5',
-            'Número Comprobante': '0005-00043210',
-            'Concepto / Descripción': 'Compra de insumos',
-            'Monto Total': 2450.00,
-            'Condición': 'Cuenta Corriente'
-        }
-    ]
+    const row = {
+        'Tipo Documento': 'Factura',
+        'Fecha Emisión': new Date().toLocaleDateString('es-AR'),
+        'Fecha Vencimiento': new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-AR'),
+        'Entidad (Nombre o CUIT)': isVenta ? 'CLIENTE EJEMPLO S.A.' : 'PROVEEDOR EJEMPLO S.R.L.',
+        'CUIT Entidad': isVenta ? '30-11223344-5' : '30-99887766-5',
+        'Número Comprobante': isVenta ? '0001-00001234' : '0005-00043210',
+        'Concepto / Descripción': isVenta ? 'Venta de mercaderías varias' : 'Compra de insumos',
+        'Monto Total': isVenta ? 1500.50 : 2450.00,
+        'Condición': isVenta ? 'Contado' : 'Cuenta Corriente'
+    }
 
-    const ws = XLSX.utils.json_to_sheet(rows, { header: headers })
+    const ws = XLSX.utils.json_to_sheet([row], { header: headers })
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, isVenta ? 'Ventas' : 'Compras')
 
-    // Auto-size columns
     const wscols = headers.map(h => ({ wch: h.length + 10 }))
     ws['!cols'] = wscols
 
@@ -212,27 +177,24 @@ export function downloadInvoiceTemplate(type: 'factura_venta' | 'factura_compra'
 
 export function downloadTreasuryTemplate(type: 'cobro' | 'pago') {
     const isCobro = type === 'cobro'
-    const headers = ['Fecha', 'Número', 'Entidad (Nombre o CUIT)', 'Monto Total', 'Medio', 'Banco', 'Referencia', 'Disponibilidad', 'Observaciones']
+    const headers = ['Fecha', 'Número', 'Entidad (Nombre o CUIT)', 'Monto Total', 'Medio / Método', 'Banco', 'Referencia', 'Disponibilidad / Acreditación', 'Observaciones / Detalle']
 
-    const rows = [
-        {
-            'Fecha': new Date().toLocaleDateString('es-AR'),
-            'Número': isCobro ? 'REC-0001' : 'OP-0001',
-            'Entidad (Nombre o CUIT)': isCobro ? 'CLIENTE EJEMPLO S.A.' : 'PROVEEDOR EJEMPLO S.R.L.',
-            'Monto Total': 5000.00,
-            'Medio': isCobro ? 'transferencia' : 'cheque_propio',
-            'Banco': 'Galicia',
-            'Referencia': isCobro ? 'TRF-12345' : 'CH-998822',
-            'Disponibilidad': new Date().toLocaleDateString('es-AR'),
-            'Observaciones': isCobro ? 'Cobro factura Ene' : 'Pago insumos Feb'
-        }
-    ]
+    const row = {
+        'Fecha': new Date().toLocaleDateString('es-AR'),
+        'Número': isCobro ? 'REC-0001' : 'OP-0001',
+        'Entidad (Nombre o CUIT)': isCobro ? 'CLIENTE EJEMPLO S.A.' : 'PROVEEDOR EJEMPLO S.R.L.',
+        'Monto Total': 5000.00,
+        'Medio / Método': isCobro ? 'transferencia' : 'cheque_propio',
+        'Banco': 'Galicia',
+        'Referencia': isCobro ? 'TRF-12345' : 'CH-998822',
+        'Disponibilidad / Acreditación': new Date().toLocaleDateString('es-AR'),
+        'Observaciones / Detalle': isCobro ? 'Cobro factura Ene' : 'Pago insumos Feb'
+    }
 
-    const ws = XLSX.utils.json_to_sheet(rows, { header: headers })
+    const ws = XLSX.utils.json_to_sheet([row], { header: headers })
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, isCobro ? 'Recibos' : 'Pagos')
 
-    // Auto-size columns
     const wscols = headers.map(h => ({ wch: h.length + 10 }))
     ws['!cols'] = wscols
 
@@ -285,7 +247,7 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                     const fechaEmision = getValue(/fecha.*emision|fecha.*factura|^fecha$|emision/i, true)
                     const fechaVencimiento = getValue(/fecha.*vencimiento|vencimiento|vence/i, true)
                     const cuit = getValue(/cuit|cuil|id|identificacion/i).replace(/[^\d]/g, '')
-                    const razonSocial = getValue(/cliente|proveedor|socio|razon|social|nombre|^entidad$/i)
+                    const razonSocial = getValue(/cliente|proveedor|razon|social|nombre|^entidad$/i)
                     const numero = getValue(/numero|nro|n°|factura|comprobante/i)
                     const montoRaw = getValue(/monto|total|importe|valor/i)
                     const monto = parseFloat(montoRaw.replace(/[^\d.,]/g, '').replace(',', '.'))
@@ -310,8 +272,8 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                         id: `inv-${rowNum}-${Math.random().toString(36).substr(2, 5)}`,
                         fecha_emision: fechaEmision,
                         fecha_vencimiento: fechaVencimiento || fechaEmision,
-                        cuit_socio: cuit,
-                        razon_social_socio: razonSocial,
+                        cuit_entidad: cuit,
+                        razon_social_entidad: razonSocial,
                         numero,
                         monto_total: monto,
                         condicion: condicion,
@@ -378,7 +340,7 @@ export async function parseTreasuryExcel(file: File, type: 'cobro' | 'pago'): Pr
 
                     const fecha = getValue(/fecha|^fec$/i, true)
                     const numero = getValue(/numero|nro|n°|comprobante|recibo|orden/i)
-                    const razonSocial = getValue(/entidad|cliente|proveedor|socio|razon|social|nombre/i)
+                    const razonSocial = getValue(/entidad|cliente|proveedor|razon|social|nombre/i)
                     const montoRaw = getValue(/monto|total|importe|valor/i)
                     const monto = parseFloat(montoRaw.replace(/[^\d.,-]/g, '').replace(',', '.'))
                     const medio = getValue(/medio|metodo|instrumento|forma/i).toLowerCase().replace(' ', '_')

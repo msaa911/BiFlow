@@ -85,8 +85,8 @@ export async function POST(request: Request) {
                     monto_pendiente: inv.monto_pendiente,
                     estado: inv.estado || 'pendiente',
                     condicion: inv.condicion,
-                    razon_social_socio: inv.razon_social_socio,
-                    cuit_socio: inv.cuit_socio,
+                    razon_social_socio: inv.razon_social_entidad || inv.razon_social_socio,
+                    cuit_socio: inv.cuit_entidad || inv.cuit_socio,
                     concepto: inv.concepto || null
                 };
             });

@@ -80,6 +80,8 @@ export default async function DashboardPage() {
     const invoicesForProjection = (pendingInvoices || []).map(i => ({
         id: i.id,
         tipo: i.tipo,
+        razon_social_entidad: i.razon_social_socio,
+        cuit_entidad: i.cuit_socio,
         razon_social_socio: i.razon_social_socio,
         cuit_socio: i.cuit_socio,
         fecha_emision: i.fecha_emision,
@@ -198,7 +200,7 @@ export default async function DashboardPage() {
                         ...(anomalies?.filter(a => a.tags?.includes('alerta_precio')) || []),
                         ...(findings?.filter(f => f.tipo === 'monto_inusual' && f.comprobante_id).map(f => ({
                             id: f.id,
-                            descripcion: `Factura ${f.comprobantes?.numero} - ${f.comprobantes?.razon_social_socio}`,
+                            descripcion: `Factura ${f.comprobantes?.numero} - ${f.comprobantes?.razon_social_socio}`, // Rebranded in UI via component logic
                             monto: f.comprobantes?.monto_total,
                             fecha: f.comprobantes?.fecha_emision,
                             is_invoice: true

@@ -158,7 +158,7 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
     const downloadCSV = () => {
         if (checks.length === 0) return
 
-        const headers = ["Nro Cheque", "Banco", "Monto", "Fecha Emision", "Fecha Disponib.", "Estado", "Socio"]
+        const headers = ["Nro Cheque", "Banco", "Monto", "Fecha Emision", "Fecha Disponib.", "Estado", "Entidad"]
         const csvContent = [
             headers.join(","),
             ...checks.map(c => [

@@ -234,9 +234,10 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
             }
         }
 
-        const searchMatch = (inv.razon_social_socio || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        const searchMatch = (inv.razon_social_entidad || inv.razon_social_socio || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (inv.nro_factura || inv.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (inv.cuit_socio || '').toLowerCase().includes(searchTerm.toLowerCase())
+            (inv.cuit_entidad || inv.cuit_socio || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (inv.concepto || '').toLowerCase().includes(searchTerm.toLowerCase())
 
         return typeMatch && searchMatch
     })
@@ -315,7 +316,14 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                 const { data: entities } = await supabase.from('entidades').select('id, razon_social, cuit').eq('organization_id', orgId)
                                 const enriched = parsed.map(inv => {
                                     const match = entities?.find(e => e.cuit === inv.cuit_socio || e.razon_social.toLowerCase() === inv.razon_social_socio.toLowerCase())
-                                    return { ...inv, entidad_id: match?.id, razon_social_socio: match?.razon_social || inv.razon_social_socio, cuit_socio: match?.cuit || inv.cuit_socio, isValid: inv.isValid && !!match, errors: !match ? [...(inv.errors || []), 'Socio no registrado'] : inv.errors }
+                                    return {
+                                        ...inv,
+                                        entidad_id: match?.id,
+                                        razon_social_entidad: match?.razon_social || inv.razon_social_entidad || inv.razon_social_socio,
+                                        cuit_entidad: match?.cuit || inv.cuit_entidad || inv.cuit_socio,
+                                        isValid: inv.isValid && !!match,
+                                        errors: !match ? [...(inv.errors || []), 'Entidad no registrada'] : inv.errors
+                                    }
                                 })
                                 setImportData(enriched)
                                 setIsImportPreviewOpen(true)
@@ -396,8 +404,8 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                 </td>
                                 <td className="px-6 py-3">
                                     <div className="flex flex-col">
-                                        <span className="text-white font-semibold text-xs leading-tight">{inv.razon_social_socio}</span>
-                                        <span className="text-[10px] text-gray-400 font-mono mt-0.5">{inv.cuit_socio}</span>
+                                        <span className="text-white font-semibold text-xs leading-tight">{inv.razon_social_entidad || inv.razon_social_socio}</span>
+                                        <span className="text-[10px] text-gray-400 font-mono mt-0.5">{inv.cuit_entidad || inv.cuit_socio}</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-3">
@@ -566,7 +574,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                     </div>
                     <div className="flex-1">
                         <p className="text-xs text-emerald-200/60 leading-relaxed">
-                            <strong className="text-emerald-400">Netting Inteligente Detectado:</strong> Tenemos un cruce de saldos para <span className="text-white font-semibold">{nettingOps[0].socio}</span>.
+                            <strong className="text-emerald-400">Netting Inteligente Detectado:</strong> Tenemos un cruce de saldos para <span className="text-white font-semibold">{nettingOps[0].entidad_nombre || nettingOps[0].entidad_id}</span>.
                             A cobrar: <span className="text-emerald-400">${new Intl.NumberFormat('es-AR').format(nettingOps[0].pendingAR)}</span> |
                             A pagar: <span className="text-red-400">${new Intl.NumberFormat('es-AR').format(nettingOps[0].pendingAP)}</span>.
                         </p>
@@ -626,8 +634,9 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     estado: inv.condicion === 'contado' ? 'pagado' : 'pendiente',
                                     condicion: inv.condicion,
                                     moneda: inv.moneda || 'ARS',
-                                    razon_social_socio: inv.razon_social_socio,
-                                    cuit_socio: inv.cuit_socio
+                                    razon_social_socio: inv.razon_social_entidad,
+                                    cuit_socio: inv.cuit_entidad,
+                                    concepto: inv.concepto
                                 }))
                             })
                         })
@@ -661,7 +670,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 onClose={() => setIsPaymentWizardOpen(false)}
                 orgId={orgId}
                 entidadId={selectedInvoice?.entidad_id}
-                razonSocial={selectedInvoice?.razon_social_socio}
+                razonSocial={selectedInvoice?.razon_social_entidad || selectedInvoice?.razon_social_socio}
                 tipo={view === 'AR' ? 'cobro' : 'pago'}
                 onSuccess={onRefresh}
             />
@@ -679,7 +688,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 my-2 flex justify-between items-center">
                             <div>
                                 <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-1">Comprobante BiFlow</p>
-                                <p className="text-sm font-bold text-white leading-tight">{selectedInvoice.razon_social_socio}</p>
+                                <p className="text-sm font-bold text-white leading-tight">{selectedInvoice.razon_social_entidad || selectedInvoice.razon_social_socio}</p>
                                 <p className="text-[10px] text-gray-500">{selectedInvoice.tipo} • {selectedInvoice.numero}</p>
                             </div>
                             <div className="text-right">

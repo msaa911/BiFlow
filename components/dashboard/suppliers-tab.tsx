@@ -31,7 +31,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
-    const fetchSocios = async () => {
+    const fetchEntities = async () => {
         setLoading(true)
         // Fetch entities (entidades) and their trusted CBUs
         let query = supabase
@@ -61,7 +61,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
     }
 
     useEffect(() => {
-        fetchSocios()
+        fetchEntities()
     }, [orgId, category])
 
     const filteredSuppliers = suppliers.filter(s =>
@@ -106,7 +106,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 toast.success(`${name} eliminado con éxito`)
             }
 
-            fetchSocios()
+            fetchEntities()
         } catch (err: any) {
             console.error('Error deleting entity:', err)
             toast.error('Error al eliminar: ' + err.message)
@@ -381,7 +381,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
 
             console.log('[ConfirmImport] SUCCESS. Process finished.')
             toast.success(`${validData.length} registros importados correctamente`)
-            fetchSocios()
+            fetchEntities()
         } catch (err: any) {
             console.error('[ConfirmImport] FATAL ERROR:', err)
             toast.error('Error al guardar datos: ' + (err.message || 'Error desconocido'))
@@ -622,7 +622,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 onClose={() => setIsEntityModalOpen(false)}
                 orgId={orgId}
                 entity={selectedEntity}
-                onSuccess={fetchSocios}
+                onSuccess={fetchEntities}
                 defaultCategory={category === 'ambos' ? 'proveedor' : category as 'cliente' | 'proveedor'}
             />
             <ImportPreviewModal

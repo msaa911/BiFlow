@@ -306,25 +306,29 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                             <td className="px-6 py-4"><Badge className="text-[9px] uppercase">{mov.nro_comprobante || mov.numero || 'S/N'}</Badge></td>
                                             <td className="px-6 py-4 font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</td>
                                             <td className="px-6 py-4">
-                                                <div className="flex flex-wrap gap-1.5 min-h-[1.2rem] items-center">
+                                                <div className="flex flex-col gap-1 min-h-[1.2rem] justify-center">
                                                     {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
-                                                        mov.aplicaciones_pago.map((app: any, idx: number) => (
-                                                            <span
-                                                                key={idx}
-                                                                className="text-xs font-bold text-white uppercase tracking-tight"
-                                                                title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está"
-                                                            >
-                                                                {app.comprobantes?.nro_factura}
-                                                                {idx < mov.aplicaciones_pago.length - 1 ? " | " : ""}
-                                                            </span>
-                                                        ))
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {mov.aplicaciones_pago.map((app: any, idx: number) => (
+                                                                <span
+                                                                    key={idx}
+                                                                    className="text-[10px] font-bold text-white uppercase tracking-tight bg-gray-800 px-1.5 py-0.5 rounded"
+                                                                >
+                                                                    {app.comprobantes?.nro_factura}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     ) : (
-                                                        <span
-                                                            className="text-xs font-bold text-emerald-400 uppercase tracking-tight cursor-help"
-                                                            title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está"
-                                                        >
-                                                            {mov.concepto || 'Sin concepto'}
-                                                        </span>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-bold text-emerald-400 uppercase tracking-tight">
+                                                                {mov.concepto || 'Sin concepto'}
+                                                            </span>
+                                                            {mov.observaciones && mov.observaciones !== mov.concepto && (
+                                                                <span className="text-[10px] text-gray-500 italic truncate max-w-[200px]">
+                                                                    {mov.observaciones}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>

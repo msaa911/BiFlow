@@ -40,8 +40,8 @@ export function InvoiceImportPreviewModal({
 }: InvoiceImportPreviewModalProps) {
     const [isProcessing, setIsProcessing] = useState(false)
     const [editingRowId, setEditingRowId] = useState<string | null>(null)
-    const [socios, setSocios] = useState<any[]>([])
-    const [searchingSocio, setSearchingSocio] = useState(false)
+    const [entidades, setEntidades] = useState<any[]>([])
+    const [searchingEntidad, setSearchingEntidad] = useState(false)
 
     const validCount = data.filter((d: any) => d.isValid).length
     const errorCount = data.filter((d: any) => d.errors?.length > 0).length
@@ -70,7 +70,7 @@ export function InvoiceImportPreviewModal({
             warnings.push('Sin Número')
         }
         if (isNaN(row.monto_total) || row.monto_total <= 0) errors.push('Monto Inválido')
-        if (!row.entidad_id && !row.cuit_socio && !row.razon_social_socio) errors.push('Falta Socio')
+        if (!row.entidad_id && !row.cuit_entidad && !row.razon_social_entidad) errors.push('Falta Entidad')
 
         row.errors = errors
         row.warnings = warnings
@@ -83,9 +83,9 @@ export function InvoiceImportPreviewModal({
         onRowUpdate(validateRow(updatedRow))
     }
 
-    const searchSocios = async (term: string) => {
+    const searchEntidades = async (term: string) => {
         if (term.length < 2) return
-        setSearchingSocio(true)
+        setSearchingEntidad(true)
         const supabase = createClient()
         const { data } = await supabase
             .from('entidades')
@@ -93,8 +93,8 @@ export function InvoiceImportPreviewModal({
             .eq('organization_id', orgId)
             .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
             .limit(5)
-        if (data) setSocios(data)
-        setSearchingSocio(false)
+        if (data) setEntidades(data)
+        setSearchingEntidad(false)
     }
 
     return (
@@ -141,13 +141,14 @@ export function InvoiceImportPreviewModal({
                             <thead className="bg-gray-900 border-b border-gray-800 sticky top-0 z-20">
                                 <tr>
                                     <th className="px-4 py-3 font-bold text-gray-500 w-12 sticky top-0 z-20 bg-gray-900">#</th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 w-40 sticky top-0 z-20 bg-gray-900">Fecha</th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 sticky top-0 z-20 bg-gray-900">
+                                    <th className="px-4 py-3 font-bold text-gray-500 w-32 sticky top-0 z-20 bg-gray-900">Fecha</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 min-w-[180px] sticky top-0 z-20 bg-gray-900">
                                         {type === 'factura_venta' ? 'Cliente' : 'Proveedor'} / CUIT
                                     </th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 w-40 sticky top-0 z-20 bg-gray-900">Número</th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 text-right w-32 sticky top-0 z-20 bg-gray-900">Monto</th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 text-center w-32 sticky top-0 z-20 bg-gray-900">Estado</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 min-w-[150px] sticky top-0 z-20 bg-gray-900">Concepto / Descripción</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 w-32 sticky top-0 z-20 bg-gray-900">Número</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 text-right w-28 sticky top-0 z-20 bg-gray-900">Monto</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 text-center w-28 sticky top-0 z-20 bg-gray-900">Estado</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
@@ -172,36 +173,44 @@ export function InvoiceImportPreviewModal({
                                                     <Input
                                                         placeholder={`Buscar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`}
                                                         className="h-7 bg-gray-900 border-gray-800 pl-7 text-[10px]"
-                                                        onChange={(e) => searchSocios(e.target.value)}
+                                                        onChange={(e) => searchEntidades(e.target.value)}
                                                     />
                                                 </div>
                                                 <Select
                                                     value={row.entidad_id}
                                                     onValueChange={(v) => {
-                                                        const s = socios.find(socio => socio.id === v)
+                                                        const s = entidades.find(e => e.id === v)
                                                         if (s) {
                                                             const updated = {
                                                                 ...row,
                                                                 entidad_id: s.id,
-                                                                razon_social_socio: s.razon_social,
-                                                                cuit_socio: s.cuit
+                                                                razon_social_entidad: s.razon_social,
+                                                                cuit_entidad: s.cuit
                                                             }
                                                             onRowUpdate(validateRow(updated))
                                                         }
                                                     }}
                                                 >
                                                     <SelectTrigger className="h-7 bg-gray-950 border-gray-800 text-[10px]">
-                                                        <SelectValue placeholder={row.razon_social_socio || "Seleccionar..."} />
+                                                        <SelectValue placeholder={row.razon_social_entidad || "Seleccionar..."} />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                                        {socios.map(s => (
-                                                            <SelectItem key={s.id} value={s.id} className="text-[10px]">
-                                                                {s.razon_social} ({s.cuit})
+                                                        {entidades.map(e => (
+                                                            <SelectItem key={e.id} value={e.id} className="text-[10px]">
+                                                                {e.razon_social} ({e.cuit})
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <Input
+                                                value={row.concepto || ''}
+                                                placeholder="Ej: Honorarios..."
+                                                onChange={(e) => handleFieldChange(row, 'concepto', e.target.value)}
+                                                className="h-8 bg-gray-900 border-gray-800 text-[10px]"
+                                            />
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="relative">

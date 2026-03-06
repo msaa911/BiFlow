@@ -51,13 +51,14 @@ interface Instrument {
 export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }: TreasuryManualEntryProps) {
     const [step, setStep] = useState(1)
     const [loading, setLoading] = useState(false)
-    const [socios, setSocios] = useState<any[]>([])
-    const [searchingSocio, setSearchingSocio] = useState(false)
+    const [entidades, setEntidades] = useState<any[]>([])
+    const [searchingEntidad, setSearchingEntidad] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const [selectedSocio, setSelectedSocio] = useState<any>(null)
+    const [selectedEntidad, setSelectedEntidad] = useState<any>(null)
 
     const [pendingInvoices, setPendingInvoices] = useState<any[]>([])
     const [selectedInvoices, setSelectedInvoices] = useState<Record<string, number>>({}) // id -> monto a aplicar
+    const [customConcept, setCustomConcept] = useState('')
 
     const [instruments, setInstruments] = useState<Instrument[]>([
         {
@@ -74,10 +75,11 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
     useEffect(() => {
         if (isOpen) {
             setStep(1)
-            setSelectedSocio(null)
+            setSelectedEntidad(null)
             setSearchQuery('')
-            setSocios([]) // Clear previous results
+            setEntidades([]) // Clear previous results
             setSelectedInvoices({})
+            setCustomConcept('')
             setInstruments([{
                 id: '1',
                 metodo: 'efectivo',
@@ -86,14 +88,14 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                 detalle_referencia: '',
                 fecha_disponibilidad: new Date().toISOString().split('T')[0]
             }])
-            fetchInitialSocios()
+            fetchInitialEntities()
         }
     }, [isOpen])
 
-    async function fetchInitialSocios() {
+    async function fetchInitialEntities() {
         const supabase = createClient()
         const targetCat = tipo === 'cobro' ? 'cliente' : 'proveedor'
-        setSearchingSocio(true)
+        setSearchingEntidad(true)
         const { data } = await supabase
             .from('entidades')
             .select('*')
@@ -102,16 +104,16 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
             .order('razon_social', { ascending: true })
             .limit(10)
 
-        if (data) setSocios(data)
-        setSearchingSocio(false)
+        if (data) setEntidades(data)
+        setSearchingEntidad(false)
     }
 
-    // Load invoices when socio is selected
+    // Load invoices when entidad is selected
     useEffect(() => {
-        if (selectedSocio) {
+        if (selectedEntidad) {
             fetchInvoices()
         }
-    }, [selectedSocio])
+    }, [selectedEntidad])
 
     async function fetchInvoices() {
         const supabase = createClient()
@@ -124,7 +126,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
             .from('comprobantes')
             .select('*')
             .eq('organization_id', orgId)
-            .eq('entidad_id', selectedSocio.id)
+            .eq('entidad_id', selectedEntidad.id)
             .neq('estado', 'pagado')
             .order('fecha_vencimiento', { ascending: true })
 
@@ -181,11 +183,11 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                 .from('movimientos_tesoreria')
                 .insert({
                     organization_id: orgId,
-                    entidad_id: selectedSocio.id,
+                    entidad_id: selectedEntidad.id,
                     tipo: tipo,
                     fecha: new Date().toISOString().split('T')[0],
                     monto_total: totalInstruments,
-                    concepto: `Pago/Cobro manual - ${selectedSocio.razon_social}`,
+                    concepto: customConcept || `${tipo === 'cobro' ? 'Recibo' : 'Orden de Pago'} manual - ${selectedEntidad.razon_social}`,
                     observaciones: Object.keys(selectedInvoices).length > 0
                         ? `Aplica a ${Object.keys(selectedInvoices).length} comprobantes`
                         : 'Pago a cuenta'
@@ -272,10 +274,10 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                         <div className="p-6">
                             {step === 1 ? (
                                 <div className="space-y-6">
-                                    {/* Socio Selection */}
+                                    {/* Entidad Selection */}
                                     <div className="space-y-3">
                                         <Label className="text-xs font-bold uppercase text-gray-500">Seleccionar {tipo === 'cobro' ? 'Cliente' : 'Proveedor'}</Label>
-                                        {!selectedSocio ? (
+                                        {!selectedEntidad ? (
                                             <div className="relative">
                                                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
                                                 <Input
@@ -287,14 +289,14 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                         setSearchQuery(term)
 
                                                         if (term.length < 2) {
-                                                            if (term.length === 0) fetchInitialSocios()
-                                                            else setSocios([])
+                                                            if (term.length === 0) fetchInitialEntities()
+                                                            else setEntidades([])
                                                             return
                                                         }
 
                                                         const supabase = createClient()
                                                         const targetCat = tipo === 'cobro' ? 'cliente' : 'proveedor'
-                                                        setSearchingSocio(true)
+                                                        setSearchingEntidad(true)
                                                         const { data } = await supabase
                                                             .from('entidades')
                                                             .select('*')
@@ -302,28 +304,28 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                             .in('categoria', [targetCat, 'ambos'])
                                                             .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
                                                             .limit(10)
-                                                        if (data) setSocios(data)
-                                                        setSearchingSocio(false)
+                                                        if (data) setEntidades(data)
+                                                        setSearchingEntidad(false)
                                                     }}
                                                     onFocus={() => {
-                                                        if (searchQuery.length === 0 && socios.length === 0) {
-                                                            fetchInitialSocios()
+                                                        if (searchQuery.length === 0 && entidades.length === 0) {
+                                                            fetchInitialEntities()
                                                         }
                                                     }}
                                                 />
-                                                {socios.length > 0 && !selectedSocio && (
-                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-emerald-500/30 rounded-lg shadow-2xl z-50 overflow-hidden max-h-[250px] overflow-y-auto">
+                                                {entidades.length > 0 && !selectedEntidad && (
+                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-950 border border-emerald-500/30 rounded-lg shadow-2xl z-50 overflow-hidden max-h-[250px] overflow-y-auto">
                                                         <div className="p-2.5 bg-gray-950 border-b border-gray-800 text-[9px] uppercase font-bold text-gray-500 flex justify-between items-center sticky top-0 z-10">
                                                             <span>{searchQuery.length >= 2 ? 'Resultados de búsqueda' : 'Seleccione una entidad'}</span>
-                                                            <span className="text-emerald-500">{socios.length} hallados</span>
+                                                            <span className="text-emerald-500">{entidades.length} hallados</span>
                                                         </div>
-                                                        {socios.map(s => (
+                                                        {entidades.map(s => (
                                                             <div
                                                                 key={s.id}
                                                                 className="p-3 hover:bg-emerald-500/10 cursor-pointer flex justify-between items-center border-b border-gray-800 last:border-0 transition-colors"
                                                                 onClick={() => {
-                                                                    setSelectedSocio(s)
-                                                                    setSocios([])
+                                                                    setSelectedEntidad(s)
+                                                                    setEntidades([])
                                                                     setSearchQuery('')
                                                                 }}
                                                             >
@@ -344,19 +346,35 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                         <FileText className="w-5 h-5 text-emerald-400" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-white">{selectedSocio.razon_social}</p>
-                                                        <p className="text-xs text-gray-500">CUIT: {selectedSocio.cuit}</p>
+                                                        <p className="font-bold text-white">{selectedEntidad.razon_social}</p>
+                                                        <p className="text-xs text-gray-500">CUIT: {selectedEntidad.cuit}</p>
                                                     </div>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={() => setSelectedSocio(null)} className="text-[10px] font-bold uppercase text-red-400 hover:text-red-300">
+                                                <Button variant="ghost" size="sm" onClick={() => setSelectedEntidad(null)} className="text-[10px] font-bold uppercase text-red-400 hover:text-red-300">
                                                     Cambiar
                                                 </Button>
                                             </div>
                                         )}
                                     </div>
 
+                                    {/* Custom Concept */}
+                                    {selectedEntidad && (
+                                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <Label className="text-xs font-bold uppercase text-gray-500">Concepto / Referencia</Label>
+                                            <div className="relative">
+                                                <Plus className="absolute left-3 top-2.5 w-4 h-4 text-emerald-500/50" />
+                                                <Input
+                                                    placeholder={`Ej: ${tipo === 'cobro' ? 'Cobro anticipado' : 'Pago de servicios'}...`}
+                                                    className="bg-gray-900 border-gray-800 pl-9 text-sm"
+                                                    value={customConcept}
+                                                    onChange={(e) => setCustomConcept(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Invoices List */}
-                                    {selectedSocio && (
+                                    {selectedEntidad && (
                                         <div className="space-y-4 pt-2">
                                             <div className="flex justify-between items-end">
                                                 <div className="space-y-1">
@@ -407,7 +425,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                     <div className="p-5 bg-gray-900/50 border border-gray-800 rounded-xl mb-6 flex justify-between items-center bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/5 via-transparent to-transparent">
                                         <div className="space-y-1">
                                             <p className="text-xs uppercase font-bold text-gray-500 tracking-wider">Resumen de Imputación</p>
-                                            <p className="text-lg font-bold text-white tracking-tight">{selectedSocio?.razon_social}</p>
+                                            <p className="text-lg font-bold text-white tracking-tight">{selectedEntidad?.razon_social}</p>
                                         </div>
                                         <div className="text-right space-y-1">
                                             <p className="text-xs uppercase font-bold text-gray-400 tracking-wider">Total a Cubrir</p>
@@ -549,7 +567,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                     Cancelar
                                 </Button>
                                 <Button
-                                    disabled={!selectedSocio || totalSelected <= 0}
+                                    disabled={!selectedEntidad || totalSelected <= 0}
                                     onClick={() => setStep(2)}
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold gap-2"
                                 >

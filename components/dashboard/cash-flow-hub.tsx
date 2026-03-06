@@ -257,7 +257,7 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                                                 }`}
                                         >
                                             <div className="min-w-0">
-                                                <p className="text-[10px] font-bold text-gray-200 truncate">{inv.razon_social_socio}</p>
+                                                <p className="text-[10px] font-bold text-gray-200 truncate">{inv.razon_social_entidad || inv.razon_social_socio}</p>
                                                 <p className="text-[9px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
                                             </div>
                                             <p className={`text-[10px] font-black whitespace-nowrap ${isExcluded ? 'text-gray-500 line-through' : 'text-white'}`}>
