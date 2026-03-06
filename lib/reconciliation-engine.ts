@@ -181,12 +181,14 @@ export class ReconciliationEngine {
                     return isCobro ? movType === 'cobro' : movType === 'pago';
                 });
 
+                console.log(`[RECONCILIATION] Testing ${targetMovements.length} target movements for trans ${trans.id}`);
+
                 // 1-a-1 Exact Movement Match
                 const movementMatch = targetMovements.find((m: any) => {
                     const mAmount = Math.abs(Number(m.monto || 0));
                     const currentAvailable = Math.abs(Number(availableTransAmount || 0));
-                    // Relaxed amount check: ignore decimals / rounding differences up to 1.5
-                    const amountMatches = Math.floor(mAmount) === Math.floor(currentAvailable) || Math.abs(mAmount - currentAvailable) <= 1.5;
+                    // Relaxed amount check: ignore decimals / rounding differences up to 2.0
+                    const amountMatches = Math.floor(mAmount) === Math.floor(currentAvailable) || Math.abs(mAmount - currentAvailable) <= 2.0;
 
                     if (!amountMatches) return false;
 
@@ -242,6 +244,16 @@ export class ReconciliationEngine {
                         return true;
                     }
 
+                    // 2.b Check if nro_comprobante matches
+                    const movNro = mov?.nro_comprobante;
+                    if (movNro) {
+                        const cleanMovNro = this.normalizeReference(movNro);
+                        if (cleanMovNro && cleanMovNro.length >= 4 && transDescClean.includes(cleanMovNro)) {
+                            console.log(`[RECONCILIATION] >> MATCH FOUND: Movement Number Match (${movNro})!`);
+                            return true;
+                        }
+                    }
+
                     // 3. Verificamos si hay referencias de factura vinculadas al movimiento
                     if (mov?.aplicaciones_pago && Array.isArray(mov.aplicaciones_pago)) {
                         for (const app of mov.aplicaciones_pago) {
@@ -266,9 +278,14 @@ export class ReconciliationEngine {
                         return true;
                     }
 
-                    // 4b. Relaxed: Exact Amount match for null references
-                    if (Math.abs(availableTransAmount - mAmount) < 0.05 && (!m.detalle_referencia || m.detalle_referencia === '')) {
-                        console.log(`[RECONCILIATION] >> MATCH FOUND: Exact Amount Match for NULL Reference!`);
+                    // 4b. Relaxed: Near Amount match ($2.0 tolerance)
+                    // If no ref match was found, but amount is very close, we match it
+                    // especially if the existing reference looks like an internal auto-generated ID (REC-, OP-, FAC-)
+                    const internalRefPrefixes = ['REC-', 'OP-', 'FAC-'];
+                    const isInternalRef = !m.detalle_referencia || internalRefPrefixes.some(p => m.detalle_referencia.startsWith(p));
+
+                    if (Math.abs(availableTransAmount - mAmount) <= 2.0 && isInternalRef) {
+                        console.log(`[RECONCILIATION] >> MATCH FOUND: Near Amount Match ($${Math.abs(availableTransAmount - mAmount).toFixed(2)}) for Internal/Null Reference!`);
                         return true;
                     }
 
@@ -509,8 +526,8 @@ export class ReconciliationEngine {
             const state = `${index} -${currentSum.toFixed(2)} `;
             if (memo.has(state)) return memo.get(state) || null;
 
-            if (Math.abs(currentSum - target) < 0.05) return selected;
-            if (index >= n || currentSum > target + 0.05) return null;
+            if (Math.abs(currentSum - target) <= 2.0) return selected;
+            if (index >= n || currentSum > target + 2.0) return null;
 
             // Option 1: Include item
             const withItem = backtrack(index + 1, currentSum + Number(items[index][amountField] || 0), [...selected, items[index]]);
@@ -575,8 +592,8 @@ export class ReconciliationEngine {
                 // If amount_pending is null, assume total amount
                 const pending = Math.abs(inv.monto_pendiente !== null ? Number(inv.monto_pendiente) : Number(inv.monto_total || 0));
 
-                // Match amount (Relaxed: ignore decimals / rounding differences up to 1.5)
-                if (Math.floor(pending) !== Math.floor(movAmount) && Math.abs(pending - movAmount) > 1.5) return false;
+                // Match amount (Relaxed: ignore decimals / rounding differences up to 2.0)
+                if (Math.floor(pending) !== Math.floor(movAmount) && Math.abs(pending - movAmount) > 2.0) return false;
 
                 const nroFactura = (inv.nro_factura || '').toUpperCase();
                 if (!nroFactura) return false;
@@ -590,7 +607,7 @@ export class ReconciliationEngine {
             });
 
             if (matchingInvoice) {
-                console.log(`[RECONCILIATION] >> ADMIN MATCH FOUND: Mov ${mov.id} ($${movAmount}) -> Inv ${matchingInvoice.id} (${matchingInvoice.numero})`);
+                console.log(`[RECONCILIATION] >> ADMIN MATCH FOUND: Mov ${mov.id} ($${movAmount}) -> Inv ${matchingInvoice.id} (${matchingInvoice.nro_factura})`);
 
                 try {
                     // 1. Create Application
@@ -608,7 +625,7 @@ export class ReconciliationEngine {
                     // 2. Update Invoice Status
                     const currentPending = Math.abs(matchingInvoice.monto_pendiente !== null ? Number(matchingInvoice.monto_pendiente) : Number(matchingInvoice.monto_total || 0));
                     const newMontoPendiente = Math.max(0, currentPending - movAmount);
-                    const isFullyPaid = newMontoPendiente <= 0.05;
+                    const isFullyPaid = newMontoPendiente <= 2.0;
 
                     // Administrative phase marks as 'pagado' (for AR/AP sync)
                     // The 'conciliado' state is reserved for Bank Sync
