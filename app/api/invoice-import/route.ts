@@ -54,7 +54,10 @@ export async function POST(request: Request) {
 
         // 3. Insert comprobantes with link (Filtering duplicates)
         const compsToInsert = comprobantes
-            .filter((inv: any) => !existSet.has(`${inv.tipo}_${inv.numero}_${inv.cuit_socio}`))
+            .filter((inv: any) => {
+                const cuit = inv.cuit_entidad || inv.cuit_socio;
+                return !existSet.has(`${inv.tipo}_${inv.numero}_${cuit}`);
+            })
             .map((inv: any) => {
                 // Helper interno para normalizar las fechas que llegan desde el modal
                 const nDate = (d: string) => {
