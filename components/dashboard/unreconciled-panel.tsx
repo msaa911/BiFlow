@@ -342,7 +342,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             // Update local state to reflect conciliation immediately in UI
             setCategorizedTxIds(prev => [...prev, selectedTx.id])
             selectedTx.estado = 'conciliado'
-            selectedTx.movimiento_id = movimiento.id
+            selectedTx.movimiento_id = null // Bypassing Treasury Movement
+            selectedTx.comprobante_id = voucher.id
             selectedTx.concepto = category
 
             toast.success(`${claseDoc} generada y registrada en bancos`)
