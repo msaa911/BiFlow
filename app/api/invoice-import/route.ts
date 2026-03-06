@@ -87,7 +87,6 @@ export async function POST(request: Request) {
                     fecha_emision: nDate(inv.fecha_emision),
                     fecha_vencimiento: nDate(inv.fecha_vencimiento) || nDate(inv.fecha_emision),
                     nro_factura: invoiceNumber,
-                    numero: invoiceNumber, // Sync both columns
                     monto_total: inv.monto_total,
                     monto_pendiente: inv.monto_pendiente,
                     estado: inv.estado || 'pendiente',

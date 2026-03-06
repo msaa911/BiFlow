@@ -176,7 +176,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 razon_social_entidad: selectedEntidad.razon_social,
                 nombre_entidad: selectedEntidad.razon_social,
                 tipo: formData.tipo,
-                numero: formData.numero || null,
                 nro_factura: formData.numero || null,
                 monto_total: formData.monto_total,
                 monto_pendiente: formData.condicion === 'contado' ? 0 : (invoice?.monto_pendiente ?? formData.monto_total),
