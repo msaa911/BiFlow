@@ -170,16 +170,17 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                                             <td className="px-6 py-4 font-bold text-emerald-400">{note.nro_factura}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-white">{note.entidades?.razon_social || 'Varias / Otros'}</span>
-                                                    <span className="text-[10px] text-gray-500 truncate max-w-[200px]">{tx?.descripcion || 'Sin descripción'}</span>
+                                                    <span className="font-bold text-white text-xs uppercase tracking-tight">{note.concepto || tx?.categoria || 'Sin concepto'}</span>
+                                                    <span className="text-[10px] text-emerald-400 font-medium italic">{note.entidades?.razon_social || 'Varias / Otros'}</span>
+                                                    <span className="text-[9px] text-gray-500 truncate max-w-[250px]">{tx?.descripcion || 'Sin descripción'}</span>
                                                 </div>
                                             </td>
                                             <td className={`px-6 py-4 text-right font-black tabular-nums ${note.tipo === 'ndb_bancaria' ? 'text-red-400' : 'text-emerald-400'}`}>
                                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(note.monto_total)}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[9px] uppercase font-black tracking-tighter">
-                                                    Pagado
+                                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] uppercase font-black tracking-tighter">
+                                                    Conciliado
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()}>

@@ -235,7 +235,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
         }
 
         const searchMatch = (inv.razon_social_socio || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (inv.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (inv.nro_factura || inv.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (inv.cuit_socio || '').toLowerCase().includes(searchTerm.toLowerCase())
 
         return typeMatch && searchMatch
@@ -403,7 +403,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                 <td className="px-6 py-3">
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="text-white truncate max-w-[150px] text-xs" title={inv.concepto || inv.numero}>{inv.concepto || (inv.numero || 'Sin Número')}</span>
+                                            <span className="text-white truncate max-w-[150px] text-xs font-bold" title={inv.concepto || (inv.nro_factura || inv.numero)}>{inv.concepto || (inv.nro_factura || inv.numero || 'Sin Número')}</span>
                                             {inv.tipo === 'nota_credito' && <Badge className="bg-red-500/20 text-red-500 border-red-500/30 text-[8px] px-1 h-3.5">NC</Badge>}
                                             {inv.tipo === 'nota_debito' && <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[8px] px-1 h-3.5">ND</Badge>}
                                         </div>
@@ -618,7 +618,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     tipo: inv.tipo_documento === 'factura' ? (view === 'AR' ? 'factura_venta' : 'factura_compra') : inv.tipo_documento,
                                     fecha_emision: safeDate(inv.fecha_emision),
                                     fecha_vencimiento: safeDate(inv.fecha_vencimiento || inv.fecha_emision),
-                                    numero: inv.numero,
+                                    nro_factura: inv.numero,
                                     monto_total: inv.monto_total,
                                     monto_pendiente: inv.condicion === 'contado' ? 0 : inv.monto_total,
                                     estado: inv.condicion === 'contado' ? 'pagado' : 'pendiente',

@@ -306,12 +306,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     fecha_vencimiento: selectedTx.fecha,
                     monto_total: totalMonto,
                     monto_pendiente: 0,
-                    estado: 'pagado',
+                    estado: 'conciliado', // Set to conciliado directly!
+                    condicion: 'contado',   // Direct impact, no current account
+                    concepto: category,     // Essential for visibility
                     moneda: 'ARS',
                     metadata: {
                         ...metadata,
                         is_direct_bank_note: true,
-                        bank_transaction_id: selectedTx.id
+                        bank_transaction_id: selectedTx.id,
+                        categoria_principal: category
                     }
                 })
                 .select()
