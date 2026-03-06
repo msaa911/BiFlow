@@ -47,10 +47,10 @@ export async function POST(request: Request) {
         // 2. DUPLICATE PREVENTION: Fetch existing invoices to filter
         const { data: existing } = await admin
             .from('comprobantes')
-            .select('numero, cuit_socio, tipo')
+            .select('nro_factura, cuit_socio, tipo')
             .eq('organization_id', orgId);
 
-        const existSet = new Set(existing?.map(e => `${e.tipo}_${e.numero}_${e.cuit_socio}`) || []);
+        const existSet = new Set(existing?.map(e => `${e.tipo}_${e.nro_factura}_${e.cuit_socio}`) || []);
 
         // 3. Insert comprobantes with link (Filtering duplicates)
         const compsToInsert = comprobantes
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
                     tipo: inv.tipo,
                     fecha_emision: nDate(inv.fecha_emision),
                     fecha_vencimiento: nDate(inv.fecha_vencimiento) || nDate(inv.fecha_emision),
-                    numero: inv.numero,
+                    nro_factura: inv.numero,
                     monto_total: inv.monto_total,
                     monto_pendiente: inv.monto_pendiente,
                     estado: inv.estado || 'pendiente',

@@ -276,10 +276,10 @@ export async function POST(request: Request) {
                     // DUPLICATE PREVENTION: Fetch existing invoices to filter
                     const { data: existingInvs } = await currentSupabase
                         .from('comprobantes')
-                        .select('numero, cuit_socio, tipo')
+                        .select('nro_factura, cuit_socio, tipo')
                         .eq('organization_id', orgId);
 
-                    const existSet = new Set(existingInvs?.map((e: any) => `${e.tipo}_${e.numero}_${e.cuit_socio}`) || []);
+                    const existSet = new Set(existingInvs?.map((e: any) => `${e.tipo}_${e.nro_factura}_${e.cuit_socio}`) || []);
 
                     const sanitizedComprobantes = transactionsWithLink
                         .filter((t: any) => {
@@ -292,7 +292,7 @@ export async function POST(request: Request) {
                             organization_id: t.organization_id || orgId,
                             archivo_importacion_id: importId,
                             tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
-                            numero: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
+                            nro_factura: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
                             cuit_socio: t.cuit || '00-00000000-0',
                             razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
                             nombre_entidad: t.razon_social || t.descripcion || 'Sin Razón Social',
@@ -387,7 +387,7 @@ export async function POST(request: Request) {
                             organization_id: orgId,
                             entidad_id: firstRow.entidad_id || null,
                             tipo: isCobro ? 'cobro' : 'pago',
-                            numero: num,
+                            nro_comprobante: num,
                             fecha: firstRow.fecha,
                             monto_total: totalMonto,
                             moneda: firstRow.moneda || 'ARS',
@@ -410,7 +410,7 @@ export async function POST(request: Request) {
                             organization_id: orgId,
                             entidad_id: t.entidad_id || null,
                             tipo: isCobro ? 'cobro' : 'pago',
-                            numero: num,
+                            nro_comprobante: num,
                             fecha: t.fecha,
                             monto_total: Math.abs(t.monto),
                             moneda: t.moneda || 'ARS',
