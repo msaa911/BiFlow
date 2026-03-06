@@ -216,8 +216,8 @@ export function InvoiceImportPreviewModal({
                                             <div className="relative">
                                                 <Hash className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
                                                 <Input
-                                                    value={row.numero}
-                                                    onChange={(e) => handleFieldChange(row, 'numero', e.target.value)}
+                                                    value={row.nro_factura}
+                                                    onChange={(e) => handleFieldChange(row, 'nro_factura', e.target.value)}
                                                     className="h-7 bg-gray-900 border-gray-800 pl-7 font-mono text-[10px]"
                                                 />
                                             </div>

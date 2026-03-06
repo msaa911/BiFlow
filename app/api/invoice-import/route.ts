@@ -47,16 +47,17 @@ export async function POST(request: Request) {
         // 2. DUPLICATE PREVENTION: Fetch existing invoices to filter
         const { data: existing } = await admin
             .from('comprobantes')
-            .select('nro_factura, cuit_socio, tipo')
+            .select('nro_factura, numero, cuit_socio, tipo')
             .eq('organization_id', orgId);
 
-        const existSet = new Set(existing?.map(e => `${e.tipo}_${e.nro_factura}_${e.cuit_socio}`) || []);
+        const existSet = new Set(existing?.map(e => `${e.tipo}_${e.nro_factura || e.numero || ''}_${e.cuit_socio}`) || []);
 
         // 3. Insert comprobantes with link (Filtering duplicates)
         const compsToInsert = comprobantes
             .filter((inv: any) => {
                 const cuit = inv.cuit_entidad || inv.cuit_socio;
-                return !existSet.has(`${inv.tipo}_${inv.numero}_${cuit}`);
+                const number = inv.nro_factura || inv.numero || '';
+                return !existSet.has(`${inv.tipo}_${number}_${cuit}`);
             })
             .map((inv: any) => {
                 // Helper interno para normalizar las fechas que llegan desde el modal
@@ -76,6 +77,8 @@ export async function POST(request: Request) {
                     return d;
                 };
 
+                const invoiceNumber = inv.nro_factura || inv.numero || null;
+
                 return {
                     organization_id: orgId,
                     entidad_id: inv.entidad_id || null,
@@ -83,7 +86,8 @@ export async function POST(request: Request) {
                     tipo: inv.tipo,
                     fecha_emision: nDate(inv.fecha_emision),
                     fecha_vencimiento: nDate(inv.fecha_vencimiento) || nDate(inv.fecha_emision),
-                    nro_factura: inv.numero,
+                    nro_factura: invoiceNumber,
+                    numero: invoiceNumber, // Sync both columns
                     monto_total: inv.monto_total,
                     monto_pendiente: inv.monto_pendiente,
                     estado: inv.estado || 'pendiente',

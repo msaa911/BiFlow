@@ -274,7 +274,7 @@ export async function parseInvoiceExcel(file: File): Promise<{ data: any[], erro
                         fecha_vencimiento: fechaVencimiento || fechaEmision,
                         cuit_entidad: cuit,
                         razon_social_entidad: razonSocial,
-                        numero,
+                        nro_factura: numero,
                         monto_total: monto,
                         condicion: condicion,
                         tipo_documento: tipoDocumento,

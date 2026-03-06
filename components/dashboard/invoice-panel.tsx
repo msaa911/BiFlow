@@ -628,7 +628,8 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     tipo: inv.tipo_documento === 'factura' ? (view === 'AR' ? 'factura_venta' : 'factura_compra') : inv.tipo_documento,
                                     fecha_emision: safeDate(inv.fecha_emision),
                                     fecha_vencimiento: safeDate(inv.fecha_vencimiento || inv.fecha_emision),
-                                    nro_factura: inv.numero,
+                                    nro_factura: inv.nro_factura,
+                                    numero: inv.nro_factura, // Maintain 'numero' for backend logic compatibility
                                     monto_total: inv.monto_total,
                                     monto_pendiente: inv.condicion === 'contado' ? 0 : inv.monto_total,
                                     estado: inv.condicion === 'contado' ? 'pagado' : 'pendiente',
@@ -636,7 +637,6 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     moneda: inv.moneda || 'ARS',
                                     razon_social_socio: inv.razon_social_entidad,
                                     cuit_socio: inv.cuit_entidad,
-                                    numero: inv.numero,
                                     concepto: inv.concepto
                                 }))
                             })
