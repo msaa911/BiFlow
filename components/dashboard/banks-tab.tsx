@@ -53,6 +53,12 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
         return true
     })
 
+    const counts = {
+        all: initialTransactions.length,
+        pending: initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length,
+        reconciled: initialTransactions.filter(t => t.estado === 'conciliado').length
+    }
+
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
             setSelectedTxIds(new Set(filteredTx.map(t => t.id)))
@@ -305,9 +311,9 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
 
                         <div className="flex bg-gray-950 p-1 rounded-xl border border-gray-800 w-fit">
                             {[
-                                { id: 'all', label: 'TODOS', color: 'emerald' },
-                                { id: 'pending', label: 'PENDIENTES', color: 'amber' },
-                                { id: 'reconciled', label: 'CONCILIADOS', color: 'blue' }
+                                { id: 'all', label: 'TODOS', color: 'emerald', count: counts.all },
+                                { id: 'pending', label: 'PENDIENTES', color: 'amber', count: counts.pending },
+                                { id: 'reconciled', label: 'CONCILIADOS', color: 'blue', count: counts.reconciled }
                             ].map((f) => (
                                 <button
                                     key={f.id}
@@ -317,7 +323,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                         : 'text-gray-500 hover:text-gray-300'
                                         }`}
                                 >
-                                    {f.label}
+                                    {f.label} ({f.count})
                                 </button>
                             ))}
                         </div>

@@ -473,7 +473,7 @@ export class ReconciliationEngine {
             }
         }
 
-        console.log(`[RECONCILIATION] Finished. Admin Matched: ${adminMatches}. Bank Matched: ${matchedCount}. Total Results: ${results.length}`);
+        console.log(`[RECONCILIATION] Finished. Admin Matched: ${adminMatches}. Bank Matched: ${matchedCount}. Total Results: ${results.length} `);
         return { matched: matchedCount + adminMatches, actions: results };
     }
 
@@ -506,7 +506,7 @@ export class ReconciliationEngine {
         const memo = new Map<string, any[] | null>();
 
         function backtrack(index: number, currentSum: number, selected: any[]): any[] | null {
-            const state = `${index}-${currentSum.toFixed(2)}`;
+            const state = `${index} -${currentSum.toFixed(2)} `;
             if (memo.has(state)) return memo.get(state) || null;
 
             if (Math.abs(currentSum - target) < 0.05) return selected;
@@ -529,7 +529,7 @@ export class ReconciliationEngine {
     }
 
     private static async matchAdministrative(supabase: any, organizationId: string): Promise<number> {
-        console.log(`[RECONCILIATION] Starting Administrative Phase (Invoices <-> Receipts/OP)`);
+        console.log(`[RECONCILIATION] Starting Administrative Phase(Invoices < -> Receipts / OP)`);
         const adminSupabase = createAdminClient();
         let matched = 0;
 
@@ -603,7 +603,7 @@ export class ReconciliationEngine {
                             monto_aplicado: movAmount // Correct column name is monto_aplicado
                         });
 
-                    if (appError) throw new Error(`Insert Application: ${appError.message}`);
+                    if (appError) throw new Error(`Insert Application: ${appError.message} `);
 
                     // 2. Update Invoice Status
                     const currentPending = Math.abs(matchingInvoice.monto_pendiente !== null ? Number(matchingInvoice.monto_pendiente) : Number(matchingInvoice.monto_total || 0));
@@ -622,18 +622,18 @@ export class ReconciliationEngine {
                         })
                         .eq('id', matchingInvoice.id);
 
-                    if (compError) throw new Error(`Update Invoice: ${compError.message}`);
+                    if (compError) throw new Error(`Update Invoice: ${compError.message} `);
 
                     // Update local object to avoid double matching
                     matchingInvoice.monto_pendiente = newMontoPendiente;
                     matched++;
                 } catch (e: any) {
-                    console.error(`[RECONCILIATION] Error applying admin match for mov ${mov.id}:`, e.message);
+                    console.error(`[RECONCILIATION] Error applying admin match for mov ${mov.id}: `, e.message);
                 }
             }
         }
 
-        console.log(`[RECONCILIATION] Administrative Phase Completed. Links created: ${matched}`);
+        console.log(`[RECONCILIATION] Administrative Phase Completed.Links created: ${matched} `);
         return matched;
     }
 
