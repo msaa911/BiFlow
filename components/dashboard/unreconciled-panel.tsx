@@ -57,32 +57,19 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     ]
 
     const [isConciliating, setIsConciliating] = useState(false)
-    const [availableInvoices, setAvailableInvoices] = useState<any[]>([])
-    const [loadingInvoices, setLoadingInvoices] = useState(false)
-    const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
-    const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
     const [globalAiSuggestions, setGlobalAiSuggestions] = useState<any[]>([])
     const [suggestedMovements, setSuggestedMovements] = useState<any[]>([])
     const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([])
-    const [isFiltered, setIsFiltered] = useState(false)
-    const [showAllInvoices, setShowAllInvoices] = useState(false)
-    const [allFetchedInvoices, setAllFetchedInvoices] = useState<any[]>([])
+    const [loadingInvoices, setLoadingInvoices] = useState(false)
+
+    // Residuals and mixed payments
     const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
     const [residualCategory, setResidualCategory] = useState('Gastos Bancarios')
-    const [showInvoicesSection, setShowInvoicesSection] = useState(false)
 
     // Mixed Payment States
     const [secondaryPaymentEnabled, setSecondaryPaymentEnabled] = useState(false)
     const [secondaryPaymentMethod, setSecondaryPaymentMethod] = useState<'efectivo' | 'cheque' | 'retencion'>('efectivo')
     const [secondaryCheckData, setSecondaryCheckData] = useState({ numero: '', banco: '', vencimiento: '' })
-
-    // Quick Load States
-    const [isQuickLoading, setIsQuickLoading] = useState(false)
-    const [entities, setEntities] = useState<any[]>([])
-    const [loadingEntities, setLoadingEntities] = useState(false)
-    const [searchEntity, setSearchEntity] = useState('')
-    const [selectedEntityId, setSelectedEntityId] = useState('')
-    const [invoiceNumber, setInvoiceNumber] = useState('')
 
     // Split States
     const [isSplitting, setIsSplitting] = useState(false)
@@ -106,566 +93,107 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         fetchGlobalSuggestions()
     }, [])
 
-    const fetchEntities = async () => {
-        setLoadingEntities(true)
-        try {
-            const { data, error } = await supabase
-                .from('entidades')
-                .select('*')
-                .eq('organization_id', (transactions[0] as any)?.organization_id)
-                .order('razon_social', { ascending: true })
-
-            if (error) throw error
-            setEntities(data || [])
-        } catch (error) {
-            console.error('Error fetching entities:', error)
-        } finally {
-            setLoadingEntities(false)
-        }
-    }
-
     const fetchInvoicesAndSuggestions = async (txToMatch: Transaction) => {
         setLoadingInvoices(true)
-        setSelectedInvoiceIds([])
-        setAiSuggestions([])
-        setIsFiltered(false)
         try {
             const orgId = (transactions[0] as any)?.organization_id
-            const typeFilter = txToMatch.monto > 0 ? 'factura_venta' : 'factura_compra'
             const txAmount = Math.abs(txToMatch.monto)
-            const desc = txToMatch.descripcion.toUpperCase()
 
-            // 1. Fetch Invoices
-            const { data: invoices, error: invError } = await supabase
-                .from('comprobantes')
-                .select('*')
-                .eq('organization_id', orgId)
-                .in('estado', ['pendiente', 'parcial'])
-                .in('tipo', txToMatch.monto > 0 ? ['factura_venta', 'nota_debito', 'ingreso_vario'] : ['factura_compra', 'nota_credito', 'egreso_vario'])
-                .order('fecha_vencimiento', { ascending: true })
 
-            if (invError) throw invError
-
-            let activeInvoices = invoices || []
-            setAllFetchedInvoices(activeInvoices)
-
-            // Extract meaningful words from description (e.g., "CONSTRUCTORA DEL SUR")
-            const skipWords = ['ACREDITACION', 'TRANSFERENCIA', 'REF', 'TRF-', 'PAGO', 'COBRO', 'ESTO', 'TEST-']
-            const words = desc.split(/\s+/).filter(w => w.length > 3 && !skipWords.some(s => w.includes(s)))
-
-            if (!showAllInvoices && activeInvoices.length > 0 && words.length > 0) {
-                // Try to see if any invoice belongs to an entity mentioned in the description
-                const filtered = activeInvoices.filter(inv => {
-                    const razonSocial = (inv.razon_social_socio || '').toUpperCase()
-                    return words.some(word => razonSocial.includes(word))
-                })
-
-                // If we found specific matches, we ONLY show those to avoid clutter
-                if (filtered.length > 0) {
-                    activeInvoices = filtered
-                    setIsFiltered(true)
-                }
-            }
-
-            setAvailableInvoices(activeInvoices)
-
-            // 2. Fetch Orphan Movements (Recibos/OPs already created but unlinked)
-            const { data: linkedTx } = await supabase.from('transacciones').select('movimiento_id').not('movimiento_id', 'is', null)
-            const linkedIds = new Set(linkedTx?.map(t => t.movimiento_id) || [])
+            // 2. Fetch Treasury Movements (Recibos/OPs) already created but unlinked to any transaction
+            const { data: linkedTxData } = await supabase.from('transacciones').select('movimiento_id').not('movimiento_id', 'is', null)
+            const linkedMovIds = linkedTxData?.map(t => t.movimiento_id).filter(Boolean) || []
 
             const { data: instruments, error: insError } = await supabase
                 .from('instrumentos_pago')
                 .select('*, movimientos_tesoreria(*, entidades(razon_social), aplicaciones_pago(comprobantes(nro_factura, tipo)))')
                 .eq('organization_id', orgId)
-                .lte('monto', txAmount * 1.2) // Increased tolerance to 20% for manual suggestions
+                // Filter by type: match bank inflow (cobro) or outflow (pago)
+                .filter('movimientos_tesoreria.tipo', 'eq', txToMatch.monto > 0 ? 'cobro' : 'pago')
 
             if (!insError && instruments) {
-                let unlinkedMovs = instruments
-                    .filter(ins => !linkedIds.has(ins.movimiento_id))
-                    .filter(ins => {
-                        const isIngreso = txToMatch.monto > 0
-                        return isIngreso ? ins.movimientos_tesoreria?.tipo === 'cobro' : ins.movimientos_tesoreria?.tipo === 'pago'
-                    })
+                // Filter out those already linked
+                const unlinkedMovs = instruments.filter(ins => !linkedMovIds.includes(ins.movimiento_id))
 
-                // Deep Match movements by name keywords or exact amount
-                if (words.length > 0) {
-                    const filteredMovs = unlinkedMovs.filter(ins => {
-                        const obs = (ins.movimientos_tesoreria?.observaciones || '').toUpperCase()
-                        const razonSocial = (ins.movimientos_tesoreria?.entidades?.razon_social || '').toUpperCase()
-                        const isExactAmount = Math.abs(Number(ins.monto) - txAmount) < 0.05
-
-                        return words.some(word => obs.includes(word) || razonSocial.includes(word)) || isExactAmount
-                    })
-                    if (filteredMovs.length > 0) unlinkedMovs = filteredMovs
-                }
-
-                // De-duplicate: A movement (movimiento_tesoreria) can have multiple instruments or applications
-                // We only want to show it once.
+                // De-duplicate: A movement can have multiple instruments
                 const uniqueMovs = new Map()
                 unlinkedMovs.forEach(ins => {
-                    if (!uniqueMovs.has(ins.movimiento_id)) {
+                    if (ins.movimientos_tesoreria && !uniqueMovs.has(ins.movimiento_id)) {
                         uniqueMovs.set(ins.movimiento_id, {
                             id: ins.movimiento_id,
-                            fecha: ins.movimientos_tesoreria?.fecha,
+                            fecha: ins.movimientos_tesoreria.fecha,
                             monto: ins.monto,
-                            observaciones: ins.movimientos_tesoreria?.observaciones,
-                            nro_comprobante: ins.movimientos_tesoreria?.nro_comprobante,
-                            entidad: ins.movimientos_tesoreria?.entidad_id,
-                            razonSocial: ins.movimientos_tesoreria?.entidades?.razon_social,
-                            tipo: ins.movimientos_tesoreria?.tipo,
-                            aplicaciones: ins.movimientos_tesoreria?.aplicaciones_pago || []
+                            observaciones: ins.movimientos_tesoreria.observaciones,
+                            nro_comprobante: ins.movimientos_tesoreria.nro_comprobante,
+                            entidad: ins.movimientos_tesoreria.entidad_id,
+                            razonSocial: ins.movimientos_tesoreria.entidades?.razon_social,
+                            tipo: ins.movimientos_tesoreria.tipo,
+                            aplicaciones: ins.movimientos_tesoreria.aplicaciones_pago || []
                         })
                     }
                 })
 
                 setSuggestedMovements(Array.from(uniqueMovs.values()))
-                setShowInvoicesSection(uniqueMovs.size === 0)
             } else {
-                setSuggestedMovements([]) // Clear if no instruments found
-                setShowInvoicesSection(true)
-            }
-
-            // 3. Fetch AI Suggestions
-            try {
-                const res = await fetch('/api/reconcile/suggestions')
-                if (res.ok) {
-                    const suggData = await res.json()
-                    const txSuggestions = (suggData.suggestions || []).filter((s: any) => s.transId === txToMatch.id)
-                    const suggestedIds = txSuggestions.flatMap((s: any) => s.invoiceIds || [])
-                    setAiSuggestions(suggestedIds)
-                }
-            } catch (sgErr) {
-                console.warn('Error fetching suggestions:', sgErr)
+                setSuggestedMovements([])
             }
         } catch (error) {
-            console.error('Error fetching invoices:', error)
-            toast.error('Error al cargar comprobantes pendientes')
+            console.error('Error fetching suggested movements:', error)
+            toast.error('Error al cargar movimientos de tesorería')
         } finally {
             setLoadingInvoices(false)
         }
     }
 
-    const handleQuickCreate = async () => {
-        if (!selectedTx || !selectedEntityId || !invoiceNumber) {
-            toast.error('Completa los datos requeridos')
-            return
-        }
-
-        setIsSubmitting(true)
-        try {
-            const orgId = (transactions[0] as any)?.organization_id
-            const isPago = selectedTx.monto < 0
-            const tipoComprobante = isPago ? 'factura_compra' : 'factura_venta'
-            const tipoTesoreria = isPago ? 'pago' : 'cobro'
-
-            // 1. Create Comprobante
-            const { data: comprobante, error: compError } = await supabase
-                .from('comprobantes')
-                .insert({
-                    organization_id: orgId,
-                    tipo: tipoComprobante,
-                    nro_factura: invoiceNumber,
-                    cuit_socio: entities.find(e => e.id === selectedEntityId)?.cuit || '',
-                    razon_social_socio: entities.find(e => e.id === selectedEntityId)?.razon_social || '',
-                    fecha_emision: selectedTx.fecha,
-                    fecha_vencimiento: selectedTx.fecha,
-                    monto_total: Math.abs(selectedTx.monto),
-                    monto_pendiente: 0,
-                    estado: 'pagado'
-                })
-                .select()
-                .single()
-
-            if (compError) throw compError
-
-            // 2. Create Movimiento Tesoreria (OP/Recibo)
-            const { data: movimiento, error: movError } = await supabase
-                .from('movimientos_tesoreria')
-                .insert({
-                    organization_id: orgId,
-                    entidad_id: selectedEntityId,
-                    tipo: tipoTesoreria,
-                    fecha: selectedTx.fecha,
-                    monto_total: Math.abs(selectedTx.monto),
-                    observaciones: `CONCILIACIÓN MANUAL Pendientes: ${selectedTx.descripcion}`
-                })
-                .select()
-                .single()
-
-            if (movError) throw movError
-
-            // 3. Create Application (Link Invoice to OP)
-            const { error: appError } = await supabase
-                .from('aplicaciones_pago')
-                .insert({
-                    movimiento_id: movimiento.id,
-                    comprobante_id: comprobante.id,
-                    monto_aplicado: Math.abs(selectedTx.monto)
-                })
-
-            if (appError) throw appError
-
-            // 4. Create Instrument (The bank movement itself)
-            const { error: insError } = await supabase
-                .from('instrumentos_pago')
-                .insert({
-                    movimiento_id: movimiento.id,
-                    metodo: 'transferencia',
-                    monto: Math.abs(selectedTx.monto),
-                    fecha_disponibilidad: selectedTx.fecha,
-                    detalle_referencia: selectedTx.descripcion,
-                    estado: 'acreditado'
-                })
-
-            if (insError) throw insError
-
-            // 5. Update Bank Transaction (Pivot Architecture)
-            const { error: txError } = await supabase
-                .from('transacciones')
-                .update({
-                    comprobante_id: comprobante.id,
-                    movimiento_id: movimiento.id,
-                    estado: 'conciliado',
-                    metadata: {
-                        ...(selectedTx.metadata || {}),
-                        reconciled_at: new Date().toISOString(),
-                        link_method: 'quick_create',
-                        generated_mov_id: movimiento.id,
-                        generated_vouch_id: comprobante.id
-                    }
-                })
-                .eq('id', selectedTx.id)
-                .eq('organization_id', orgId)
-
-            if (txError) throw txError
-
-            toast.success(`${isPago ? 'Orden de Pago' : 'Recibo'} y Factura creados y conciliados`)
-            setIsQuickLoading(false)
-            setIsConciliating(false)
-            setInvoiceNumber('')
-            setSelectedEntityId('')
-            if (onRefresh) onRefresh()
-        } catch (error) {
-            console.error('Error in quick create:', error)
-            toast.error('Error al realizar la carga rápida')
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
-
     const handleConciliate = async () => {
-        if (!selectedTx || (selectedInvoiceIds.length === 0 && selectedMovementIds.length === 0)) return
+        if (!selectedTx || selectedMovementIds.length === 0) return
         setIsSubmitting(true)
         try {
             const orgId = (transactions[0] as any)?.organization_id
-            const isCobro = selectedTx.monto > 0
-
             const totalBankAmount = Math.abs(selectedTx.monto)
-            const previouslyUsed = Number(selectedTx.monto_usado || 0)
-            const availableAmount = totalBankAmount - previouslyUsed
 
-            // CASE 1: Direct link to existing Movements (Recibos/OPs) - Batch Support
-            if (selectedMovementIds.length > 0) {
-                // Determine the total amount of selected movements for validation
-                const selectedMovementTotal = suggestedMovements
-                    .filter(m => selectedMovementIds.includes(m.id))
-                    .reduce((acc, curr) => acc + Number(curr.monto), 0)
-
-                // Update Bank Transaction with multiple movement IDs in metadata
-                const { error: txLinkErr } = await supabase
-                    .from('transacciones')
-                    .update({
-                        movimiento_id: selectedMovementIds[0], // Primary link for standard relations
-                        estado: 'conciliado',
-                        monto_usado: totalBankAmount, // Total match assumed in batch
-                        metadata: {
-                            ...((selectedTx as any).metadata || {}),
-                            linked_at: new Date().toISOString(),
-                            link_method: 'batch_match',
-                            all_movement_ids: selectedMovementIds,
-                            original_bank_monto: selectedTx.monto
-                        }
-                    })
-                    .eq('id', selectedTx.id)
-
-                if (txLinkErr) throw txLinkErr
-
-                // 1. Update EVERY instrument of these movements to 'acreditado'
-                const { error: insUpdateErr } = await supabase
-                    .from('instrumentos_pago')
-                    .update({ estado: 'acreditado' })
-                    .in('movimiento_id', selectedMovementIds)
-
-                if (insUpdateErr) console.warn('Warning: Some instruments could not be marked as accredited', insUpdateErr)
-
-                // 2. Propagate 'conciliado' state to linked invoices for ALL selected movements
-                const { data: apps } = await supabase
-                    .from('aplicaciones_pago')
-                    .select('comprobante_id')
-                    .in('movimiento_id', selectedMovementIds)
-
-                if (apps && apps.length > 0) {
-                    const invoiceIds = apps.map(a => a.comprobante_id)
-                    const { error: propError } = await supabase
-                        .from('comprobantes')
-                        .update({ estado: 'conciliado' })
-                        .in('id', invoiceIds)
-
-                    if (propError) console.error(`[RECONCILIATION] Error propagating 'conciliado' state:`, propError.message)
-                }
-
-                toast.success(`${selectedMovementIds.length} movimientos vinculados y conciliados exitosamente.`)
-                setIsConciliating(false)
-                setSelectedMovementIds([])
-                setSelectedInvoiceIds([])
-                if (onRefresh) onRefresh()
-                return
-            }
-
-            if (availableAmount <= 0) {
-                throw new Error("La transacción ya ha sido utilizada en su totalidad.")
-            }
-
-            // 1. Fetch selected invoices to get their current balances
-            const { data: invoices, error: invFetchError } = await supabase
-                .from('comprobantes')
-                .select('*')
-                .in('id', selectedInvoiceIds)
-
-            if (invFetchError) throw invFetchError
-            if (!invoices || invoices.length === 0) throw new Error("No se encontraron las facturas seleccionadas.")
-
-            // Verify they belong to the same entity
-            const entityCuit = invoices[0].cuit_socio
-            const allSameEntity = invoices.every(i => i.cuit_socio === entityCuit)
-            if (!allSameEntity) {
-                throw new Error("No puedes conciliar facturas de múltiples entidades en un solo movimiento.")
-            }
-
-            // Get Entity ID (Mandatory for Movimiento)
-            const { data: entity } = await supabase
-                .from('entidades')
-                .select('id')
-                .eq('organization_id', orgId)
-                .eq('cuit', entityCuit)
-                .single();
-
-            if (!entity) throw new Error(`Entidad no encontrada para CUIT ${entityCuit}`)
-
-            // Calculate total applied in this operation
-            let totalToPayInInvoices = invoices.reduce((acc, inv) => acc + Number(inv.monto_pendiente), 0)
-            let totalAppliedFromBank = Math.min(availableAmount, totalToPayInInvoices)
-
-            // 2. Create Movimiento Tesoreria (Header)
-            // Total should be the SUM of all instruments (Bank + Secondary)
-            const shortfall = totalToPayInInvoices - availableAmount
-            const secondaryAmount = secondaryPaymentEnabled && shortfall > 0.05 ? shortfall : 0
-            const totalMovementMonto = totalAppliedFromBank + secondaryAmount
-
-            const { data: movimiento, error: movError } = await supabase
-                .from('movimientos_tesoreria')
-                .insert({
-                    organization_id: orgId,
-                    entidad_id: entity.id,
-                    tipo: isCobro ? 'cobro' : 'pago',
-                    fecha: selectedTx.fecha,
-                    monto_total: totalMovementMonto,
-                    observaciones: `CONCILIACIÓN MANUAL MIXTA: ${selectedTx.descripcion}${secondaryPaymentEnabled ? ' (+ ' + secondaryPaymentMethod.toUpperCase() + ')' : ''}`,
-                    metadata: {
-                        transaccion_id: selectedTx.id,
-                        manual: true,
-                        mixed: secondaryPaymentEnabled,
-                        secondary_method: secondaryPaymentEnabled ? secondaryPaymentMethod : null
-                    }
-                })
-                .select()
-                .single()
-
-            if (movError) throw movError
-
-            // 3. Create Instrument 1 (The bank movement)
-            const { error: insError } = await supabase
-                .from('instrumentos_pago')
-                .insert({
-                    movimiento_id: movimiento.id,
-                    metodo: 'transferencia',
-                    monto: totalAppliedFromBank,
-                    fecha_disponibilidad: selectedTx.fecha,
-                    detalle_referencia: selectedTx.descripcion,
-                    estado: 'acreditado'
-                })
-
-            if (insError) throw insError
-
-            // 3.1. Create Instrument 2 (Secondary Method if enabled)
-            if (secondaryPaymentEnabled && secondaryAmount > 0) {
-                const { error: secInsError } = await supabase
-                    .from('instrumentos_pago')
-                    .insert({
-                        movimiento_id: movimiento.id,
-                        metodo: secondaryPaymentMethod,
-                        monto: secondaryAmount,
-                        fecha_disponibilidad: selectedTx.fecha,
-                        banco: secondaryPaymentMethod === 'cheque' ? secondaryCheckData.banco : null,
-                        detalle_referencia: secondaryPaymentMethod === 'cheque' ? `CH-${secondaryCheckData.numero}` : 'PAGO MIXTO',
-                        estado: (secondaryPaymentMethod === 'efectivo' || secondaryPaymentMethod === 'retencion') ? 'acreditado' : 'pendiente'
-                    })
-                if (secInsError) throw secInsError
-            }
-
-            // Apply to each invoice
-            let remainingToApply = totalMovementMonto
-            for (const invoice of invoices) {
-                const amountToApply = Math.min(Number(invoice.monto_pendiente), remainingToApply)
-                if (amountToApply <= 0) continue
-
-                // 4. Create Application (Link Invoice to OP)
-                const { error: appError } = await supabase
-                    .from('aplicaciones_pago')
-                    .insert({
-                        movimiento_id: movimiento.id,
-                        comprobante_id: invoice.id,
-                        monto_aplicado: amountToApply
-                    })
-
-                if (appError) throw appError
-
-                // 5. Update Invoice (comprobante)
-                const newPendiente = Number(invoice.monto_pendiente) - amountToApply
-                const { error: invError } = await supabase
-                    .from('comprobantes')
-                    .update({
-                        monto_pendiente: Math.max(0, newPendiente),
-                        estado: newPendiente <= 0.05 ? 'pagado' : 'parcial',
-                        metadata: {
-                            ...(invoice.metadata || {}),
-                            reconciled_at: new Date().toISOString(),
-                            transaccion_id: selectedTx.id,
-                            is_mixed: secondaryPaymentEnabled
-                        }
-                    })
-                    .eq('id', invoice.id)
-
-                if (invError) throw invError
-                remainingToApply -= amountToApply
-            }
-
-            // 6. Handle Residual (If requested and NOT already using a secondary payment)
-            const finalShortfall = totalToPayInInvoices - availableAmount
-            if (!secondaryPaymentEnabled && processResidualAsGasto && finalShortfall < -0.05) {
-                const residualAmount = Math.abs(finalShortfall)
-                const isIngreso = selectedTx.monto > 0
-                const claseDoc = isIngreso ? 'NCB' : 'NDB'
-                const voucherType = isIngreso ? 'ncb_bancaria' : 'ndb_bancaria'
-
-                // 6.1. Ensure "Gastos Varios / Banco" entity exists
-                let { data: expEntity } = await supabase
-                    .from('entidades')
-                    .select('id, cuit, razon_social')
-                    .eq('organization_id', orgId)
-                    .eq('razon_social', 'Gastos Varios / Otros')
-                    .maybeSingle()
-
-                if (!expEntity) {
-                    const { data: newEntity } = await supabase
-                        .from('entidades')
-                        .insert({
-                            organization_id: orgId,
-                            razon_social: 'Gastos Varios / Otros',
-                            cuit: '00000000000',
-                            categoria: 'proveedor'
-                        })
-                        .select()
-                        .single()
-                    expEntity = newEntity
-                }
-
-                if (expEntity) {
-                    // 6.2 Create NDB/NCB for the residual
-                    const { data: resMov } = await supabase
-                        .from('movimientos_tesoreria')
-                        .insert({
-                            organization_id: orgId,
-                            entidad_id: expEntity.id,
-                            tipo: isIngreso ? 'cobro' : 'pago',
-                            clase_documento: claseDoc,
-                            concepto: residualCategory,
-                            fecha: selectedTx.fecha,
-                            monto_total: residualAmount,
-                            observaciones: `[${claseDoc}] AJUSTE RESIDUAL CONCILIACIÓN: ${selectedTx.descripcion}`,
-                            metadata: { transaccion_id: selectedTx.id, is_residual: true }
-                        })
-                        .select()
-                        .single()
-
-                    if (resMov) {
-                        const { data: resVoucher } = await supabase
-                            .from('comprobantes')
-                            .insert({
-                                organization_id: orgId,
-                                entidad_id: expEntity.id,
-                                tipo: voucherType,
-                                nro_factura: resMov.nro_comprobante,
-                                cuit_socio: expEntity.cuit,
-                                razon_social_socio: expEntity.razon_social,
-                                fecha_emision: selectedTx.fecha,
-                                fecha_vencimiento: selectedTx.fecha,
-                                monto_total: residualAmount,
-                                monto_pendiente: 0,
-                                estado: 'pagado'
-                            })
-                            .select()
-                            .single()
-
-                        if (resVoucher) {
-                            await supabase.from('aplicaciones_pago').insert({
-                                movimiento_id: resMov.id,
-                                comprobante_id: resVoucher.id,
-                                monto_aplicado: residualAmount
-                            })
-
-                            await supabase.from('instrumentos_pago').insert({
-                                movimiento_id: resMov.id,
-                                metodo: 'transferencia',
-                                monto: residualAmount,
-                                fecha_disponibilidad: selectedTx.fecha,
-                                detalle_referencia: `AJUSTE: ${selectedTx.descripcion}`,
-                                estado: 'acreditado'
-                            })
-                        }
-                    }
-                    totalAppliedFromBank += residualAmount
-                }
-            }
-
-            // 7. Update Bank Transaction (Pivot Architecture)
-            const newMontoUsado = previouslyUsed + totalAppliedFromBank
-            const isFullyUsed = newMontoUsado >= totalBankAmount - 0.05
-
-            const { error: txError } = await supabase
+            // 1. Update Bank Transaction
+            const { error: txLinkErr } = await supabase
                 .from('transacciones')
                 .update({
-                    movimiento_id: movimiento.id,
-                    estado: isFullyUsed ? 'conciliado' : 'parcial',
-                    monto_usado: newMontoUsado,
+                    movimiento_id: selectedMovementIds[0],
+                    estado: 'conciliado',
+                    monto_usado: totalBankAmount,
                     metadata: {
                         ...(selectedTx.metadata || {}),
-                        reconciled_at: new Date().toISOString(),
-                        link_method: 'manual_invoice_match',
-                        all_movement_ids: [movimiento.id, ...(shortfall < -0.05 && processResidualAsGasto ? ['RESIDUAL_GEN'] : [])], // Note: RESIDUAL_GEN is a placeholder if we had the ID
-                        applied_invoices: selectedInvoiceIds,
-                        is_mixed: secondaryPaymentEnabled
+                        linked_at: new Date().toISOString(),
+                        link_method: 'batch_match',
+                        all_movement_ids: selectedMovementIds,
+                        original_bank_monto: selectedTx.monto
                     }
                 })
                 .eq('id', selectedTx.id)
-                .eq('organization_id', orgId)
 
-            if (txError) throw txError
+            if (txLinkErr) throw txLinkErr
 
-            toast.success('Conciliación manual exitosa (Circuito Completo registrado)')
+            // 2. Mark instruments as accredited
+            await supabase
+                .from('instrumentos_pago')
+                .update({ estado: 'acreditado' })
+                .in('movimiento_id', selectedMovementIds)
+
+            // 3. Propagate conciliation state
+            const { data: apps } = await supabase
+                .from('aplicaciones_pago')
+                .select('comprobante_id')
+                .in('movimiento_id', selectedMovementIds)
+
+            if (apps && apps.length > 0) {
+                const invoiceIds = apps.map(a => a.comprobante_id)
+                await supabase
+                    .from('comprobantes')
+                    .update({ estado: 'conciliado' })
+                    .in('id', invoiceIds)
+            }
+
+            toast.success(`${selectedMovementIds.length} movimientos vinculados y conciliados exitosamente.`)
             setIsConciliating(false)
-            setSelectedTx(null)
-            setSelectedInvoiceIds([])
+            setSelectedMovementIds([])
             if (onRefresh) onRefresh()
         } catch (error: any) {
             console.error('Error in conciliation:', error)
@@ -1192,7 +720,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     <DialogHeader>
                         <DialogTitle className="text-white">Conciliación Bancaria</DialogTitle>
                         <DialogDescription className="text-gray-400">
-                            Busca el comprobante (Factura/Recibo) que respalda este movimiento.
+                            Busca el Recibo u Orden de Pago que respalda este movimiento bancario.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1212,8 +740,13 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                         </div>
                     )}
 
-                    <div className="py-2">
-                        {suggestedMovements.length > 0 && (
+                    <div className="py-2 min-h-[100px] flex flex-col justify-center">
+                        {loadingInvoices ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-emerald-500/50 italic animate-pulse">
+                                <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                                <p className="text-xs font-bold uppercase tracking-widest">Buscando documentos de Tesorería...</p>
+                            </div>
+                        ) : suggestedMovements.length > 0 ? (
                             <div className="mb-6 animate-in slide-in-from-top-4 duration-500">
                                 <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                                     <CheckCircle2 className="w-3.5 h-3.5" /> Movimientos Ya Registrados (Recibos/OP)
@@ -1229,7 +762,6 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                         ? selectedMovementIds.filter(id => id !== mov.id)
                                                         : [...selectedMovementIds, mov.id]
                                                     setSelectedMovementIds(newSelected)
-                                                    if (newSelected.length > 0) setSelectedInvoiceIds([])
                                                 }}
                                                 className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group
                                                     ${isSelected ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
@@ -1266,135 +798,10 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                         )
                                     })}
                                 </div>
-                                {showInvoicesSection && (
-                                    <div className="mt-4 flex items-center gap-2">
-                                        <div className="h-px flex-1 bg-gray-800"></div>
-                                        <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">O elegir comprobantes sueltos</span>
-                                        <div className="h-px flex-1 bg-gray-800"></div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {showInvoicesSection ? (
-                            <div className="animate-in slide-in-from-top-4 duration-300">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                            Comprobantes Sugeridos {aiSuggestions.length > 0 && <span className="ml-2 text-amber-500">✨ IA Sugiere {aiSuggestions.length} match(es)</span>}
-                                        </p>
-                                        {isFiltered && (
-                                            <Badge variant="outline" className="text-[9px] font-black h-4 bg-blue-500/10 text-blue-400 border-blue-500/20 px-1.5 leading-none">
-                                                DETECCIÓN INTELIGENTE
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        {isFiltered && (
-                                            <Button
-                                                variant="link"
-                                                size="sm"
-                                                className="h-auto p-0 text-[10px] text-gray-500 hover:text-blue-400 font-bold uppercase tracking-tighter"
-                                                onClick={() => {
-                                                    setAvailableInvoices(allFetchedInvoices)
-                                                    setIsFiltered(false)
-                                                }}
-                                            >
-                                                Ver todos ({allFetchedInvoices.length})
-                                            </Button>
-                                        )}
-                                        {selectedInvoiceIds.length > 0 && (
-                                            <p className="text-xs text-blue-400 font-bold uppercase">
-                                                {selectedInvoiceIds.length} seleccionado(s)
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="border border-gray-800 rounded-lg overflow-hidden max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-500/20 hover:scrollbar-thumb-blue-500/40">
-                                    <table className="w-full text-[11px] text-left border-separate border-spacing-0">
-                                        <thead className="bg-gray-800 sticky top-0 z-10">
-                                            <tr>
-                                                <th className="px-3 py-2 text-left font-bold text-[9px] text-gray-400 sticky top-0 z-20 bg-gray-800">Fecha/Vto</th>
-                                                <th className="px-3 py-2 text-left font-bold text-[9px] text-gray-400 sticky top-0 z-20 bg-gray-800">Número</th>
-                                                <th className="px-3 py-2 text-right font-bold text-[9px] text-gray-400 sticky top-0 z-20 bg-gray-800">Pendiente</th>
-                                                <th className="px-3 py-2 text-center font-bold text-[9px] text-gray-400 sticky top-0 z-20 bg-gray-800">Acción</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {loadingInvoices ? (
-                                                <tr>
-                                                    <td colSpan={4} className="py-12 text-center text-gray-500">
-                                                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                                                        Buscando coincidencias...
-                                                    </td>
-                                                </tr>
-                                            ) : availableInvoices.length > 0 ? (
-                                                availableInvoices.map(inv => {
-                                                    const requiredAmount = Math.abs(selectedTx?.monto || 0) - (selectedTx?.monto_usado || 0)
-                                                    const isExactMatch = requiredAmount === Math.abs(inv.monto_pendiente)
-                                                    const isSuggested = aiSuggestions.includes(inv.id)
-                                                    const isSelected = selectedInvoiceIds.includes(inv.id)
-
-                                                    return (
-                                                        <tr
-                                                            key={inv.id}
-                                                            className={`group border-b border-gray-800 last:border-b-0 transition-colors
-                                                                ${isSelected ? 'bg-blue-500/10' : 'hover:bg-gray-800/50'}`}
-                                                        >
-                                                            <td className="px-3 py-2">
-                                                                <p className="text-white font-medium">{new Date(inv.fecha).toLocaleDateString()}</p>
-                                                                <p className="text-[9px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString()}</p>
-                                                            </td>
-                                                            <td className="px-3 py-2">
-                                                                <p className="text-white font-medium">{inv.tipo} {inv.numero}</p>
-                                                                <p className="text-[9px] text-gray-500">{inv.razon_social_socio}</p>
-                                                            </td>
-                                                            <td className="px-3 py-2 text-right">
-                                                                <p className={`font-bold ${isSelected ? 'text-blue-400' : 'text-white'}`}>
-                                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
-                                                                </p>
-                                                                {isExactMatch && !isSuggested && <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-1 rounded uppercase mt-1 inline-block">Monto Exacto</span>}
-                                                            </td>
-                                                            <td className="px-3 py-2 text-center">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        if (isSelected) {
-                                                                            setSelectedInvoiceIds(prev => prev.filter(id => id !== inv.id))
-                                                                        } else {
-                                                                            setSelectedInvoiceIds(prev => [...prev, inv.id])
-                                                                        }
-                                                                    }}
-                                                                    disabled={isSubmitting}
-                                                                    className={`w-6 h-6 rounded-full border flex items-center justify-center transition-colors
-                                                                        ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-600 bg-gray-900 group-hover:border-blue-500'}`}
-                                                                >
-                                                                    {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                })
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan={4} className="py-12 text-center text-gray-600">
-                                                        No hay comprobantes pendientes que coincidan con este flujo.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
                             </div>
                         ) : (
-                            <div className="py-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setShowInvoicesSection(true)}
-                                    className="w-full border-dashed border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 bg-gray-900/40 h-10"
-                                >
-                                    <Search className="w-4 h-4 mr-2" />
-                                    Buscar en Facturas Pendientes (Flujo Antiguo)
-                                </Button>
+                            <div className="py-8 text-center text-gray-600 border border-dashed border-gray-800 rounded-xl">
+                                <p className="text-xs font-medium italic">No se encontraron movimientos pendientes para este importe o entidad.</p>
                             </div>
                         )}
                     </div>
@@ -1403,17 +810,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     {selectedTx && (
                         <div className="mt-4 p-4 bg-gray-900/60 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
                             {(() => {
-                                const noSelection = selectedInvoiceIds.length === 0 && selectedMovementIds.length === 0
+                                const noSelection = selectedMovementIds.length === 0
 
-                                const selectedInvoiceTotal = availableInvoices
-                                    .filter(i => selectedInvoiceIds.includes(i.id))
-                                    .reduce((acc, curr) => acc + Number(curr.monto_pendiente), 0)
-
-                                const selectedMovementTotal = suggestedMovements
+                                const selectedTotal = suggestedMovements
                                     .filter(m => selectedMovementIds.includes(m.id))
                                     .reduce((acc, curr) => acc + Number(curr.monto), 0)
-
-                                const selectedTotal = selectedInvoiceTotal + selectedMovementTotal
 
                                 const totalBankAmount = Math.abs(selectedTx.monto)
                                 const previouslyUsed = Number(selectedTx.monto_usado || 0)
@@ -1583,18 +984,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     )}
 
                     <DialogFooter className="flex justify-between items-center w-full mt-4">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setIsConciliating(false)
-                                setIsQuickLoading(true)
-                                fetchEntities()
-                            }}
-                            className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
-                        >
-                            <PlusCircle className="w-4 h-4 mr-2" />
-                            Crear Nuevo Recibo / O.P.
-                        </Button>
+                        {/* Creation restricted to Treasury module to maintain concern separation */}
                         <div className="flex gap-2">
                             <Button
                                 variant="ghost"
@@ -1605,7 +995,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             </Button>
                             <Button
                                 onClick={handleConciliate}
-                                disabled={isSubmitting || (selectedInvoiceIds.length === 0 && selectedMovementIds.length === 0)}
+                                disabled={isSubmitting || selectedMovementIds.length === 0}
                                 className="bg-blue-600 hover:bg-blue-500 text-white font-bold"
                             >
                                 {isSubmitting ? (
@@ -1620,112 +1010,6 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 </DialogContent>
             </Dialog>
 
-            {/* Quick Load Dialog */}
-            <Dialog open={isQuickLoading} onOpenChange={setIsQuickLoading}>
-                <DialogContent className="max-w-xl bg-gray-950 border-gray-800">
-                    <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
-                            <PlusCircle className="w-5 h-5 text-emerald-500" />
-                            Carga Rápida de Comprobante <span className="text-[10px] bg-red-500 text-white px-1 rounded animate-pulse">v3.2</span>
-                        </DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Crea la factura y su {selectedTx?.monto ? (selectedTx.monto < 0 ? 'Orden de Pago' : 'Recibo') : 'documento'} en un solo paso.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    {selectedTx && (
-                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 my-2 flex justify-between items-center">
-                            <div>
-                                <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider mb-1">Monto a Documentar</p>
-                                <p className="text-sm font-bold text-white truncate max-w-[300px]">{selectedTx.descripcion}</p>
-                            </div>
-                            <p className={`text-xl font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
-                            </p>
-                        </div>
-                    )}
-
-                    <div className="space-y-4 py-4">
-                        {/* Step 1: Select Entity */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">
-                                {selectedTx?.monto && selectedTx.monto < 0 ? 'Proveedor' : 'Cliente'}
-                            </label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                <input
-                                    type="text"
-                                    placeholder="Buscar por nombre o CUIT..."
-                                    value={searchEntity}
-                                    onChange={(e) => setSearchEntity(e.target.value)}
-                                    className="w-full bg-gray-950 border border-gray-800 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                {loadingEntities ? (
-                                    <div className="py-8 text-center text-gray-600">
-                                        <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
-                                        Cargando agenda...
-                                    </div>
-                                ) : entities.filter(e =>
-                                    e.razon_social.toLowerCase().includes(searchEntity.toLowerCase()) ||
-                                    e.cuit.includes(searchEntity)
-                                ).slice(0, 10).map(entity => (
-                                    <button
-                                        key={entity.id}
-                                        onClick={() => setSelectedEntityId(entity.id)}
-                                        className={`flex items-center justify-between p-3 rounded-lg border text-left transition-all ${selectedEntityId === entity.id
-                                            ? 'border-emerald-500 bg-emerald-500/10'
-                                            : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
-                                            }`}
-                                    >
-                                        <div>
-                                            <p className="text-sm font-bold text-white">{entity.razon_social}</p>
-                                            <p className="text-[10px] text-gray-500">{entity.cuit}</p>
-                                        </div>
-                                        {selectedEntityId === entity.id && <Check className="w-4 h-4 text-emerald-500" />}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Step 2: Invoice Number */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Número de Factura</label>
-                            <input
-                                type="text"
-                                placeholder="Ej: 0001-00001234"
-                                value={invoiceNumber}
-                                onChange={(e) => setInvoiceNumber(e.target.value)}
-                                className="w-full bg-gray-950 border border-gray-800 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                        </div>
-                    </div>
-
-                    <DialogFooter>
-                        <Button
-                            variant="ghost"
-                            onClick={() => setIsQuickLoading(false)}
-                            className="text-gray-400"
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={handleQuickCreate}
-                            disabled={isSubmitting || !selectedEntityId || !invoiceNumber}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
-                        >
-                            {isSubmitting ? (
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            ) : (
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                            )}
-                            Confirmar Documentación
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </Card>
     )
 }
