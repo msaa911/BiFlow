@@ -23,7 +23,8 @@ import {
     Upload,
     DownloadCloud,
     Tag,
-    Plus
+    Plus,
+    Info
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -273,7 +274,10 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Comprobante</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Socio</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest cursor-help" title="El color indica si el movimiento está imputado (Blanco) o si es manual / no imputado (Verde)">
-                                    Concepto
+                                    <div className="flex items-center gap-1">
+                                        Concepto
+                                        <Info className="w-3.5 h-3.5 text-emerald-500/50" />
+                                    </div>
                                 </TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-right">Total</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-center">Acciones</TableHead>
