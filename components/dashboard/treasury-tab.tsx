@@ -28,7 +28,8 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
     const [realBalance, setRealBalance] = useState(0)
     const [loading, setLoading] = useState(true)
-    const [reconciling, setReconciling] = useState(false)
+    const [reconcilingAdmin, setReconcilingAdmin] = useState(false)
+    const [reconcilingBank, setReconcilingBank] = useState(false)
     const supabase = createClient()
 
     async function fetchData() {
@@ -98,7 +99,12 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     }
 
     const handleReconcile = async (scope: 'admin' | 'bank' | 'all' = 'all') => {
-        setReconciling(true)
+        if (scope === 'admin') setReconcilingAdmin(true)
+        if (scope === 'bank') setReconcilingBank(true)
+        if (scope === 'all') {
+            setReconcilingAdmin(true)
+            setReconcilingBank(true)
+        }
         try {
             const res = await fetch('/api/reconcile/auto', {
                 method: 'POST',
@@ -124,7 +130,12 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             console.error('Reconciliation failed:', error)
             alert('Error al ejecutar la acción.')
         } finally {
-            setReconciling(false)
+            if (scope === 'admin') setReconcilingAdmin(false)
+            if (scope === 'bank') setReconcilingBank(false)
+            if (scope === 'all') {
+                setReconcilingAdmin(false)
+                setReconcilingBank(false)
+            }
         }
     }
 
@@ -158,25 +169,25 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                         <div className="flex flex-col gap-2">
                             <button
                                 onClick={() => handleReconcile('admin')}
-                                disabled={reconciling}
+                                disabled={reconcilingAdmin}
                                 title="Vincula automáticamente Recibos/OP pendientes con Facturas por monto y referencia."
-                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-sm ${reconciling
+                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-sm ${reconcilingAdmin
                                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                                     : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
                                     }`}
                             >
-                                {reconciling ? 'Procesando...' : 'Vincular Facturas Con Cobros/Pagos'}
+                                {reconcilingAdmin ? 'Procesando...' : 'Vincular Facturas Con Cobros/Pagos'}
                             </button>
                             <button
                                 onClick={() => handleReconcile('bank')}
-                                disabled={reconciling}
+                                disabled={reconcilingBank}
                                 title="Cruza los movimientos de Tesorería con las transacciones del Banco (Genera marca 'C')."
-                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-sm ${reconciling
-                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-sm ${reconcilingBank
+                                    ? 'bg-gray-900/50 text-gray-500 border border-gray-800 cursor-not-allowed'
                                     : 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20 active:scale-95'
                                     }`}
                             >
-                                {reconciling ? 'Procesando...' : 'Conciliación Bancaria'}
+                                {reconcilingBank ? 'Procesando...' : 'Conciliación Bancaria'}
                             </button>
                         </div>
                     </div>

@@ -1,3 +1,4 @@
+/* Tailwind CSS base styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -86,6 +87,7 @@
   /* Hide Firefox spin buttons */
   input[type=number] {
     -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
 
