@@ -2,12 +2,17 @@ export interface Invoice {
     id: string;
     tipo: 'factura_venta' | 'factura_compra' | 'nota_credito' | 'nota_debito';
     razon_social_entidad: string;
+    razon_social_socio?: string;
     cuit_entidad: string;
+    cuit_socio?: string;
+    nro_factura?: string;
+    numero?: string;
     fecha_emision: string;
     fecha_vencimiento: string;
     monto_total: number;
     monto_pendiente: number;
     estado: 'pendiente' | 'parcial' | 'pagado' | 'anulado';
+    concepto?: string;
 }
 
 export interface ProjectedMovement {
