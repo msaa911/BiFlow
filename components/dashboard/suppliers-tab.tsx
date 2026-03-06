@@ -499,7 +499,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                                         <div className="flex flex-col items-center gap-2">
                                             <Users className="w-12 h-12 text-gray-700" />
                                             <h3 className="text-sm font-semibold text-white">No se encontraron {category === 'cliente' ? 'clientes' : 'proveedores'}</h3>
-                                            <p className="text-xs text-gray-500">Agrega un nuevo socio manualmente para comenzar.</p>
+                                            <p className="text-xs text-gray-500">Agrega una nueva entidad manualmente para comenzar.</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -568,7 +568,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
                 <div className="p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="text-[11px] text-gray-500 font-medium flex items-center gap-4">
                         <span>
-                            Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredSuppliers.length)}</span> de <span className="text-gray-300">{filteredSuppliers.length}</span> socios
+                            Mostrando <span className="text-gray-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredSuppliers.length)}</span> de <span className="text-gray-300">{filteredSuppliers.length}</span> entidades
                         </span>
 
                         <div className="flex items-center gap-2 border-l border-gray-800 pl-4">

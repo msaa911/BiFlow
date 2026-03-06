@@ -265,7 +265,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                 <th className="px-6 py-4 text-gray-500 text-[10px] font-bold text-center w-[30px] sticky top-0 z-20 bg-gray-800">C</th>
                                 <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Fecha</th>
                                 <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Comprobante</th>
-                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Socio</th>
+                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Entidad</th>
                                 <th className="px-6 py-4 text-gray-500 text-[10px] font-bold cursor-help sticky top-0 z-20 bg-gray-800" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
                                     <div className="flex items-center gap-1">
                                         Concepto

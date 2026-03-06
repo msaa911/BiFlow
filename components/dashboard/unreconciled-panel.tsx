@@ -50,7 +50,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         "Intereses Ganados",
         "Comisiones Bancarias",
         "Servicios Públicos",
-        "Retiro de Socios",
+        "Retiro Particular",
         "Sueldos y Jornales",
         "Mantenimiento",
         "Honorarios Profesionales",
@@ -271,7 +271,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             const metadata: any = {
                 transaccion_id: selectedTx.id,
-                categoria_principal: category
+                categoria_principal: category,
+                original_desc: selectedTx.descripcion
             }
 
             if (isSplitting && parsedSplitAmount > 0) {

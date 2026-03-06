@@ -261,7 +261,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                 <div className="p-0 overflow-hidden">
                     <div className="flex bg-gray-900/50 border-b border-gray-800">
                         <div className={`px-6 py-3 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors ${step === 1 ? 'border-emerald-500 text-white' : 'border-transparent text-gray-500'}`}>
-                            1. Socio y Deuda
+                            1. Entidad y Deuda
                         </div>
                         <div className={`px-6 py-3 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors ${step === 2 ? 'border-emerald-500 text-white' : 'border-transparent text-gray-500'}`}>
                             2. Medios de Pago
@@ -370,7 +370,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
 
                                             {pendingInvoices.length === 0 ? (
                                                 <div className="p-8 text-center border-2 border-dashed border-gray-800 rounded-xl">
-                                                    <p className="text-gray-500 text-sm">No hay comprobantes pendientes para este socio.</p>
+                                                    <p className="text-gray-500 text-sm">No hay comprobantes pendientes para esta entidad.</p>
                                                 </div>
                                             ) : (
                                                 <div className="grid gap-2">

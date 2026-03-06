@@ -122,16 +122,16 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                         <Clock className="w-4 h-4 text-emerald-400" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-white">Historial de Notas Directas</h3>
-                        <p className="text-[10px] text-gray-500">Documentos generados sin intermediación de Tesorería.</p>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-tighter">Historial de Notas Bancarias</h3>
+                        <p className="text-[10px] text-gray-500">Documentos generados directamente desde el extracto.</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-gray-500" />
                         <Input
-                            placeholder="Buscar nota o socio..."
-                            className="bg-gray-900 border-gray-800 pl-9 text-[11px] h-8"
+                            placeholder="Buscar por entidad o concepto..."
+                            className="bg-gray-900 border-gray-800 pl-9 text-[11px] h-8 focus:ring-emerald-500/20"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -148,7 +148,7 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                         <tr>
                             <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
                             <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider">Nro de Nota</th>
-                            <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider">Socio / Concepto</th>
+                            <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider">Entidad / Concepto</th>
                             <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider text-right">Monto</th>
                             <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider text-center">Estado</th>
                             <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider text-center">Acciones</th>
@@ -170,9 +170,9 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                                             <td className="px-6 py-4 font-bold text-emerald-400">{note.nro_factura}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-white text-xs uppercase tracking-tight">{note.concepto || tx?.categoria || 'Sin concepto'}</span>
-                                                    <span className="text-[10px] text-emerald-400 font-medium italic">{note.entidades?.razon_social || 'Varias / Otros'}</span>
-                                                    <span className="text-[9px] text-gray-500 truncate max-w-[250px]">{tx?.descripcion || 'Sin descripción'}</span>
+                                                    <span className="font-bold text-white text-xs uppercase tracking-tight">{note.concepto || note.metadata?.categoria_principal || tx?.categoria || 'Sin concepto'}</span>
+                                                    <span className="text-[10px] text-emerald-400 font-medium italic">{note.entidades?.razon_social || 'Entidad no identificada'}</span>
+                                                    <span className="text-[9px] text-gray-500 truncate max-w-[250px]">{tx?.descripcion || note.metadata?.original_desc || 'Sin descripción'}</span>
                                                 </div>
                                             </td>
                                             <td className={`px-6 py-4 text-right font-black tabular-nums ${note.tipo === 'ndb_bancaria' ? 'text-red-400' : 'text-emerald-400'}`}>
