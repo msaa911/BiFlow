@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { SmartFormatBuilder } from './smart-format-builder'
 import { UnreconciledPanel } from './unreconciled-panel'
 import { TreasuryHistory } from './treasury-history'
+import { BankNotesHistory } from './bank-notes-history'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
@@ -137,22 +138,18 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
             const principalMovId = tx.movimiento_id
             const allMovIds = (tx.metadata?.all_movement_ids || (principalMovId ? [principalMovId] : [])) as string[]
 
+            // 1. Reversal of Treasury Movements (Step 2 flow)
             if (allMovIds.length > 0) {
                 for (const movId of allMovIds) {
-                    // 1. Get Applications to find Invoices
                     const { data: apps } = await supabase.from('aplicaciones_pago').select('id, comprobante_id').eq('movimiento_id', movId)
-
                     if (apps && apps.length > 0) {
                         for (const app of apps) {
-                            // 2. Reset Invoices
                             if (app.comprobante_id) {
                                 const { data: comp } = await supabase.from('comprobantes').select('*').eq('id', app.comprobante_id).single()
                                 if (comp) {
-                                    // If it's a bank note or auto-generated, delete it
                                     if (comp.tipo.includes('_bancaria') || (comp.numero && comp.numero.includes('AUTO-'))) {
                                         await supabase.from('comprobantes').delete().eq('id', comp.id)
                                     } else {
-                                        // Otherwise just reset state and balance
                                         await supabase.from('comprobantes').update({
                                             estado: 'pendiente',
                                             monto_pendiente: comp.monto_total
@@ -160,16 +157,24 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     }
                                 }
                             }
-                            // 3. Delete Application
                             await supabase.from('aplicaciones_pago').delete().eq('id', app.id)
                         }
                     }
-
-                    // 4. Delete Instruments
                     await supabase.from('instrumentos_pago').delete().eq('movimiento_id', movId)
-
-                    // 5. Delete Movement
                     await supabase.from('movimientos_tesoreria').delete().eq('id', movId)
+                }
+            }
+
+            // 2. Reversal of Direct Bank Notes (New Direct circuit flow)
+            else if (tx.comprobante_id) {
+                const { data: comp } = await supabase
+                    .from('comprobantes')
+                    .select('id, tipo')
+                    .eq('id', tx.comprobante_id)
+                    .single()
+
+                if (comp && (comp.tipo === 'ndb_bancaria' || comp.tipo === 'ncb_bancaria')) {
+                    await supabase.from('comprobantes').delete().eq('id', comp.id)
                 }
             }
 
@@ -184,7 +189,8 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                     metadata: {
                         ...(tx.metadata || {}),
                         reverted_at: new Date().toISOString(),
-                        previous_state: 'conciliado'
+                        previous_state: 'conciliado',
+                        reversal_method: 'unreconcile_tool'
                     }
                 })
                 .eq('id', tx.id)
@@ -591,8 +597,15 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             </div>
                         </div>
                         {/* Reuse TreasuryHistory with filter for NDB/NCB */}
-                        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
-                            <TreasuryHistory orgId={orgId} claseDocumentoFilter={['NDB', 'NCB']} />
+                        <div className="space-y-6">
+                            <BankNotesHistory orgId={orgId} onRefresh={onRefresh} />
+
+                            <div className="pt-8 border-t border-gray-800">
+                                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Notas Históricas (vía Tesorería)</h4>
+                                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
+                                    <TreasuryHistory orgId={orgId} claseDocumentoFilter={['NDB', 'NCB']} />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </TabsContent>
