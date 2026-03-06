@@ -3,14 +3,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from '@/components/ui/table'
+// Table components removed to use native HTML tables for better sticky performance
 import {
     FileText,
     ChevronDown,
@@ -265,54 +258,54 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
 
             <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50">
                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
-                    <Table>
-                        <TableHeader className="bg-gray-800 sticky top-0 z-10">
-                            <TableRow className="border-gray-800 hover:bg-transparent">
-                                <TableHead className="w-[40px] sticky top-0 z-20 bg-gray-800"><input type="checkbox" checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0} onChange={toggleSelectAll} /></TableHead>
-                                <TableHead className="text-gray-500 text-[10px] font-bold text-center w-[30px] sticky top-0 z-20 bg-gray-800">C</TableHead>
-                                <TableHead className="text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Fecha</TableHead>
-                                <TableHead className="text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Comprobante</TableHead>
-                                <TableHead className="text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Socio</TableHead>
-                                <TableHead className="text-gray-500 text-[10px] font-bold cursor-help sticky top-0 z-20 bg-gray-800" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
+                    <table className="w-full text-left text-xs border-separate border-spacing-0">
+                        <thead className="bg-gray-800 sticky top-0 z-10">
+                            <tr className="border-gray-800 hover:bg-transparent">
+                                <th className="px-6 py-4 w-[40px] sticky top-0 z-20 bg-gray-800"><input type="checkbox" checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0} onChange={toggleSelectAll} /></th>
+                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold text-center w-[30px] sticky top-0 z-20 bg-gray-800">C</th>
+                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Fecha</th>
+                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Comprobante</th>
+                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Socio</th>
+                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold cursor-help sticky top-0 z-20 bg-gray-800" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
                                     <div className="flex items-center gap-1">
                                         Concepto
                                         <Info className="w-3.5 h-3.5 text-emerald-500/50" />
                                     </div>
-                                </TableHead>
-                                <TableHead className="text-gray-500 text-[10px] font-bold text-right sticky top-0 z-20 bg-gray-800">Total</TableHead>
-                                <TableHead className="text-gray-500 text-[10px] font-bold text-center sticky top-0 z-20 bg-gray-800">Acciones</TableHead>
-                                <TableHead className="w-[30px] sticky top-0 z-20 bg-gray-800"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                                </th>
+                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold text-right sticky top-0 z-20 bg-gray-800">Total</th>
+                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold text-center sticky top-0 z-20 bg-gray-800">Acciones</th>
+                                <th className="px-6 py-4 w-[30px] sticky top-0 z-20 bg-gray-800"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
                             {loading ? (
-                                <TableRow><TableCell colSpan={8} className="h-32 text-center text-gray-500">Cargando...</TableCell></TableRow>
+                                <tr className="border-gray-800"><td colSpan={9} className="h-32 text-center text-gray-500">Cargando...</td></tr>
                             ) : paginatedMovements.map(mov => {
                                 const isConciliated = mov.transacciones && mov.transacciones.length > 0;
                                 const isExpanded = expandedMov === mov.id;
 
                                 return (
                                     <Fragment key={mov.id}>
-                                        <TableRow
+                                        <tr
                                             key={mov.id}
                                             className={`border-gray-800 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-500/5' : 'hover:bg-gray-800/30'}`}
                                             onClick={() => setExpandedMov(isExpanded ? null : mov.id)}
                                         >
-                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                 <input type="checkbox" checked={selectedIds.has(mov.id)} onChange={() => toggleSelect(mov.id)} />
-                                            </TableCell>
-                                            <TableCell className="text-center">
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
                                                 <div className={`
                                                     w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black
                                                     ${isConciliated ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800/50 text-gray-600 border border-gray-800'}
                                                 `}>
                                                     C
                                                 </div>
-                                            </TableCell>
-                                            <TableCell className="font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</TableCell>
-                                            <TableCell><Badge className="text-[9px] uppercase">{mov.nro_comprobante || mov.numero || 'S/N'}</Badge></TableCell>
-                                            <TableCell className="font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</TableCell>
-                                            <TableCell>
+                                            </td>
+                                            <td className="px-6 py-4 font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</td>
+                                            <td className="px-6 py-4"><Badge className="text-[9px] uppercase">{mov.nro_comprobante || mov.numero || 'S/N'}</Badge></td>
+                                            <td className="px-6 py-4 font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</td>
+                                            <td className="px-6 py-4">
                                                 <div className="flex flex-wrap gap-1.5 min-h-[1.2rem] items-center">
                                                     {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (
                                                         mov.aplicaciones_pago.map((app: any, idx: number) => (
@@ -334,25 +327,25 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                         </span>
                                                     )}
                                                 </div>
-                                            </TableCell>
-                                            <TableCell className="text-right font-mono font-bold text-white text-xs">
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono font-bold text-white text-xs">
                                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto_total)}
-                                            </TableCell>
-                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                            </td>
+                                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex justify-center gap-1">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-400" onClick={() => setExpandedMov(isExpanded ? null : mov.id)} title="Ver Detalles"><FileText className="w-4 h-4" /></Button>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400" onClick={() => exportTreasuryMovementToExcel(mov)} title="Descargar EXCEL"><Download className="w-4 h-4" /></Button>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleDelete(mov.id)} title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></Button>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>
+                                            </td>
+                                            <td className="px-6 py-4">
                                                 {isExpanded ? <ChevronUp className="w-4 h-4 text-emerald-500" /> : <ChevronDown className="w-4 h-4 text-gray-600" />}
-                                            </TableCell>
-                                        </TableRow>
+                                            </td>
+                                        </tr>
 
                                         {isExpanded && (
-                                            <TableRow className="bg-gray-950/80 border-gray-800/50 hover:bg-transparent">
-                                                <TableCell colSpan={9} className="p-0">
+                                            <tr className="bg-gray-950/80 border-gray-800/50 hover:bg-transparent">
+                                                <td colSpan={9} className="p-0">
                                                     <div className="p-6 border-l-2 border-emerald-500 bg-gray-900/40 animate-in slide-in-from-top-2 duration-200">
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                                             {/* Detalles de Instrumentos */}
@@ -411,14 +404,14 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                             </div>
                                                         )}
                                                     </div>
-                                                </TableCell>
-                                            </TableRow>
+                                                </td>
+                                            </tr>
                                         )}
                                     </Fragment>
                                 );
                             })}
-                        </TableBody>
-                    </Table>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
