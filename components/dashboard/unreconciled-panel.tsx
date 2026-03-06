@@ -152,35 +152,103 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         if (!selectedTx || selectedMovementIds.length === 0) return
         setIsSubmitting(true)
         try {
-            const orgId = (transactions[0] as any)?.organization_id
+            const currentOrgId = selectedTx.organization_id || orgId
             const totalBankAmount = Math.abs(selectedTx.monto)
+            const previouslyUsed = Number(selectedTx.monto_usado || 0)
+            const availableAmount = totalBankAmount - previouslyUsed
 
-            // 1. Update Bank Transaction
+            const selectedTotal = suggestedMovements
+                .filter(m => selectedMovementIds.includes(m.id))
+                .reduce((acc, curr) => acc + Number(curr.monto), 0)
+
+            const difference = availableAmount - selectedTotal
+            const shortfall = selectedTotal - availableAmount
+
+            // 1. Process Residual as Gasto/Ingreso if enabled
+            if (processResidualAsGasto && difference > 0.05) {
+                // Determine entity for bank notes
+                let { data: bankEntity } = await supabase
+                    .from('entidades')
+                    .select('id, cuit, razon_social')
+                    .eq('organization_id', currentOrgId)
+                    .eq('razon_social', 'Gastos Varios / Otros')
+                    .maybeSingle()
+
+                if (!bankEntity) {
+                    const { data: newEnt } = await supabase.from('entidades').insert({
+                        organization_id: currentOrgId,
+                        razon_social: 'Gastos Varios / Otros',
+                        cuit: '00000000000',
+                        categoria: 'proveedor'
+                    }).select().single()
+                    bankEntity = newEnt
+                }
+
+                if (bankEntity) {
+                    const noteType = selectedTx.monto > 0 ? 'ncb_bancaria' : 'ndb_bancaria'
+                    const bankNoteNumber = `BN-RESID-${selectedTx.id.split('-')[0].toUpperCase()}`
+
+                    await supabase.from('comprobantes').insert({
+                        organization_id: currentOrgId,
+                        entidad_id: bankEntity.id,
+                        tipo: noteType,
+                        nro_factura: bankNoteNumber,
+                        cuit_entidad: bankEntity.cuit,
+                        razon_social_entidad: bankEntity.razon_social,
+                        fecha_emision: selectedTx.fecha,
+                        fecha_vencimiento: selectedTx.fecha,
+                        monto_total: Math.abs(difference),
+                        monto_pendiente: 0,
+                        estado: 'conciliado',
+                        concepto: residualCategory,
+                        metadata: { bank_transaction_id: selectedTx.id, is_residual_note: true }
+                    })
+                }
+            }
+
+            // 2. Process Mixed Payment (Secondary Instrument) if enabled
+            if (secondaryPaymentEnabled && shortfall > 0.05) {
+                // Create reaching instrument for the shortfall
+                await supabase.from('instrumentos_pago').insert({
+                    organization_id: currentOrgId,
+                    movimiento_id: selectedMovementIds[0],
+                    metodo: secondaryPaymentMethod,
+                    monto: shortfall,
+                    estado: secondaryPaymentMethod === 'efectivo' ? 'acreditado' : 'pendiente',
+                    banco: secondaryCheckData.banco || null,
+                    detalle_referencia: secondaryCheckData.numero || 'PAGO_MIXTO_SEC',
+                    fecha_disponibilidad: secondaryCheckData.vencimiento || new Date().toISOString().split('T')[0]
+                })
+            }
+
+            // 3. Update Bank Transaction
+            const isFullyUsed = Math.abs(difference) <= 0.05 || processResidualAsGasto
             const { error: txLinkErr } = await supabase
                 .from('transacciones')
                 .update({
                     movimiento_id: selectedMovementIds[0],
-                    estado: 'conciliado',
-                    monto_usado: totalBankAmount,
+                    estado: isFullyUsed ? 'conciliado' : 'parcial',
+                    monto_usado: isFullyUsed ? totalBankAmount : (previouslyUsed + selectedTotal),
                     metadata: {
                         ...(selectedTx.metadata || {}),
                         linked_at: new Date().toISOString(),
-                        link_method: 'batch_match',
+                        link_method: 'batch_match_with_assistant',
                         all_movement_ids: selectedMovementIds,
-                        original_bank_monto: selectedTx.monto
+                        residual_processed: processResidualAsGasto,
+                        mixed_payment: secondaryPaymentEnabled
                     }
                 })
                 .eq('id', selectedTx.id)
 
             if (txLinkErr) throw txLinkErr
 
-            // 2. Mark instruments as accredited
+            // 4. Mark instruments as accredited
             await supabase
                 .from('instrumentos_pago')
                 .update({ estado: 'acreditado' })
                 .in('movimiento_id', selectedMovementIds)
 
-            // 3. Propagate conciliation state
+            // 5. Propagate conciliation state (standard logic)
             const { data: apps } = await supabase
                 .from('aplicaciones_pago')
                 .select('comprobante_id')
@@ -194,8 +262,10 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     .in('id', invoiceIds)
             }
 
-            toast.success(`${selectedMovementIds.length} movimientos vinculados y conciliados exitosamente.`)
+            toast.success(`Conciliación completada exitosamente.`)
             setIsConciliating(false)
+            setProcessResidualAsGasto(false)
+            setSecondaryPaymentEnabled(false)
             setSelectedMovementIds([])
             if (onRefresh) onRefresh()
         } catch (error: any) {
@@ -793,7 +863,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                         </p>
                                                         {mov.aplicaciones && mov.aplicaciones.length > 0 && (
                                                             <p className="text-[10px] text-emerald-600 font-bold mt-1">
-                                                                Aplica a: {mov.aplicaciones.map((a: any) => a.comprobantes?.numero).filter(Boolean).join(', ')}
+                                                                Aplica a: {mov.aplicaciones.map((a: any) => a.comprobantes?.nro_factura || a.comprobantes?.numero).filter(Boolean).join(', ')}
                                                             </p>
                                                         )}
                                                     </div>

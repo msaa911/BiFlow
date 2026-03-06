@@ -601,7 +601,7 @@ export class ReconciliationEngine {
                 const cleanFact = this.normalizeReference(nroFactura);
                 const lastDigits = nroFactura.split('-').pop()?.replace(/^0+/, '');
 
-                return searchText.includes(nroFactura) ||
+                return (nroFactura && searchText.includes(nroFactura)) ||
                     (cleanFact && cleanFact.length >= 4 && searchText.includes(cleanFact)) ||
                     (lastDigits && lastDigits.length >= 4 && searchText.includes(lastDigits));
             });

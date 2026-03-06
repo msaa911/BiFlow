@@ -117,16 +117,17 @@ export class TreasuryEngine {
      * Detects if an entity is both a client and a supplier (Netting opportunity).
      */
     static detectNettingOpportunities(invoices: Invoice[]): any[] {
-        const salesEntidades = new Set(invoices.filter(i => i.tipo === 'factura_venta').map(i => i.cuit_entidad));
-        const purchaseEntidades = new Set(invoices.filter(i => i.tipo === 'factura_compra').map(i => i.cuit_entidad));
+        const salesEntidades = new Set(invoices.filter(i => i.tipo === 'factura_venta').map(i => i.cuit_entidad || i.cuit_socio));
+        const purchaseEntidades = new Set(invoices.filter(i => i.tipo === 'factura_compra').map(i => i.cuit_entidad || i.cuit_socio));
 
         const intersections = [...salesEntidades].filter(cuit => purchaseEntidades.has(cuit));
 
         return intersections.map(cuit => {
-            const entidad_nombre = invoices.find(i => i.cuit_entidad === cuit)?.razon_social_entidad;
-            const pendingAR = invoices.filter(i => i.cuit_entidad === cuit && i.tipo === 'factura_venta' && i.estado !== 'pagado')
+            const matchingInv = invoices.find(i => (i.cuit_entidad || i.cuit_socio) === cuit);
+            const entidad_nombre = matchingInv?.razon_social_entidad || matchingInv?.razon_social_socio;
+            const pendingAR = invoices.filter(i => (i.cuit_entidad || i.cuit_socio) === cuit && i.tipo === 'factura_venta' && i.estado !== 'pagado')
                 .reduce((acc, curr) => acc + curr.monto_pendiente, 0);
-            const pendingAP = invoices.filter(i => i.cuit_entidad === cuit && i.tipo === 'factura_compra' && i.estado !== 'pagado')
+            const pendingAP = invoices.filter(i => (i.cuit_entidad || i.cuit_socio) === cuit && i.tipo === 'factura_compra' && i.estado !== 'pagado')
                 .reduce((acc, curr) => acc + curr.monto_pendiente, 0);
 
             return { cuit, entidad_nombre, entidad: entidad_nombre, pendingAR, pendingAP, balance: pendingAR - pendingAP };

@@ -303,7 +303,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 font-mono text-xs">{new Date(mov.fecha).toLocaleDateString('es-AR')}</td>
-                                            <td className="px-6 py-4"><Badge className="text-[9px] uppercase">{mov.nro_comprobante || mov.numero || 'S/N'}</Badge></td>
+                                            <td className="px-6 py-4"><Badge className="text-[9px] uppercase">{mov.nro_comprobante || mov.nro_factura || 'S/N'}</Badge></td>
                                             <td className="px-6 py-4 font-bold text-gray-200 text-xs">{mov.entidades?.razon_social}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1 min-h-[1.2rem] justify-center">
@@ -314,7 +314,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                                     key={idx}
                                                                     className="text-[10px] font-bold text-white uppercase tracking-tight bg-gray-800 px-1.5 py-0.5 rounded"
                                                                 >
-                                                                    {app.comprobantes?.nro_factura}
+                                                                    {app.comprobantes?.nro_factura || app.comprobantes?.numero}
                                                                 </span>
                                                             ))}
                                                         </div>
