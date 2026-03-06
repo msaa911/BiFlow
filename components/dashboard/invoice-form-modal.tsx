@@ -141,6 +141,12 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 return
             }
 
+            if (!formData.concepto || formData.concepto.trim() === '') {
+                toast.error('El concepto es obligatorio')
+                setLoading(false)
+                return
+            }
+
             const supabase = createClient()
             console.log('[InvoiceForm] Validating socio:', formData.socio_id)
 
@@ -468,7 +474,10 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                             )}
 
                             <div className="col-span-2 space-y-2">
-                                <Label className="text-xs uppercase text-gray-500 font-bold">Concepto / Operación Personalizada</Label>
+                                <Label className="text-xs uppercase text-gray-500 font-bold flex items-center gap-1">
+                                    Concepto / Operación Personalizada
+                                    <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
                                     placeholder={type === 'factura_venta' ? 'Ej: Venta de servicios de consultoría' : 'Ej: Compra de insumos de oficina'}
                                     value={formData.concepto}

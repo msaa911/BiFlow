@@ -402,13 +402,16 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                 </td>
                                 <td className="px-6 py-3">
                                     <div className="flex flex-col">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-white truncate max-w-[200px] text-xs font-bold" title={inv.concepto || (inv.nro_factura || inv.numero)}>
-                                                {inv.concepto || (inv.nro_factura || inv.numero || 'Sin Número')}
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <span className={`truncate max-w-[200px] text-xs font-bold ${inv.concepto ? 'text-white' : 'text-red-400 italic'}`} title={inv.concepto || 'Sin concepto'}>
+                                                {inv.concepto || 'Sin concepto'}
                                             </span>
                                             {inv.tipo === 'nota_credito' && <Badge className="bg-red-500/20 text-red-500 border-red-500/30 text-[8px] px-1 h-3.5">NC</Badge>}
                                             {inv.tipo === 'nota_debito' && <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[8px] px-1 h-3.5">ND</Badge>}
                                         </div>
+                                        <span className="text-[10px] text-gray-500 font-mono leading-none">
+                                            {inv.nro_factura || inv.numero || 'S/N'}
+                                        </span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-3 text-right font-medium text-gray-400 text-xs">
