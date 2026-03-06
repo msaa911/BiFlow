@@ -273,7 +273,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Fecha</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Comprobante</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Socio</TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest cursor-help" title="El color indica si el movimiento está imputado (Blanco) o si es manual / no imputado (Verde)">
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest cursor-help" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
                                     <div className="flex items-center gap-1">
                                         Concepto
                                         <Info className="w-3.5 h-3.5 text-emerald-500/50" />
@@ -319,7 +319,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                             <span
                                                                 key={idx}
                                                                 className="text-xs font-bold text-white uppercase tracking-tight"
-                                                                title="Imputado contra factura / comprobante"
+                                                                title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está"
                                                             >
                                                                 {app.comprobantes?.nro_factura || app.comprobantes?.numero}
                                                                 {idx < mov.aplicaciones_pago.length - 1 ? " | " : ""}
@@ -328,7 +328,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                     ) : (
                                                         <span
                                                             className="text-xs font-bold text-emerald-400 uppercase tracking-tight cursor-help"
-                                                            title="No imputado contra comprobante / factura"
+                                                            title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está"
                                                         >
                                                             {mov.concepto || mov.categoria || 'Sin concepto'}
                                                         </span>
