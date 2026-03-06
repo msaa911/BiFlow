@@ -21,12 +21,12 @@ export function BanksClientPage({ orgId, initialTransactions }: BanksClientPageP
         const [txRes, pendingRes, bankRes] = await Promise.all([
             supabase
                 .from('transacciones')
-                .select('*')
+                .select('*, comprobantes!comprobante_id(nro_factura, entidades(razon_social))')
                 .eq('organization_id', orgId)
                 .order('fecha', { ascending: false }),
             supabase
                 .from('transacciones')
-                .select('*')
+                .select('*, comprobantes!comprobante_id(nro_factura, entidades(razon_social))')
                 .eq('organization_id', orgId)
                 .in('estado', ['pendiente', 'parcial'])
                 .order('fecha', { ascending: false })

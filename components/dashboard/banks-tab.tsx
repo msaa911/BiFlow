@@ -147,7 +147,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             if (app.comprobante_id) {
                                 const { data: comp } = await supabase.from('comprobantes').select('*').eq('id', app.comprobante_id).single()
                                 if (comp) {
-                                    if (comp.tipo.includes('_bancaria') || (comp.numero && comp.numero.includes('AUTO-'))) {
+                                    if (comp.tipo.includes('_bancaria') || ((comp.nro_factura || comp.numero) && (comp.nro_factura || comp.numero).includes('AUTO-'))) {
                                         await supabase.from('comprobantes').delete().eq('id', comp.id)
                                     } else {
                                         await supabase.from('comprobantes').update({
@@ -540,9 +540,19 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                             <td className="px-1 py-2.5">
                                                 <div className="flex flex-col">
                                                     <span className="text-xs font-bold text-white transition-colors group-hover:text-emerald-400 truncate max-w-[300px]">
+                                                        {t.comprobantes?.entidades?.razon_social && (
+                                                            <span className="text-emerald-500/80 mr-1.5 font-bold">[{t.comprobantes.entidades.razon_social}]</span>
+                                                        )}
                                                         {t.descripcion}
                                                     </span>
-                                                    <span className="text-[9px] text-gray-600 font-mono tracking-tighter uppercase">ID: {t.id.split('-')[0]}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] text-gray-600 font-mono tracking-tighter uppercase">ID: {t.id.split('-')[0]}</span>
+                                                        {t.comprobantes?.nro_factura && (
+                                                            <Badge variant="outline" className="text-[8px] h-3.5 px-1 py-0 bg-blue-500/10 text-blue-400 border-blue-500/20 font-black">
+                                                                {t.comprobantes.nro_factura}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-1 py-2.5 font-mono text-[10px] text-gray-400">
