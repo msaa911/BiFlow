@@ -587,15 +587,22 @@ export class ReconciliationEngine {
 
             // Try to find matching invoice
             const matchingInvoice = invoices.find(inv => {
-                if (inv.tipo !== targetType && inv.estado !== 'pagado') return false; // Relaxed filter for 'pagado'
+                if (inv.tipo !== targetType && inv.estado !== 'pagado') return false;
 
+                // CHECK 1: Entity Match (Critical for rebranding robustness)
+                const movEntId = mov.entidad_id || mov.socio_id;
+                const invEntId = inv.entidad_id || inv.socio_id;
+                if (movEntId && invEntId && movEntId !== invEntId) return false;
+
+                // CHECK 2: Amount Match
                 // If amount_pending is null, assume total amount
                 const pending = Math.abs(inv.monto_pendiente !== null ? Number(inv.monto_pendiente) : Number(inv.monto_total || 0));
 
                 // Match amount (Relaxed: ignore decimals / rounding differences up to 2.0)
                 if (Math.floor(pending) !== Math.floor(movAmount) && Math.abs(pending - movAmount) > 2.0) return false;
 
-                const nroFactura = (inv.nro_factura || '').toUpperCase();
+                // CHECK 3: Reference Match
+                const nroFactura = (inv.nro_factura || inv.numero || '').toUpperCase();
                 if (!nroFactura) return false;
 
                 const cleanFact = this.normalizeReference(nroFactura);
