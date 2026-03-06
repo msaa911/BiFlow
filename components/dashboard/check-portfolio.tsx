@@ -322,7 +322,7 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                         <Table>
                             <TableHeader className="bg-gray-800 sticky top-0 z-10">
                                 <TableRow className="hover:bg-transparent border-gray-800 text-white/50">
-                                    <TableHead className="w-[40px] px-4">
+                                    <TableHead className="w-[40px] px-4 sticky top-0 z-20 bg-gray-800">
                                         <input
                                             type="checkbox"
                                             className="rounded border-gray-700 bg-gray-800 text-emerald-500 checked:bg-emerald-500"
@@ -330,12 +330,12 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                                             onChange={toggleSelectAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest">Vto / Disponib.</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest">Número / Banco</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest">Origen (Cliente)</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest text-right">Importe</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest text-center">Estado</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] text-gray-400 tracking-widest text-center">Acciones</TableHead>
+                                    <TableHead className="font-bold text-[10px] text-gray-400 sticky top-0 z-20 bg-gray-800">Vto / Disponib.</TableHead>
+                                    <TableHead className="font-bold text-[10px] text-gray-400 sticky top-0 z-20 bg-gray-800">Número / Banco</TableHead>
+                                    <TableHead className="font-bold text-[10px] text-gray-400 sticky top-0 z-20 bg-gray-800">Origen (Cliente)</TableHead>
+                                    <TableHead className="font-bold text-[10px] text-gray-400 text-right sticky top-0 z-20 bg-gray-800">Importe</TableHead>
+                                    <TableHead className="font-bold text-[10px] text-gray-400 text-center sticky top-0 z-20 bg-gray-800">Estado</TableHead>
+                                    <TableHead className="font-bold text-[10px] text-gray-400 text-center sticky top-0 z-20 bg-gray-800">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

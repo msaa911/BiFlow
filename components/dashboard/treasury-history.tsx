@@ -268,20 +268,20 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                     <Table>
                         <TableHeader className="bg-gray-800 sticky top-0 z-10">
                             <TableRow className="border-gray-800 hover:bg-transparent">
-                                <TableHead className="w-[40px]"><input type="checkbox" checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0} onChange={toggleSelectAll} /></TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-center w-[30px]">C</TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Fecha</TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Comprobante</TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Socio</TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest cursor-help" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
+                                <TableHead className="w-[40px] sticky top-0 z-20 bg-gray-800"><input type="checkbox" checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0} onChange={toggleSelectAll} /></TableHead>
+                                <TableHead className="text-gray-500 text-[10px] font-bold text-center w-[30px] sticky top-0 z-20 bg-gray-800">C</TableHead>
+                                <TableHead className="text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Fecha</TableHead>
+                                <TableHead className="text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Comprobante</TableHead>
+                                <TableHead className="text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Socio</TableHead>
+                                <TableHead className="text-gray-500 text-[10px] font-bold cursor-help sticky top-0 z-20 bg-gray-800" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
                                     <div className="flex items-center gap-1">
                                         Concepto
                                         <Info className="w-3.5 h-3.5 text-emerald-500/50" />
                                     </div>
                                 </TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-right">Total</TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-center">Acciones</TableHead>
-                                <TableHead className="w-[30px]"></TableHead>
+                                <TableHead className="text-gray-500 text-[10px] font-bold text-right sticky top-0 z-20 bg-gray-800">Total</TableHead>
+                                <TableHead className="text-gray-500 text-[10px] font-bold text-center sticky top-0 z-20 bg-gray-800">Acciones</TableHead>
+                                <TableHead className="w-[30px] sticky top-0 z-20 bg-gray-800"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

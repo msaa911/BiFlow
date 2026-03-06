@@ -355,9 +355,9 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
             <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
                 <table className="w-full text-left text-xs border-separate border-spacing-0">
-                    <thead className="bg-gray-800 text-[10px] uppercase font-bold text-gray-400 tracking-widest sticky top-0 z-10">
+                    <thead className="bg-gray-800 text-[10px] font-bold text-gray-400 sticky top-0 z-10">
                         <tr>
-                            <th className="px-6 py-4 w-12 text-center">
+                            <th className="px-6 py-4 w-12 text-center sticky top-0 z-20 bg-gray-800">
                                 <input
                                     type="checkbox"
                                     className="rounded border-gray-700 bg-gray-900/50 text-emerald-500 focus:ring-emerald-500/20 w-4 h-4 cursor-pointer"
@@ -365,12 +365,12 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     onChange={handleSelectAll}
                                 />
                             </th>
-                            <th className="px-6 py-4">Fecha (Emisión)</th>
-                            <th className="px-6 py-4">CUIT / Entidad</th>
-                            <th className="px-6 py-4">Concepto / Condición</th>
-                            <th className="px-6 py-4 text-right">Monto Total</th>
-                            <th className="px-6 py-4 text-right">Saldo Pendiente</th>
-                            <th className="px-6 py-4 text-center">Acciones</th>
+                            <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Fecha (Emisión)</th>
+                            <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">CUIT / Entidad</th>
+                            <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Concepto / Condición</th>
+                            <th className="px-6 py-4 text-right sticky top-0 z-20 bg-gray-800">Monto Total</th>
+                            <th className="px-6 py-4 text-right sticky top-0 z-20 bg-gray-800">Saldo Pendiente</th>
+                            <th className="px-6 py-4 text-center sticky top-0 z-20 bg-gray-800">Acciones</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">

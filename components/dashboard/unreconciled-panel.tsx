@@ -1314,10 +1314,10 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                     <table className="w-full text-[11px] text-left border-separate border-spacing-0">
                                         <thead className="bg-gray-800 sticky top-0 z-10">
                                             <tr>
-                                                <th className="px-3 py-2 text-left font-bold uppercase text-[9px] text-gray-400 tracking-widest">Fecha/Vto</th>
-                                                <th className="px-3 py-2 text-left font-bold uppercase text-[9px] text-gray-400 tracking-widest">Número</th>
-                                                <th className="px-3 py-2 text-right font-bold uppercase text-[9px] text-gray-400 tracking-widest">Pendiente</th>
-                                                <th className="px-3 py-2 text-center font-bold uppercase text-[9px] text-gray-400 tracking-widest">Acción</th>
+                                                <th className="px-3 py-2 text-left font-bold text-[9px] text-gray-400 sticky top-0 z-20 bg-gray-800">Fecha/Vto</th>
+                                                <th className="px-3 py-2 text-left font-bold text-[9px] text-gray-400 sticky top-0 z-20 bg-gray-800">Número</th>
+                                                <th className="px-3 py-2 text-right font-bold text-[9px] text-gray-400 sticky top-0 z-20 bg-gray-800">Pendiente</th>
+                                                <th className="px-3 py-2 text-center font-bold text-[9px] text-gray-400 sticky top-0 z-20 bg-gray-800">Acción</th>
                                             </tr>
                                         </thead>
                                         <tbody>

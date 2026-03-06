@@ -468,16 +468,16 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 </Badge>
                             </div>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto overflow-y-auto max-h-[500px] scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-800/50 text-[10px] uppercase font-black text-gray-500 tracking-widest border-b border-gray-800">
-                                        <th className="pl-4 pr-1 py-4 font-black">Estado</th>
-                                        <th className="px-1 py-4 font-black">Fecha</th>
-                                        <th className="px-1 py-4 font-black">Descripción / Concepto</th>
-                                        <th className="px-1 py-4 font-black">Referencia</th>
-                                        <th className="px-1 py-4 font-black">Categoría</th>
-                                        <th className="pr-4 pl-1 py-4 text-right font-black">Monto (ARS)</th>
+                                    <tr className="text-[10px] font-bold text-gray-500 border-b border-gray-800">
+                                        <th className="pl-4 pr-1 py-4 font-black sticky top-0 z-20 bg-gray-800/95 backdrop-blur-sm">Estado</th>
+                                        <th className="px-1 py-4 font-black sticky top-0 z-20 bg-gray-800/95 backdrop-blur-sm">Fecha</th>
+                                        <th className="px-1 py-4 font-black sticky top-0 z-20 bg-gray-800/95 backdrop-blur-sm">Descripción / Concepto</th>
+                                        <th className="px-1 py-4 font-black sticky top-0 z-20 bg-gray-800/95 backdrop-blur-sm">Referencia</th>
+                                        <th className="px-1 py-4 font-black sticky top-0 z-20 bg-gray-800/95 backdrop-blur-sm">Categoría</th>
+                                        <th className="pr-4 pl-1 py-4 text-right font-black sticky top-0 z-20 bg-gray-800/95 backdrop-blur-sm">Monto (ARS)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800/50">

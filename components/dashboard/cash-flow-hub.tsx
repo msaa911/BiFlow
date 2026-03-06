@@ -124,12 +124,12 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-800/50 text-xs uppercase font-medium text-gray-500">
+                                    <thead className="bg-gray-800 text-xs font-medium text-gray-400 sticky top-0 z-10">
                                         <tr>
-                                            <th className="px-6 py-3">Fecha</th>
-                                            <th className="px-6 py-3">Descripción</th>
-                                            <th className="px-6 py-3 text-right">Monto</th>
-                                            <th className="px-6 py-3 text-right">Acción</th>
+                                            <th className="px-6 py-3 sticky top-0 z-20 bg-gray-800">Fecha</th>
+                                            <th className="px-6 py-3 sticky top-0 z-20 bg-gray-800">Descripción</th>
+                                            <th className="px-6 py-3 text-right sticky top-0 z-20 bg-gray-800">Monto</th>
+                                            <th className="px-6 py-3 text-right sticky top-0 z-20 bg-gray-800">Acción</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">

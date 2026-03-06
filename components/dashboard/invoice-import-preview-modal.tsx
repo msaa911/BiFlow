@@ -140,14 +140,14 @@ export function InvoiceImportPreviewModal({
                         <table className="w-full text-xs text-left">
                             <thead className="bg-gray-900 border-b border-gray-800 sticky top-0 z-20">
                                 <tr>
-                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest w-12">#</th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest w-40">Fecha</th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest">
+                                    <th className="px-4 py-3 font-bold text-gray-500 w-12 sticky top-0 z-20 bg-gray-900">#</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 w-40 sticky top-0 z-20 bg-gray-900">Fecha</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 sticky top-0 z-20 bg-gray-900">
                                         {type === 'factura_venta' ? 'Cliente' : 'Proveedor'} / CUIT
                                     </th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest w-40">Número</th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest text-right w-32">Monto</th>
-                                    <th className="px-4 py-3 font-bold text-gray-500 uppercase tracking-widest text-center w-32">Estado</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 w-40 sticky top-0 z-20 bg-gray-900">Número</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 text-right w-32 sticky top-0 z-20 bg-gray-900">Monto</th>
+                                    <th className="px-4 py-3 font-bold text-gray-500 text-center w-32 sticky top-0 z-20 bg-gray-900">Estado</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">

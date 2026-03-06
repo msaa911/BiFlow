@@ -146,11 +146,11 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                         <table className="w-full text-sm text-left">
                             <thead className="bg-gray-900 text-gray-500 sticky top-0 z-20 border-b border-gray-800">
                                 <tr>
-                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider w-16">Fila</th>
-                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider">Razón Social</th>
-                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider w-40">CUIT</th>
-                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider">Ubicación</th>
-                                    <th className="px-4 py-4 font-bold uppercase text-[10px] tracking-wider text-center w-40">Estado / Acción</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] w-16 sticky top-0 z-20 bg-gray-900">Fila</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] sticky top-0 z-20 bg-gray-900">Razón Social</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] w-40 sticky top-0 z-20 bg-gray-900">CUIT</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] sticky top-0 z-20 bg-gray-900">Ubicación</th>
+                                    <th className="px-4 py-4 font-bold text-[10px] text-center w-40 sticky top-0 z-20 bg-gray-900">Estado / Acción</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
