@@ -367,7 +367,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                             </th>
                             <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Fecha (Emisión)</th>
                             <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">CUIT / Entidad</th>
-                            <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Concepto / Condición</th>
+                            <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Concepto / Comprobante</th>
                             <th className="px-6 py-4 text-right sticky top-0 z-20 bg-gray-800">Monto Total</th>
                             <th className="px-6 py-4 text-right sticky top-0 z-20 bg-gray-800">Saldo Pendiente</th>
                             <th className="px-6 py-4 text-center sticky top-0 z-20 bg-gray-800">Acciones</th>
@@ -403,13 +403,20 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                 <td className="px-6 py-3">
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="text-white truncate max-w-[150px] text-xs font-bold" title={inv.concepto || (inv.nro_factura || inv.numero)}>{inv.concepto || (inv.nro_factura || inv.numero || 'Sin Número')}</span>
+                                            <span className="text-white truncate max-w-[200px] text-xs font-black uppercase tracking-tight" title={inv.concepto || 'Sin concepto'}>
+                                                {inv.concepto || 'Sin concepto'}
+                                            </span>
                                             {inv.tipo === 'nota_credito' && <Badge className="bg-red-500/20 text-red-500 border-red-500/30 text-[8px] px-1 h-3.5">NC</Badge>}
                                             {inv.tipo === 'nota_debito' && <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[8px] px-1 h-3.5">ND</Badge>}
                                         </div>
-                                        <Badge variant="outline" className={`w-fit text-[8px] mt-1 h-3.5 font-bold tracking-tight px-1 ${inv.condicion === 'contado' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-800 text-gray-500'}`}>
-                                            {inv.condicion?.toUpperCase() || 'CTA CTE'}
-                                        </Badge>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-[10px] text-gray-500 font-mono">
+                                                {inv.nro_factura || inv.numero || 'S/N'}
+                                            </span>
+                                            <span className={`text-[8px] font-bold px-1 rounded-sm ${inv.condicion === 'contado' ? 'text-blue-400 bg-blue-400/10' : 'text-gray-600 bg-gray-800'}`}>
+                                                {inv.condicion?.toUpperCase() || 'CTA CTE'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-3 text-right font-medium text-gray-400 text-xs">
