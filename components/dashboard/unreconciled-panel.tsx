@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 
 interface Transaction {
     id: string
+    organization_id?: string
     fecha: string
     descripcion: string
     referencia?: string
@@ -233,19 +234,21 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
         setIsSubmitting(true)
         try {
+            const currentOrgId = selectedTx.organization_id || orgId
+
             // 1. Ensure "Gastos Varios / Banco" entity exists
             let { data: entity } = await supabase
                 .from('entidades')
                 .select('id, cuit, razon_social')
-                .eq('organization_id', orgId)
+                .eq('organization_id', currentOrgId)
                 .eq('razon_social', 'Gastos Varios / Otros')
-                .single()
+                .maybeSingle()
 
             if (!entity) {
                 const { data: newEntity, error: entError } = await supabase
                     .from('entidades')
                     .insert({
-                        organization_id: orgId,
+                        organization_id: currentOrgId,
                         razon_social: 'Gastos Varios / Otros',
                         cuit: '00000000000',
                         categoria: 'proveedor'
@@ -265,14 +268,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             const claseDoc = isIngreso ? 'NCB' : 'NDB'
             const voucherType = isIngreso ? 'ncb_bancaria' : 'ndb_bancaria'
 
-            // 3. Prepare Metadata with Splits (if applicable)
+            // 3. Prepare Metadata
             const totalMonto = Math.abs(selectedTx.monto)
             const parsedSplitAmount = parseFloat(splitAmount) || 0
 
             const metadata: any = {
                 transaccion_id: selectedTx.id,
                 categoria_principal: category,
-                original_desc: selectedTx.descripcion
+                original_desc: selectedTx.descripcion,
+                bank_desc: selectedTx.descripcion
             }
 
             if (isSplitting && parsedSplitAmount > 0) {
@@ -290,14 +294,13 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 ]
             }
 
-            // 4. Create Comprobante (Voucher) directly - IMPACTS INCOMES/EXPENSES
-            // We generate a unique number for bank-only notes
+            // 4. Create Comprobante (Voucher)
             const bankNoteNumber = `BN-${selectedTx.id.split('-')[0].toUpperCase()}-${new Date().getTime().toString().slice(-4)}`
 
             const { data: voucher, error: vError } = await supabase
                 .from('comprobantes')
                 .insert({
-                    organization_id: orgId,
+                    organization_id: currentOrgId,
                     entidad_id: entity.id,
                     tipo: voucherType,
                     nro_factura: selectedTx.referencia || bankNoteNumber,
@@ -307,9 +310,9 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     fecha_vencimiento: selectedTx.fecha,
                     monto_total: totalMonto,
                     monto_pendiente: 0,
-                    estado: 'conciliado', // Set to conciliado directly!
-                    condicion: 'contado',   // Direct impact, no current account
-                    concepto: category,     // Essential for visibility
+                    estado: 'conciliado',
+                    condicion: 'contado',
+                    concepto: category,
                     moneda: 'ARS',
                     metadata: {
                         ...metadata,
@@ -322,36 +325,51 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 .single()
 
             if (vError) throw vError
+            if (!voucher) throw new Error("No se pudo generar el comprobante bancario")
 
-            // 5. Update Bank Transaction (Direct Link to Comprobante)
-            const { error: txError } = await supabase
+            // 5. Update Bank Transaction
+            const { data: txData, error: txError } = await supabase
                 .from('transacciones')
                 .update({
                     categoria: category,
-                    comprobante_id: voucher.id, // Direct link!
-                    movimiento_id: null,        // Explicitly null as we bypass MT
+                    comprobante_id: voucher.id,
+                    movimiento_id: null,
                     estado: 'conciliado',
                     metadata: {
                         ...(selectedTx.metadata || {}),
                         reconciled_at: new Date().toISOString(),
                         link_method: 'direct_note',
                         generated_voucher_id: voucher.id,
-                        category: category
+                        category: category,
+                        original_desc: selectedTx.descripcion
                     }
                 })
                 .eq('id', selectedTx.id)
-                .eq('organization_id', orgId)
+                .select()
+                .maybeSingle()
 
-            if (txError) throw txError
+            if (txError) {
+                console.error("Error linking transaction:", txError)
+            }
 
-            // Update local state to reflect conciliation immediately in UI
+            if (!txData) {
+                console.warn("No transaction was updated in first attempt. Attempting second update.")
+                await supabase.from('transacciones')
+                    .update({
+                        comprobante_id: voucher.id,
+                        estado: 'conciliado',
+                        categoria: category
+                    })
+                    .eq('id', selectedTx.id)
+            }
+
+            // Update UI
             setCategorizedTxIds(prev => [...prev, selectedTx.id])
             selectedTx.estado = 'conciliado'
-            selectedTx.movimiento_id = undefined // Bypassing Treasury Movement
             selectedTx.comprobante_id = voucher.id
             selectedTx.concepto = category
 
-            toast.success(`${claseDoc} generada y registrada en bancos`)
+            toast.success(`${claseDoc} generada y registrada con éxito`)
             setIsCategorizing(false)
             setIsSplitting(false)
             setSelectedCategory(null)
@@ -359,8 +377,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             setSelectedTx(null)
             if (onRefresh) onRefresh()
         } catch (error: any) {
-            console.error('Error in direct banking accounting:', error)
-            toast.error('Error al generar la nota bancaria: ' + (error.message || 'Error desconocido'))
+            console.error('Error in banking accounting:', error)
+            toast.error('Error al generar nota: ' + (error.message || 'Desconocido'))
         } finally {
             setIsSubmitting(false)
         }

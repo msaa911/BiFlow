@@ -47,7 +47,29 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                 .order('fecha_emision', { ascending: false })
 
             if (error) throw error
-            setNotes(data || [])
+
+            // Post-processing to ensure we have transaction data even if link is broken in DB
+            // but exists in metadata
+            const processedNotes = await Promise.all((data || []).map(async (note) => {
+                if ((!note.transacciones || note.transacciones.length === 0) && note.metadata?.transaccion_id) {
+                    try {
+                        const { data: txData } = await supabase
+                            .from('transacciones')
+                            .select('*')
+                            .eq('id', note.metadata.transaccion_id)
+                            .single()
+
+                        if (txData) {
+                            return { ...note, transacciones: [txData] }
+                        }
+                    } catch (e) {
+                        console.warn(`Could not recover tx for note ${note.id}`, e)
+                    }
+                }
+                return note
+            }))
+
+            setNotes(processedNotes)
         } catch (error: any) {
             console.error('Error fetching bank notes:', error)
             toast.error('Error al cargar historial de notas')
@@ -170,9 +192,15 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                                             <td className="px-6 py-4 font-bold text-emerald-400">{note.nro_factura}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-white text-xs uppercase tracking-tight">{note.concepto || note.metadata?.categoria_principal || tx?.categoria || 'Sin concepto'}</span>
-                                                    <span className="text-[10px] text-emerald-400 font-medium italic">{note.entidades?.razon_social || 'Entidad no identificada'}</span>
-                                                    <span className="text-[9px] text-gray-500 truncate max-w-[250px]">{tx?.descripcion || note.metadata?.original_desc || 'Sin descripción'}</span>
+                                                    <span className="font-bold text-white text-xs uppercase tracking-tight">
+                                                        {note.concepto || note.metadata?.categoria_principal || tx?.categoria || 'Sin concepto'}
+                                                    </span>
+                                                    <span className="text-[10px] text-emerald-400 font-medium italic">
+                                                        {note.entidades?.razon_social || 'Entidad no identificada'}
+                                                    </span>
+                                                    <span className="text-[9px] text-gray-500 truncate max-w-[250px]">
+                                                        {tx?.descripcion || note.metadata?.original_desc || note.metadata?.bank_desc || 'Nota bancaria de extracto'}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td className={`px-6 py-4 text-right font-black tabular-nums ${note.tipo === 'ndb_bancaria' ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -205,15 +233,15 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                                                             <div className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 space-y-2">
                                                                 <div className="flex justify-between">
                                                                     <span className="text-gray-500">Transacción:</span>
-                                                                    <span className="text-white font-medium">{tx?.descripcion}</span>
+                                                                    <span className="text-white font-medium">{tx?.descripcion || note.metadata?.original_desc || 'ID: ' + note.metadata?.transaccion_id?.slice(0, 8)}</span>
                                                                 </div>
                                                                 <div className="flex justify-between">
                                                                     <span className="text-gray-500">Fecha Banco:</span>
-                                                                    <span className="text-white">{tx?.fecha ? formatDate(tx.fecha) : '-'}</span>
+                                                                    <span className="text-white">{tx?.fecha ? formatDate(tx.fecha) : formatDate(note.fecha_emision)}</span>
                                                                 </div>
                                                                 <div className="flex justify-between">
                                                                     <span className="text-gray-500">Categoría:</span>
-                                                                    <span className="px-2 py-0.5 bg-gray-800 rounded text-[9px] text-emerald-400 font-bold">{tx?.categoria}</span>
+                                                                    <span className="px-2 py-0.5 bg-gray-800 rounded text-[9px] text-emerald-400 font-bold">{tx?.categoria || note.concepto || 'S/D'}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
