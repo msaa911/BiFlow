@@ -23,8 +23,7 @@ import {
     Upload,
     DownloadCloud,
     Tag,
-    Plus,
-    Info
+    Plus
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -262,17 +261,6 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                 </div>
             </div>
 
-            {/* Color Legend */}
-            <div className="flex flex-wrap gap-4 mb-3 justify-start px-1 animate-in fade-in slide-in-from-left-2 duration-500">
-                <div className="flex items-center gap-1.5 bg-gray-950 px-2 py-1 rounded-md border border-gray-800 shadow-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.6)]"></div>
-                    <span className="text-[10px] text-gray-400 font-bold tracking-wider">Blanco: No Imputado Contra Comprobante / Factura</span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-gray-950 px-2 py-1 rounded-md border border-gray-800 shadow-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>
-                    <span className="text-[10px] text-emerald-500/90 font-bold tracking-wider">Verde: Imputado Contra Factura / Comprobante</span>
-                </div>
-            </div>
 
             <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50">
                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
@@ -284,11 +272,8 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Fecha</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Comprobante</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest">Socio</TableHead>
-                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest relative group cursor-help">
-                                    <div className="flex items-center gap-1" title="El color indica si el movimiento está imputado (Verde) o es manual (Blanco)">
-                                        Concepto
-                                        <Info className="w-3 h-3 text-emerald-500/50 group-hover:text-emerald-400 transition-colors" />
-                                    </div>
+                                <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest cursor-help" title="El color indica si el movimiento está imputado (Verde) o si es manual / no imputado (Blanco)">
+                                    Concepto
                                 </TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-right">Total</TableHead>
                                 <TableHead className="text-gray-500 uppercase text-[10px] font-bold tracking-widest text-center">Acciones</TableHead>
@@ -330,7 +315,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                             <span
                                                                 key={idx}
                                                                 className="text-xs font-bold text-emerald-400 uppercase tracking-tight"
-                                                                title="Factura imputada administrativamente"
+                                                                title="Imputado contra factura / comprobante"
                                                             >
                                                                 {app.comprobantes?.nro_factura || app.comprobantes?.numero}
                                                                 {idx < mov.aplicaciones_pago.length - 1 ? " | " : ""}
@@ -339,7 +324,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                     ) : (
                                                         <span
                                                             className="text-xs font-bold text-white uppercase tracking-tight cursor-help"
-                                                            title="Concepto manual (Sin imputar a ningún comprobante)"
+                                                            title="No imputado contra comprobante / factura"
                                                         >
                                                             {mov.concepto || mov.categoria || 'Sin concepto'}
                                                         </span>
