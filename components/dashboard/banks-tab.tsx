@@ -519,12 +519,12 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                         <tr key={t.id} className="group hover:bg-emerald-500/[0.02] transition-colors">
                                             <td className="pl-4 pr-1 py-2.5">
                                                 <div className="flex items-center">
-                                                    <span className={`
-                                                        inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-black uppercase tracking-tighter shadow-sm
-                                                        ${t.estado === 'conciliado' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-500 border border-amber-500/30'}
-                                                    `} title={t.estado}>
+                                                    <div className={`
+                                                        w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black
+                                                        ${t.estado === 'conciliado' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800/50 text-gray-600 border border-gray-800'}
+                                                    `} title={t.estado === 'conciliado' ? 'Conciliado' : 'Pendiente'}>
                                                         {t.estado === 'conciliado' ? 'C' : 'P'}
-                                                    </span>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-1 py-2.5 font-mono text-[11px] text-gray-500">{formatDate(t.fecha)}</td>

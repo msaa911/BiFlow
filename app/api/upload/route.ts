@@ -530,7 +530,10 @@ export async function POST(request: Request) {
                         estado: t.estado,
                         archivo_importacion_id: t.archivo_importacion_id,
                         tags: t.tags || [],
-                        metadata: t.metadata || {}
+                        metadata: {
+                            ...(t.metadata || {}),
+                            referencia: t.referencia || null
+                        }
                     }))
 
                     const { error: insError } = await currentSupabase
