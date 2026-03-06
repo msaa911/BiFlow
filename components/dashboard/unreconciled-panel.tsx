@@ -20,7 +20,7 @@ interface Transaction {
     cuit_origen?: string
     cuit_destino?: string
     monto_usado?: number
-    categoria?: string
+    concepto?: string
     movimiento_id?: string
     metadata?: any
 }
@@ -175,7 +175,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             const { data: instruments, error: insError } = await supabase
                 .from('instrumentos_pago')
-                .select('*, movimientos_tesoreria(*, entidades(razon_social), aplicaciones_pago(comprobantes(numero, tipo)))')
+                .select('*, movimientos_tesoreria(*, entidades(razon_social), aplicaciones_pago(comprobantes(nro_factura, tipo)))')
                 .eq('organization_id', orgId)
                 .lte('monto', txAmount * 1.2) // Increased tolerance to 20% for manual suggestions
 
@@ -209,7 +209,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             fecha: ins.movimientos_tesoreria?.fecha,
                             monto: ins.monto,
                             observaciones: ins.movimientos_tesoreria?.observaciones,
-                            numero: ins.movimientos_tesoreria?.numero,
+                            nro_comprobante: ins.movimientos_tesoreria?.nro_comprobante,
                             entidad: ins.movimientos_tesoreria?.entidad_id,
                             razonSocial: ins.movimientos_tesoreria?.entidades?.razon_social,
                             tipo: ins.movimientos_tesoreria?.tipo,
@@ -264,7 +264,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 .insert({
                     organization_id: orgId,
                     tipo: tipoComprobante,
-                    numero: invoiceNumber,
+                    nro_factura: invoiceNumber,
                     cuit_socio: entities.find(e => e.id === selectedEntityId)?.cuit || '',
                     razon_social_socio: entities.find(e => e.id === selectedEntityId)?.razon_social || '',
                     fecha_emision: selectedTx.fecha,
@@ -589,7 +589,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                             entidad_id: expEntity.id,
                             tipo: isIngreso ? 'cobro' : 'pago',
                             clase_documento: claseDoc,
-                            categoria: residualCategory,
+                            concepto: residualCategory,
                             fecha: selectedTx.fecha,
                             monto_total: residualAmount,
                             observaciones: `[${claseDoc}] AJUSTE RESIDUAL CONCILIACIÓN: ${selectedTx.descripcion}`,
@@ -605,7 +605,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                 organization_id: orgId,
                                 entidad_id: expEntity.id,
                                 tipo: voucherType,
-                                numero: resMov.numero,
+                                nro_factura: resMov.nro_comprobante,
                                 cuit_socio: expEntity.cuit,
                                 razon_social_socio: expEntity.razon_social,
                                 fecha_emision: selectedTx.fecha,
@@ -768,8 +768,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     entidad_id: entity.id,
                     tipo: isIngreso ? 'cobro' : 'pago',
                     clase_documento: claseDoc,
-                    numero: selectedTx.referencia || null, // Will trigger get_next_treasury_number if null
-                    categoria: category,
+                    nro_comprobante: selectedTx.referencia || null, // Will trigger get_next_treasury_number if null
+                    concepto: category,
                     fecha: selectedTx.fecha,
                     monto_total: totalMonto,
                     moneda: 'ARS',
@@ -791,7 +791,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     organization_id: orgId,
                     entidad_id: entity.id, // Linked to entity
                     tipo: voucherType,
-                    numero: movimiento.numero, // INHERIT number from movement
+                    nro_factura: movimiento.nro_comprobante, // INHERIT number from movement
                     cuit_socio: entity.cuit,
                     razon_social_socio: entity.razon_social,
                     fecha_emision: selectedTx.fecha,
@@ -856,7 +856,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             setCategorizedTxIds(prev => [...prev, selectedTx.id])
             selectedTx.estado = 'conciliado'
             selectedTx.movimiento_id = movimiento.id
-            selectedTx.categoria = category
+            selectedTx.concepto = category
 
             toast.success(`${claseDoc} generada y registrada en bancos`)
             setIsCategorizing(false)

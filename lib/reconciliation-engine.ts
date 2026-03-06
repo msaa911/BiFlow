@@ -68,7 +68,7 @@ export class ReconciliationEngine {
 
         const { data: pendingMovements } = await adminSupabase
             .from('instrumentos_pago')
-            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(numero)))')
+            .select('*, movimientos_tesoreria(*, entidades(*), aplicaciones_pago(comprobante_id, comprobantes(nro_factura))))')
             .eq('organization_id', organizationId)
             .in('estado', ['pendiente', 'parcial'])
             .order('fecha_disponibilidad', { ascending: true });
@@ -196,7 +196,7 @@ export class ReconciliationEngine {
 
                     // 0. Check Payment Reference Match (Ej: Numero de cheque, numero de transferencia que detalla el recibo)
                     let hasPaymentRefMatch = false;
-                    const memRef = (m.referencia || '').toUpperCase().trim();
+                    const memRef = (m.detalle_referencia || '').toUpperCase().trim();
                     if (memRef && memRef.length >= 4) {
                         // Buscamos si la referencia del recibo está textualmente en el banco
                         if (descUpper.includes(memRef) || (trans.numero_cheque && trans.numero_cheque.toUpperCase().includes(memRef))) {
@@ -212,7 +212,7 @@ export class ReconciliationEngine {
 
                     // --- EVALUACIÓN FINAL DE COINCIDENCIA DE 1 A 1 ---
                     const transDescClean = this.normalizeReference(trans.descripcion || '');
-                    const instrRefClean = this.normalizeReference(m.referencia || '');
+                    const instrRefClean = this.normalizeReference(m.detalle_referencia || '');
 
                     console.log(`[RECONCILIATION] Testing match: Trans(${trans.id}, amt:${availableTransAmount}) [CleanDesc: ${transDescClean}] vs Mov(${m.id}, amt:${mAmount}) [CleanRef: ${instrRefClean}]`);
 
@@ -223,7 +223,7 @@ export class ReconciliationEngine {
                     }
 
                     // 1b. EXTRA: Literal check for numbers (To catch references like '123' inside 'TRF-123')
-                    const rawInstrRef = (m.referencia || '').trim();
+                    const rawInstrRef = (m.detalle_referencia || '').trim();
                     if (rawInstrRef && rawInstrRef.length >= 3 && descUpper.includes(rawInstrRef.toUpperCase())) {
                         console.log(`[RECONCILIATION] >> MATCH FOUND: Literal Reference ${rawInstrRef} found in description`);
                         return true;
@@ -237,7 +237,7 @@ export class ReconciliationEngine {
                     }
 
                     // 2. Check if Bank Check Number matches
-                    if (trans.numero_cheque && m.referencia && trans.numero_cheque.includes(m.referencia)) {
+                    if (trans.numero_cheque && m.detalle_referencia && trans.numero_cheque.includes(m.detalle_referencia)) {
                         console.log(`[RECONCILIATION] >> MATCH FOUND: Check Number Match!`);
                         return true;
                     }
@@ -245,7 +245,7 @@ export class ReconciliationEngine {
                     // 3. Verificamos si hay referencias de factura vinculadas al movimiento
                     if (mov?.aplicaciones_pago && Array.isArray(mov.aplicaciones_pago)) {
                         for (const app of mov.aplicaciones_pago) {
-                            const compNum = app.comprobantes?.numero;
+                            const compNum = app.comprobantes?.nro_factura;
                             if (compNum) {
                                 // Buscamos tanto la versión normalizada como el número final (ej: '1234' de 'FAC-0001-1234')
                                 const cleanFact = this.normalizeReference(compNum);
@@ -266,10 +266,16 @@ export class ReconciliationEngine {
                         return true;
                     }
 
+                    // 4b. Relaxed: Exact Amount match for null references
+                    if (Math.abs(availableTransAmount - mAmount) < 0.05 && (!m.detalle_referencia || m.detalle_referencia === '')) {
+                        console.log(`[RECONCILIATION] >> MATCH FOUND: Exact Amount Match for NULL Reference!`);
+                        return true;
+                    }
+
                     // 5. Fallback: Razon Social (Last resort)
                     const razonSocial = (movEntidad?.razon_social || '').toUpperCase();
-                    if (razonSocial) {
-                        const words = razonSocial.split(/\s+/).filter((w: string) => w.length > 3);
+                    if (razonSocial && razonSocial !== 'CONSUMIDOR FINAL') {
+                        const words = razonSocial.split(/\s+/).filter((w: string) => w.length >= 3);
                         if (words.some((w: string) => descUpper.includes(w))) {
                             console.log(`[RECONCILIATION] >> MATCH FOUND: Razon Social Match!`);
                             return true;
@@ -560,7 +566,7 @@ export class ReconciliationEngine {
             const targetType = isRecibo ? 'factura_venta' : 'factura_compra';
 
             // WE LOOK INTO BOTH CONCEPT AND OBSERVATIONS
-            const searchText = ((mov.concepto || '') + ' ' + (mov.observaciones || '') + ' ' + (mov.numero || '')).toUpperCase();
+            const searchText = ((mov.concepto || '') + ' ' + (mov.observaciones || '') + ' ' + (mov.nro_comprobante || '')).toUpperCase();
 
             // Try to find matching invoice
             const matchingInvoice = invoices.find(inv => {
@@ -572,7 +578,7 @@ export class ReconciliationEngine {
                 // Match amount (Relaxed: ignore decimals / rounding differences up to 1.5)
                 if (Math.floor(pending) !== Math.floor(movAmount) && Math.abs(pending - movAmount) > 1.5) return false;
 
-                const nroFactura = (inv.numero || '').toUpperCase();
+                const nroFactura = (inv.nro_factura || '').toUpperCase();
                 if (!nroFactura) return false;
 
                 const cleanFact = this.normalizeReference(nroFactura);

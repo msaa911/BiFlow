@@ -33,7 +33,8 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'reconciled'>('all')
     const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
     const [isDeletingBulk, setIsDeletingBulk] = useState(false)
-    const [reconciling, setReconciling] = useState(false)
+    const [reconcilingAdmin, setReconcilingAdmin] = useState(false)
+    const [reconcilingBank, setReconcilingBank] = useState(false)
     const supabase = createClient()
 
     // Dashboard Calculations
@@ -89,12 +90,14 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
         }
     }
 
-    const handleReconcile = async () => {
-        setReconciling(true)
+    const handleReconcile = async (scope: 'admin' | 'bank' = 'bank') => {
+        if (scope === 'admin') setReconcilingAdmin(true)
+        else setReconcilingBank(true)
+
         try {
             const res = await fetch('/api/reconcile/auto', {
                 method: 'POST',
-                body: JSON.stringify({ scope: 'bank' })
+                body: JSON.stringify({ scope })
             })
             const data = await res.json()
 
@@ -104,16 +107,20 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
             }
 
             if (data.matched > 0) {
-                toast.success(`¡Éxito! Se conciliaron ${data.matched} movimientos con el extracto bancario.`)
+                const message = scope === 'admin'
+                    ? `¡Éxito! Se vincularon ${data.matched} facturas con recibos/OP.`
+                    : `¡Éxito! Se conciliaron ${data.matched} movimientos con el extracto bancario.`;
+                toast.success(message)
                 if (onRefresh) onRefresh()
             } else {
-                toast.info(`Proceso bancario finalizado. No se encontraron nuevos matches (0).`)
+                toast.info(`Proceso finalizado. No se encontraron nuevos matches (0).`)
             }
         } catch (error) {
             console.error('Reconciliation failed:', error)
-            toast.error('Error al ejecutar la conciliación.')
+            toast.error('Error al ejecutar la acción.')
         } finally {
-            setReconciling(false)
+            if (scope === 'admin') setReconcilingAdmin(false)
+            else setReconcilingBank(false)
         }
     }
 
@@ -190,41 +197,38 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
                 {/* Card 1: Conciliación */}
-                <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl flex flex-col justify-center gap-4">
+                <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl flex flex-col justify-center gap-3">
                     <div>
                         <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Banknote className="w-5 h-5 text-amber-400 shrink-0" />
-                            Conciliación Bancaria
+                            <Banknote className="w-5 h-5 text-emerald-400 shrink-0" />
+                            Automatización
                         </h3>
-                        <p className="text-gray-400 text-xs mt-1">
-                            Cruce de extractos vs Movimientos de Tesorería
+                        <p className="text-gray-400 text-[10px] mt-1">
+                            Sincronización de extractos y facturación.
                         </p>
                     </div>
-                    <Button
-                        onClick={handleReconcile}
-                        disabled={reconciling}
-                        className={`
-                            w-full 
-                            bg-amber-600 hover:bg-amber-500 
-                            text-white font-bold py-2 px-4 rounded-lg
-                            shadow-md shadow-amber-900/20 
-                            flex items-center justify-center gap-2 transition-all active:scale-95
-                            text-sm
-                            ${reconciling ? 'animate-pulse cursor-wait opacity-80' : ''}
-                        `}
-                    >
-                        {reconciling ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Procesando...
-                            </>
-                        ) : (
-                            <>
-                                <TrendingUp className="w-4 h-4" />
-                                Conciliación Bancaria
-                            </>
-                        )}
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                        <Button
+                            onClick={() => handleReconcile('admin')}
+                            disabled={reconcilingAdmin}
+                            className={`
+                                w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-9 rounded-lg transition-all active:scale-95 text-[11px]
+                                ${reconcilingAdmin ? 'animate-pulse opacity-80' : ''}
+                            `}
+                        >
+                            {reconcilingAdmin ? 'Procesando...' : 'Vincular Facturas'}
+                        </Button>
+                        <Button
+                            onClick={() => handleReconcile('bank')}
+                            disabled={reconcilingBank}
+                            className={`
+                                w-full bg-amber-600 hover:bg-amber-500 text-white font-bold h-9 rounded-lg transition-all active:scale-95 text-[11px]
+                                ${reconcilingBank ? 'animate-pulse opacity-80' : ''}
+                            `}
+                        >
+                            {reconcilingBank ? 'Procesando...' : 'Conciliación Bancaria'}
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Card 2: Saldo Inicial */}
@@ -260,43 +264,64 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <TabsList className="bg-gray-900 border border-gray-800 p-1 h-12 gap-1 w-full md:w-auto">
-                        <TabsTrigger
-                            value="summary"
-                            className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
-                        >
-                            <LayoutDashboard className="w-4 h-4" />
-                            Resumen
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="transactions"
-                            className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 gap-2 px-6"
-                        >
-                            <List className="w-4 h-4" />
-                            Transacciones
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="portfolio"
-                            className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400 gap-2 px-6"
-                        >
-                            <Banknote className="w-4 h-4" />
-                            Cartera
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="reconciliation"
-                            className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400 gap-2 px-6"
-                        >
-                            <AlertCircle className="w-4 h-4" />
-                            Pendientes de Conciliación
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="audit"
-                            className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
-                        >
-                            <FileText className="w-4 h-4" />
-                            Notas Bancarias
-                        </TabsTrigger>
-                    </TabsList>
+                    <div className="flex flex-col gap-4">
+                        <TabsList className="bg-gray-900 border border-gray-800 p-1 h-12 gap-1 w-full md:w-auto">
+                            <TabsTrigger
+                                value="summary"
+                                className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
+                            >
+                                <LayoutDashboard className="w-4 h-4" />
+                                Resumen
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="transactions"
+                                className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 gap-2 px-6"
+                            >
+                                <List className="w-4 h-4" />
+                                Transacciones
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="portfolio"
+                                className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400 gap-2 px-6"
+                            >
+                                <Banknote className="w-4 h-4" />
+                                Cartera
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="reconciliation"
+                                className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400 gap-2 px-6"
+                            >
+                                <AlertCircle className="w-4 h-4" />
+                                Pendientes de Conciliación
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="audit"
+                                className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
+                            >
+                                <FileText className="w-4 h-4" />
+                                Notas Bancarias
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <div className="flex bg-gray-950 p-1 rounded-xl border border-gray-800 w-fit">
+                            {[
+                                { id: 'all', label: 'TODOS', color: 'emerald' },
+                                { id: 'pending', label: 'PENDIENTES', color: 'amber' },
+                                { id: 'reconciled', label: 'CONCILIADOS', color: 'blue' }
+                            ].map((f) => (
+                                <button
+                                    key={f.id}
+                                    onClick={() => setFilterStatus(f.id as any)}
+                                    className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${filterStatus === f.id
+                                        ? `bg-${f.color}-500 text-white shadow-lg shadow-${f.color}-500/20`
+                                        : 'text-gray-500 hover:text-gray-300'
+                                        }`}
+                                >
+                                    {f.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
                     <div className="flex flex-col md:flex-row items-center gap-3">
                         <div className="relative w-full md:w-auto">
@@ -462,9 +487,9 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             <h3 className="font-bold text-white text-xs flex items-center gap-2 uppercase tracking-tighter">
                                 <List className="w-4 h-4 text-emerald-400" /> Listado Completo de Movimientos
                             </h3>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-3">
                                 <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                                    {initialTransactions.length} registros
+                                    {filteredTx.length} registros
                                 </Badge>
                             </div>
                         </div>
@@ -481,7 +506,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800/50">
-                                    {initialTransactions.map((t: any) => (
+                                    {filteredTx.map((t: any) => (
                                         <tr key={t.id} className="group hover:bg-emerald-500/[0.02] transition-colors">
                                             <td className="pl-4 pr-1 py-2.5">
                                                 <span className={`

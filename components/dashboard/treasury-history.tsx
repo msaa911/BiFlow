@@ -122,7 +122,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
 
     const filteredMovements = movements.filter(m =>
         m.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (m.nro_comprobante || m.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.nro_comprobante || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.observaciones?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -314,7 +314,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                                 className="text-xs font-bold text-white uppercase tracking-tight"
                                                                 title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está"
                                                             >
-                                                                {app.comprobantes?.nro_factura || app.comprobantes?.numero}
+                                                                {app.comprobantes?.nro_factura}
                                                                 {idx < mov.aplicaciones_pago.length - 1 ? " | " : ""}
                                                             </span>
                                                         ))
@@ -323,7 +323,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                             className="text-xs font-bold text-emerald-400 uppercase tracking-tight cursor-help"
                                                             title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está"
                                                         >
-                                                            {mov.concepto || mov.categoria || 'Sin concepto'}
+                                                            {mov.concepto || 'Sin concepto'}
                                                         </span>
                                                     )}
                                                 </div>
@@ -359,7 +359,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                                                                             <div key={idx} className="flex justify-between items-center p-2.5 bg-gray-950/50 rounded-lg border border-gray-800">
                                                                                 <div className="flex flex-col">
                                                                                     <span className="text-xs font-bold text-gray-200 uppercase">{inst.metodo}</span>
-                                                                                    {inst.banco && <span className="text-[10px] text-gray-500 uppercase">{inst.banco} {(inst.detalle_referencia || inst.numero_cheque || inst.referencia) ? `#${inst.detalle_referencia || inst.numero_cheque || inst.referencia}` : ''}</span>}
+                                                                                    {inst.banco && <span className="text-[10px] text-gray-500 uppercase">{inst.banco} {(inst.detalle_referencia || inst.numero_cheque) ? `#${inst.detalle_referencia || inst.numero_cheque}` : ''}</span>}
                                                                                 </div>
                                                                                 <span className="font-mono text-sm font-bold text-white">
                                                                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inst.monto)}
