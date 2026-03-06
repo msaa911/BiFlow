@@ -22,6 +22,7 @@ interface Transaction {
     monto_usado?: number
     concepto?: string
     movimiento_id?: string
+    comprobante_id?: string
     metadata?: any
 }
 
