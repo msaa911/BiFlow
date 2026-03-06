@@ -392,7 +392,7 @@ export async function POST(request: Request) {
                             monto_total: totalMonto,
                             moneda: firstRow.moneda || 'ARS',
                             observaciones: rows.map(r => r.descripcion || r.razon_social).filter((v, i, a) => a && a.indexOf(v) === i).join(' | '),
-                            categoria: firstRow.concepto || firstRow.descripcion || firstRow.razon_social || 'Sin Concepto',
+                            concepto: firstRow.concepto || firstRow.descripcion || firstRow.razon_social || 'Sin Concepto',
                             metadata: {
                                 raw_rows: rows.map(r => r.raw),
                                 import_type: uploadContext,
@@ -415,7 +415,7 @@ export async function POST(request: Request) {
                             monto_total: Math.abs(t.monto),
                             moneda: t.moneda || 'ARS',
                             observaciones: t.descripcion || t.razon_social,
-                            categoria: t.concepto || t.descripcion || t.razon_social,
+                            concepto: t.concepto || t.descripcion || t.razon_social,
                             metadata: {
                                 raw_row: t.raw,
                                 import_type: uploadContext,
@@ -455,7 +455,7 @@ export async function POST(request: Request) {
                                     monto: Math.abs(rawRow.monto),
                                     banco: rawRow.banco || rawRow.metadata?.banco || null,
                                     fecha_disponibilidad: rawRow.vencimiento || rawRow.fecha,
-                                    referencia: rawRow.referencia || rawRow.metadata?.referencia || rawRow.numero_cheque || null,
+                                    detalle_referencia: rawRow.referencia || rawRow.metadata?.referencia || rawRow.numero_cheque || null,
                                     estado: 'pendiente'
                                 })
                             })
