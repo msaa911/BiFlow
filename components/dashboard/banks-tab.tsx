@@ -298,7 +298,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400 gap-2 px-6"
                             >
                                 <AlertCircle className="w-4 h-4" />
-                                Pendientes de Conciliación
+                                Pendientes ({pendingTransactions.length})
                             </TabsTrigger>
                             <TabsTrigger
                                 value="audit"
@@ -318,12 +318,18 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 <button
                                     key={f.id}
                                     onClick={() => setFilterStatus(f.id as any)}
-                                    className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${filterStatus === f.id
+                                    className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center gap-2 ${filterStatus === f.id
                                         ? `bg-${f.color}-500 text-white shadow-lg shadow-${f.color}-500/20`
-                                        : 'text-gray-500 hover:text-gray-300'
+                                        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900'
                                         }`}
                                 >
-                                    {f.label} ({f.count})
+                                    {f.label}
+                                    <span className={`
+                                        px-1.5 py-0.5 rounded-md text-[8px] font-black
+                                        ${filterStatus === f.id ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}
+                                    `}>
+                                        {f.count}
+                                    </span>
                                 </button>
                             ))}
                         </div>
