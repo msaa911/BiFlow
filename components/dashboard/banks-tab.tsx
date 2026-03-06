@@ -325,7 +325,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 >
                                     {f.label}
                                     <span className={`
-                                        px-1.5 py-0.5 rounded-md text-[8px] font-black
+                                        px-2 py-0.5 rounded-md text-[10px] font-black
                                         ${filterStatus === f.id ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}
                                     `}>
                                         {f.count}
