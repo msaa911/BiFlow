@@ -607,10 +607,12 @@ export class ReconciliationEngine {
 
                 const cleanFact = this.normalizeReference(nroFactura);
                 const lastDigits = nroFactura.split('-').pop()?.replace(/^0+/, '');
+                const last4Digits = nroFactura.replace(/\D/g, '').slice(-4);
 
                 return (nroFactura && searchText.includes(nroFactura)) ||
                     (cleanFact && cleanFact.length >= 4 && searchText.includes(cleanFact)) ||
-                    (lastDigits && lastDigits.length >= 4 && searchText.includes(lastDigits));
+                    (lastDigits && lastDigits.length >= 4 && searchText.includes(lastDigits)) ||
+                    (last4Digits && last4Digits.length === 4 && searchText.includes(last4Digits));
             });
 
             if (matchingInvoice) {
