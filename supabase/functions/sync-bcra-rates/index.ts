@@ -11,7 +11,10 @@ serve(async (req: Request) => {
         // 1. Consultar Tasas de Plazo Fijo
         const resTasas = await fetch('https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo');
         const dataTasas = await resTasas.json();
-        const bancosConTasa = dataTasas.filter((b: any) => b.tnaClientes !== null && b.tnaClientes > 0);
+
+        // La API puede devolver el array directamente o envuelto en { value: [...] }
+        const rawTasas = Array.isArray(dataTasas) ? dataTasas : (dataTasas.value || []);
+        const bancosConTasa = rawTasas.filter((b: any) => b.tnaClientes !== null && b.tnaClientes > 0);
         const tasaPromedio = bancosConTasa.length > 0 ? (bancosConTasa.reduce((acc: number, b: any) => acc + b.tnaClientes, 0) / bancosConTasa.length) : 0;
 
         // Mapear bancos específicos importantes
@@ -32,24 +35,36 @@ serve(async (req: Request) => {
             }
         });
 
-        // 2. Consultar Tasa BADLAR
-        const resBadlar = await fetch('https://api.argentinadatos.com/v1/finanzas/indices/badlar');
-        const dataBadlar = await resBadlar.json();
-        const tasaBadlar = dataBadlar.length > 0 ? dataBadlar[dataBadlar.length - 1].valor : 0;
+        // 2. Consultar Tasa BADLAR (Usando depositos30Dias como fallback si indices/badlar no existe)
+        let tasaBadlar = 0;
+        try {
+            const resBadlar = await fetch('https://api.argentinadatos.com/v1/finanzas/tasas/depositos30Dias');
+            const dataBadlar = await resBadlar.json();
+            const rawBadlar = Array.isArray(dataBadlar) ? dataBadlar : (dataBadlar.value || []);
+            tasaBadlar = rawBadlar.length > 0 ? rawBadlar[rawBadlar.length - 1].valor : 0;
+        } catch (e) {
+            console.warn("⚠️ No se pudo obtener tasa depositos30Dias:", e.message);
+        }
 
-        // 3. Consultar Cotización Dólar (Oficial)
-        const resDolar = await fetch('https://api.argentinadatos.com/v1/finanzas/cotizaciones/dolar');
-        const dataDolar = await resDolar.json();
-        const oficial = dataDolar.find((d: any) => d.casa === 'oficial') || dataDolar[dataDolar.length - 1];
-        const valorDolar = oficial ? oficial.venta : 0;
+        // 3. Consultar Cotización Dólar
+        let valorDolar = 0;
+        try {
+            const resDolar = await fetch('https://api.argentinadatos.com/v1/cotizaciones/dolares');
+            const dataDolar = await resDolar.json();
+            const rawDolar = Array.isArray(dataDolar) ? dataDolar : (dataDolar.value || []);
+            const oficial = rawDolar.find((d: any) => d.casa === 'oficial') || rawDolar[rawDolar.length - 1];
+            valorDolar = oficial ? oficial.venta : 0;
+        } catch (e) {
+            console.warn("⚠️ No se pudo obtener cotización dólar:", e.message);
+        }
 
-        console.log(`✅ Plazo Fijo: ${(tasaPromedio * 100).toFixed(2)}% | BADLAR: ${(tasaBadlar * 100).toFixed(2)}% | Dólar: $${valorDolar}`);
+        console.log(`✅ Plazo Fijo: ${(tasaPromedio * 100).toFixed(2)}% | BADLAR(Proxy): ${(tasaBadlar * 100).toFixed(2)}% | Dólar: $${valorDolar}`);
 
         // 4. Guardar en Supabase
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
         const hoy = new Date().toISOString().split('T')[0];
 
-        const { error } = await supabase
+        const { error: dbError } = await supabase
             .from('indices_mercado')
             .upsert({
                 fecha: hoy,
@@ -59,9 +74,9 @@ serve(async (req: Request) => {
                 updated_at: new Date().toISOString()
             }, { onConflict: 'fecha' });
 
-        if (error) {
-            console.error("❌ DB Insert Error:", error.message);
-            throw error;
+        if (dbError) {
+            console.error("❌ DB Insert Error:", dbError.message);
+            throw dbError;
         }
 
         return new Response(JSON.stringify({
