@@ -25,6 +25,7 @@ interface CompanyConfig {
     tna: number
     limite_descubierto: number
     modo_tasa: 'AUTOMATICO' | 'MANUAL'
+    tasa_referencia_auto: 'PLAZO_FIJO' | 'BADLAR'
     colchon_liquidez: number
 }
 
@@ -43,6 +44,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         tna: 0.70,
         limite_descubierto: 0,
         modo_tasa: 'AUTOMATICO',
+        tasa_referencia_auto: 'PLAZO_FIJO',
         colchon_liquidez: 0
     })
 
@@ -53,7 +55,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     const [editingAccountIndex, setEditingAccountIndex] = useState<number | null>(null)
     const [taxRules, setTaxRules] = useState<TaxRule[]>([])
 
-    const [marketRate, setMarketRate] = useState<number | null>(null)
+    const [marketRates, setMarketRates] = useState<{ PLAZO_FIJO: number, BADLAR: number, bancos: Record<string, number> }>({ PLAZO_FIJO: 0, BADLAR: 0, bancos: {} })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [success, setSuccess] = useState(false)
@@ -87,7 +89,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 ] = await Promise.all([
                     supabase.from('configuracion_empresa').select('*').eq('organization_id', organizationId).maybeSingle(),
                     supabase.from('cuentas_bancarias').select('*').eq('organization_id', organizationId),
-                    supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo').order('fecha', { ascending: false }).limit(1).maybeSingle(),
+                    supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo, tasa_badlar, tasas_bancos').order('fecha', { ascending: false }).limit(1).maybeSingle(),
                     supabase.from('tax_intelligence_rules').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }),
                     supabase.from('organization_members').select('id, role, user_id, created_at').eq('organization_id', organizationId)
                 ])
@@ -97,6 +99,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         tna: confRes.data.tna,
                         limite_descubierto: confRes.data.limite_descubierto,
                         modo_tasa: confRes.data.modo_tasa || 'AUTOMATICO',
+                        tasa_referencia_auto: confRes.data.tasa_referencia_auto || 'PLAZO_FIJO',
                         colchon_liquidez: confRes.data.colchon_liquidez || 0
                     })
                 }
@@ -108,9 +111,12 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     setAccounts([{ banco_nombre: 'Banco Principal', cbu: '', saldo_inicial: 0, colchon_liquidez: 0, limite_descubierto: 0, mantenimiento_pactado: 0, comision_cheque: 0 }])
                 }
 
-                // 4. Procesar Tasas Mercado
                 if (marketRes.data) {
-                    setMarketRate(marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo)
+                    setMarketRates({
+                        PLAZO_FIJO: marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo || 0,
+                        BADLAR: marketRes.data.tasa_badlar || 0,
+                        bancos: marketRes.data.tasas_bancos || {}
+                    })
                 }
 
                 // 5. Procesar Reglas de Impuestos
@@ -187,9 +193,22 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             const res = await fetch('/api/market/sync', { method: 'POST' })
             const data = await res.json()
             if (data.success) {
-                setMarketRate(data.tasa)
-                setConfig(prev => ({ ...prev, tna: data.tasa, modo_tasa: 'AUTOMATICO' }))
-                alert(`Tasa actualizada: ${(data.tasa * 100).toFixed(2)}%`)
+                setMarketRates({
+                    PLAZO_FIJO: data.tasa,
+                    BADLAR: data.tasa_badlar || 0,
+                    bancos: data.tasas_bancos || {}
+                })
+
+                // Actualizamos la TNA actual según la referencia seleccionada
+                let nuevaTna = data.tasa; // Default PROMEDIO
+                if (config.tasa_referencia_auto === 'BADLAR') {
+                    nuevaTna = data.tasa_badlar || 0;
+                } else if (data.tasas_bancos && data.tasas_bancos[config.tasa_referencia_auto]) {
+                    nuevaTna = data.tasas_bancos[config.tasa_referencia_auto];
+                }
+
+                setConfig(prev => ({ ...prev, tna: nuevaTna, modo_tasa: 'AUTOMATICO' }))
+                alert(`Tasas actualizadas correctamente.`)
             } else {
                 throw new Error(data.error || 'Error al sincronizar tasa')
             }
@@ -306,6 +325,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 tna: config.tna,
                 limite_descubierto: config.limite_descubierto,
                 modo_tasa: config.modo_tasa,
+                tasa_referencia_auto: config.tasa_referencia_auto,
                 colchon_liquidez: config.colchon_liquidez,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'organization_id' })
@@ -469,12 +489,12 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                         <Input
                                             value={acc.banco_nombre}
                                             onChange={(e) => updateAccount(idx, 'banco_nombre', e.target.value)}
-                                            className="bg-gray-900 border-gray-800 focus:border-emerald-500/50 text-white h-11"
+                                            className="bg-gray-900 border-gray-800 focus:border-emerald-500/50 text-white h-11 text-sm"
                                             placeholder="Ej: Galicia Principal"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] text-emerald-400 font-black uppercase tracking-widest text-center block">Saldo Inicial (Arranque)</Label>
+                                        <Label className="text-[10px] text-emerald-400 font-black uppercase tracking-widest block">Saldo Inicial (Arranque)</Label>
                                         <div className="relative">
                                             <span className="absolute left-3 top-3 text-gray-600 font-bold">$</span>
                                             <Input
@@ -484,16 +504,16 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                                     const val = parseFloat(e.target.value)
                                                     updateAccount(idx, 'saldo_inicial', isNaN(val) ? 0 : val)
                                                 }}
-                                                className="pl-8 bg-gray-900 border-gray-800 text-white font-mono text-xl h-11"
+                                                className="pl-8 bg-gray-900 border-gray-800 text-white font-mono h-11 text-sm"
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">CBU / Alias</Label>
+                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">CBU / ALIAS</Label>
                                         <Input
                                             value={acc.cbu}
                                             onChange={(e) => updateAccount(idx, 'cbu', e.target.value)}
-                                            className="bg-gray-900 border-gray-800 focus:border-emerald-500/50 text-white font-mono h-11"
+                                            className="bg-gray-900 border-gray-800 focus:border-emerald-500/50 text-white font-mono h-11 text-sm"
                                             placeholder="22 dígitos"
                                         />
                                     </div>
@@ -507,53 +527,53 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                     </div>
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tighter">Colchón de Liquidez</Label>
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Colchón de Liquidez</Label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-2.5 text-gray-600 font-bold">$</span>
+                                                <span className="absolute left-3 top-3 text-gray-600 font-bold">$</span>
                                                 <Input
                                                     type="number"
                                                     value={acc.colchon_liquidez}
                                                     onChange={(e) => updateAccount(idx, 'colchon_liquidez', parseFloat(e.target.value) || 0)}
-                                                    className="pl-7 bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-10"
+                                                    className="pl-7 bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-11"
                                                 />
                                             </div>
                                             <p className="text-[9px] text-gray-600 italic leading-tight">Monto mínimo a mantener en cuenta.</p>
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tighter">Límite Descubierto Total</Label>
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Límite Descubierto Total</Label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-2.5 text-gray-600 font-bold">$</span>
+                                                <span className="absolute left-3 top-3 text-gray-600 font-bold">$</span>
                                                 <Input
                                                     type="number"
                                                     value={acc.limite_descubierto}
                                                     onChange={(e) => updateAccount(idx, 'limite_descubierto', parseFloat(e.target.value) || 0)}
-                                                    className="pl-7 bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-10"
+                                                    className="pl-7 bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-11"
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tighter">Mantenimiento Pactado ($/mes)</Label>
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Mantenimiento Pactado ($/mes)</Label>
                                             <Input
                                                 type="number"
                                                 value={acc.mantenimiento_pactado}
                                                 onChange={(e) => updateAccount(idx, 'mantenimiento_pactado', parseFloat(e.target.value) || 0)}
-                                                className="bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-10"
+                                                className="bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-11"
                                             />
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tighter">Comisión Cheque (%)</Label>
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Comisión Cheque (%)</Label>
                                             <div className="relative">
                                                 <Input
                                                     type="number"
                                                     step="0.01"
                                                     value={acc.comision_cheque}
                                                     onChange={(e) => updateAccount(idx, 'comision_cheque', parseFloat(e.target.value) || 0)}
-                                                    className="bg-gray-900/50 border-gray-800 text-white font-mono text-sm pr-6 h-10"
+                                                    className="bg-gray-900/50 border-gray-800 text-white font-mono text-sm pr-6 h-11"
                                                 />
-                                                <span className="absolute right-2 top-2.5 text-gray-600 font-bold">%</span>
+                                                <span className="absolute right-2 top-3 text-gray-600 font-bold">%</span>
                                             </div>
                                         </div>
                                     </div>
@@ -576,33 +596,102 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         <CardDescription className="text-gray-400">Parámetros para calcular dinero ocioso.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-xs font-bold uppercase text-gray-400">Tasa Nominal Anual (TNA)</Label>
-                                <div className="flex bg-gray-950 rounded-lg p-1 border border-gray-800">
+                        <div className="space-y-4">
+                            <div className="flex flex-col gap-4">
+                                <Label className="text-xs font-bold uppercase text-gray-400">Seleccionar Referencia de Mercado</Label>
+                                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {/* Promedio General */}
                                     <button
-                                        onClick={handleSyncMarketRate}
-                                        disabled={syncingRate}
-                                        className={`px-3 py-1 text-[10px] font-black rounded transition-all flex items-center gap-1.5 ${config.modo_tasa === 'AUTOMATICO' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}
+                                        onClick={() => setConfig({ ...config, tasa_referencia_auto: 'PLAZO_FIJO', tna: marketRates.PLAZO_FIJO, modo_tasa: 'AUTOMATICO' })}
+                                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-100 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700 text-gray-400'}`}
                                     >
-                                        {syncingRate ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                        AUTO
+                                        <div className="flex flex-col items-start">
+                                            <span className="text-[10px] uppercase font-black tracking-widest opacity-70">PROMEDIO MERCADO</span>
+                                            <span className="text-sm font-bold">Plazo Fijo (BCRA)</span>
+                                        </div>
+                                        <span className="text-lg font-mono font-bold">{(marketRates.PLAZO_FIJO * 100).toFixed(2)}%</span>
                                     </button>
-                                    <button onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })} className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}>MANUAL</button>
+
+                                    {/* BADLAR */}
+                                    <button
+                                        onClick={() => setConfig({ ...config, tasa_referencia_auto: 'BADLAR', tna: marketRates.BADLAR, modo_tasa: 'AUTOMATICO' })}
+                                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${config.tasa_referencia_auto === 'BADLAR' ? 'bg-blue-500/10 border-blue-500/50 text-blue-100 shadow-[0_0_15px_-5px_rgba(59,130,246,0.3)]' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700 text-gray-400'}`}
+                                    >
+                                        <div className="flex flex-col items-start">
+                                            <span className="text-[10px] uppercase font-black tracking-widest opacity-70">REFERENCIA BCRA</span>
+                                            <span className="text-sm font-bold">BADLAR</span>
+                                        </div>
+                                        <span className="text-lg font-mono font-bold">{(marketRates.BADLAR * 100).toFixed(2)}%</span>
+                                    </button>
+
+                                    {/* Division para bancos */}
+                                    <div className="py-2 px-1">
+                                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em]">Tasas por Entidad</span>
+                                    </div>
+
+                                    {/* Lista de Bancos */}
+                                    {Object.entries(marketRates.bancos).map(([banco, tasa]) => (
+                                        <button
+                                            key={banco}
+                                            onClick={() => setConfig({ ...config, tasa_referencia_auto: banco as any, tna: tasa, modo_tasa: 'AUTOMATICO' })}
+                                            className={`flex items-center justify-between p-3 rounded-lg border transition-all ${config.tasa_referencia_auto === banco ? 'bg-amber-500/10 border-amber-500/50 text-amber-100 shadow-[0_0_15px_-5px_rgba(245,158,11,0.3)]' : 'bg-gray-950/30 border-gray-800/50 hover:border-gray-700 text-gray-500'}`}
+                                        >
+                                            <div className="flex flex-col items-start text-left max-w-[180px]">
+                                                <span className="text-[9px] uppercase font-black tracking-widest opacity-60">BANCO</span>
+                                                <span className="text-xs font-medium truncate w-full">{banco.replace('BANCO ', '').replace(' S.A.', '')}</span>
+                                            </div>
+                                            <span className="text-sm font-mono font-bold">{(tasa * 100).toFixed(2)}%</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="flex justify-between items-center bg-gray-900/40 p-3 rounded-xl border border-gray-800/50 mt-2">
+                                    <div className="flex flex-col">
+                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Modo de Tasa Actual</Label>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">
+                                            {config.modo_tasa === 'AUTOMATICO' ? 'Actualización diaria activa' : 'Usando valor prefijado manualmente'}
+                                        </p>
+                                    </div>
+                                    <div className="flex bg-gray-950 rounded-lg p-1 border border-gray-800">
+                                        <button
+                                            onClick={handleSyncMarketRate}
+                                            disabled={syncingRate}
+                                            className={`px-3 py-1 text-[10px] font-black rounded transition-all flex items-center gap-1.5 ${config.modo_tasa === 'AUTOMATICO' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}
+                                        >
+                                            {syncingRate ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                            {config.modo_tasa === 'AUTOMATICO' ? 'SINCRONIZADO' : 'AUTO SYNC'}
+                                        </button>
+                                        <button
+                                            onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })}
+                                            className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}
+                                        >
+                                            MANUAL
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="relative">
-                                <Input
-                                    type="number"
-                                    value={config.modo_tasa === 'AUTOMATICO' ? ((marketRate || 0) * 100).toFixed(2) : (config.tna * 100).toFixed(2)}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value)
-                                        setConfig({ ...config, tna: (isNaN(val) ? 0 : val) / 100 })
-                                    }}
-                                    disabled={config.modo_tasa === 'AUTOMATICO'}
-                                    className="bg-gray-950 border-gray-800 text-lg font-mono pl-4 pr-12 focus:border-blue-500/50 text-white"
-                                />
-                                <span className="absolute right-4 top-3 text-gray-500 font-bold">%</span>
+
+                            <div className="pt-4 border-t border-gray-800/50">
+                                <Label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block">TNA Aplicada al Cálculo</Label>
+                                <div className="relative">
+                                    <Input
+                                        type="number"
+                                        value={(config.tna * 100).toFixed(2)}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value)
+                                            setConfig({ ...config, tna: (isNaN(val) ? 0 : val) / 100, modo_tasa: 'MANUAL' })
+                                        }}
+                                        disabled={config.modo_tasa === 'AUTOMATICO' && syncingRate}
+                                        className={`bg-gray-950 border-gray-800 text-lg font-mono pl-4 pr-12 text-white transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'border-blue-500/30 text-blue-100 ring-1 ring-blue-500/20' : 'focus:border-blue-500/50'}`}
+                                    />
+                                    <span className={`absolute right-4 top-3 font-bold ${config.modo_tasa === 'AUTOMATICO' ? 'text-blue-500' : 'text-gray-500'}`}>%</span>
+                                </div>
+                                {config.modo_tasa === 'AUTOMATICO' && (
+                                    <p className="text-[10px] text-blue-500/70 italic mt-2 animate-pulse flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        Usando {config.tasa_referencia_auto === 'BADLAR' ? 'BADLAR (BCRA)' : config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'Promedio de Plazo Fijo' : config.tasa_referencia_auto} del mercado.
+                                    </p>
+                                )}
                             </div>
                         </div>
 
