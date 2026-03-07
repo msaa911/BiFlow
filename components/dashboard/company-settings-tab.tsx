@@ -485,9 +485,9 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 </Button>
 
                                 {/* Sección 1: Datos Básicos */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Banco / Identificador</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                    <div className="md:col-span-4 space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest h-4 flex items-center">Banco / Identificador</Label>
                                         <Input
                                             value={acc.banco_nombre}
                                             onChange={(e) => updateAccount(idx, 'banco_nombre', e.target.value)}
@@ -495,8 +495,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                             placeholder="Ej: Galicia Principal"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] text-emerald-400 font-black uppercase tracking-widest block">Saldo Inicial (Arranque)</Label>
+                                    <div className="md:col-span-4 space-y-2">
+                                        <Label className="text-[10px] text-emerald-400 font-black uppercase tracking-widest h-4 flex items-center">Saldo Inicial (Arranque)</Label>
                                         <div className="relative">
                                             <span className="absolute left-3 top-3 text-gray-600 font-bold">$</span>
                                             <Input
@@ -510,8 +510,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">CBU / ALIAS</Label>
+                                    <div className="md:col-span-4 space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest h-4 flex items-center">CBU / ALIAS</Label>
                                         <Input
                                             value={acc.cbu}
                                             onChange={(e) => updateAccount(idx, 'cbu', e.target.value)}
@@ -527,9 +527,9 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                         <Settings className="w-3 h-3 text-emerald-500/50" />
                                         <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em]">Acuerdos Bancarios & Límites</span>
                                     </div>
-                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Colchón de Liquidez</Label>
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                        <div className="md:col-span-3 space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest h-4 flex items-center">Colchón de Liquidez</Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-3 text-gray-600 font-bold">$</span>
                                                 <Input
@@ -539,11 +539,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                                     className="pl-7 bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-11"
                                                 />
                                             </div>
-                                            <p className="text-[9px] text-gray-600 italic leading-tight">Monto mínimo a mantener en cuenta.</p>
+                                            <p className="text-[9px] text-gray-600 italic leading-tight">Monto mínimo a mantener.</p>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Límite Descubierto Total</Label>
+                                        <div className="md:col-span-3 space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest h-4 flex items-center">Límite Descubierto</Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-3 text-gray-600 font-bold">$</span>
                                                 <Input
@@ -555,8 +555,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Mantenimiento Pactado ($/mes)</Label>
+                                        <div className="md:col-span-3 space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest h-4 flex items-center">Mantenimiento ($/mes)</Label>
                                             <Input
                                                 type="number"
                                                 value={acc.mantenimiento_pactado}
@@ -565,8 +565,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Comisión Cheque (%)</Label>
+                                        <div className="md:col-span-3 space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest h-4 flex items-center">Comisión Cheque (%)</Label>
                                             <div className="relative">
                                                 <Input
                                                     type="number"
