@@ -150,6 +150,7 @@ serve(async (req: Request) => {
             tasa_badlar: tasaBadlar,
             tasas_bancos: bankRatesMap,
             dolar: valorDolar,
+            updated_at: new Date().toISOString(),
             logs
         }), {
             headers: {

@@ -55,7 +55,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     const [editingAccountIndex, setEditingAccountIndex] = useState<number | null>(null)
     const [taxRules, setTaxRules] = useState<TaxRule[]>([])
 
-    const [marketRates, setMarketRates] = useState<{ PLAZO_FIJO: number, BADLAR: number, bancos: Record<string, number> }>({ PLAZO_FIJO: 0, BADLAR: 0, bancos: {} })
+    const [marketRates, setMarketRates] = useState<{ PLAZO_FIJO: number, BADLAR: number, bancos: Record<string, number>, updatedAt?: string }>({ PLAZO_FIJO: 0, BADLAR: 0, bancos: {} })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [success, setSuccess] = useState(false)
@@ -89,7 +89,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 ] = await Promise.all([
                     supabase.from('configuracion_empresa').select('*').eq('organization_id', organizationId).maybeSingle(),
                     supabase.from('cuentas_bancarias').select('*').eq('organization_id', organizationId),
-                    supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo, tasa_badlar, tasas_bancos').order('fecha', { ascending: false }).limit(1).maybeSingle(),
+                    supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo, tasa_badlar, tasas_bancos, updated_at').order('fecha', { ascending: false }).limit(1).maybeSingle(),
                     supabase.from('tax_intelligence_rules').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }),
                     supabase.from('organization_members').select('id, role, user_id, created_at').eq('organization_id', organizationId)
                 ])
@@ -117,7 +117,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         BADLAR: (marketRes.data.tasa_badlar || 0) > 1 ? (marketRes.data.tasa_badlar || 0) / 100 : (marketRes.data.tasa_badlar || 0),
                         bancos: Object.fromEntries(
                             Object.entries(marketRes.data.tasas_bancos || {}).map(([b, t]: [string, any]) => [b, (t > 1 ? t / 100 : t)])
-                        )
+                        ),
+                        updatedAt: marketRes.data.updated_at
                     })
                 }
 
@@ -198,7 +199,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 setMarketRates({
                     PLAZO_FIJO: data.tasa,
                     BADLAR: data.tasa_badlar || 0,
-                    bancos: data.tasas_bancos || {}
+                    bancos: data.tasas_bancos || {},
+                    updatedAt: data.updated_at
                 })
 
                 // Actualizamos la TNA actual según la referencia seleccionada
@@ -673,6 +675,24 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                         {syncingRate ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className={`h-4 w-4 transition-transform ${syncingRate ? '' : 'group-hover:rotate-180'}`} />}
                                         ACTUALIZAR TASAS DE MERCADO
                                     </Button>
+
+                                    {marketRates.updatedAt && (
+                                        <div className="mt-4 text-center animate-in fade-in zoom-in duration-500">
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
+                                                Última actualización: {
+                                                    new Date(marketRates.updatedAt).toLocaleString('es-AR', {
+                                                        timeZone: 'America/Argentina/Buenos_Aires',
+                                                        day: '2-digit',
+                                                        month: '2-digit',
+                                                        year: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })
+                                                } ART
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
