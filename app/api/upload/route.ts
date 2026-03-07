@@ -222,7 +222,7 @@ export async function POST(request: Request) {
         }
 
         console.log('11. Creating Audit Log Entry')
-        const { data: importLog, error: dbLogErr } = await currentSupabase
+        const { data: importLog, error: dbLogErr } = await adminSupabase
             .from('archivos_importados')
             .insert({
                 organization_id: orgId,
@@ -243,8 +243,11 @@ export async function POST(request: Request) {
             .single()
 
         if (dbLogErr || !importLog) {
-            console.error('DB Log Error:', dbLogErr)
-            return NextResponse.json({ error: 'Error al registrar auditoría.' }, { status: 500 })
+            console.error('DB Log Error (Audit):', dbLogErr)
+            return NextResponse.json({
+                error: 'Error de importación al registrar auditoría.',
+                details: dbLogErr?.message || 'Falla en la creación del log de importación'
+            }, { status: 500 })
         }
 
         const importId = importLog.id
