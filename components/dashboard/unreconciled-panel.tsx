@@ -78,9 +78,6 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             t.monto.toString().includes(searchTerm)
         )
 
-    const totalPages = Math.ceil(filtered.length / itemsPerPage)
-    const paginatedUnreconciled = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
     // Mixed Payment States
     const [secondaryPaymentEnabled, setSecondaryPaymentEnabled] = useState(false)
     const [secondaryPaymentMethod, setSecondaryPaymentMethod] = useState<'efectivo' | 'cheque' | 'retencion'>('efectivo')

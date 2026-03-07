@@ -169,119 +169,182 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-left text-[11px] border-collapse">
-                    <thead className="bg-gray-800/50">
-                        <tr>
-                            <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
-                            <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider">Nro de Nota</th>
-                            <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider">Entidad / Concepto</th>
-                            <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider text-right">Monto</th>
-                            <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider text-center">Estado</th>
-                            <th className="px-6 py-3 font-bold text-gray-500 uppercase tracking-wider text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800/50">
-                        {loading && notes.length === 0 ? (
-                            <tr><td colSpan={6} className="h-32 text-center text-gray-500 italic">Cargando notas bancarias...</td></tr>
-                        ) : filteredNotes.length === 0 ? (
-                            <tr><td colSpan={6} className="h-32 text-center text-gray-500 italic">No se encontraron notas bancarias directas.</td></tr>
-                        ) : (
-                            filteredNotes.map(note => {
-                                const isExpanded = expandedNote === note.id
-                                const tx = note.transacciones?.[0]
-                                return (
-                                    <Fragment key={note.id}>
-                                        <tr className={`hover:bg-gray-800/30 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-500/5' : ''}`} onClick={() => setExpandedNote(isExpanded ? null : note.id)}>
-                                            <td className="px-6 py-4 font-mono text-gray-400">{formatDate(note.fecha_emision)}</td>
-                                            <td className="px-6 py-4 font-bold text-emerald-400">{note.nro_factura}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-white text-xs uppercase tracking-tight">
-                                                        {note.concepto || note.metadata?.categoria_principal || tx?.categoria || 'Sin concepto'}
-                                                    </span>
-                                                    <span className="text-[10px] text-emerald-400 font-medium italic">
-                                                        {note.entidades?.razon_social || 'Entidad no identificada'}
-                                                    </span>
-                                                    <span className="text-[9px] text-gray-500 truncate max-w-[250px]">
-                                                        {tx?.descripcion || note.metadata?.original_desc || note.metadata?.bank_desc || 'Nota bancaria de extracto'}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className={`px-6 py-4 text-right font-black tabular-nums ${note.tipo === 'ndb_bancaria' ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(note.monto_total)}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] uppercase font-black tracking-tighter">
-                                                    Conciliado
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()}>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 text-gray-500 hover:text-red-500 hover:bg-red-500/10"
-                                                    onClick={() => handleDelete(note)}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                        {isExpanded && (
-                                            <tr className="bg-gray-950/80 border-gray-800/50">
-                                                <td colSpan={6} className="p-6">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-200">
-                                                        <div className="space-y-4">
-                                                            <div className="flex items-center gap-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest">
-                                                                <Tag className="w-3 h-3" /> Origen Bancario
-                                                            </div>
-                                                            <div className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 space-y-2">
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-gray-500">Transacción:</span>
-                                                                    <span className="text-white font-medium">{tx?.descripcion || note.metadata?.original_desc || 'ID: ' + note.metadata?.transaccion_id?.slice(0, 8)}</span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-gray-500">Fecha Banco:</span>
-                                                                    <span className="text-white">{tx?.fecha ? formatDate(tx.fecha) : formatDate(note.fecha_emision)}</span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-gray-500">Categoría:</span>
-                                                                    <span className="px-2 py-0.5 bg-gray-800 rounded text-[9px] text-emerald-400 font-bold">{tx?.categoria || note.concepto || 'S/D'}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-4">
-                                                            <div className="flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest">
-                                                                <FileText className="w-3 h-3" /> Detalle Imputación
-                                                            </div>
-                                                            <div className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 space-y-2">
-                                                                {note.metadata?.desglose ? (
-                                                                    note.metadata.desglose.map((item: any, idx: number) => (
-                                                                        <div key={idx} className="flex justify-between items-center text-[10px]">
-                                                                            <span className="text-gray-300 font-bold uppercase">{item.concepto}</span>
-                                                                            <span className="font-mono text-white">
-                                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(item.monto)}
-                                                                            </span>
-                                                                        </div>
-                                                                    ))
-                                                                ) : (
-                                                                    <div className="flex justify-between">
-                                                                        <span className="text-gray-500">Concepto Único:</span>
-                                                                        <span className="text-white">{note.metadata?.categoria_principal || 'S/D'}</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
+                    <table className="w-full text-left text-xs border-separate border-spacing-0">
+                        <thead>
+                            <tr className="bg-gray-800 text-[11px] font-bold text-gray-400 sticky top-0 z-10">
+                                <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Fecha</th>
+                                <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Nro Nota</th>
+                                <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Entidad / Concepto</th>
+                                <th className="px-6 py-4 text-right sticky top-0 z-20 bg-gray-800">Monto</th>
+                                <th className="px-6 py-4 text-center sticky top-0 z-20 bg-gray-800">Estado</th>
+                                <th className="px-6 py-4 text-center sticky top-0 z-20 bg-gray-800">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800/50">
+                            {loading && notes.length === 0 ? (
+                                <tr><td colSpan={6} className="h-32 text-center text-gray-500 italic">Cargando notas bancarias...</td></tr>
+                            ) : paginatedNotes.length === 0 ? (
+                                <tr><td colSpan={6} className="h-32 text-center text-gray-500 italic">No se encontraron notas bancarias directas.</td></tr>
+                            ) : (
+                                paginatedNotes.map(note => {
+                                    const isExpanded = expandedNote === note.id
+                                    const tx = note.transacciones?.[0]
+                                    return (
+                                        <Fragment key={note.id}>
+                                            <tr className={`hover:bg-emerald-500/[0.02] transition-colors cursor-pointer border-b border-gray-800/50 ${isExpanded ? 'bg-emerald-500/5' : ''}`} onClick={() => setExpandedNote(isExpanded ? null : note.id)}>
+                                                <td className="px-6 py-3 font-mono text-gray-400">{formatDate(note.fecha_emision)}</td>
+                                                <td className="px-6 py-3 font-bold text-emerald-400">{note.nro_factura}</td>
+                                                <td className="px-6 py-3">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-white text-[11px] uppercase tracking-tight">
+                                                            {note.concepto || note.metadata?.categoria_principal || tx?.categoria || 'Sin concepto'}
+                                                        </span>
+                                                        <div className="flex flex-col mt-0.5">
+                                                            <span className="text-[10px] text-emerald-400 font-medium italic">
+                                                                {note.entidades?.razon_social || 'Entidad no identificada'}
+                                                            </span>
+                                                            <span className="text-[9px] text-gray-500 truncate max-w-[250px]">
+                                                                {tx?.descripcion || note.metadata?.original_desc || note.metadata?.bank_desc || 'Nota bancaria de extracto'}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </td>
+                                                <td className={`px-6 py-3 text-right font-black tabular-nums text-xs ${note.tipo === 'ndb_bancaria' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(note.monto_total)}
+                                                </td>
+                                                <td className="px-6 py-3 text-center">
+                                                    <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] uppercase font-black tracking-tighter">
+                                                        Conciliado
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-3 text-center" onClick={e => e.stopPropagation()}>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-full"
+                                                        onClick={() => handleDelete(note)}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </td>
                                             </tr>
-                                        )}
-                                    </Fragment>
-                                )
-                            })
-                        )}
-                    </tbody>
-                </table>
+                                            {isExpanded && (
+                                                <tr className="bg-gray-950/80 border-gray-800/50">
+                                                    <td colSpan={6} className="p-6">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-200">
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-center gap-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest">
+                                                                    <Tag className="w-3 h-3" /> Origen Bancario
+                                                                </div>
+                                                                <div className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 space-y-2">
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-500">Transacción:</span>
+                                                                        <span className="text-white font-medium">{tx?.descripcion || note.metadata?.original_desc || 'ID: ' + note.metadata?.transaccion_id?.slice(0, 8)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-500">Fecha Banco:</span>
+                                                                        <span className="text-white">{tx?.fecha ? formatDate(tx.fecha) : formatDate(note.fecha_emision)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-500">Categoría:</span>
+                                                                        <span className="px-2 py-0.5 bg-gray-800 rounded text-[9px] text-emerald-400 font-bold">{tx?.categoria || note.concepto || 'S/D'}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                                                                    <FileText className="w-3 h-3" /> Detalle Imputación
+                                                                </div>
+                                                                <div className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 space-y-2 text-gray-400 text-[10px]">
+                                                                    <p>ID de Documento: <span className="text-white font-mono">{note.id}</span></p>
+                                                                    {note.metadata?.desglose ? (
+                                                                        <div className="mt-2 pt-2 border-t border-gray-800">
+                                                                            <p className="font-bold text-gray-500 uppercase mb-1">Desglose:</p>
+                                                                            {note.metadata.desglose.map((item: any, idx: number) => (
+                                                                                <div key={idx} className="flex justify-between items-center text-[10px]">
+                                                                                    <span className="text-gray-300 font-bold uppercase">{item.concepto}</span>
+                                                                                    <span className="font-mono text-white">
+                                                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(item.monto)}
+                                                                                    </span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-500">Concepto Único:</span>
+                                                                            <span className="text-white">{note.metadata?.categoria_principal || 'S/D'}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
+                                    )
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Paginación */}
+                <div className="p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="text-[11px] text-gray-500 font-medium flex items-center gap-4">
+                        <span>
+                            Mostrando <span className="text-gray-300">{filteredNotes.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredNotes.length)}</span> de <span className="text-gray-300">{filteredNotes.length}</span> registros
+                        </span>
+
+                        <div className="flex items-center gap-2 border-l border-gray-800 pl-4">
+                            <span className="text-gray-600">Ver:</span>
+                            {[20, 25, 50, 100].map(size => (
+                                <button
+                                    key={size}
+                                    onClick={() => {
+                                        setItemsPerPage(size)
+                                        setCurrentPage(1)
+                                    }}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${itemsPerPage === size ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-gray-600 hover:text-gray-400'}`}
+                                >
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {totalPages > 1 && (
+                        <div className="flex items-center bg-gray-950 border border-gray-800 rounded-lg p-1 gap-1">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-gray-800 text-gray-400"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                <ChevronDown className="w-4 h-4 rotate-90" />
+                            </Button>
+
+                            <div className="flex items-center px-4 gap-2 border-x border-gray-800 px-6">
+                                <span className="text-xs font-bold text-emerald-500">{currentPage}</span>
+                                <span className="text-xs text-gray-600">/</span>
+                                <span className="text-xs text-gray-400 font-medium">{totalPages}</span>
+                            </div>
+
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-gray-800 text-gray-400"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                            >
+                                <ChevronDown className="w-4 h-4 -rotate-90" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </div>
         </Card>
     )
