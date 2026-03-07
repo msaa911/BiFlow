@@ -49,6 +49,11 @@ export async function POST(request: Request) {
         const orgId = await getOrgId(currentSupabase, user.id)
         console.log(`Org ID obtained: ${orgId}`)
 
+        if (!orgId) {
+            console.error('CRITICAL: No organization context found for user', user.id)
+            return NextResponse.json({ error: 'No se pudo determinar la organización del usuario.' }, { status: 403 })
+        }
+
         // --- 3. Parse Content (Peeking before committing to Storage/DB) ---
         console.log('8. Parsing Content')
         let transactions: any[] = []
@@ -200,7 +205,7 @@ export async function POST(request: Request) {
         }
 
         // --- 4. Now that we have data and confirmation, commit to Storage and DB ---
-        console.log('10. Uploading to Storage')
+        console.log('10. Uploading to Storage (Admin Client)')
         const timestamp = Date.now()
         const dateObj = new Date()
         const year = dateObj.getFullYear()
@@ -208,7 +213,8 @@ export async function POST(request: Request) {
         const safeFileName = fileName.replace(/[^a-z0-9.-]/gi, '_')
         const storagePath = `${orgId}/${year}/${month}/${timestamp}_${safeFileName}`
 
-        const { error: storageError } = await currentSupabase.storage
+        // Use admin client for storage to bypass RLS issues on the bucket
+        const { error: storageError } = await adminSupabase.storage
             .from('raw-imports')
             .upload(storagePath, buffer, {
                 contentType: file.type,
@@ -216,9 +222,13 @@ export async function POST(request: Request) {
             })
 
         if (storageError) {
-            console.error('Storage Upload Error:', storageError)
-            await logError(currentSupabase, 'Storage Upload', storageError.message, fileName)
-            return NextResponse.json({ error: `Error Storage: ${storageError.message}` }, { status: 500 })
+            console.error('Storage Upload Error (Admin):', storageError)
+            await logError(adminSupabase, 'Storage Upload', storageError.message, fileName, orgId)
+            return NextResponse.json({
+                error: 'Error de almacenamiento al subir archivo.',
+                details: storageError.message,
+                path: storagePath
+            }, { status: 500 })
         }
 
         console.log('11. Creating Audit Log Entry')
