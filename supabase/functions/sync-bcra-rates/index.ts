@@ -5,79 +5,128 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req: Request) => {
-    try {
-        console.log("📊 Iniciando sincronización: ArgentinaDatos (Tasas + Dólar)...");
-
-        // 1. Consultar Tasas de Plazo Fijo
-        const resTasas = await fetch('https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo');
-        const dataTasas = await resTasas.json();
-
-        // La API puede devolver el array directamente o envuelto en { value: [...] }
-        const rawTasas = Array.isArray(dataTasas) ? dataTasas : (dataTasas.value || []);
-        const bancosConTasa = rawTasas.filter((b: any) => b.tnaClientes !== null && b.tnaClientes > 0);
-        const tasaPromedio = bancosConTasa.length > 0 ? (bancosConTasa.reduce((acc: number, b: any) => acc + b.tnaClientes, 0) / bancosConTasa.length) : 0;
-
-        // Mapear bancos específicos importantes
-        const mainBanksToTrack = [
-            "BANCO DE LA NACION ARGENTINA",
-            "BANCO SANTANDER ARGENTINA S.A.",
-            "BANCO DE GALICIA Y BUENOS AIRES S.A.",
-            "BANCO DE LA PROVINCIA DE BUENOS AIRES",
-            "BANCO BBVA ARGENTINA S.A.",
-            "BANCO MACRO S.A.",
-            "BANCO CREDICOOP COOPERATIVO LIMITADO",
-            "BANCO DE LA CIUDAD DE BUENOS AIRES"
-        ];
-        const bankRatesMap: Record<string, number> = {};
-        bancosConTasa.forEach((b: any) => {
-            if (mainBanksToTrack.includes(b.entidad)) {
-                bankRatesMap[b.entidad] = b.tnaClientes;
+    // Manejo de CORS
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
             }
         });
+    }
 
-        // 2. Consultar Tasa BADLAR (Usando depositos30Dias como fallback si indices/badlar no existe)
+    const logs: string[] = [];
+    const addLog = (msg: string) => {
+        const entry = `[${new Date().toISOString().split('T')[1].split('.')[0]}] ${msg}`;
+        console.log(entry);
+        logs.push(entry);
+    };
+
+    try {
+        addLog("📊 Iniciando Sincronización v3 (Fail-Safe)...");
+
+        // 1. Tasas de Plazo Fijo
+        let tasaPromedio = 0;
+        const bankRatesMap: Record<string, number> = {};
+
+        try {
+            addLog("Consultando Plazo Fijo...");
+            const resTasas = await fetch('https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo');
+            if (resTasas.ok) {
+                const dataTasas = await resTasas.json();
+                const rawTasas = Array.isArray(dataTasas) ? dataTasas : (dataTasas?.value || []);
+
+                const mainBanksToTrack = [
+                    "BANCO DE LA NACION ARGENTINA",
+                    "BANCO SANTANDER ARGENTINA S.A.",
+                    "BANCO DE GALICIA Y BUENOS AIRES S.A.",
+                    "BANCO DE LA PROVINCIA DE BUENOS AIRES",
+                    "BANCO BBVA ARGENTINA S.A.",
+                    "BANCO MACRO S.A.",
+                    "BANCO CREDICOOP COOPERATIVO LIMITADO",
+                    "BANCO DE LA CIUDAD DE BUENOS AIRES"
+                ];
+
+                const validBanks = rawTasas.filter((b: any) =>
+                    b && b.entidad && typeof (b.tnaClientes || b.tna) === 'number'
+                );
+
+                addLog(`Encontrados ${validBanks.length} bancos con datos.`);
+
+                if (validBanks.length > 0) {
+                    const sum = validBanks.reduce((acc: number, b: any) => acc + (b.tnaClientes || b.tna || 0), 0);
+                    tasaPromedio = sum / validBanks.length;
+
+                    validBanks.forEach((b: any) => {
+                        const bankName = b.entidad;
+                        const rate = b.tnaClientes || b.tna || 0;
+                        if (mainBanksToTrack.includes(bankName)) {
+                            bankRatesMap[bankName] = rate;
+                        }
+                    });
+                }
+            } else {
+                addLog(`⚠️ Error API PlazoFijo: ${resTasas.status}`);
+            }
+        } catch (e) {
+            addLog(`❌ Fallo PlazoFijo: ${e.message}`);
+        }
+
+        // 2. Tasa BADLAR Proxy
         let tasaBadlar = 0;
         try {
+            addLog("Consultando BADLAR Proxy...");
             const resBadlar = await fetch('https://api.argentinadatos.com/v1/finanzas/tasas/depositos30Dias');
-            const dataBadlar = await resBadlar.json();
-            const rawBadlar = Array.isArray(dataBadlar) ? dataBadlar : (dataBadlar.value || []);
-            tasaBadlar = rawBadlar.length > 0 ? rawBadlar[rawBadlar.length - 1].valor : 0;
+            if (resBadlar.ok) {
+                const dataBadlar = await resBadlar.json();
+                const rawBadlar = Array.isArray(dataBadlar) ? dataBadlar : (dataBadlar?.value || []);
+                const lastRecord = rawBadlar.length > 0 ? rawBadlar[rawBadlar.length - 1] : null;
+                tasaBadlar = lastRecord?.valor || 0;
+                addLog(`BADLAR Proxy: ${tasaBadlar}`);
+            }
         } catch (e) {
-            console.warn("⚠️ No se pudo obtener tasa depositos30Dias:", e.message);
+            addLog(`❌ Fallo BADLAR: ${e.message}`);
         }
 
-        // 3. Consultar Cotización Dólar
+        // 3. Cotización Dólar
         let valorDolar = 0;
         try {
+            addLog("Consultando Dólar...");
             const resDolar = await fetch('https://api.argentinadatos.com/v1/cotizaciones/dolares');
-            const dataDolar = await resDolar.json();
-            const rawDolar = Array.isArray(dataDolar) ? dataDolar : (dataDolar.value || []);
-            const oficial = rawDolar.find((d: any) => d.casa === 'oficial') || rawDolar[rawDolar.length - 1];
-            valorDolar = oficial ? oficial.venta : 0;
+            if (resDolar.ok) {
+                const dataDolar = await resDolar.json();
+                const rawDolar = Array.isArray(dataDolar) ? dataDolar : (dataDolar?.value || []);
+                const oficial = rawDolar.find((d: any) => d.casa === 'oficial') || rawDolar[rawDolar.length - 1];
+                valorDolar = oficial?.venta || 0;
+                addLog(`Dólar: ${valorDolar}`);
+            }
         } catch (e) {
-            console.warn("⚠️ No se pudo obtener cotización dólar:", e.message);
+            addLog(`❌ Fallo Dólar: ${e.message}`);
         }
-
-        console.log(`✅ Plazo Fijo: ${(tasaPromedio * 100).toFixed(2)}% | BADLAR(Proxy): ${(tasaBadlar * 100).toFixed(2)}% | Dólar: $${valorDolar}`);
 
         // 4. Guardar en Supabase
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
         const hoy = new Date().toISOString().split('T')[0];
 
+        addLog(`Guardando en DB... (Bancos trackeados: ${Object.keys(bankRatesMap).length})`);
+
         const { error: dbError } = await supabase
             .from('indices_mercado')
             .upsert({
                 fecha: hoy,
-                tasa_plazo_fijo: tasaPromedio,
-                tasa_badlar: tasaBadlar,
+                tasa_plazo_fijo: (isNaN(tasaPromedio) || tasaPromedio === null) ? 0 : tasaPromedio,
+                tasa_badlar: (isNaN(tasaBadlar) || tasaBadlar === null) ? 0 : tasaBadlar,
                 tasas_bancos: bankRatesMap,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'fecha' });
 
         if (dbError) {
-            console.error("❌ DB Insert Error:", dbError.message);
+            addLog(`❌ DB Error: ${dbError.message}`);
             throw dbError;
         }
+
+        addLog("✅ Sincronización exitosa.");
 
         return new Response(JSON.stringify({
             success: true,
@@ -85,20 +134,19 @@ serve(async (req: Request) => {
             tasa_badlar: tasaBadlar,
             tasas_bancos: bankRatesMap,
             dolar: valorDolar,
-            sync_date: hoy
+            logs
         }), {
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS'
+                'Access-Control-Allow-Origin': '*'
             }
         });
 
     } catch (error: any) {
-        console.error("❌ Error Sync:", error.message);
+        addLog(`❌ ERROR CRÍTICO FINAL: ${error.message}`);
         return new Response(JSON.stringify({
             error: error.message,
-            details: error.stack
+            logs
         }), {
             headers: {
                 'Content-Type': 'application/json',
