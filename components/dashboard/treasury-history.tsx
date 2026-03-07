@@ -262,18 +262,18 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
                         <thead className="bg-gray-800 sticky top-0 z-10">
                             <tr className="border-gray-800 hover:bg-transparent">
                                 <th className="px-6 py-4 w-[40px] sticky top-0 z-20 bg-gray-800"><input type="checkbox" checked={selectedIds.size === filteredMovements.length && filteredMovements.length > 0} onChange={toggleSelectAll} /></th>
-                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold text-center w-[30px] sticky top-0 z-20 bg-gray-800">C</th>
-                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Fecha</th>
-                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Comprobante</th>
-                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold sticky top-0 z-20 bg-gray-800">Entidad</th>
-                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold cursor-help sticky top-0 z-20 bg-gray-800" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
+                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold text-center w-[30px] sticky top-0 z-20 bg-gray-800">C</th>
+                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold sticky top-0 z-20 bg-gray-800">Fecha</th>
+                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold sticky top-0 z-20 bg-gray-800">Comprobante</th>
+                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold sticky top-0 z-20 bg-gray-800">Entidad</th>
+                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold cursor-help sticky top-0 z-20 bg-gray-800" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
                                     <div className="flex items-center gap-1">
                                         Concepto
                                         <Info className="w-3.5 h-3.5 text-emerald-500/50" />
                                     </div>
                                 </th>
-                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold text-right sticky top-0 z-20 bg-gray-800">Total</th>
-                                <th className="px-6 py-4 text-gray-500 text-[10px] font-bold text-center sticky top-0 z-20 bg-gray-800">Acciones</th>
+                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold text-right sticky top-0 z-20 bg-gray-800">Total</th>
+                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold text-center sticky top-0 z-20 bg-gray-800">Acciones</th>
                                 <th className="px-6 py-4 w-[30px] sticky top-0 z-20 bg-gray-800"></th>
                             </tr>
                         </thead>

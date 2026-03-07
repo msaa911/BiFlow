@@ -480,7 +480,7 @@ export function SuppliersTab({ orgId, category = 'proveedor' }: SuppliersTabProp
             <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50">
                 <div className="max-h-[600px] overflow-y-auto overflow-x-auto scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
                     <table className="w-full text-left text-xs border-separate border-spacing-0">
-                        <thead className="bg-gray-800 text-[10px] font-bold text-gray-400 sticky top-0 z-10">
+                        <thead className="bg-gray-800 text-[11px] font-bold text-gray-400 sticky top-0 z-10">
                             <tr>
                                 <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Razón Social / CUIT</th>
                                 <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Categoría</th>

@@ -363,7 +363,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
             <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
                 <table className="w-full text-left text-xs border-separate border-spacing-0">
-                    <thead className="bg-gray-800 text-[10px] font-bold text-gray-400 sticky top-0 z-10">
+                    <thead className="bg-gray-800 text-[11px] font-bold text-gray-400 sticky top-0 z-10">
                         <tr>
                             <th className="px-6 py-4 w-12 text-center sticky top-0 z-20 bg-gray-800">
                                 <input

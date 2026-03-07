@@ -330,12 +330,12 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
                                             onChange={toggleSelectAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="font-bold text-[10px] text-gray-400 sticky top-0 z-20 bg-gray-800">Vto / Disponib.</TableHead>
-                                    <TableHead className="font-bold text-[10px] text-gray-400 sticky top-0 z-20 bg-gray-800">Número / Banco</TableHead>
-                                    <TableHead className="font-bold text-[10px] text-gray-400 sticky top-0 z-20 bg-gray-800">Origen (Cliente)</TableHead>
-                                    <TableHead className="font-bold text-[10px] text-gray-400 text-right sticky top-0 z-20 bg-gray-800">Importe</TableHead>
-                                    <TableHead className="font-bold text-[10px] text-gray-400 text-center sticky top-0 z-20 bg-gray-800">Estado</TableHead>
-                                    <TableHead className="font-bold text-[10px] text-gray-400 text-center sticky top-0 z-20 bg-gray-800">Acciones</TableHead>
+                                    <TableHead className="font-bold text-[11px] text-gray-400 sticky top-0 z-20 bg-gray-800">Vto / Disponib.</TableHead>
+                                    <TableHead className="font-bold text-[11px] text-gray-400 sticky top-0 z-20 bg-gray-800">Número / Banco</TableHead>
+                                    <TableHead className="font-bold text-[11px] text-gray-400 sticky top-0 z-20 bg-gray-800">Origen (Cliente)</TableHead>
+                                    <TableHead className="font-bold text-[11px] text-gray-400 text-right sticky top-0 z-20 bg-gray-800">Importe</TableHead>
+                                    <TableHead className="font-bold text-[11px] text-gray-400 text-center sticky top-0 z-20 bg-gray-800">Estado</TableHead>
+                                    <TableHead className="font-bold text-[11px] text-gray-400 text-center sticky top-0 z-20 bg-gray-800">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
