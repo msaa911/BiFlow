@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         const invertSigns = formData.get('invertSigns') === 'true'
         const hasConfirmedSign = formData.has('invertSigns')
         const uploadContext = (formData.get('context') || 'bank') as 'bank' | 'income' | 'expense' | 'receipt' | 'payment'
+        const cuentaId = formData.get('cuenta_id') as string
         let uniTransactions: any = null
 
         if (formatId || manualMapping) {
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
                     cuit: t.cuit,
                     numero_cheque: t.numero_cheque,
                     organization_id: orgId,
+                    cuenta_id: uploadContext === 'bank' ? cuentaId : null,
                     descripcion: t.concepto || 'Sin concepto',
                     estado: 'pendiente'
                 }));
@@ -153,6 +155,7 @@ export async function POST(request: Request) {
                         moneda: 'ARS',
                         origen_dato: 'universal_translator',
                         estado: 'pendiente',
+                        cuenta_id: uploadContext === 'bank' ? cuentaId : null,
                         metadata: { ...t.metadata, cbu: t.cbu }
                     }))
                     // Add balance check warnings if any (only for bank statements)
@@ -233,7 +236,8 @@ export async function POST(request: Request) {
                     type: file.type,
                     hasExplicitTipo,
                     signsInverted: invertSigns
-                }
+                },
+                cuenta_id: uploadContext === 'bank' ? cuentaId : null
             })
             .select()
             .single()
@@ -529,6 +533,7 @@ export async function POST(request: Request) {
                         origen_dato: t.origen_dato,
                         estado: t.estado,
                         archivo_importacion_id: t.archivo_importacion_id,
+                        cuenta_id: t.cuenta_id || (uploadContext === 'bank' ? cuentaId : null),
                         tags: t.tags || [],
                         metadata: {
                             ...(t.metadata || {}),

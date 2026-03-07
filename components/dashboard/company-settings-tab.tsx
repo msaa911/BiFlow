@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain, AlertTriangle, RotateCcw, RefreshCw, User } from 'lucide-react'
+import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain, AlertTriangle, RotateCcw, RefreshCw, User, Settings } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 // Interfaces actualizadas
 interface BankAccount {
@@ -14,6 +15,10 @@ interface BankAccount {
     banco_nombre: string
     cbu: string
     saldo_inicial: number
+    colchon_liquidez?: number
+    limite_descubierto?: number
+    mantenimiento_pactado?: number
+    comision_cheque?: number
 }
 
 interface CompanyConfig {
@@ -31,10 +36,7 @@ interface TaxRule {
     estado: string
 }
 
-interface BankAgreement {
-    mantenimiento_mensual_pactado: number
-    comision_cheque_porcentaje: number
-}
+// interface BankAgreement deprecated in favor of BankAccount fields
 
 export function CompanySettingsTab({ organizationId }: { organizationId: string }) {
     const [config, setConfig] = useState<CompanyConfig>({
@@ -44,13 +46,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         colchon_liquidez: 0
     })
 
-    const [agreement, setAgreement] = useState<BankAgreement>({
-        mantenimiento_mensual_pactado: 0,
-        comision_cheque_porcentaje: 0
-    })
+    // Removed global agreement state
 
     // Estado para Cuentas Bancarias
     const [accounts, setAccounts] = useState<BankAccount[]>([])
+    const [editingAccountIndex, setEditingAccountIndex] = useState<number | null>(null)
     const [taxRules, setTaxRules] = useState<TaxRule[]>([])
 
     const [marketRate, setMarketRate] = useState<number | null>(null)
@@ -80,14 +80,12 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 // Ejecutar todas las consultas en paralelo
                 const [
                     confRes,
-                    agreeRes,
                     accsRes,
                     marketRes,
                     rulesRes,
                     teamRes
                 ] = await Promise.all([
                     supabase.from('configuracion_empresa').select('*').eq('organization_id', organizationId).maybeSingle(),
-                    supabase.from('convenios_bancarios').select('*').eq('organization_id', organizationId).maybeSingle(),
                     supabase.from('cuentas_bancarias').select('*').eq('organization_id', organizationId),
                     supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo').order('fecha', { ascending: false }).limit(1).maybeSingle(),
                     supabase.from('tax_intelligence_rules').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }),
@@ -103,19 +101,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     })
                 }
 
-                // 2. Procesar Acuerdos
-                if (agreeRes.data) {
-                    setAgreement({
-                        mantenimiento_mensual_pactado: Number(agreeRes.data.mantenimiento_mensual_pactado) || 0,
-                        comision_cheque_porcentaje: Number(agreeRes.data.comision_cheque_porcentaje) || 0
-                    })
-                }
-
                 // 3. Procesar Cuentas Bancarias
                 if (accsRes.data && accsRes.data.length > 0) {
                     setAccounts(accsRes.data)
                 } else {
-                    setAccounts([{ banco_nombre: 'Banco Principal', cbu: '', saldo_inicial: 0 }])
+                    setAccounts([{ banco_nombre: 'Banco Principal', cbu: '', saldo_inicial: 0, colchon_liquidez: 0, limite_descubierto: 0, mantenimiento_pactado: 0, comision_cheque: 0 }])
                 }
 
                 // 4. Procesar Tasas Mercado
@@ -322,17 +312,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
             if (errorConfig) throw new Error("Error en Configuración Empresa: " + errorConfig.message)
 
-            // 2. Guardar Convenios
-            const { error: errorAgree } = await supabase.from('convenios_bancarios').upsert({
-                organization_id: organizationId,
-                mantenimiento_mensual_pactado: agreement.mantenimiento_mensual_pactado,
-                comision_cheque_porcentaje: agreement.comision_cheque_porcentaje,
-                banco_nombre: 'General',
-                is_active: true,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'organization_id' })
-
-            if (errorAgree) throw new Error("Error en Convenios Bancarios: " + errorAgree.message)
+            // 2. Eliminar legacy convenios si es necesario (opcional, por ahora lo dejamos)
 
             // 3. GUARDAR CUENTAS
             const accountsToUpsert = accounts
@@ -343,6 +323,10 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         banco_nombre: acc.banco_nombre,
                         cbu: acc.cbu,
                         saldo_inicial: acc.saldo_inicial,
+                        colchon_liquidez: acc.colchon_liquidez || 0,
+                        limite_descubierto: acc.limite_descubierto || 0,
+                        mantenimiento_pactado: acc.mantenimiento_pactado || 0,
+                        comision_cheque: acc.comision_cheque || 0,
                         updated_at: new Date().toISOString()
                     }
                     if (acc.id) payload.id = acc.id
@@ -394,7 +378,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         const newAccounts = accounts.filter((_, i) => i !== index)
         // No permitir quedar con 0 cuentas visualmente si el usuario quiere agregar luego
         if (newAccounts.length === 0) {
-            setAccounts([{ banco_nombre: '', cbu: '', saldo_inicial: 0 }])
+            setAccounts([{ banco_nombre: '', cbu: '', saldo_inicial: 0, colchon_liquidez: 0, limite_descubierto: 0, mantenimiento_pactado: 0, comision_cheque: 0 }])
         } else {
             setAccounts(newAccounts)
         }
@@ -503,12 +487,95 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-gray-500">CBU (Opcional)</Label>
-                                    <Input
-                                        value={acc.cbu}
-                                        onChange={(e) => updateAccount(idx, 'cbu', e.target.value)}
-                                        className="bg-gray-900 border-gray-700 focus:border-emerald-500/50 text-white"
-                                        placeholder="22 dígitos"
-                                    />
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={acc.cbu}
+                                            onChange={(e) => updateAccount(idx, 'cbu', e.target.value)}
+                                            className="bg-gray-900 border-gray-700 focus:border-emerald-500/50 text-white"
+                                            placeholder="22 dígitos"
+                                        />
+                                        <Dialog open={editingAccountIndex === idx} onOpenChange={(open) => !open && setEditingAccountIndex(null)}>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => setEditingAccountIndex(idx)}
+                                                className="bg-gray-900 border-gray-700 hover:border-emerald-500/50 text-gray-400 hover:text-emerald-400"
+                                            >
+                                                <Settings className="h-4 w-4" />
+                                            </Button>
+                                            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-md">
+                                                <DialogHeader>
+                                                    <DialogTitle className="text-xl font-bold italic uppercase tracking-tight flex items-center gap-2">
+                                                        <Landmark className="h-5 w-5 text-emerald-500" />
+                                                        Acuerdos - {acc.banco_nombre || 'Nueva Cuenta'}
+                                                    </DialogTitle>
+                                                    <DialogDescription className="text-gray-400">
+                                                        Parámetros específicos para auditoría y alertas de esta cuenta.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold uppercase text-gray-400">Colchón de Liquidez</Label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
+                                                            <Input
+                                                                type="number"
+                                                                value={acc.colchon_liquidez}
+                                                                onChange={(e) => updateAccount(idx, 'colchon_liquidez', parseFloat(e.target.value) || 0)}
+                                                                className="pl-8 bg-gray-950 border-gray-800 text-white font-mono"
+                                                            />
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-500 italic">Monto mínimo a mantener en cuenta.</p>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold uppercase text-gray-400">Límite Descubierto Total</Label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
+                                                            <Input
+                                                                type="number"
+                                                                value={acc.limite_descubierto}
+                                                                onChange={(e) => updateAccount(idx, 'limite_descubierto', parseFloat(e.target.value) || 0)}
+                                                                className="pl-8 bg-gray-950 border-gray-800 text-white font-mono"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-bold uppercase text-gray-400">Mantenimiento ($/mes)</Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={acc.mantenimiento_pactado}
+                                                                onChange={(e) => updateAccount(idx, 'mantenimiento_pactado', parseFloat(e.target.value) || 0)}
+                                                                className="bg-gray-950 border-gray-800 text-white font-mono"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-bold uppercase text-gray-400">Comisión Cheque (%)</Label>
+                                                            <div className="relative">
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={acc.comision_cheque}
+                                                                    onChange={(e) => updateAccount(idx, 'comision_cheque', parseFloat(e.target.value) || 0)}
+                                                                    className="bg-gray-950 border-gray-800 text-white font-mono pr-8"
+                                                                />
+                                                                <span className="absolute right-3 top-2.5 text-gray-500 font-bold">%</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <DialogFooter>
+                                                    <Button onClick={() => setEditingAccountIndex(null)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
+                                                        ACEPTAR CONFIGURACIÓN
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -558,71 +625,10 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Colchón de Liquidez</Label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-3 text-gray-500 font-bold">$</span>
-                                <Input
-                                    type="number"
-                                    value={config.colchon_liquidez}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value)
-                                        setConfig({ ...config, colchon_liquidez: isNaN(val) ? 0 : val })
-                                    }}
-                                    className="pl-8 bg-gray-950 border-gray-800 text-lg font-mono focus:border-emerald-500/50 text-white"
-                                />
-                            </div>
-                            <p className="text-[10px] text-gray-500 italic">Monto mínimo a mantener en cuenta (no se considera ocioso).</p>
-                        </div>
                     </CardContent>
                 </Card>
 
-                {/* ACUERDOS (Existente) */}
-                <Card className="bg-gray-900 border-gray-800 border-l-4 border-l-red-500">
-                    <CardHeader className="bg-red-500/5">
-                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter uppercase">Acuerdos Bancarios</CardTitle>
-                        <CardDescription className="text-gray-400">Para auditar comisiones y descubiertos.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Límite Descubierto Total</Label>
-                            <Input
-                                type="number"
-                                value={config.limite_descubierto}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value)
-                                    setConfig({ ...config, limite_descubierto: isNaN(val) ? 0 : val })
-                                }}
-                                className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Mantenimiento Pactado ($/mes)</Label>
-                            <Input
-                                type="number"
-                                value={agreement.mantenimiento_mensual_pactado}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value)
-                                    setAgreement({ ...agreement, mantenimiento_mensual_pactado: isNaN(val) ? 0 : val })
-                                }}
-                                className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Comisión Cheque (%)</Label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                value={agreement.comision_cheque_porcentaje}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value)
-                                    setAgreement({ ...agreement, comision_cheque_porcentaje: isNaN(val) ? 0 : val })
-                                }}
-                                className="bg-gray-950 border-gray-800 text-lg font-mono focus:border-red-500/50 text-white"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* ACUERDOS (Moved to per-account) */}
 
                 {/* NUEVA TARJETA: REGLAS DE IMPUESTOS */}
                 <Card className="bg-gray-900 border-gray-800 md:col-span-2 border-l-4 border-l-purple-500">

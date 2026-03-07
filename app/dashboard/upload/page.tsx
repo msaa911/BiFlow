@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle, Trash2, ArrowRight, Download, FileSpreadsheet } from 'lucide-react'
+import { Upload, CheckCircle, AlertCircle, FileText, X, AlertTriangle, ChevronDown, ChevronUp, Settings, HelpCircle, Trash2, ArrowRight, Download, FileSpreadsheet, Landmark } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ImportHistory } from '@/components/dashboard/import-history'
@@ -23,6 +23,8 @@ export default function UploadPage() {
     const [formats, setFormats] = useState<any[]>([])
     const [selectedFormat, setSelectedFormat] = useState<string>('')
     const [uploadContext, setUploadContext] = useState<'bank' | 'income' | 'expense' | 'receipt' | 'payment'>('bank')
+    const [accounts, setAccounts] = useState<any[]>([])
+    const [selectedAccountId, setSelectedAccountId] = useState<string>('')
 
     // New state for detailed feedback
     const [uploadResult, setUploadResult] = useState<{
@@ -61,7 +63,23 @@ export default function UploadPage() {
     useEffect(() => {
         fetchFormats()
         checkFirstUpload()
+        fetchAccounts()
     }, [])
+
+    const fetchAccounts = async () => {
+        try {
+            const res = await fetch('/api/banks/accounts')
+            if (res.ok) {
+                const data = await res.json()
+                setAccounts(data)
+                if (data.length > 0) {
+                    setSelectedAccountId(data[0].id)
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch bank accounts')
+        }
+    }
 
     const checkFirstUpload = async () => {
         try {
@@ -171,7 +189,7 @@ export default function UploadPage() {
                     const currentBase = completed * totalProgressPerFile
                     const currentIncrement = (percent * totalProgressPerFile) / 100
                     setProgress(Math.round(currentBase + currentIncrement))
-                }, undefined, undefined, overrideFormatId, uploadContext)
+                }, undefined, undefined, overrideFormatId, uploadContext, selectedAccountId)
 
                 if (result) {
                     totalCount += result.count || 0
@@ -223,7 +241,8 @@ export default function UploadPage() {
                 undefined,
                 invert,
                 undefined,
-                uploadContext
+                uploadContext,
+                selectedAccountId
             )
 
             setSuccess(true)
@@ -244,7 +263,7 @@ export default function UploadPage() {
         }
     }
 
-    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any, invertSigns?: boolean, overrideFormatId?: string, context?: string): Promise<any> => {
+    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any, invertSigns?: boolean, overrideFormatId?: string, context?: string, accountId?: string): Promise<any> => {
         return new Promise((resolve, reject) => {
             const formData = new FormData()
             formData.append('file', file)
@@ -253,6 +272,9 @@ export default function UploadPage() {
             }
             if (context) {
                 formData.append('context', context)
+            }
+            if (accountId) {
+                formData.append('cuenta_id', accountId)
             }
 
             const formatToUse = overrideFormatId || selectedFormat
@@ -529,6 +551,29 @@ export default function UploadPage() {
                             {uploadContext === 'receipt' && 'Documenta los cobros recibidos (Cheques, Transf).'}
                             {uploadContext === 'payment' && 'Registra las órdenes de pago emitidas.'}
                         </p>
+
+                        {uploadContext === 'bank' && accounts.length > 0 && (
+                            <div className="mt-6 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl animate-in fade-in slide-in-from-top-4">
+                                <label className="block text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <Landmark className="w-3 h-3" />
+                                    Seleccionar Cuenta de Destino
+                                </label>
+                                <select
+                                    value={selectedAccountId}
+                                    onChange={(e) => setSelectedAccountId(e.target.value)}
+                                    className="w-full bg-gray-900 border border-gray-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-medium"
+                                >
+                                    {accounts.map(acc => (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.banco_nombre} - {acc.cbu ? `CBU: ...${acc.cbu.slice(-4)}` : 'Sin CBU'}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="mt-2 text-[9px] text-gray-400 italic">
+                                    Importante: Los movimientos se asociarán a esta cuenta para evitar mezclar conciliaciones.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
 

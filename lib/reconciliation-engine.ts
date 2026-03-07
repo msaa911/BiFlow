@@ -7,20 +7,28 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
  * Strategy: Funnel (Reduction) + Subset Sum (1-a-N).
  */
 export class ReconciliationEngine {
-    static async matchAndReconcile(supabase: any, organizationId: string, options?: { dryRun?: boolean, scope?: 'admin' | 'bank' | 'all' }) {
+    static async matchAndReconcile(supabase: any, organizationId: string, options?: { dryRun?: boolean, scope?: 'admin' | 'bank' | 'all', cuentaId?: string }) {
         const dryRun = options?.dryRun ?? false;
         const scope = options?.scope ?? 'all';
+        const cuentaId = options?.cuentaId;
         const adminSupabase = createAdminClient();
-        console.log(`[RECONCILIATION v3.1] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun}, scope: ${scope})`)
+        console.log(`[RECONCILIATION v3.1] Starting auto-match for org: ${organizationId} (dryRun: ${dryRun}, scope: ${scope}, cuentaId: ${cuentaId || 'all'})`)
 
         // 1. PHASE 0: Repair Orphaned Transactions (linked but stuck in 'pendiente')
         console.log(`[RECONCILIATION] Phase 0: Checking for orphans...`)
-        const { data: orphans } = await adminSupabase
+        let orphanQuery = adminSupabase
             .from('transacciones')
             .select('id, monto, monto_usado')
             .eq('organization_id', organizationId)
             .not('movimiento_id', 'is', null)
             .eq('estado', 'pendiente');
+
+        if (cuentaId) {
+            orphanQuery = orphanQuery.eq('cuenta_id', cuentaId);
+        }
+
+        const { data: orphans } = await orphanQuery;
+
 
         if (!dryRun && orphans && orphans.length > 0) {
             console.log(`[RECONCILIATION] Found ${orphans.length} orphans. Synching state...`)
@@ -76,11 +84,17 @@ export class ReconciliationEngine {
         console.log(`[RECONCILIATION] Phase 2: Fetched ${invoicesList.length} invoices and ${pendingMovements?.length || 0} payment instruments.`);
 
         // 3. Fetch unlinked bank transactions
-        const { data: pendingTrans, error: transError } = await adminSupabase
+        let transQuery = adminSupabase
             .from('transacciones')
             .select('*')
             .eq('organization_id', organizationId)
             .in('estado', ['pendiente', 'parcial'])
+
+        if (cuentaId) {
+            transQuery = transQuery.eq('cuenta_id', cuentaId);
+        }
+
+        const { data: pendingTrans, error: transError } = await transQuery;
 
         if (transError || !pendingTrans || pendingTrans.length === 0) {
             console.log(`[RECONCILIATION] No unlinked transactions found.`)

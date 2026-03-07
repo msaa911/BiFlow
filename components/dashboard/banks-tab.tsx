@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw } from 'lucide-react'
+import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw, Landmark } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CheckPortfolio } from './check-portfolio'
 import { Button } from '@/components/ui/button'
@@ -36,29 +36,43 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const [reconcilingAdmin, setReconcilingAdmin] = useState(false)
     const [reconcilingBank, setReconcilingBank] = useState(false)
+    const [selectedAccountId, setSelectedAccountId] = useState<string>('all')
     const supabase = createClient()
-
-    // Dashboard Calculations
-    const initialSum = bankAccounts.reduce((acc, curr) => acc + (Number(curr.saldo_inicial) || 0), 0)
-    const txsSum = initialTransactions.reduce((acc, t) => acc + (Number(t.monto) || 0), 0)
-    const realBalance = initialSum + txsSum
-    const latestTx = initialTransactions.length > 0 ? initialTransactions[0] : null
-    const latestTxDate = latestTx ? formatDate(latestTx.fecha) : 'N/A'
-
-    const incomes = initialTransactions.filter(t => t.monto > 0)
-    const expenses = initialTransactions.filter(t => t.monto < 0)
-
-    const filteredTx = initialTransactions.filter(t => {
-        if (filterStatus === 'pending') return t.estado === 'pendiente' || t.estado === 'parcial'
-        if (filterStatus === 'reconciled') return t.estado === 'conciliado'
-        return true
-    })
 
     const counts = {
         all: initialTransactions.length,
         pending: initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length,
         reconciled: initialTransactions.filter(t => t.estado === 'conciliado').length
     }
+
+    // Filter by Account
+    const accountFilteredTransactions = selectedAccountId === 'all'
+        ? initialTransactions
+        : initialTransactions.filter(t => t.cuenta_id === selectedAccountId)
+
+    const accountFilteredPending = selectedAccountId === 'all'
+        ? pendingTransactions
+        : pendingTransactions.filter(t => t.cuenta_id === selectedAccountId)
+
+    // Dashboard Calculations (Filtered by Account)
+    const targetAccounts = selectedAccountId === 'all'
+        ? bankAccounts
+        : bankAccounts.filter(acc => acc.id === selectedAccountId)
+
+    const initialSum = targetAccounts.reduce((acc, curr) => acc + (Number(curr.saldo_inicial) || 0), 0)
+    const txsSum = accountFilteredTransactions.reduce((acc, t) => acc + (Number(t.monto) || 0), 0)
+    const realBalance = initialSum + txsSum
+    const latestTx = accountFilteredTransactions.length > 0 ? accountFilteredTransactions[0] : null
+    const latestTxDate = latestTx ? formatDate(latestTx.fecha) : 'N/A'
+
+    const incomes = accountFilteredTransactions.filter(t => t.monto > 0)
+    const expenses = accountFilteredTransactions.filter(t => t.monto < 0)
+
+    const filteredTx = accountFilteredTransactions.filter(t => {
+        if (filterStatus === 'pending') return t.estado === 'pendiente' || t.estado === 'parcial'
+        if (filterStatus === 'reconciled') return t.estado === 'conciliado'
+        return true
+    })
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
@@ -104,7 +118,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
         try {
             const res = await fetch('/api/reconcile/auto', {
                 method: 'POST',
-                body: JSON.stringify({ scope })
+                body: JSON.stringify({
+                    scope,
+                    cuentaId: selectedAccountId !== 'all' ? selectedAccountId : undefined
+                })
             })
             const data = await res.json()
 
@@ -207,6 +224,46 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
 
     return (
         <div className="space-y-6">
+            {/* Bank Account Selector */}
+            <div className="flex bg-gray-900/50 border border-gray-800 p-2 rounded-2xl items-center gap-3">
+                <div className="px-4 py-1 border-r border-gray-800 flex items-center gap-2">
+                    <Landmark className="w-4 h-4 text-emerald-500" />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vista de Banco</span>
+                </div>
+                <div className="flex flex-wrap gap-2 flex-1">
+                    <button
+                        onClick={() => setSelectedAccountId('all')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedAccountId === 'all'
+                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
+                            }`}
+                    >
+                        TODOS
+                    </button>
+                    {bankAccounts.map(acc => (
+                        <button
+                            key={acc.id}
+                            onClick={() => setSelectedAccountId(acc.id)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${selectedAccountId === acc.id
+                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800 border border-transparent select-none'
+                                }`}
+                        >
+                            {acc.banco_nombre}
+                            <span className={`text-[10px] opacity-60 font-mono ${selectedAccountId === acc.id ? 'text-white' : 'text-gray-600'}`}>
+                                ({acc.cbu ? `*${acc.cbu.slice(-4)}` : 'S/C'})
+                            </span>
+                        </button>
+                    ))}
+                </div>
+                {selectedAccountId !== 'all' && (
+                    <div className="px-4 animate-in fade-in slide-in-from-right-4">
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold">
+                            Filtro Activo
+                        </Badge>
+                    </div>
+                )}
+            </div>
             <div className="grid gap-4 md:grid-cols-3">
                 {/* Card 1: Conciliación */}
                 <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl flex flex-col justify-center gap-3">
@@ -304,7 +361,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400 gap-2 px-6"
                             >
                                 <AlertCircle className="w-4 h-4" />
-                                Pendientes ({pendingTransactions.length})
+                                Pendientes ({accountFilteredPending.length})
                             </TabsTrigger>
                             <TabsTrigger
                                 value="audit"
@@ -335,7 +392,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">Opciones de Entrada</p>
                                         </div>
                                         <Link
-                                            href="/dashboard/upload?context=bank"
+                                            href={`/dashboard/upload?context=bank${selectedAccountId !== 'all' ? `&cuenta_id=${selectedAccountId}` : ''}`}
                                             className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-900 hover:text-emerald-400 transition-all group"
                                             onClick={() => setIsMenuOpen(false)}
                                         >
@@ -393,7 +450,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
                                 <table className="w-full text-left text-xs text-gray-400">
                                     <tbody className="divide-y divide-gray-800">
-                                        {initialTransactions.slice(0, 20).map((t: any) => (
+                                        {accountFilteredTransactions.slice(0, 20).map((t: any) => (
                                             <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
                                                 <td className="px-4 py-3 font-mono text-gray-500">
                                                     {formatDate(t.fecha)}

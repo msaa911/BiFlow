@@ -33,7 +33,7 @@ export function BanksClientPage({ orgId, initialTransactions }: BanksClientPageP
                 .limit(200),
             supabase
                 .from('cuentas_bancarias')
-                .select('id, banco_nombre, saldo_inicial')
+                .select('id, banco_nombre, saldo_inicial, cbu')
                 .eq('organization_id', orgId)
         ])
 
