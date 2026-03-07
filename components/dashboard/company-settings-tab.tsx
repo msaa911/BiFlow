@@ -587,114 +587,131 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 </Card>
 
                 {/* PARÁMETROS DE MERCADO (Existente) */}
-                <Card className="bg-gray-900 border-gray-800 border-l-4 border-l-blue-500">
-                    <CardHeader className="bg-blue-500/5">
-                        <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter">
-                            <PiggyBank className="h-5 w-5 text-blue-500" />
-                            COSTO DE OPORTUNIDAD
-                        </CardTitle>
-                        <CardDescription className="text-gray-400">Parámetros para calcular dinero ocioso.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6 pt-6">
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-4">
-                                <Label className="text-xs font-bold uppercase text-gray-400">Seleccionar Referencia de Mercado</Label>
-                                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {/* Promedio General */}
-                                    <button
-                                        onClick={() => setConfig({ ...config, tasa_referencia_auto: 'PLAZO_FIJO', tna: marketRates.PLAZO_FIJO, modo_tasa: 'AUTOMATICO' })}
-                                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-100 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700 text-gray-400'}`}
-                                    >
-                                        <div className="flex flex-col items-start">
-                                            <span className="text-[10px] uppercase font-black tracking-widest opacity-70">PROMEDIO MERCADO</span>
-                                            <span className="text-sm font-bold">Plazo Fijo (BCRA)</span>
-                                        </div>
-                                        <span className="text-lg font-mono font-bold">{(marketRates.PLAZO_FIJO * 100).toFixed(2)}%</span>
-                                    </button>
-
-                                    {/* BADLAR */}
-                                    <button
-                                        onClick={() => setConfig({ ...config, tasa_referencia_auto: 'BADLAR', tna: marketRates.BADLAR, modo_tasa: 'AUTOMATICO' })}
-                                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${config.tasa_referencia_auto === 'BADLAR' ? 'bg-blue-500/10 border-blue-500/50 text-blue-100 shadow-[0_0_15px_-5px_rgba(59,130,246,0.3)]' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700 text-gray-400'}`}
-                                    >
-                                        <div className="flex flex-col items-start">
-                                            <span className="text-[10px] uppercase font-black tracking-widest opacity-70">REFERENCIA BCRA</span>
-                                            <span className="text-sm font-bold">BADLAR</span>
-                                        </div>
-                                        <span className="text-lg font-mono font-bold">{(marketRates.BADLAR * 100).toFixed(2)}%</span>
-                                    </button>
-
-                                    {/* Division para bancos */}
-                                    <div className="py-2 px-1">
-                                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em]">Tasas por Entidad</span>
-                                    </div>
-
-                                    {/* Lista de Bancos */}
-                                    {Object.entries(marketRates.bancos).map(([banco, tasa]) => (
-                                        <button
-                                            key={banco}
-                                            onClick={() => setConfig({ ...config, tasa_referencia_auto: banco as any, tna: tasa, modo_tasa: 'AUTOMATICO' })}
-                                            className={`flex items-center justify-between p-3 rounded-lg border transition-all ${config.tasa_referencia_auto === banco ? 'bg-amber-500/10 border-amber-500/50 text-amber-100 shadow-[0_0_15px_-5px_rgba(245,158,11,0.3)]' : 'bg-gray-950/30 border-gray-800/50 hover:border-gray-700 text-gray-500'}`}
-                                        >
-                                            <div className="flex flex-col items-start text-left max-w-[180px]">
-                                                <span className="text-[9px] uppercase font-black tracking-widest opacity-60">BANCO</span>
-                                                <span className="text-xs font-medium truncate w-full">{banco.replace('BANCO ', '').replace(' S.A.', '')}</span>
-                                            </div>
-                                            <span className="text-sm font-mono font-bold">{(tasa * 100).toFixed(2)}%</span>
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <div className="flex justify-between items-center bg-gray-900/40 p-3 rounded-xl border border-gray-800/50 mt-2">
-                                    <div className="flex flex-col">
-                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Modo de Tasa Actual</Label>
-                                        <p className="text-[10px] text-gray-400 mt-0.5">
-                                            {config.modo_tasa === 'AUTOMATICO' ? 'Actualización diaria activa' : 'Usando valor prefijado manualmente'}
-                                        </p>
-                                    </div>
-                                    <div className="flex bg-gray-950 rounded-lg p-1 border border-gray-800">
-                                        <button
-                                            onClick={handleSyncMarketRate}
-                                            disabled={syncingRate}
-                                            className={`px-3 py-1 text-[10px] font-black rounded transition-all flex items-center gap-1.5 ${config.modo_tasa === 'AUTOMATICO' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}
-                                        >
-                                            {syncingRate ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                            {config.modo_tasa === 'AUTOMATICO' ? 'SINCRONIZADO' : 'AUTO SYNC'}
-                                        </button>
-                                        <button
-                                            onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })}
-                                            className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}
-                                        >
-                                            MANUAL
-                                        </button>
-                                    </div>
-                                </div>
+                <Card className="bg-gray-900/30 border-gray-800 backdrop-blur-sm overflow-hidden border-l-4 border-l-blue-500 shadow-2xl">
+                    <CardHeader className="border-b border-gray-800/50 bg-gray-900/50 pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-500/10 rounded-lg">
+                                <PiggyBank className="w-5 h-5 text-blue-400" />
                             </div>
-
-                            <div className="pt-4 border-t border-gray-800/50">
-                                <Label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block">TNA Aplicada al Cálculo</Label>
-                                <div className="relative">
-                                    <Input
-                                        type="number"
-                                        value={(config.tna * 100).toFixed(2)}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value)
-                                            setConfig({ ...config, tna: (isNaN(val) ? 0 : val) / 100, modo_tasa: 'MANUAL' })
-                                        }}
-                                        disabled={config.modo_tasa === 'AUTOMATICO' && syncingRate}
-                                        className={`bg-gray-950 border-gray-800 text-lg font-mono pl-4 pr-12 text-white transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'border-blue-500/30 text-blue-100 ring-1 ring-blue-500/20' : 'focus:border-blue-500/50'}`}
-                                    />
-                                    <span className={`absolute right-4 top-3 font-bold ${config.modo_tasa === 'AUTOMATICO' ? 'text-blue-500' : 'text-gray-500'}`}>%</span>
-                                </div>
-                                {config.modo_tasa === 'AUTOMATICO' && (
-                                    <p className="text-[10px] text-blue-500/70 italic mt-2 animate-pulse flex items-center gap-1">
-                                        <CheckCircle2 className="w-3 h-3" />
-                                        Usando {config.tasa_referencia_auto === 'BADLAR' ? 'BADLAR (BCRA)' : config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'Promedio de Plazo Fijo' : config.tasa_referencia_auto} del mercado.
-                                    </p>
-                                )}
+                            <div>
+                                <CardTitle className="text-xl font-black tracking-tight text-white uppercase italic">Costo de Oportunidad</CardTitle>
+                                <CardDescription className="text-gray-400 text-xs">Parámetros para calcular el rendimiento del dinero ocioso.</CardDescription>
                             </div>
                         </div>
+                    </CardHeader>
 
+                    <CardContent className="p-0">
+                        <div className="grid grid-cols-1 md:grid-cols-5 divide-x divide-gray-800">
+                            {/* Columna Izquierda: Control Actual */}
+                            <div className="md:col-span-2 p-6 space-y-8 bg-gray-950/20">
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <Label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Modo de Tasa</Label>
+                                        <div className="flex bg-gray-950 rounded-lg p-1 border border-gray-800">
+                                            <button
+                                                onClick={() => setConfig({ ...config, modo_tasa: 'AUTOMATICO' })}
+                                                className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}
+                                            >
+                                                AUTO
+                                            </button>
+                                            <button
+                                                onClick={() => setConfig({ ...config, modo_tasa: 'MANUAL' })}
+                                                className={`px-3 py-1 text-[10px] font-black rounded transition-all ${config.modo_tasa === 'MANUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-blue-400'}`}
+                                            >
+                                                MANUAL
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">TNA Aplicada (%)</Label>
+                                    <div className="relative mb-4">
+                                        <Input
+                                            type="number"
+                                            value={(config.tna * 100).toFixed(2)}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value)
+                                                setConfig({ ...config, tna: (isNaN(val) ? 0 : val) / 100, modo_tasa: 'MANUAL' })
+                                            }}
+                                            disabled={config.modo_tasa === 'AUTOMATICO' && syncingRate}
+                                            className={`bg-gray-950 border-gray-800 text-3xl h-20 font-mono text-center text-white transition-all ${config.modo_tasa === 'AUTOMATICO' ? 'border-blue-500/50 text-blue-400 ring-2 ring-blue-500/10' : 'focus:border-blue-500'}`}
+                                        />
+                                        <span className={`absolute right-6 top-6 text-2xl font-bold ${config.modo_tasa === 'AUTOMATICO' ? 'text-blue-500' : 'text-gray-600'}`}>%</span>
+                                    </div>
+
+                                    {config.modo_tasa === 'AUTOMATICO' && (
+                                        <div className="flex items-center gap-2 p-3 bg-blue-500/5 rounded-lg border border-blue-500/20 mb-4 animate-in fade-in slide-in-from-top-2">
+                                            <CheckCircle2 className="w-4 h-4 text-blue-500" />
+                                            <p className="text-[11px] text-blue-100 font-medium italic">
+                                                Sincronizado con {config.tasa_referencia_auto === 'BADLAR' ? 'BADLAR' : config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'Promedio Mercado' : config.tasa_referencia_auto.replace('BANCO ', '')}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        onClick={handleSyncMarketRate}
+                                        disabled={syncingRate}
+                                        variant="outline"
+                                        className="w-full h-12 bg-gray-900 border-gray-800 hover:bg-gray-800 hover:text-blue-400 transition-all font-bold text-xs gap-2 group"
+                                    >
+                                        {syncingRate ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className={`h-4 w-4 transition-transform ${syncingRate ? '' : 'group-hover:rotate-180'}`} />}
+                                        ACTUALIZAR TASAS DE MERCADO
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Columna Derecha: Selección de Referencia */}
+                            <div className="md:col-span-3 p-6 flex flex-col h-full bg-black/20">
+                                <div className="flex items-center justify-between mb-4">
+                                    <Label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Opciones de Referencia</Label>
+                                    <span className="text-[9px] text-gray-600 font-bold">VALORES DEL DÍA</span>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar max-h-[320px]">
+                                    {/* Principales Índices */}
+                                    <div className="grid grid-cols-2 gap-2 mb-4">
+                                        <button
+                                            onClick={() => setConfig({ ...config, tasa_referencia_auto: 'PLAZO_FIJO', tna: marketRates.PLAZO_FIJO, modo_tasa: 'AUTOMATICO' })}
+                                            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-100 ring-1 ring-emerald-500/20 shadow-[0_5px_15px_-5px_rgba(16,185,129,0.3)]' : 'bg-gray-900 border-gray-800 hover:border-gray-700 text-gray-400'}`}
+                                        >
+                                            <span className="text-[9px] font-black uppercase opacity-60 mb-1">PROMEDIO PF</span>
+                                            <span className="text-xl font-mono font-bold">{(marketRates.PLAZO_FIJO * 100).toFixed(2)}%</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setConfig({ ...config, tasa_referencia_auto: 'BADLAR', tna: marketRates.BADLAR, modo_tasa: 'AUTOMATICO' })}
+                                            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${config.tasa_referencia_auto === 'BADLAR' ? 'bg-blue-500/10 border-blue-500/50 text-blue-100 ring-1 ring-blue-500/20 shadow-[0_5px_15px_-5px_rgba(59,130,246,0.3)]' : 'bg-gray-900 border-gray-800 hover:border-gray-700 text-gray-400'}`}
+                                        >
+                                            <span className="text-[9px] font-black uppercase opacity-60 mb-1">BADLAR BCRA</span>
+                                            <span className="text-xl font-mono font-bold">{(marketRates.BADLAR * 100).toFixed(2)}%</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Bancos Individuales */}
+                                    <div className="space-y-1.5 pt-2 border-t border-gray-800/50">
+                                        <p className="text-[9px] font-bold text-gray-600 uppercase tracking-widest mb-3">Principales Entidades</p>
+                                        {Object.entries(marketRates.bancos).length > 0 ? (
+                                            Object.entries(marketRates.bancos).map(([banco, tasa]) => (
+                                                <button
+                                                    key={banco}
+                                                    onClick={() => setConfig({ ...config, tasa_referencia_auto: banco as any, tna: tasa, modo_tasa: 'AUTOMATICO' })}
+                                                    className={`flex items-center justify-between w-full p-3 rounded-lg border transition-all ${config.tasa_referencia_auto === banco ? 'bg-amber-500/10 border-amber-500/50 text-amber-100' : 'bg-gray-900/30 border-gray-800/40 hover:border-gray-700 text-gray-500'}`}
+                                                >
+                                                    <span className="text-xs font-bold uppercase truncate max-w-[150px]">{banco.replace('BANCO ', '').replace(' S.A.', '')}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-sm font-mono font-bold">{(tasa * 100).toFixed(2)}%</span>
+                                                        <div className={`w-2 h-2 rounded-full ${config.tasa_referencia_auto === banco ? 'bg-amber-500 animate-pulse' : 'bg-transparent'}`} />
+                                                    </div>
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-8 px-4 rounded-xl border border-dashed border-gray-800 opacity-50">
+                                                <p className="text-[10px] text-gray-500 italic">No hay datos de entidades disponibles. Pulsa "Actualizar" para sincronizar.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -832,10 +849,10 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+            </div >
 
             {/* SECCIÓN DE MANTENIMIENTO & EMERGENCIA */}
-            <Card className="bg-gray-900 border-gray-800 md:col-span-2 border-l-4 border-l-red-500/50">
+            < Card className="bg-gray-900 border-gray-800 md:col-span-2 border-l-4 border-l-red-500/50" >
                 <CardHeader className="bg-red-500/5">
                     <CardTitle className="flex items-center gap-2 text-white font-black italic tracking-tighter uppercase">
                         <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -912,7 +929,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                         </div>
                     </div>
                 </CardContent>
-            </Card>
+            </Card >
 
             <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50">
                 <Button onClick={handleSave} disabled={saving} size="lg" className={`h-14 px-8 text-lg font-black uppercase tracking-tighter shadow-2xl transition-all duration-500 ${success ? 'bg-emerald-500 ring-4 ring-emerald-500/20' : 'bg-emerald-600 hover:bg-emerald-500'}`}>
@@ -920,6 +937,6 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                     {saving ? 'Guardando...' : success ? '¡GUARDADO!' : 'GUARDAR CONFIGURACIÓN'}
                 </Button>
             </div>
-        </div>
+        </div >
     )
 }

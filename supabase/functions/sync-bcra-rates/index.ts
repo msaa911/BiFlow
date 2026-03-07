@@ -53,16 +53,16 @@ serve(async (req: Request) => {
             .from('indices_mercado')
             .upsert({
                 fecha: hoy,
-                tasa_plazo_fijo_30d: tasaPromedio,
                 tasa_plazo_fijo: tasaPromedio,
                 tasa_badlar: tasaBadlar,
                 tasas_bancos: bankRatesMap,
-                dolar_oficial: valorDolar,
-                origen: `ArgentinaDatos (Bancos: ${bancosConTasa.length})`,
-                updated_at: new Date()
+                updated_at: new Date().toISOString()
             }, { onConflict: 'fecha' });
 
-        if (error) throw error;
+        if (error) {
+            console.error("❌ DB Insert Error:", error.message);
+            throw error;
+        }
 
         return new Response(JSON.stringify({
             success: true,
@@ -71,12 +71,24 @@ serve(async (req: Request) => {
             tasas_bancos: bankRatesMap,
             dolar: valorDolar,
             sync_date: hoy
-        }), { headers: { 'Content-Type': 'application/json' } });
+        }), {
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            }
+        });
 
     } catch (error: any) {
         console.error("❌ Error Sync:", error.message);
-        return new Response(JSON.stringify({ error: error.message }), {
-            headers: { 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({
+            error: error.message,
+            details: error.stack
+        }), {
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
             status: 500
         });
     }
