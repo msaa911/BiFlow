@@ -82,9 +82,24 @@ serve(async (req: Request) => {
                 const dataBadlar = await resBadlar.json();
                 const rawBadlar = Array.isArray(dataBadlar) ? dataBadlar : (dataBadlar?.value || []);
                 const lastRecord = rawBadlar.length > 0 ? rawBadlar[rawBadlar.length - 1] : null;
-                // Normalizamos a escala decimal (0.x) dividiendo por 100 si viene como ej: 29.12
-                tasaBadlar = lastRecord?.valor ? (lastRecord.valor / 100) : 0;
-                addLog(`BADLAR Proxy (Normalizada): ${tasaBadlar}`);
+
+                let val = lastRecord?.valor || 0;
+                addLog(`BADLAR Raw de API: ${val}`);
+
+                // Safety Clamp: Si es mayor a 1, está en porcentaje (ej: 29.12)
+                if (val > 1) {
+                    val = val / 100;
+                    addLog(`BADLAR Escalada (/100): ${val}`);
+                }
+
+                // Segundo Clamp por si el API cambia la escala radicalmente (ej: 2912)
+                if (val > 1) {
+                    val = val / 100;
+                    addLog(`BADLAR Escalada Extra (/10000): ${val}`);
+                }
+
+                tasaBadlar = val;
+                addLog(`BADLAR Proxy Final: ${tasaBadlar}`);
             }
         } catch (e) {
             addLog(`❌ Fallo BADLAR: ${e.message}`);

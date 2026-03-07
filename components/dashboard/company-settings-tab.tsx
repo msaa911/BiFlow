@@ -113,9 +113,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
                 if (marketRes.data) {
                     setMarketRates({
-                        PLAZO_FIJO: marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo || 0,
-                        BADLAR: marketRes.data.tasa_badlar || 0,
-                        bancos: marketRes.data.tasas_bancos || {}
+                        PLAZO_FIJO: (marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo || 0) > 1 ? (marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo || 0) / 100 : (marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo || 0),
+                        BADLAR: (marketRes.data.tasa_badlar || 0) > 1 ? (marketRes.data.tasa_badlar || 0) / 100 : (marketRes.data.tasa_badlar || 0),
+                        bancos: Object.fromEntries(
+                            Object.entries(marketRes.data.tasas_bancos || {}).map(([b, t]: [string, any]) => [b, (t > 1 ? t / 100 : t)])
+                        )
                     })
                 }
 
