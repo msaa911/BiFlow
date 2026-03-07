@@ -25,7 +25,7 @@ interface CompanyConfig {
     tna: number
     limite_descubierto: number
     modo_tasa: 'AUTOMATICO' | 'MANUAL'
-    tasa_referencia_auto: 'PLAZO_FIJO' | 'BADLAR'
+    tasa_referencia_auto: 'PLAZO_FIJO' | 'BADLAR' | string
     colchon_liquidez: number
 }
 
@@ -642,7 +642,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                         <div className="flex items-center gap-2 p-3 bg-blue-500/5 rounded-lg border border-blue-500/20 mb-4 animate-in fade-in slide-in-from-top-2">
                                             <CheckCircle2 className="w-4 h-4 text-blue-500" />
                                             <p className="text-[11px] text-blue-100 font-medium italic">
-                                                Sincronizado con {config.tasa_referencia_auto === 'BADLAR' ? 'BADLAR' : config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'Promedio Mercado' : config.tasa_referencia_auto.replace('BANCO ', '')}
+                                                Sincronizado con {config.tasa_referencia_auto === 'BADLAR' ? 'BADLAR' : config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'Promedio Mercado' : (config.tasa_referencia_auto as string).replace('BANCO ', '')}
                                             </p>
                                         </div>
                                     )}
