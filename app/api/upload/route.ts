@@ -256,12 +256,19 @@ export async function POST(request: Request) {
             .single()
 
         if (dbLogErr || !importLog) {
-            console.error('DB Log Error [v5.2-TAG]:', dbLogErr)
+            console.error('DB Log Error [v5.3-DIAG]:', dbLogErr)
             return NextResponse.json({
-                error: 'Error de importación al registrar auditoría [v5.2-TAG].',
+                error: 'Error de importación al registrar auditoría [v5.3-DIAG].',
                 details: dbLogErr?.message || 'Falla en la creación del log de importación',
                 code: dbLogErr?.code,
-                payload_hint: { state: auditPayload.estado, hasOrg: !!orgId }
+                diagnostic_payload: {
+                    orgId,
+                    fileName_len: fileName.length,
+                    storagePath_len: storagePath.length,
+                    estado: auditPayload.estado,
+                    cuentaId_type: typeof cuentaId,
+                    cuentaId_val: (uploadContext === 'bank' && cuentaId && cuentaId.length > 5) ? cuentaId : 'forced-null'
+                }
             }, { status: 500 })
         }
 
