@@ -479,8 +479,8 @@ export async function POST(request: Request) {
                             if (!bankName || !accounts) return null;
                             const search = bankName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                             const exact = accounts.find(a =>
-                                a.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) ||
-                                a.banco.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search)
+                                (a.nombre?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "").includes(search) ||
+                                (a.banco?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "").includes(search)
                             );
                             return exact ? exact.id : null;
                         };
