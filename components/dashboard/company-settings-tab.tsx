@@ -642,7 +642,22 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                         <div className="flex items-center gap-2 p-3 bg-blue-500/5 rounded-lg border border-blue-500/20 mb-4 animate-in fade-in slide-in-from-top-2">
                                             <CheckCircle2 className="w-4 h-4 text-blue-500" />
                                             <p className="text-[11px] text-blue-100 font-medium italic">
-                                                Sincronizado con {config.tasa_referencia_auto === 'BADLAR' ? 'BADLAR' : config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'Promedio Mercado' : (config.tasa_referencia_auto as string).replace('BANCO ', '')}
+                                                Sincronizado con {
+                                                    config.tasa_referencia_auto === 'BADLAR' ? 'BADLAR' :
+                                                        config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'Promedio Mercado' :
+                                                            (() => {
+                                                                const name = config.tasa_referencia_auto as string;
+                                                                if (name.includes('NACION')) return 'BANCO NACIÓN';
+                                                                if (name.includes('SANTANDER')) return 'SANTANDER';
+                                                                if (name.includes('GALICIA')) return 'GALICIA';
+                                                                if (name.includes('PROVINCIA')) return 'BANCO PROVINCIA';
+                                                                if (name.includes('BBVA')) return 'BBVA';
+                                                                if (name.includes('MACRO')) return 'MACRO';
+                                                                if (name.includes('CREDICOOP')) return 'CREDICOOP';
+                                                                if (name.includes('CIUDAD')) return 'BANCO CIUDAD';
+                                                                return name.replace('BANCO ', '').replace(' S.A.', '').replace('ARGENTINA', '').trim();
+                                                            })()
+                                                }
                                             </p>
                                         </div>
                                     )}
@@ -674,7 +689,9 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                             className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${config.tasa_referencia_auto === 'PLAZO_FIJO' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-100 ring-1 ring-emerald-500/20 shadow-[0_5px_15px_-5px_rgba(16,185,129,0.3)]' : 'bg-gray-900 border-gray-800 hover:border-gray-700 text-gray-400'}`}
                                         >
                                             <span className="text-[9px] font-black uppercase opacity-60 mb-1">PROMEDIO PF</span>
-                                            <span className="text-xl font-mono font-bold">{(marketRates.PLAZO_FIJO * 100).toFixed(2)}%</span>
+                                            <span className="text-xl font-mono font-bold">
+                                                {((marketRates.PLAZO_FIJO * 100) % 1 === 0) ? (marketRates.PLAZO_FIJO * 100).toFixed(0) : (marketRates.PLAZO_FIJO * 100).toFixed(2)}%
+                                            </span>
                                         </button>
 
                                         <button
@@ -682,7 +699,9 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                             className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${config.tasa_referencia_auto === 'BADLAR' ? 'bg-blue-500/10 border-blue-500/50 text-blue-100 ring-1 ring-blue-500/20 shadow-[0_5px_15px_-5px_rgba(59,130,246,0.3)]' : 'bg-gray-900 border-gray-800 hover:border-gray-700 text-gray-400'}`}
                                         >
                                             <span className="text-[9px] font-black uppercase opacity-60 mb-1">BADLAR BCRA</span>
-                                            <span className="text-xl font-mono font-bold">{(marketRates.BADLAR * 100).toFixed(2)}%</span>
+                                            <span className="text-xl font-mono font-bold">
+                                                {((marketRates.BADLAR * 100) % 1 === 0) ? (marketRates.BADLAR * 100).toFixed(0) : (marketRates.BADLAR * 100).toFixed(2)}%
+                                            </span>
                                         </button>
                                     </div>
 
@@ -696,9 +715,23 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                                     onClick={() => setConfig({ ...config, tasa_referencia_auto: banco as any, tna: tasa, modo_tasa: 'AUTOMATICO' })}
                                                     className={`flex items-center justify-between w-full p-3 rounded-lg border transition-all ${config.tasa_referencia_auto === banco ? 'bg-amber-500/10 border-amber-500/50 text-amber-100' : 'bg-gray-900/30 border-gray-800/40 hover:border-gray-700 text-gray-500'}`}
                                                 >
-                                                    <span className="text-xs font-bold uppercase truncate max-w-[150px]">{banco.replace('BANCO ', '').replace(' S.A.', '')}</span>
+                                                    <span className="text-xs font-bold uppercase truncate max-w-[150px]">
+                                                        {(() => {
+                                                            if (banco.includes('NACION')) return 'BANCO NACIÓN';
+                                                            if (banco.includes('SANTANDER')) return 'SANTANDER';
+                                                            if (banco.includes('GALICIA')) return 'GALICIA';
+                                                            if (banco.includes('PROVINCIA')) return 'BANCO PROVINCIA';
+                                                            if (banco.includes('BBVA')) return 'BBVA';
+                                                            if (banco.includes('MACRO')) return 'MACRO';
+                                                            if (banco.includes('CREDICOOP')) return 'CREDICOOP';
+                                                            if (banco.includes('CIUDAD')) return 'BANCO CIUDAD';
+                                                            return banco.replace('BANCO ', '').replace(' S.A.', '').replace('ARGENTINA', '').trim();
+                                                        })()}
+                                                    </span>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-sm font-mono font-bold">{(tasa * 100).toFixed(2)}%</span>
+                                                        <span className="text-sm font-mono font-bold">
+                                                            {((tasa * 100) % 1 === 0) ? (tasa * 100).toFixed(0) : (tasa * 100).toFixed(2)}%
+                                                        </span>
                                                         <div className={`w-2 h-2 rounded-full ${config.tasa_referencia_auto === banco ? 'bg-amber-500 animate-pulse' : 'bg-transparent'}`} />
                                                     </div>
                                                 </button>

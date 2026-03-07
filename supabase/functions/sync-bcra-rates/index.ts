@@ -24,7 +24,7 @@ serve(async (req: Request) => {
     };
 
     try {
-        addLog("📊 Iniciando Sincronización v3 (Fail-Safe)...");
+        addLog("📊 Iniciando Sincronización v4 (Fail-Safe & Normalización)...");
 
         // 1. Tasas de Plazo Fijo
         let tasaPromedio = 0;
@@ -82,8 +82,9 @@ serve(async (req: Request) => {
                 const dataBadlar = await resBadlar.json();
                 const rawBadlar = Array.isArray(dataBadlar) ? dataBadlar : (dataBadlar?.value || []);
                 const lastRecord = rawBadlar.length > 0 ? rawBadlar[rawBadlar.length - 1] : null;
-                tasaBadlar = lastRecord?.valor || 0;
-                addLog(`BADLAR Proxy: ${tasaBadlar}`);
+                // Normalizamos a escala decimal (0.x) dividiendo por 100 si viene como ej: 29.12
+                tasaBadlar = lastRecord?.valor ? (lastRecord.valor / 100) : 0;
+                addLog(`BADLAR Proxy (Normalizada): ${tasaBadlar}`);
             }
         } catch (e) {
             addLog(`❌ Fallo BADLAR: ${e.message}`);
