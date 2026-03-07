@@ -54,9 +54,15 @@ export default function UploadPage() {
     useEffect(() => {
         const remapId = searchParams.get('remap')
         const name = searchParams.get('name')
+        const qCuentaId = searchParams.get('cuenta_id')
+
         if (remapId) {
             setMappingFile({ name: name || 'Archivo' } as File)
             setReprocessingId(remapId)
+        }
+
+        if (qCuentaId) {
+            setSelectedAccountId(qCuentaId)
         }
     }, [searchParams])
 
@@ -72,7 +78,7 @@ export default function UploadPage() {
             if (res.ok) {
                 const data = await res.json()
                 setAccounts(data)
-                if (data.length > 0) {
+                if (data.length > 0 && !searchParams.get('cuenta_id')) {
                     setSelectedAccountId(data[0].id)
                 }
             }

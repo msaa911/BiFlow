@@ -67,7 +67,8 @@ export async function POST(request: Request) {
         const invertSigns = formData.get('invertSigns') === 'true'
         const hasConfirmedSign = formData.has('invertSigns')
         const uploadContext = (formData.get('context') || 'bank') as 'bank' | 'income' | 'expense' | 'receipt' | 'payment'
-        const cuentaId = formData.get('cuenta_id') as string
+        const rawCuentaId = formData.get('cuenta_id') as string
+        const cuentaId = (rawCuentaId && rawCuentaId.length > 5) ? rawCuentaId : null
         let uniTransactions: any = null
 
         if (formatId || manualMapping) {
@@ -234,6 +235,7 @@ export async function POST(request: Request) {
         console.log('11. Creating Audit Log Entry [v5.4-ULTRA]')
         const auditPayload: any = {
             organization_id: orgId,
+            cuenta_id: cuentaId,
             nombre_archivo: fileName,
             storage_path: storagePath,
             estado: (transactions[0]?.origen_dato === 'universal_translator' && uniTransactions?.metadata?.lowQuality)
