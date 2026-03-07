@@ -467,15 +467,33 @@ export async function POST(request: Request) {
                     if (insertedMovs.length > 0) {
                         const instrumentsToInsert: any[] = []
 
+                        // FETCH ACCOUNTS FOR MATCHING
+                        const { data: accounts } = await adminSupabase
+                            .from('cuentas_bancarias')
+                            .select('id, nombre, banco')
+                            .eq('organization_id', orgId);
+
+                        const findAccountId = (bankName: string) => {
+                            if (!bankName || !accounts) return null;
+                            const search = bankName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            const exact = accounts.find(a =>
+                                a.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) ||
+                                a.banco.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search)
+                            );
+                            return exact ? exact.id : null;
+                        };
+
                         insertedMovs.forEach((m, idx) => {
                             const originalRows = instrumentDataMap[idx]
                             originalRows.forEach((rawRow: any) => {
+                                const matchedAccId = findAccountId(rawRow.banco);
                                 instrumentsToInsert.push({
                                     organization_id: orgId,
                                     movimiento_id: m.id,
                                     metodo: rawRow.metadata?.metodo || (isCobro ? 'transferencia' : 'cheque_propio'),
                                     monto: Math.abs(rawRow.monto),
                                     banco: rawRow.banco || rawRow.metadata?.banco || null,
+                                    cuenta_id: matchedAccId,
                                     fecha_disponibilidad: rawRow.vencimiento || rawRow.fecha,
                                     detalle_referencia: rawRow.referencia || rawRow.metadata?.referencia || rawRow.numero_cheque || null,
                                     estado: 'pendiente'
@@ -484,7 +502,7 @@ export async function POST(request: Request) {
                         })
 
                         if (instrumentsToInsert.length > 0) {
-                            const { error: insError } = await currentSupabase
+                            const { error: insError } = await adminSupabase
                                 .from('instrumentos_pago')
                                 .insert(instrumentsToInsert)
 

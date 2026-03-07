@@ -8,6 +8,13 @@ import {
     DialogTitle,
     DialogFooter
 } from '@/components/ui/dialog'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,6 +51,7 @@ interface Instrument {
     metodo: 'efectivo' | 'transferencia' | 'cheque_terceros' | 'cheque_propio'
     monto: number
     banco: string
+    cuenta_id?: string
     detalle_referencia: string
     fecha_disponibilidad: string
 }
@@ -55,6 +63,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
     const [searchingEntidad, setSearchingEntidad] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedEntidad, setSelectedEntidad] = useState<any>(null)
+    const [cuentasBancarias, setCuentasBancarias] = useState<any[]>([])
 
     const [pendingInvoices, setPendingInvoices] = useState<any[]>([])
     const [selectedInvoices, setSelectedInvoices] = useState<Record<string, number>>({}) // id -> monto a aplicar
@@ -89,8 +98,20 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                 fecha_disponibilidad: new Date().toISOString().split('T')[0]
             }])
             fetchInitialEntities()
+            fetchCuentasBancarias()
         }
     }, [isOpen])
+
+    async function fetchCuentasBancarias() {
+        const supabase = createClient()
+        const { data } = await supabase
+            .from('cuentas_bancarias')
+            .select('id, nombre, banco, nro_cuenta')
+            .eq('organization_id', orgId)
+            .order('nombre', { ascending: true })
+
+        if (data) setCuentasBancarias(data)
+    }
 
     async function fetchInitialEntities() {
         const supabase = createClient()
@@ -204,6 +225,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                 metodo: ins.metodo,
                 monto: ins.monto,
                 banco: ins.banco || null,
+                cuenta_id: ins.cuenta_id || null,
                 detalle_referencia: ins.detalle_referencia || null,
                 fecha_disponibilidad: ins.fecha_disponibilidad,
                 estado: ins.metodo === 'efectivo' ? 'conciliado' : 'pendiente'
@@ -503,15 +525,31 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                                     {(ins.metodo.includes('cheque') || ins.metodo === 'transferencia') && (
                                                         <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-800/50">
                                                             <div className="space-y-1">
-                                                                <Label className="text-xs uppercase text-gray-500 font-bold">Banco</Label>
+                                                                <Label className="text-xs uppercase text-gray-500 font-bold">Banco / Cuenta</Label>
                                                                 <div className="relative">
-                                                                    <Landmark className="absolute left-2 top-3.5 w-4 h-4 text-gray-600" />
-                                                                    <Input
-                                                                        placeholder="Ej: Galicia"
-                                                                        value={ins.banco}
-                                                                        onChange={(e) => updateInstrument(ins.id, { banco: e.target.value })}
-                                                                        className="bg-gray-950 border-gray-800 h-11 text-xs pl-8"
-                                                                    />
+                                                                    <Select
+                                                                        value={ins.cuenta_id || "none"}
+                                                                        onValueChange={(val) => {
+                                                                            const cuenta = cuentasBancarias.find(c => c.id === val);
+                                                                            updateInstrument(ins.id, {
+                                                                                cuenta_id: val === "none" ? undefined : val,
+                                                                                banco: cuenta ? cuenta.nombre : ins.banco
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        <SelectTrigger className="bg-gray-950 border-gray-800 h-11 text-xs pl-8">
+                                                                            <Landmark className="absolute left-2 top-3 w-4 h-4 text-gray-600" />
+                                                                            <SelectValue placeholder="Seleccionar cuenta..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="bg-gray-950 border-gray-800 text-white">
+                                                                            <SelectItem value="none" className="text-xs">No vinculado / Otro</SelectItem>
+                                                                            {cuentasBancarias.map(c => (
+                                                                                <SelectItem key={c.id} value={c.id} className="text-xs">
+                                                                                    {c.nombre} ({c.banco})
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
                                                                 </div>
                                                             </div>
                                                             <div className="space-y-1">
