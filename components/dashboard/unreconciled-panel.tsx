@@ -499,7 +499,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                         <AlertCircle className="w-4 h-4 text-amber-500" />
                         AUDITORÍA DE BANCOS <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded font-bold ml-2">ACTIVO</span>
                     </CardTitle>
-                    <p className="text-xs text-gray-400 mt-1">Movimientos bancarios pendientes de vinculación con comprobantes.</p>
+                    <p className="text-xs text-gray-400 mt-1">Movimientos bancarios pendientes de conciliación.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button
@@ -582,19 +582,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                         <p className={`text-xs font-black ${tx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.monto)}
                                         </p>
-                                        {tx.estado === 'conciliado' ? (
-                                            <Badge className="text-[10px] font-bold uppercase bg-emerald-500/20 !text-emerald-400 border-none px-2 mt-1">
-                                                Conciliado
-                                            </Badge>
-                                        ) : tx.estado === 'parcial' ? (
-                                            <Badge variant="outline" className="text-[10px] font-bold uppercase border-blue-500/50 !text-blue-400 bg-blue-500/10 px-2 mt-1 backdrop-blur-sm">
-                                                Parcial ({new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.abs(tx.monto) - (tx.monto_usado || 0))} req.)
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline" className="text-[10px] font-bold uppercase border-amber-500/50 !text-amber-400 bg-amber-500/10 px-2 mt-1 backdrop-blur-sm">
-                                                Pendiente
-                                            </Badge>
-                                        )}
+                                        {/* Badges de estado eliminados por redundancia */}
                                     </div>
 
                                     <div className="flex gap-2 min-w-[200px] justify-end">
