@@ -1,0 +1,17 @@
+name: Sync Market Rates (Daily)
+
+on:
+  schedule:
+    # 08:00 UTC (05:00 AM ART / Argentina) todos los días
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Permite ejecutarlo manualmente desde GitHub
+
+jobs:
+  sync_rates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Supabase Edge Function
+        run: |
+          curl -X POST "https://bnlmoupgzbtfgominzd.supabase.co/functions/v1/sync-bcra-rates" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+          -H "Content-Type: application/json"
