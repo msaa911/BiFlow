@@ -785,42 +785,45 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             {/* Conciliation Dialog */}
             <Dialog open={isConciliating} onOpenChange={setIsConciliating}>
-                <DialogContent className="max-w-2xl bg-gray-950 border-gray-800">
-                    <DialogHeader>
-                        <DialogTitle className="text-white">Conciliación Bancaria</DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Busca el Recibo u Orden de Pago que respalda este movimiento bancario.
+                <DialogContent className="max-w-lg bg-gray-950 border-gray-800 flex flex-col max-h-[90vh]">
+                    <DialogHeader className="shrink-0">
+                        <DialogTitle className="text-white flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                            Conciliación Bancaria
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400 text-xs">
+                            Vincule el movimiento del banco con documentos de tesorería (Recibos/OP).
                         </DialogDescription>
                     </DialogHeader>
 
                     {selectedTx && (
-                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 my-2 flex justify-between items-center shadow-inner">
+                        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-3 my-1 shrink-0 flex justify-between items-center">
                             <div>
-                                <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-1 flex items-center gap-1">
-                                    <Tag className="w-3 h-3" /> Movimiento Bancario {selectedTx.estado === 'parcial' && ' (Saldo Remanente)'}
+                                <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1 mb-0.5">
+                                    <Tag className="w-3 h-3" /> Banco {selectedTx.estado === 'parcial' && '(Remanente)'}
                                 </p>
-                                <p className="text-sm font-bold text-white leading-tight">{selectedTx.descripcion}</p>
+                                <p className="text-xs font-bold text-white leading-tight truncate max-w-[280px]">{selectedTx.descripcion}</p>
                             </div>
                             <div className="text-right">
-                                <p className={`text-lg font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                <p className={`text-base font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.abs(selectedTx.monto) - (selectedTx.monto_usado || 0))}
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    <div className="py-2 min-h-[100px] flex flex-col justify-center">
+                    <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                         {loadingInvoices ? (
-                            <div className="flex flex-col items-center justify-center py-8 text-emerald-500/50 italic animate-pulse">
+                            <div className="flex flex-col items-center justify-center py-12 text-emerald-500/50 italic animate-pulse">
                                 <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                                <p className="text-xs font-bold uppercase tracking-widest">Buscando documentos de Tesorería...</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest">Buscando documentos...</p>
                             </div>
                         ) : suggestedMovements.length > 0 ? (
-                            <div className="mb-6 animate-in slide-in-from-top-4 duration-500">
-                                <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <CheckCircle2 className="w-3.5 h-3.5" /> Movimientos Ya Registrados (Recibos/OP)
+                            <div className="flex flex-col h-full overflow-hidden">
+                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2 shrink-0">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> sugerencias de tesorería
                                 </p>
-                                <div className="space-y-2">
+                                <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar max-h-[400px]">
                                     {suggestedMovements.map(mov => {
                                         const isSelected = selectedMovementIds.includes(mov.id)
                                         return (
@@ -832,35 +835,30 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                         : [...selectedMovementIds, mov.id]
                                                     setSelectedMovementIds(newSelected)
                                                 }}
-                                                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left group
+                                                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left group
                                                     ${isSelected ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
-                                                        : 'border-emerald-500/30 bg-gray-900/40 hover:border-emerald-500 hover:bg-emerald-500/5'
+                                                        : 'border-emerald-500/10 bg-gray-900/40 hover:border-emerald-500/50 hover:bg-emerald-500/5'
                                                     }`}
                                             >
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`flex items-center justify-center w-5 h-5 rounded-md border ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-emerald-500/50 bg-gray-900 group-hover:border-emerald-500'}`}>
-                                                        {isSelected && <Check className="w-3.5 h-3.5 text-black" />}
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-emerald-800 bg-gray-950 group-hover:border-emerald-500'}`}>
+                                                        {isSelected && <Check className="w-3 h-3 text-black font-bold" />}
                                                     </div>
                                                     <div>
-                                                        <p className={`text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-emerald-400 group-hover:text-emerald-300'}`}>
-                                                            {mov.tipo?.toUpperCase()} N° {mov.nro_comprobante || 'S/N'} {mov.razonSocial ? ` - ${mov.razonSocial}` : ''}
+                                                        <p className={`text-xs font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-emerald-400'}`}>
+                                                            {mov.tipo?.toUpperCase()} {mov.nro_comprobante || 'S/N'}
                                                         </p>
-                                                        <p className="text-[10px] text-gray-500">
-                                                            Referencia: {mov.observaciones || 'Sin observaciones'} • Fecha: {new Date(mov.fecha).toLocaleDateString()}
+                                                        <p className="text-[9px] text-gray-500 truncate max-w-[200px]">
+                                                            {mov.razonSocial || 'Entidad no ident.'} • {new Date(mov.fecha).toLocaleDateString()}
                                                         </p>
-                                                        {mov.aplicaciones && mov.aplicaciones.length > 0 && (
-                                                            <p className="text-[10px] text-emerald-600 font-bold mt-1">
-                                                                Aplica a: {mov.aplicaciones.map((a: any) => a.comprobantes?.nro_factura || a.comprobantes?.numero).filter(Boolean).join(', ')}
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className={`text-sm font-black ${isSelected ? 'text-emerald-400' : 'text-white'}`}>
+                                                <div className="text-right whitespace-nowrap">
+                                                    <p className={`text-xs font-black ${isSelected ? 'text-emerald-400' : 'text-white'}`}>
                                                         {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto)}
                                                     </p>
-                                                    <span className={`text-[9px] font-black px-1.5 rounded uppercase mt-1 inline-block border ${isSelected ? 'bg-emerald-500 text-black border-emerald-500' : 'text-emerald-500/70 bg-emerald-500/5 border-emerald-500/20'}`}>
-                                                        {isSelected ? 'Seleccionado' : 'Vincular Directo'}
+                                                    <span className={`text-[8px] font-black px-1.5 rounded uppercase mt-0.5 inline-block border ${isSelected ? 'bg-emerald-500 text-black border-emerald-500' : 'text-emerald-500/50 bg-emerald-500/5 border-emerald-500/20'}`}>
+                                                        {isSelected ? 'Seleccionado' : 'Vincular'}
                                                     </span>
                                                 </div>
                                             </button>
@@ -869,8 +867,10 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                 </div>
                             </div>
                         ) : (
-                            <div className="py-8 text-center text-gray-600 border border-dashed border-gray-800 rounded-xl">
-                                <p className="text-xs font-medium italic">No se encontraron movimientos pendientes para este importe o entidad.</p>
+                            <div className="flex-1 flex flex-col items-center justify-center py-12 text-center text-gray-600 border border-dashed border-gray-800 rounded-xl m-2">
+                                <AlertCircle className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Sin movimientos sugeridos</p>
+                                <p className="text-[10px] mt-1 px-8">No se encontraron cobros o pagos que coincidan con los criterios bancarios.</p>
                             </div>
                         )}
                     </div>
