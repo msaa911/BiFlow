@@ -497,7 +497,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 <div>
                     <CardTitle className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-500" />
-                        AUDITORÍA DE BANCOS <span className="text-[10px] bg-red-500 text-white px-1 rounded animate-pulse ml-2">v3.2 ACTIVE</span>
+                        AUDITORÍA DE BANCOS <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded font-bold ml-2">ACTIVO</span>
                     </CardTitle>
                     <p className="text-xs text-gray-400 mt-1">Movimientos bancarios pendientes de vinculación con comprobantes.</p>
                 </div>
@@ -561,9 +561,9 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                     <div className={`p-2 rounded-lg ${tx.monto < 0 ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                                         {tx.monto < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
                                     </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-bold text-white truncate max-w-[320px]">{tx.descripcion}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="text-xs font-bold text-white group-hover:text-emerald-400 leading-tight">{tx.descripcion}</p>
                                             {globalAiSuggestions.some(s => s.transId === tx.id) && (
                                                 <Badge variant="outline" className="text-[9px] font-black h-4 bg-amber-500/10 text-amber-500 border-amber-500/20 px-1.5 leading-none animate-pulse">
                                                     ✨ IA MATCH
@@ -571,16 +571,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                             )}
                                         </div>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[10px] text-gray-500">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
-                                            <span className="text-[10px] text-gray-500">•</span>
-                                            <span className="text-[10px] text-gray-500 uppercase">{tx.cuit_origen || 'CUIT no Identificado'}</span>
+                                            <span className="text-[11px] font-mono text-gray-500">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
+                                            <span className="text-[10px] text-gray-600 font-mono tracking-tighter uppercase ml-2">ID: {tx.id.split('-')[0]}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-6">
-                                    <div className="text-right">
-                                        <p className={`text-sm font-black ${tx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    <div className="text-right whitespace-nowrap">
+                                        <p className={`text-xs font-black ${tx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.monto)}
                                         </p>
                                         {tx.estado === 'conciliado' ? (
