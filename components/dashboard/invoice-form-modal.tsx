@@ -169,11 +169,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
             const upsertData: Record<string, any> = {
                 organization_id: orgId,
-                entidad_id: formData.entidad_id,
-                cuit_socio: selectedEntidad.cuit,
-                razon_social_socio: selectedEntidad.razon_social,
-                cuit_entidad: selectedEntidad.cuit,
-                razon_social_entidad: selectedEntidad.razon_social,
                 nombre_entidad: selectedEntidad.razon_social,
                 tipo: formData.tipo,
                 nro_factura: formData.numero || null,
