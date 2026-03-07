@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { PiggyBank, Save, Landmark, Plus, Loader2, CheckCircle2, Trash2, Brain, AlertTriangle, RotateCcw, RefreshCw, User, Settings } from 'lucide-react'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+// Eliminados Dialog imports ya que no se usan más en esta pestaña
 
 // Interfaces actualizadas
 interface BankAccount {
@@ -450,9 +450,9 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                             Ingresa el saldo real de tus cuentas al día de hoy para arrancar la conciliación.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4 pt-6">
+                    <CardContent className="space-y-6 pt-6">
                         {accounts.map((acc, idx) => (
-                            <div key={idx} className="relative grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-4 bg-gray-950/50 rounded-lg border border-gray-800 transition-all hover:border-emerald-500/30 group">
+                            <div key={idx} className="relative flex flex-col gap-6 p-6 bg-gray-950/50 rounded-2xl border border-gray-800 transition-all hover:border-emerald-500/30 group">
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -461,120 +461,101 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-500">Banco / Alias</Label>
-                                    <Input
-                                        value={acc.banco_nombre}
-                                        onChange={(e) => updateAccount(idx, 'banco_nombre', e.target.value)}
-                                        className="bg-gray-900 border-gray-700 focus:border-emerald-500/50 text-white"
-                                        placeholder="Ej: Galicia Cta Cte"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] text-emerald-400 font-bold uppercase">Saldo Inicial (Arranque)</Label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
+
+                                {/* Sección 1: Datos Básicos */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Banco / Identificador</Label>
                                         <Input
-                                            type="number"
-                                            value={acc.saldo_inicial}
-                                            onChange={(e) => {
-                                                const val = parseFloat(e.target.value)
-                                                updateAccount(idx, 'saldo_inicial', isNaN(val) ? 0 : val)
-                                            }}
-                                            className="pl-8 bg-gray-900 border-gray-700 text-white font-mono text-lg"
+                                            value={acc.banco_nombre}
+                                            onChange={(e) => updateAccount(idx, 'banco_nombre', e.target.value)}
+                                            className="bg-gray-900 border-gray-800 focus:border-emerald-500/50 text-white h-11"
+                                            placeholder="Ej: Galicia Principal"
                                         />
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-500">CBU (Opcional)</Label>
-                                    <div className="flex gap-2">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] text-emerald-400 font-black uppercase tracking-widest text-center block">Saldo Inicial (Arranque)</Label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-3 text-gray-600 font-bold">$</span>
+                                            <Input
+                                                type="number"
+                                                value={acc.saldo_inicial}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value)
+                                                    updateAccount(idx, 'saldo_inicial', isNaN(val) ? 0 : val)
+                                                }}
+                                                className="pl-8 bg-gray-900 border-gray-800 text-white font-mono text-xl h-11"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">CBU / Alias</Label>
                                         <Input
                                             value={acc.cbu}
                                             onChange={(e) => updateAccount(idx, 'cbu', e.target.value)}
-                                            className="bg-gray-900 border-gray-700 focus:border-emerald-500/50 text-white"
+                                            className="bg-gray-900 border-gray-800 focus:border-emerald-500/50 text-white font-mono h-11"
                                             placeholder="22 dígitos"
                                         />
-                                        <Dialog open={editingAccountIndex === idx} onOpenChange={(open) => !open && setEditingAccountIndex(null)}>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => setEditingAccountIndex(idx)}
-                                                className="bg-gray-900 border-gray-700 hover:border-emerald-500/50 text-gray-400 hover:text-emerald-400"
-                                            >
-                                                <Settings className="h-4 w-4" />
-                                            </Button>
-                                            <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-md">
-                                                <DialogHeader>
-                                                    <DialogTitle className="text-xl font-bold italic uppercase tracking-tight flex items-center gap-2">
-                                                        <Landmark className="h-5 w-5 text-emerald-500" />
-                                                        Acuerdos - {acc.banco_nombre || 'Nueva Cuenta'}
-                                                    </DialogTitle>
-                                                    <DialogDescription className="text-gray-400">
-                                                        Parámetros específicos para auditoría y alertas de esta cuenta.
-                                                    </DialogDescription>
-                                                </DialogHeader>
+                                    </div>
+                                </div>
 
-                                                <div className="space-y-4 py-4">
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-bold uppercase text-gray-400">Colchón de Liquidez</Label>
-                                                        <div className="relative">
-                                                            <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
-                                                            <Input
-                                                                type="number"
-                                                                value={acc.colchon_liquidez}
-                                                                onChange={(e) => updateAccount(idx, 'colchon_liquidez', parseFloat(e.target.value) || 0)}
-                                                                className="pl-8 bg-gray-950 border-gray-800 text-white font-mono"
-                                                            />
-                                                        </div>
-                                                        <p className="text-[10px] text-gray-500 italic">Monto mínimo a mantener en cuenta.</p>
-                                                    </div>
+                                {/* Sección 2: Acuerdos Bancarios (Lo que el usuario pidió ver directo) */}
+                                <div className="pt-6 border-t border-gray-800/50">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Settings className="w-3 h-3 text-emerald-500/50" />
+                                        <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em]">Acuerdos Bancarios & Límites</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tighter">Colchón de Liquidez</Label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-2.5 text-gray-600 font-bold">$</span>
+                                                <Input
+                                                    type="number"
+                                                    value={acc.colchon_liquidez}
+                                                    onChange={(e) => updateAccount(idx, 'colchon_liquidez', parseFloat(e.target.value) || 0)}
+                                                    className="pl-7 bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-10"
+                                                />
+                                            </div>
+                                            <p className="text-[9px] text-gray-600 italic leading-tight">Monto mínimo a mantener en cuenta.</p>
+                                        </div>
 
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-bold uppercase text-gray-400">Límite Descubierto Total</Label>
-                                                        <div className="relative">
-                                                            <span className="absolute left-3 top-2.5 text-gray-500 font-bold">$</span>
-                                                            <Input
-                                                                type="number"
-                                                                value={acc.limite_descubierto}
-                                                                onChange={(e) => updateAccount(idx, 'limite_descubierto', parseFloat(e.target.value) || 0)}
-                                                                className="pl-8 bg-gray-950 border-gray-800 text-white font-mono"
-                                                            />
-                                                        </div>
-                                                    </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tighter">Límite Descubierto Total</Label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-2.5 text-gray-600 font-bold">$</span>
+                                                <Input
+                                                    type="number"
+                                                    value={acc.limite_descubierto}
+                                                    onChange={(e) => updateAccount(idx, 'limite_descubierto', parseFloat(e.target.value) || 0)}
+                                                    className="pl-7 bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-10"
+                                                />
+                                            </div>
+                                        </div>
 
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold uppercase text-gray-400">Mantenimiento ($/mes)</Label>
-                                                            <Input
-                                                                type="number"
-                                                                value={acc.mantenimiento_pactado}
-                                                                onChange={(e) => updateAccount(idx, 'mantenimiento_pactado', parseFloat(e.target.value) || 0)}
-                                                                className="bg-gray-950 border-gray-800 text-white font-mono"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold uppercase text-gray-400">Comisión Cheque (%)</Label>
-                                                            <div className="relative">
-                                                                <Input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    value={acc.comision_cheque}
-                                                                    onChange={(e) => updateAccount(idx, 'comision_cheque', parseFloat(e.target.value) || 0)}
-                                                                    className="bg-gray-950 border-gray-800 text-white font-mono pr-8"
-                                                                />
-                                                                <span className="absolute right-3 top-2.5 text-gray-500 font-bold">%</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tighter">Mantenimiento Pactado ($/mes)</Label>
+                                            <Input
+                                                type="number"
+                                                value={acc.mantenimiento_pactado}
+                                                onChange={(e) => updateAccount(idx, 'mantenimiento_pactado', parseFloat(e.target.value) || 0)}
+                                                className="bg-gray-900/50 border-gray-800 text-white font-mono text-sm h-10"
+                                            />
+                                        </div>
 
-                                                <DialogFooter>
-                                                    <Button onClick={() => setEditingAccountIndex(null)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
-                                                        ACEPTAR CONFIGURACIÓN
-                                                    </Button>
-                                                </DialogFooter>
-                                            </DialogContent>
-                                        </Dialog>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tighter">Comisión Cheque (%)</Label>
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={acc.comision_cheque}
+                                                    onChange={(e) => updateAccount(idx, 'comision_cheque', parseFloat(e.target.value) || 0)}
+                                                    className="bg-gray-900/50 border-gray-800 text-white font-mono text-sm pr-6 h-10"
+                                                />
+                                                <span className="absolute right-2 top-2.5 text-gray-600 font-bold">%</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
