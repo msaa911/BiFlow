@@ -587,7 +587,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 </Card>
 
                 {/* PARÁMETROS DE MERCADO (Existente) */}
-                <Card className="bg-gray-900/30 border-gray-800 backdrop-blur-sm overflow-hidden border-l-4 border-l-blue-500 shadow-2xl">
+                <Card className="bg-gray-900/30 border-gray-800 backdrop-blur-sm overflow-hidden border-l-4 border-l-blue-500 shadow-2xl md:col-span-2">
                     <CardHeader className="border-b border-gray-800/50 bg-gray-900/50 pb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-blue-500/10 rounded-lg">
