@@ -231,8 +231,8 @@ export async function POST(request: Request) {
             }, { status: 500 })
         }
 
-        console.log('11. Creating Audit Log Entry [v5.2-TAG]')
-        const auditPayload = {
+        console.log('11. Creating Audit Log Entry [v5.4-ULTRA]')
+        const auditPayload: any = {
             organization_id: orgId,
             nombre_archivo: fileName,
             storage_path: storagePath,
@@ -244,9 +244,8 @@ export async function POST(request: Request) {
                 type: file.type,
                 hasExplicitTipo,
                 signsInverted: invertSigns,
-                uploadVersion: '5.2-TAG'
-            },
-            cuenta_id: (uploadContext === 'bank' && cuentaId && cuentaId.length > 5) ? cuentaId : null
+                uploadVersion: '5.4-ULTRA'
+            }
         };
 
         const { data: importLog, error: dbLogErr } = await adminSupabase
@@ -256,19 +255,13 @@ export async function POST(request: Request) {
             .single()
 
         if (dbLogErr || !importLog) {
-            console.error('DB Log Error [v5.3-DIAG]:', dbLogErr)
+            console.error('DB Log Error [v5.4-ULTRA]:', dbLogErr)
+            const errorMsg = `ERROR AUDIT [v5.4-ULTRA]: ${dbLogErr?.message || 'Sin mensaje'} (Code: ${dbLogErr?.code || 'N/A'})`;
             return NextResponse.json({
-                error: 'Error de importación al registrar auditoría [v5.3-DIAG].',
-                details: dbLogErr?.message || 'Falla en la creación del log de importación',
+                error: errorMsg,
+                details: dbLogErr?.message,
                 code: dbLogErr?.code,
-                diagnostic_payload: {
-                    orgId,
-                    fileName_len: fileName.length,
-                    storagePath_len: storagePath.length,
-                    estado: auditPayload.estado,
-                    cuentaId_type: typeof cuentaId,
-                    cuentaId_val: (uploadContext === 'bank' && cuentaId && cuentaId.length > 5) ? cuentaId : 'forced-null'
-                }
+                diagnostic: { orgId, state: auditPayload.estado }
             }, { status: 500 })
         }
 
