@@ -231,32 +231,37 @@ export async function POST(request: Request) {
             }, { status: 500 })
         }
 
-        console.log('11. Creating Audit Log Entry')
+        console.log('11. Creating Audit Log Entry [v5.2-TAG]')
+        const auditPayload = {
+            organization_id: orgId,
+            nombre_archivo: fileName,
+            storage_path: storagePath,
+            estado: (transactions[0]?.origen_dato === 'universal_translator' && uniTransactions?.metadata?.lowQuality)
+                ? 'requiere_ajuste'
+                : 'procesando',
+            metadata: {
+                size: buffer.length,
+                type: file.type,
+                hasExplicitTipo,
+                signsInverted: invertSigns,
+                uploadVersion: '5.2-TAG'
+            },
+            cuenta_id: (uploadContext === 'bank' && cuentaId && cuentaId.length > 5) ? cuentaId : null
+        };
+
         const { data: importLog, error: dbLogErr } = await adminSupabase
             .from('archivos_importados')
-            .insert({
-                organization_id: orgId,
-                nombre_archivo: fileName,
-                storage_path: storagePath,
-                estado: (transactions[0]?.origen_dato === 'universal_translator' && uniTransactions?.metadata?.lowQuality)
-                    ? 'requiere_ajuste'
-                    : 'procesando',
-                metadata: {
-                    size: buffer.length,
-                    type: file.type,
-                    hasExplicitTipo,
-                    signsInverted: invertSigns
-                },
-                cuenta_id: uploadContext === 'bank' ? cuentaId : null
-            })
+            .insert(auditPayload)
             .select()
             .single()
 
         if (dbLogErr || !importLog) {
-            console.error('DB Log Error (Audit):', dbLogErr)
+            console.error('DB Log Error [v5.2-TAG]:', dbLogErr)
             return NextResponse.json({
-                error: 'Error de importación al registrar auditoría.',
-                details: dbLogErr?.message || 'Falla en la creación del log de importación'
+                error: 'Error de importación al registrar auditoría [v5.2-TAG].',
+                details: dbLogErr?.message || 'Falla en la creación del log de importación',
+                code: dbLogErr?.code,
+                payload_hint: { state: auditPayload.estado, hasOrg: !!orgId }
             }, { status: 500 })
         }
 
