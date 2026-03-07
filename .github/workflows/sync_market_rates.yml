@@ -12,6 +12,6 @@ jobs:
     steps:
       - name: Trigger Supabase Edge Function
         run: |
-          curl -X POST "https://bnlmoupgzbtfgominzd.supabase.co/functions/v1/sync-bcra-rates" \
+          curl -X POST "https://bnlmoupgzbtgfgominzd.supabase.co/functions/v1/sync-bcra-rates" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
           -H "Content-Type: application/json"
