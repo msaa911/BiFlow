@@ -678,16 +678,19 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
                                     {marketRates.updatedAt && (
                                         <div className="mt-4 text-center animate-in fade-in zoom-in duration-500">
-                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
-                                                Última actualización: {
+                                            <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">
+                                                Última actualización de TNA
+                                            </p>
+                                            <p className="text-[10px] text-blue-400/70 font-mono font-bold">
+                                                {
                                                     new Date(marketRates.updatedAt).toLocaleString('es-AR', {
                                                         timeZone: 'America/Argentina/Buenos_Aires',
                                                         day: '2-digit',
                                                         month: '2-digit',
                                                         year: 'numeric',
                                                         hour: '2-digit',
-                                                        minute: '2-digit'
+                                                        minute: '2-digit',
+                                                        hour12: true
                                                     })
                                                 } ART
                                             </p>

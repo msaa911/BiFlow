@@ -69,7 +69,7 @@ serve(async (req: Request) => {
             } else {
                 addLog(`⚠️ Error API PlazoFijo: ${resTasas.status}`);
             }
-        } catch (e) {
+        } catch (e: any) {
             addLog(`❌ Fallo PlazoFijo: ${e.message}`);
         }
 
@@ -101,7 +101,7 @@ serve(async (req: Request) => {
                 tasaBadlar = val;
                 addLog(`BADLAR Proxy Final: ${tasaBadlar}`);
             }
-        } catch (e) {
+        } catch (e: any) {
             addLog(`❌ Fallo BADLAR: ${e.message}`);
         }
 
@@ -117,7 +117,7 @@ serve(async (req: Request) => {
                 valorDolar = oficial?.venta || 0;
                 addLog(`Dólar: ${valorDolar}`);
             }
-        } catch (e) {
+        } catch (e: any) {
             addLog(`❌ Fallo Dólar: ${e.message}`);
         }
 
