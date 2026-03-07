@@ -66,9 +66,20 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
     const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([])
     const [loadingInvoices, setLoadingInvoices] = useState(false)
 
-    // Residuals and mixed payments
-    const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(25)
     const [residualCategory, setResidualCategory] = useState('Gastos Bancarios')
+    const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
+
+    const filtered = transactions
+        .filter(t => (t.estado === 'pendiente' || t.estado === 'parcial') && !categorizedTxIds.includes(t.id))
+        .filter(t =>
+            t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            t.monto.toString().includes(searchTerm)
+        )
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage)
+    const paginatedUnreconciled = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
     // Mixed Payment States
     const [secondaryPaymentEnabled, setSecondaryPaymentEnabled] = useState(false)
@@ -278,12 +289,8 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         }
     }
 
-    const filtered = transactions
-        .filter(t => (t.estado === 'pendiente' || t.estado === 'parcial') && !categorizedTxIds.includes(t.id))
-        .filter(t =>
-            t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            t.monto.toString().includes(searchTerm)
-        )
+    const totalPages = Math.ceil(filtered.length / itemsPerPage)
+    const paginatedUnreconciled = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
     const handleExport = () => {
         const dataToExport = filtered.map(t => ({

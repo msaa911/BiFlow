@@ -37,6 +37,8 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [reconcilingAdmin, setReconcilingAdmin] = useState(false)
     const [reconcilingBank, setReconcilingBank] = useState(false)
     const [selectedAccountId, setSelectedAccountId] = useState<string>('all')
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(20)
     const supabase = createClient()
 
     const counts = {
@@ -73,6 +75,9 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
         if (filterStatus === 'reconciled') return t.estado === 'conciliado'
         return true
     })
+
+    const totalPages = Math.ceil(filteredTx.length / itemsPerPage)
+    const paginatedTx = filteredTx.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
@@ -553,28 +558,30 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 </Badge>
                             </div>
                         </div>
-                        <div className="overflow-x-auto overflow-y-auto max-h-[500px] scrollbar-thin scrollbar-thumb-emerald-500/20">
-                            <table className="w-full text-left border-collapse">
+                        <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-emerald-500/20 hover:scrollbar-thumb-emerald-500/40 scrollbar-track-transparent">
+                            <table className="w-full text-left text-xs border-separate border-spacing-0">
                                 <thead>
-                                    <tr className="text-[10px] font-bold text-gray-400 border-b border-gray-800 bg-gray-900/50">
-                                        <th className="pl-4 pr-1 py-4 font-black sticky top-0 z-20 bg-gray-900 text-left flex items-center gap-1">
-                                            Estado
-                                            <div title="P = Pendiente | C = Conciliado" className="cursor-help text-gray-600 hover:text-emerald-400 transition-colors">
-                                                <AlertCircle className="w-3 h-3" />
+                                    <tr className="bg-gray-800 text-[11px] font-bold text-gray-400 sticky top-0 z-10">
+                                        <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">
+                                            <div className="flex items-center gap-1">
+                                                Estado
+                                                <div title="P = Pendiente | C = Conciliado" className="cursor-help text-gray-600 hover:text-emerald-400 transition-colors">
+                                                    <AlertCircle className="w-3 h-3" />
+                                                </div>
                                             </div>
                                         </th>
-                                        <th className="px-1 py-4 font-black sticky top-0 z-20 bg-gray-900 text-left">Fecha</th>
-                                        <th className="px-1 py-4 font-black sticky top-0 z-20 bg-gray-900 text-left">Descripción / Concepto</th>
-                                        <th className="px-1 py-4 font-black sticky top-0 z-20 bg-gray-900 text-left">Referencia</th>
-                                        <th className="px-1 py-4 font-black sticky top-0 z-20 bg-gray-900 text-left">Categoría</th>
-                                        <th className="px-1 py-4 text-right font-black sticky top-0 z-20 bg-gray-900">Monto (ARS)</th>
-                                        <th className="pr-4 pl-1 py-4 text-center font-black sticky top-0 z-20 bg-gray-900">Acción</th>
+                                        <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Fecha</th>
+                                        <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Descripción / Concepto</th>
+                                        <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Referencia</th>
+                                        <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Categoría</th>
+                                        <th className="px-6 py-4 text-right font-black sticky top-0 z-20 bg-gray-800">Monto (ARS)</th>
+                                        <th className="px-6 py-4 text-center font-black sticky top-0 z-20 bg-gray-800">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-800/50">
-                                    {filteredTx.map((t: any) => (
-                                        <tr key={t.id} className="group hover:bg-emerald-500/[0.02] transition-colors">
-                                            <td className="pl-4 pr-1 py-2.5">
+                                    {paginatedTx.map((t: any) => (
+                                        <tr key={t.id} className="group hover:bg-emerald-500/[0.02] transition-colors border-b border-gray-800/50">
+                                            <td className="px-6 py-3">
                                                 <div className="flex items-center">
                                                     <div className={`
                                                         w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black
@@ -584,8 +591,8 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-1 py-2.5 font-mono text-[11px] text-gray-500">{formatDate(t.fecha)}</td>
-                                            <td className="px-1 py-2.5">
+                                            <td className="px-6 py-3 font-mono text-[11px] text-gray-500">{formatDate(t.fecha)}</td>
+                                            <td className="px-6 py-3">
                                                 <div className="flex flex-col">
                                                     <span className="text-xs font-bold text-white group-hover:text-emerald-400 truncate max-w-[300px]">
                                                         {t.comprobantes?.entidades?.razon_social && (
@@ -596,18 +603,18 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                                     <span className="text-[9px] text-gray-600 font-mono tracking-tighter uppercase">ID: {t.id.split('-')[0]}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-1 py-2.5 font-mono text-[10px] text-gray-400">
+                                            <td className="px-6 py-3 font-mono text-[10px] text-gray-400">
                                                 {t.numero_cheque || t.metadata?.referencia || t.metadata?.external_ref || '-'}
                                             </td>
-                                            <td className="px-1 py-2.5">
+                                            <td className="px-6 py-3">
                                                 <span className="px-2 py-0.5 rounded text-[8px] uppercase font-bold bg-gray-800 text-gray-400 border border-gray-700 block w-fit">
                                                     {t.metadata?.categoria || t.categoria || 'OTROS'}
                                                 </span>
                                             </td>
-                                            <td className={`px-1 py-2.5 text-right font-black text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap`}>
+                                            <td className={`px-6 py-3 text-right font-black text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap`}>
                                                 {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
                                             </td>
-                                            <td className="pr-4 pl-1 py-2.5 text-center">
+                                            <td className="px-6 py-3 text-center">
                                                 <div className="flex items-center justify-center">
                                                     {t.estado === 'conciliado' ? (
                                                         <Button
@@ -628,6 +635,61 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Paginación */}
+                        <div className="p-4 border-t border-gray-800 bg-gray-900/40 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="text-[11px] text-gray-500 font-medium flex items-center gap-4">
+                                <span>
+                                    Mostrando <span className="text-gray-300">{filteredTx.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> - <span className="text-gray-300">{Math.min(currentPage * itemsPerPage, filteredTx.length)}</span> de <span className="text-gray-300">{filteredTx.length}</span> registros
+                                </span>
+
+                                <div className="flex items-center gap-2 border-l border-gray-800 pl-4">
+                                    <span className="text-gray-600">Ver:</span>
+                                    {[20, 25, 50, 100, 200].map(size => (
+                                        <button
+                                            key={size}
+                                            onClick={() => {
+                                                setItemsPerPage(size)
+                                                setCurrentPage(1)
+                                            }}
+                                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${itemsPerPage === size ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-gray-600 hover:text-gray-400'}`}
+                                        >
+                                            {size}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center bg-gray-950 border border-gray-800 rounded-lg p-1 gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-gray-800 text-gray-400"
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        disabled={currentPage === 1}
+                                    >
+                                        <ChevronDown className="w-4 h-4 rotate-90" />
+                                    </Button>
+
+                                    <div className="flex items-center px-4 gap-2 border-x border-gray-800 px-6">
+                                        <span className="text-xs font-bold text-emerald-500">{currentPage}</span>
+                                        <span className="text-xs text-gray-600">/</span>
+                                        <span className="text-xs text-gray-400 font-medium">{totalPages}</span>
+                                    </div>
+
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-gray-800 text-gray-400"
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        <ChevronDown className="w-4 h-4 -rotate-90" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </TabsContent>

@@ -29,6 +29,8 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
     const [loading, setLoading] = useState(true)
     const [expandedNote, setExpandedNote] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(20)
     const supabase = createClient()
 
     async function fetchNotes() {
@@ -87,6 +89,9 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
         (n.nro_factura || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         n.transacciones?.[0]?.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
     )
+
+    const totalPages = Math.ceil(filteredNotes.length / itemsPerPage)
+    const paginatedNotes = filteredNotes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
     const handleDelete = async (note: any) => {
         if (!confirm('¿Seguro que desea eliminar esta nota bancaria? La transacción bancaria asociada volverá a estar pendiente.')) return
