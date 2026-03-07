@@ -373,7 +373,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                     onChange={handleSelectAll}
                                 />
                             </th>
-                            <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Fecha (Emisión)</th>
+                            <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Fecha</th>
                             <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">CUIT / Entidad</th>
                             <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800">Concepto / Condición</th>
                             <th className="px-6 py-4 text-right sticky top-0 z-20 bg-gray-800">Monto Total</th>
