@@ -82,8 +82,6 @@ export default async function DashboardPage() {
         tipo: i.tipo,
         razon_social_entidad: i.razon_social_socio,
         cuit_socio: i.cuit_socio,
-        razon_social_socio: i.razon_social_socio,
-        cuit_socio: i.cuit_socio,
         fecha_emision: i.fecha_emision,
         fecha_vencimiento: i.fecha_vencimiento,
         monto_total: i.monto_total,
