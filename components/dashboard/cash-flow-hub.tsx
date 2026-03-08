@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Trash2, Calculator, Save, AlertCircle, ShieldCheck, Zap, TrendingDown, Target } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Plus, Trash2, Calculator, Save, AlertCircle, ShieldCheck, Zap, TrendingDown, TrendingUp, Target } from 'lucide-react'
 import { TreasuryEngine, ProjectedMovement, Invoice } from '@/lib/treasury-engine'
 import { CashFlowChart } from './cash-flow-chart'
 
@@ -119,6 +120,51 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
 
     const removeProjection = (id: string) => {
         setProjections(projections.filter(d => d.id !== id))
+    }
+
+    const renderExclusionList = (list: Invoice[], excluded: string[], setExcluded: any, isStress: boolean) => {
+        return list
+            .filter(i => i.monto_pendiente > 0)
+            .sort((a, b) => b.monto_pendiente - a.monto_pendiente)
+            .map(inv => {
+                const isExcluded = excluded.includes(inv.id)
+                return (
+                    <div
+                        key={inv.id}
+                        onClick={() => setExcluded((prev: string[]) =>
+                            isExcluded ? prev.filter(id => id !== inv.id) : [...prev, inv.id]
+                        )}
+                        className={`p-2 rounded-lg border cursor-pointer transition-all flex items-center justify-between gap-2 mb-1 ${isExcluded
+                            ? (isStress ? 'bg-red-500/10 border-red-500/30' : 'bg-emerald-500/10 border-emerald-500/30')
+                            : 'bg-gray-950 border-gray-800 hover:border-gray-700'
+                            }`}
+                    >
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                                <span className={`text-[11px] font-bold truncate ${isExcluded ? (isStress ? 'text-red-400' : 'text-emerald-400') : 'text-white'}`}>
+                                    {inv.razon_social_entidad || inv.razon_social_socio}
+                                </span>
+                                {isExcluded && (
+                                    <span className="shrink-0 animate-pulse">
+                                        {isStress ? <TrendingDown className="w-2.5 h-2.5 text-red-500" /> : <TrendingUp className="w-2.5 h-2.5 text-emerald-500" />}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[9px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className={`text-[10px] font-black whitespace-nowrap ${isExcluded ? 'text-gray-400 line-through' : 'text-white'}`}>
+                                ${inv.monto_pendiente.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                            </p>
+                            {isExcluded && (
+                                <p className={`text-[8px] font-bold uppercase tracking-tighter ${isStress ? 'text-red-500' : 'text-emerald-500'}`}>
+                                    {isStress ? '- Estrés' : '+ Alivio'}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )
+            })
     }
 
     return (
@@ -276,48 +322,44 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                         </div>
                     </Card>
 
-                    <Card className="bg-gray-900 border-gray-800 overflow-hidden">
-                        <div className="p-4 border-b border-gray-800 bg-gray-800/20">
-                            <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center justify-between">
-                                SIMULACIÓN: EXCLUSIONES
-                                {excludedInvoices.length > 0 && (
-                                    <button
-                                        onClick={() => setExcludedInvoices([])}
-                                        className="text-emerald-500 hover:text-emerald-400 normal-case font-bold"
-                                    >
-                                        Restaurar todo
-                                    </button>
-                                )}
-                            </h4>
-                        </div>
-                        <div className="p-2 space-y-1 max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-                            {invoices
-                                .filter(i => i.monto_pendiente > 0)
-                                .sort((a, b) => b.monto_pendiente - a.monto_pendiente)
-                                .map(inv => {
-                                    const isExcluded = excludedInvoices.includes(inv.id)
-                                    return (
-                                        <div
-                                            key={inv.id}
-                                            onClick={() => setExcludedInvoices(prev =>
-                                                isExcluded ? prev.filter(id => id !== inv.id) : [...prev, inv.id]
-                                            )}
-                                            className={`p-2 rounded-lg border cursor-pointer transition-all flex items-center justify-between gap-2 ${isExcluded
-                                                ? 'bg-red-500/5 border-red-500/20 opacity-50'
-                                                : 'bg-gray-950 border-gray-800 hover:border-emerald-500/30'
-                                                }`}
-                                        >
-                                            <div className="min-w-0">
-                                                <span className="text-white font-semibold text-[11px] truncate">{inv.razon_social_entidad || inv.razon_social_socio}</span>
-                                                <p className="text-[9px] text-gray-500">Vence: {new Date(inv.fecha_vencimiento).toLocaleDateString('es-AR')}</p>
-                                            </div>
-                                            <p className={`text-[10px] font-black whitespace-nowrap ${isExcluded ? 'text-gray-500 line-through' : 'text-white'}`}>
-                                                ${inv.monto_pendiente.toLocaleString('es-AR')}
-                                            </p>
-                                        </div>
-                                    )
-                                })}
-                        </div>
+                    <Card className="bg-gray-900 border-gray-800 overflow-hidden min-h-[400px]">
+                        <Tabs defaultValue="egresos" className="w-full">
+                            <div className="p-4 border-b border-gray-800 bg-gray-800/20 flex items-center justify-between">
+                                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest shrink-0">
+                                    Simulación: Exclusiones
+                                </h4>
+                                <TabsList className="bg-gray-950 border border-gray-800 p-0.5 h-7">
+                                    <TabsTrigger value="ingresos" className="text-[9px] px-2 h-6 rounded-md data-[state=active]:bg-red-500/20 data-[state=active]:text-red-400">Ventas</TabsTrigger>
+                                    <TabsTrigger value="egresos" className="text-[9px] px-2 h-6 rounded-md data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">Compras</TabsTrigger>
+                                </TabsList>
+                            </div>
+
+                            <TabsContent value="ingresos" className="m-0 p-2 space-y-1 max-h-[350px] overflow-y-auto custom-scrollbar">
+                                <div className="px-2 py-1 mb-2 bg-red-500/5 rounded border border-red-500/10">
+                                    <p className="text-[9px] text-red-300 italic">Estresa el flujo: ¿Qué pasa si no cobras esto?</p>
+                                </div>
+                                {renderExclusionList(invoices.filter(i => i.tipo === 'factura_venta'), excludedInvoices, setExcludedInvoices, true)}
+                            </TabsContent>
+
+                            <TabsContent value="egresos" className="m-0 p-2 space-y-1 max-h-[350px] overflow-y-auto custom-scrollbar">
+                                <div className="px-2 py-1 mb-2 bg-emerald-500/5 rounded border border-emerald-500/10">
+                                    <p className="text-[9px] text-emerald-300 italic">Alivia el flujo: ¿Qué pasa si postergas esto?</p>
+                                </div>
+                                {renderExclusionList(invoices.filter(i => i.tipo === 'factura_compra'), excludedInvoices, setExcludedInvoices, false)}
+                            </TabsContent>
+                        </Tabs>
+
+                        {excludedInvoices.length > 0 && (
+                            <div className="p-2 border-t border-gray-800 bg-gray-950">
+                                <Button
+                                    onClick={() => setExcludedInvoices([])}
+                                    variant="ghost"
+                                    className="w-full text-[10px] h-7 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/5 font-bold"
+                                >
+                                    Restaurar todas las simulaciones
+                                </Button>
+                            </div>
+                        )}
                     </Card>
 
                     <Card className={`${riskBg} border-emerald-500/20 p-6`}>
