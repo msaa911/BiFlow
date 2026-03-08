@@ -1,8 +1,10 @@
 'use client'
 
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { MonthlyCashFlowData } from '@/lib/treasury-engine'
-import { TrendingUp, Info } from 'lucide-react'
+import { TrendingUp, Info, Download } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 interface MonthlyCashFlowProps {
     data: MonthlyCashFlowData
@@ -39,18 +41,53 @@ export function MonthlyCashFlow({ data }: MonthlyCashFlowProps) {
     const lastLabel = formatDateLabel(data.months[data.months.length - 1])
     const firstLabel = formatDateLabel(data.months[0])
 
+    const exportToExcel = () => {
+        const wb = XLSX.utils.book_new()
+
+        // Prepare data for worksheet
+        const headerRow = ['Concepto / Partida', ...data.months.map(m => formatDateLabel(m))]
+        const rows = data.rows.map(row => [
+            row.label,
+            ...row.values
+        ])
+
+        const wsData = [headerRow, ...rows]
+        const ws = XLSX.utils.aoa_to_sheet(wsData)
+
+        // Basic styling/formatting for Excel can be limited with xlsx-community 
+        // but we can at least set column widths
+        const wscols = [{ wch: 30 }, ...Array(data.months.length).fill({ wch: 15 })]
+        ws['!cols'] = wscols
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Flujo de Caja')
+
+        const fileName = `Flujo_Caja_BiFlow_${new Date().toISOString().split('T')[0]}.xlsx`
+        XLSX.writeFile(wb, fileName)
+    }
+
     return (
         <div className="space-y-6">
             {/* Forecast Summary Header */}
             <div className="flex flex-col md:flex-row gap-6 animate-in fade-in slide-in-from-top-2 duration-700">
                 <div className="flex-1 bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500/50"></div>
-                    <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3">
-                        Pronóstico de Flujo de Caja
-                        <span className="text-xs font-bold text-gray-500 bg-gray-950 px-2 py-1 rounded border border-gray-800">
-                            ({firstLabel} - {lastLabel})
-                        </span>
-                    </h3>
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-black text-white flex items-center gap-3">
+                            Pronóstico de Flujo de Caja
+                            <span className="text-xs font-bold text-gray-500 bg-gray-950 px-2 py-1 rounded border border-gray-800">
+                                ({firstLabel} - {lastLabel})
+                            </span>
+                        </h3>
+                        <Button
+                            onClick={exportToExcel}
+                            variant="outline"
+                            size="sm"
+                            className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 flex items-center gap-2"
+                        >
+                            <Download className="w-4 h-4" />
+                            Exportar Excel
+                        </Button>
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                         <div>
