@@ -5,10 +5,11 @@ Este documento detalla la evolución de BiFlow, desde sus cimientos hasta la vis
 Esta fase se centró en sentar las bases técnicas y permitir la ingesta masiva de datos.
 
  ⚙️ Setup de Infraestructura: Configuración de Vercel y Supabase.
- 🏦 Arquitectura Multibanco (v1.0):
+ 🏦 Arquitectura Multibanco (v2.0):
      - Soporte nativo para múltiples cuentas bancarias por organización.
-     - Filtrado inteligente en frontend y asociación automática en importación.
-     - Sincronización de saldos consolidado vs individual.
+     - **Auto-detección Inteligente**: Asociación automática de extractos por CBU/Nombre al subir archivos.
+     - **UI de Alta Escalabilidad**: Navegación por bancos mediante carrusel horizontal con efecto de desvanecimiento premium.
+     - **Asociación Garantizada**: Modal de selección manual ante ambigüedad en la detección.
  📂 Universal Translator (v1.0 - v6.0):
      - Motor de traducción de archivos Excel/CSV/TXT/PDF.
      - Reconocimiento automático de CUITs y normalización de conceptos.
@@ -17,11 +18,14 @@ Esta fase se centró en sentar las bases técnicas y permitir la ingesta masiva 
 🚀 Fase 4: Inteligencia de Tesorería (Sprint 2) (100% COMPLETADO)
 Enfoque en la gestión de capital y salud financiera diaria.
 
- Treasury Hub v2.0: Gestión de cuentas a pagar (AP) y cobrar (AR) con soporte para cheques y trazabilidad por comprobante.
- Motor de Liquidez:
+ Treasury Hub v3.0: Gestión de cuentas a pagar (AP) y cobrar (AR) con soporte para cheques y trazabilidad por comprobante.
+ Motor de Liquidez Avanzado:
+     - **Análisis de Salud Financiera**: Indicadores de Semáforo de Riesgo, Días de Cobertura (Runway) y Margen de Seguridad.
+     - **Zona de Estrés**: Visualización de "Área de Colchón" roja en el gráfico para identificar riesgos incluso con saldos elevados.
+     - **Simulación Dual de Estrés**: Capacidad de simular impagos de Ventas (Estrés) vs postergación de Compras (Alivio).
+     - **Lógica de Arrastre**: Consideración automática de facturas vencidas pendientes en el balance proyectado inicial.
  Auditoría de Costo de Oportunidad (Dinero ocioso vs Plazo Fijo/BCRA).
- Stress Test de Saldo: Simulador interactivo que alerta si el pago de un lote de facturas genera un descubierto bancario.
- AI Advisor (MVP): Chat inteligente que responde sobre saldos, ingresos y variaciones mensuales.
+ AI Advisor (MVP): Chat inteligente que responde sobre saldos, ingresos y variaciones mensuales y ofrece consejos financieros proactivos (BiFLOW Advice).
 🧠 Fase 5: Auditoría, Seguridad y Anti-Fraude (100% COMPLETADO)
 Consolidación del motor de auditoría algorítmica.
 
