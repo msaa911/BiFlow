@@ -1,14 +1,25 @@
 {
-    "saldos_iniciales": {
-        "Banco Galicia": 15000000
+    "bancos": {
+        "Banco Galicia": {
+            "saldo_inicial": 15000000,
+            "colchon_liquidez": 1500000,
+            "acuerdos_bancarios": {
+                "limite_descubierto_total": 5000000,
+                "mantenimiento_pactado": 15500,
+                "comision_cheque_porcentaje": 0.015
+            }
+        },
+        "Banco Macro": {
+            "saldo_inicial": 10000000,
+            "colchon_liquidez": 1500000,
+            "acuerdos_bancarios": {
+                "limite_descubierto_total": 5000000,
+                "mantenimiento_pactado": 15500,
+                "comision_cheque_porcentaje": 0.015
+            }
+        }
     },
     "costo_oportunidad": {
-        "tna": 0.65,
-        "colchon_liquidez": 1500000
-    },
-    "acuerdos_bancarios": {
-        "limite_descubierto_total": 5000000,
-        "mantenimiento_pactado": 15500,
-        "comision_cheque_porcentaje": 0.015
+        "tna": 0.65
     }
 }

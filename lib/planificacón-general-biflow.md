@@ -4,33 +4,36 @@ Este documento detalla la evolución de BiFlow, desde sus cimientos hasta la vis
 ✅ Fase 1 a 3: Cimientos e infraestructura (100% COMPLETADO)
 Esta fase se centró en sentar las bases técnicas y permitir la ingesta masiva de datos.
 
- Setup de Infraestructura: Configuración de Vercel y Supabase.
- Esquema de Datos Core: Diseño de tablas de transacciones, cuentas bancarias y organizaciones.
- Universal Translator (v1.0 - v6.0):
- Motor de traducción de archivos Excel/CSV/TXT.
- Reconocimiento automático de CUITs y normalización de conceptos.
- Soporte multi-banco con lógica de signos (+/-) inteligente.
- Auth & RLS: Sistema de autenticación con aislamiento total de datos entre empresas.
+ ⚙️ Setup de Infraestructura: Configuración de Vercel y Supabase.
+ 🏦 Arquitectura Multibanco (v1.0):
+     - Soporte nativo para múltiples cuentas bancarias por organización.
+     - Filtrado inteligente en frontend y asociación automática en importación.
+     - Sincronización de saldos consolidado vs individual.
+ 📂 Universal Translator (v1.0 - v6.0):
+     - Motor de traducción de archivos Excel/CSV/TXT/PDF.
+     - Reconocimiento automático de CUITs y normalización de conceptos.
+     - Soporte multi-banco con lógica de signos (+/-) inteligente.
+ 🔐 Auth & RLS: Sistema de autenticación con aislamiento total de datos entre empresas.
 🚀 Fase 4: Inteligencia de Tesorería (Sprint 2) (100% COMPLETADO)
 Enfoque en la gestión de capital y salud financiera diaria.
 
  Treasury Hub v2.0: Gestión de cuentas a pagar (AP) y cobrar (AR) con soporte para cheques y trazabilidad por comprobante.
  Motor de Liquidez:
- Cálculo de Runway (días de caja disponibles).
  Auditoría de Costo de Oportunidad (Dinero ocioso vs Plazo Fijo/BCRA).
  Stress Test de Saldo: Simulador interactivo que alerta si el pago de un lote de facturas genera un descubierto bancario.
  AI Advisor (MVP): Chat inteligente que responde sobre saldos, ingresos y variaciones mensuales.
-🧠 Fase 5: Auditoría, Seguridad y Anti-Fraude (PRÓXIMOS PASOS)
-Fase actual en refinamiento y despliegue final.
+🧠 Fase 5: Auditoría, Seguridad y Anti-Fraude (100% COMPLETADO)
+Consolidación del motor de auditoría algorítmica.
 
-Anomaly Engine Avanzado:
- Detección de duplicados en ventana de 30 días.
- Alertas de sobreprecio (>15% de desvío histórico).
- Reconciliación Automática (Auto-Match): Cruce automático de facturas vs movimientos bancarios mediante lógica de CUIT + Monto.
-Trust Ledger (BEC Protection):
- Extracción automática de 22 dígitos (CBU/CVU) de los archivos.
- Validación histórica de CBUs por proveedor para alertar cambios sospechosos y prevenir estafas.
- Tax Intelligence: Detección automática de retenciones recuperables de AFIP y ARBA.
+ ✅ Anomaly Engine Avanzado:
+     - Detección de duplicados en ventana de 30 días.
+     - Refinamiento de falsos positivos (ignora cargos recurrentes mensuales como mantenimiento).
+     - Alertas de sobreprecio (>15% de desvío histórico).
+ ✅ Reconciliación Automática (Auto-Match): Cruce automático de facturas vs movimientos bancarios mediante lógica de CUIT + Monto.
+ 🚀 Trust Ledger (BEC Protection): (SPRINT ACTUAL)
+     - Extracción automática de 22 dígitos (CBU/CVU) de los archivos.
+     - Validación histórica de CBUs por proveedor para alertar cambios sospechosos y prevenir estafas.
+ 🚀 Tax Intelligence: Detección automática de retenciones recuperables de AFIP y ARBA.
 📂 Fase 6: Memoria de Datos y Visual Mapper (EN DESARROLLO)
 Optimización de la experiencia del usuario (UX) para acelerar la carga de datos.
 
@@ -46,6 +49,6 @@ Visión a largo plazo para convertir BiFlow en el sistema nervioso financiero de
  Tax Action Center: Botón para generar archivos listos para importar en aplicativos de AFIP con las retenciones a recuperar.
 Resumen de Estado:
 
-Terminado: 65%
-En Progreso: 15%
-Pendiente: 20%
+Terminado: 75%
+En Progreso: 10%
+Pendiente: 15%

@@ -339,37 +339,69 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             // 2. Eliminar legacy convenios si es necesario (opcional, por ahora lo dejamos)
 
             // 3. GUARDAR CUENTAS
-            const accountsToUpsert = accounts
-                .filter(acc => acc.banco_nombre.trim() !== '')
-                .map(acc => {
-                    const payload: any = {
-                        organization_id: organizationId,
-                        banco_nombre: acc.banco_nombre,
-                        cbu: acc.cbu,
-                        saldo_inicial: acc.saldo_inicial,
-                        colchon_liquidez: acc.colchon_liquidez || 0,
-                        limite_descubierto: acc.limite_descubierto || 0,
-                        mantenimiento_pactado: acc.mantenimiento_pactado || 0,
-                        comision_cheque: acc.comision_cheque || 0,
-                        updated_at: new Date().toISOString()
-                    }
-                    if (acc.id) payload.id = acc.id
-                    return payload
-                })
+            const accountsWithId = accounts
+                .filter(acc => acc.banco_nombre.trim() !== '' && acc.id)
+                .map(acc => ({
+                    id: acc.id,
+                    organization_id: organizationId,
+                    banco_nombre: acc.banco_nombre,
+                    cbu: acc.cbu,
+                    saldo_inicial: acc.saldo_inicial,
+                    colchon_liquidez: acc.colchon_liquidez || 0,
+                    limite_descubierto: acc.limite_descubierto || 0,
+                    mantenimiento_pactado: acc.mantenimiento_pactado || 0,
+                    comision_cheque: acc.comision_cheque || 0,
+                    updated_at: new Date().toISOString()
+                }))
 
-            if (accountsToUpsert.length > 0) {
-                console.log("Upserting accounts:", accountsToUpsert)
-                const { data, error: errorAccounts } = await supabase
+            const accountsNew = accounts
+                .filter(acc => acc.banco_nombre.trim() !== '' && !acc.id)
+                .map(acc => ({
+                    organization_id: organizationId,
+                    banco_nombre: acc.banco_nombre,
+                    cbu: acc.cbu,
+                    saldo_inicial: acc.saldo_inicial,
+                    colchon_liquidez: acc.colchon_liquidez || 0,
+                    limite_descubierto: acc.limite_descubierto || 0,
+                    mantenimiento_pactado: acc.mantenimiento_pactado || 0,
+                    comision_cheque: acc.comision_cheque || 0,
+                    updated_at: new Date().toISOString()
+                }))
+
+            let results: any[] = []
+
+            if (accountsWithId.length > 0) {
+                console.log("Upserting existing accounts:", accountsWithId)
+                const { data, error } = await supabase
                     .from('cuentas_bancarias')
-                    .upsert(accountsToUpsert)
+                    .upsert(accountsWithId)
                     .select()
+                if (error) throw new Error("Error actualizando Cuentas Bancarias: " + error.message)
+                if (data) results = [...results, ...data]
+            }
 
-                if (errorAccounts) throw new Error("Error en Cuentas Bancarias: " + errorAccounts.message)
+            if (accountsNew.length > 0) {
+                console.log("Inserting new accounts:", accountsNew)
+                const { data, error } = await supabase
+                    .from('cuentas_bancarias')
+                    .insert(accountsNew)
+                    .select()
+                if (error) throw new Error("Error insertando Cuentas Bancarias: " + error.message)
+                if (data) results = [...results, ...data]
+            }
 
-                if (data) {
-                    console.log("Cuentas guardadas:", data)
-                    setAccounts(data)
-                }
+            if (results.length > 0) {
+                console.log("Cuentas guardadas:", results)
+                // Reconstruimos la lista para mantener el orden visual
+                const updatedAccounts = accounts.map(acc => {
+                    if (acc.id) {
+                        return results.find(r => r.id === acc.id) || acc
+                    } else {
+                        // Match por nombre para las nuevas si hay coincidencia
+                        return results.find(r => r.banco_nombre === acc.banco_nombre && !accountsWithId.some(aw => aw.id === r.id)) || acc
+                    }
+                })
+                setAccounts(updatedAccounts)
             }
 
             setSuccess(true)

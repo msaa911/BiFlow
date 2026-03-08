@@ -1,0 +1,16 @@
+Banco Macro
+Cuenta Corriente en Pesos Nro: 9876-5432/1
+CBU: 0285000000000000000000
+Titular: EMPRESA DEMO SA
+CUIT: 30-71111111-2
+Desde: 01/03/2026 Hasta: 31/03/2026
+
+Fecha,Concepto,Debito,Credito,Saldo
+01/03/2026,Saldo Inicial,,,10000000.00
+05/03/2026,Acreditacion Cheque - Ch 46965761 (Santander),,344406.00,10344406.00
+07/03/2026,Transferencia RECIBO TRF-MACRO-001,,150000.00,10494406.00
+10/03/2026,Debito Cheque Propio - Ch 1001,50000.00,,10444406.00
+12/03/2026,Acreditacion Cheque - Ch 20849967 (Macro),,345796.00,10790202.00
+15/03/2026,Pago Proveedor TRF-MACRO-PAGO-001,120000.00,,10670202.00
+20/03/2026,Comision Mantenimiento Cuenta,18500.00,,10651702.00
+25/03/2026,Acreditacion Cheque - Ch 99322291 (Macro),,371280.00,11022982.00

@@ -27,3 +27,4 @@ fecha,numero,concepto,cuit,razon_social,monto,vencimiento,moneda
 15/01/2026,FAC-A-0001-00001025,Factura de Consultoría A,30-11111111-1,Tech Solutions SAS,100000,30/01/2026,ARS
 16/01/2026,FAC-A-0001-00001026,Factura de Consultoría B,30-11111111-1,Tech Solutions SAS,150000,31/01/2026,ARS
 01/03/2026,FAC-A-0001-00005555,Servicios para Cobro Mixto,30-11111111-1,Tech Solutions SAS,100000,15/03/2026,ARS
+02/03/2026,FAC-A-0001-00006000,Servicios Profesionales de Consultoría,30-11111111-1,Tech Solutions SAS,150000,10/03/2026,ARS

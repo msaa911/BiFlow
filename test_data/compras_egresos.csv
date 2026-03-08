@@ -20,3 +20,5 @@ fecha,numero,concepto,cuit,razon_social,monto,vencimiento,moneda
 30/01/2026,FAC-C-0002-00005018,Suministros y gastos operativos,30-44444444-4,Servicios de Limpieza Estrella,111797,01/03/2026,ARS
 06/02/2026,FAC-C-0002-00005019,Suministros y gastos operativos,30-66666666-6,Alquileres de Oficinas SA,157966,08/03/2026,ARS
 02/03/2026,FAC-C-0002-00009999,Factura para Diferencia Residual,33-55555555-5,Cloud Hosting Providers INC,45000,15/03/2026,ARS
+05/03/2026,FAC-C-0002-00010000,Servicios de Internet y Hosting,33-55555555-5,Cloud Hosting Providers INC,120000,15/03/2026,ARS
+01/03/2026,FAC-C-0002-00010001,Servicios de Limpieza de Oficinas,30-44444444-4,Servicios de Limpieza Estrella,50000,15/03/2026,ARS
