@@ -61,7 +61,13 @@ export class TreasuryEngine {
             }))
         ].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
+        // INITIAL CALCULATION: Apply all PAST DUE movements to the starting balance
         let runningBalance = currentBalance;
+        const pastDueMovements = movements.filter(m => new Date(m.fecha) < today && m.fecha !== today.toISOString().split('T')[0]);
+        pastDueMovements.forEach(m => runningBalance += m.monto);
+
+        // Filter out past due movements so they aren't processed again in the loop
+        const futureMovements = movements.filter(m => new Date(m.fecha) >= today || m.fecha === today.toISOString().split('T')[0]);
 
         // Generate a 30-day window
         for (let i = 0; i < 30; i++) {
@@ -70,7 +76,7 @@ export class TreasuryEngine {
             const dateStr = date.toISOString().split('T')[0];
 
             // Apply movements for this specific date
-            const dateMovements = movements.filter(m => m.fecha === dateStr);
+            const dateMovements = futureMovements.filter(m => m.fecha === dateStr);
             dateMovements.forEach(m => runningBalance += m.monto);
 
             projection.push({
