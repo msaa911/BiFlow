@@ -205,6 +205,15 @@ export async function POST(request: Request) {
             }
         }
 
+        // --- 3.5 Force account association if context is bank ---
+        if (uploadContext === 'bank' && transactions && transactions.length > 0) {
+            console.log(`Force-associating ${transactions.length} transactions with cuenta_id: ${cuentaId}`)
+            transactions = transactions.map((t: any) => ({
+                ...t,
+                cuenta_id: t.cuenta_id || cuentaId
+            }))
+        }
+
         // --- 4. Now that we have data and confirmation, commit to Storage and DB ---
         console.log('10. Uploading to Storage (Admin Client)')
         const timestamp = Date.now()
