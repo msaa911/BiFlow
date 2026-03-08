@@ -107,6 +107,12 @@ export class AnomalyEngine {
         const diffTime = Math.abs(dateA.getTime() - dateB.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+        // Refined Logic for recurring bank charges (Monthly fees shouldn't be duplicates)
+        const descUpper = (a.descripcion || a.concepto || '').toUpperCase();
+        if (descUpper.includes('MANTENIMIENTO') || descUpper.includes('COMISION') || descUpper.includes('ABONO')) {
+            if (diffDays > 15) return false; // More than 15 days apart is likely the next month's fee
+        }
+
         if (diffDays > windowDays) return false;
 
         // Amount check (strict absolute match)
