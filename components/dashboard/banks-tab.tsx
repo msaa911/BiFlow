@@ -719,11 +719,11 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                 </TabsContent>
 
                 <TabsContent value="portfolio" className="animate-in fade-in duration-500">
-                    <CheckPortfolio orgId={orgId} />
+                    <CheckPortfolio orgId={orgId} accountId={selectedAccountId} />
                 </TabsContent>
 
                 <TabsContent value="reconciliation" className="animate-in fade-in duration-500">
-                    <UnreconciledPanel orgId={orgId} transactions={pendingTransactions} onRefresh={onRefresh} />
+                    <UnreconciledPanel orgId={orgId} transactions={accountFilteredPending} onRefresh={onRefresh} />
                 </TabsContent>
 
                 <TabsContent value="audit" className="animate-in fade-in duration-500">
@@ -740,11 +740,11 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             </div>
                         </div>
                         <div className="space-y-6">
-                            <BankNotesHistory orgId={orgId} onRefresh={onRefresh} />
+                            <BankNotesHistory orgId={orgId} accountId={selectedAccountId} onRefresh={onRefresh} />
                             <div className="pt-8 border-t border-gray-800">
                                 <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Notas Históricas</h4>
                                 <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
-                                    <TreasuryHistory orgId={orgId} claseDocumentoFilter={['NDB', 'NCB']} />
+                                    <TreasuryHistory orgId={orgId} accountId={selectedAccountId} claseDocumentoFilter={['NDB', 'NCB']} />
                                 </div>
                             </div>
                         </div>

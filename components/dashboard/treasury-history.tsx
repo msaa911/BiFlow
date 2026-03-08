@@ -28,11 +28,12 @@ import { TreasuryManualEntry } from './treasury-manual-entry'
 
 interface TreasuryHistoryProps {
     orgId: string
+    accountId?: string
     typeFilter?: 'cobro' | 'pago'
     claseDocumentoFilter?: string[]
 }
 
-export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: TreasuryHistoryProps) {
+export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFilter }: TreasuryHistoryProps) {
     const [movements, setMovements] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [expandedMov, setExpandedMov] = useState<string | null>(null)
@@ -69,6 +70,10 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
             query = query.eq('tipo', typeFilter)
         }
 
+        if (accountId && accountId !== 'all') {
+            query = query.eq('cuenta_id', accountId)
+        }
+
         if (claseDocumentoFilter && claseDocumentoFilter.length > 0) {
             query = query.in('clase_documento', claseDocumentoFilter)
         }
@@ -86,7 +91,7 @@ export function TreasuryHistory({ orgId, typeFilter, claseDocumentoFilter }: Tre
 
     useEffect(() => {
         fetchMovements()
-    }, [orgId, typeFilter])
+    }, [orgId, typeFilter, accountId])
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]

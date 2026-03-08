@@ -37,9 +37,10 @@ import { CheckHistoryModal } from './check-history-modal'
 
 interface CheckPortfolioProps {
     orgId: string
+    accountId?: string
 }
 
-export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
+export function CheckPortfolio({ orgId, accountId }: CheckPortfolioProps) {
     const [checks, setChecks] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
@@ -71,7 +72,12 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
             `)
             .eq('movimientos_tesoreria.organization_id', orgId)
             .eq('metodo', 'cheque_terceros')
-            .order('fecha_disponibilidad', { ascending: true })
+
+        if (accountId && accountId !== 'all') {
+            query = query.eq('movimientos_tesoreria.cuenta_id', accountId)
+        }
+
+        query = query.order('fecha_disponibilidad', { ascending: true })
 
         if (statusFilter !== 'all') {
             query = query.eq('estado', statusFilter)
@@ -90,7 +96,7 @@ export function CheckPortfolio({ orgId }: CheckPortfolioProps) {
 
     useEffect(() => {
         fetchChecks()
-    }, [orgId, statusFilter])
+    }, [orgId, statusFilter, accountId])
 
     const filteredChecks = checks.filter(c =>
         (c.movimientos_tesoreria?.entidades?.razon_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

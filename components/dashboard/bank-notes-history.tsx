@@ -21,10 +21,11 @@ import { toast } from 'sonner'
 
 interface BankNotesHistoryProps {
     orgId: string
+    accountId?: string
     onRefresh?: () => void
 }
 
-export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
+export function BankNotesHistory({ orgId, accountId, onRefresh }: BankNotesHistoryProps) {
     const [notes, setNotes] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [expandedNote, setExpandedNote] = useState<string | null>(null)
@@ -37,7 +38,7 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
         setLoading(true)
         try {
             // Query comprobantes directly for bank notes
-            const { data, error } = await supabase
+            let query = supabase
                 .from('comprobantes')
                 .select(`
                     *,
@@ -46,7 +47,12 @@ export function BankNotesHistory({ orgId, onRefresh }: BankNotesHistoryProps) {
                 `)
                 .eq('organization_id', orgId)
                 .in('tipo', ['ndb_bancaria', 'ncb_bancaria'])
-                .order('fecha_emision', { ascending: false })
+
+            if (accountId && accountId !== 'all') {
+                query = query.eq('cuenta_id', accountId)
+            }
+
+            const { data, error } = await query.order('fecha_emision', { ascending: false })
 
             if (error) throw error
 
