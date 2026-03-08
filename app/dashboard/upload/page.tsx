@@ -46,6 +46,11 @@ export default function UploadPage() {
         onProgress: (p: number) => void;
     } | null>(null)
     const [showSignModal, setShowSignModal] = useState(false)
+    const [confirmationAccountData, setConfirmationAccountData] = useState<{
+        file: File;
+        onProgress: (p: number) => void;
+    } | null>(null)
+    const [showAccountModal, setShowAccountModal] = useState(false)
 
     const router = useRouter()
 
@@ -248,7 +253,7 @@ export default function UploadPage() {
                 invert,
                 undefined,
                 uploadContext,
-                selectedAccountId
+                selectedAccountId || accountId
             )
 
             setSuccess(true)
@@ -333,6 +338,13 @@ export default function UploadPage() {
                                 onProgress
                             })
                             setShowSignModal(true)
+                            setUploading(false)
+                        } else if (res.status === 'requires_account_selection') {
+                            setConfirmationAccountData({
+                                file,
+                                onProgress
+                            })
+                            setShowAccountModal(true)
                             setUploading(false)
                         } else {
                             reject(new Error(res.error || 'Conflicto en servidor'))
@@ -764,6 +776,81 @@ export default function UploadPage() {
                     </>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-6 animate-in fade-in zoom-in duration-300">
+                        {/* Modal de Selección de Cuenta */}
+                        {showAccountModal && confirmationAccountData && (
+                            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in duration-200">
+                                    <div className="flex items-center gap-3 mb-4 text-emerald-400">
+                                        <div className="p-2 bg-emerald-500/10 rounded-lg">
+                                            <Landmark className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white">Seleccionar Banco</h3>
+                                    </div>
+                                    <p className="text-gray-400 text-sm mb-6">
+                                        No pudimos detectar automáticamente el banco para el archivo <span className="text-white font-bold">"{confirmationAccountData.file.name}"</span>. Por favor selecciónalo:
+                                    </p>
+
+                                    <div className="space-y-3 mb-8 max-h-60 overflow-y-auto pr-2 scrollbar-thin">
+                                        {accounts.map(acc => (
+                                            <button
+                                                key={acc.id}
+                                                onClick={async () => {
+                                                    setShowAccountModal(false)
+                                                    setUploading(true)
+                                                    try {
+                                                        const result = await uploadSingleFile(
+                                                            confirmationAccountData.file,
+                                                            confirmationAccountData.onProgress,
+                                                            undefined,
+                                                            undefined,
+                                                            undefined,
+                                                            uploadContext,
+                                                            acc.id
+                                                        )
+                                                        setSuccess(true)
+                                                        setProgress(100)
+                                                        setUploadResult({
+                                                            count: result.count,
+                                                            skipped: result.skipped,
+                                                            warnings: result.warnings,
+                                                            reviewCount: result.reviewCount || 0,
+                                                            findingsCount: result.findingsCount || 0
+                                                        })
+                                                        setRefreshHistory(prev => prev + 1)
+                                                        router.refresh()
+                                                    } catch (err: any) {
+                                                        setError(err.message)
+                                                    } finally {
+                                                        setUploading(false)
+                                                        setConfirmationAccountData(null)
+                                                    }
+                                                }}
+                                                className="w-full text-left p-3 rounded-xl bg-gray-800 border border-gray-700 hover:border-emerald-500 hover:bg-emerald-500/5 transition-all group"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-white group-hover:text-emerald-400">{acc.banco_nombre}</p>
+                                                        <p className="text-[10px] text-gray-500">{acc.cbu ? `CBU: ${acc.cbu}` : 'Sin CBU cargado'}</p>
+                                                    </div>
+                                                    <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            setShowAccountModal(false)
+                                            setConfirmationAccountData(null)
+                                        }}
+                                        className="w-full py-2.5 text-xs font-bold text-gray-500 hover:text-gray-300 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {uploadResult && uploadResult.count === 0 ? (
                             <div className="flex flex-col items-center">
                                 <div className="p-3 bg-blue-500/10 rounded-full mb-3">

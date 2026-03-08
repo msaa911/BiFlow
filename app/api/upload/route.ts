@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         const hasConfirmedSign = formData.has('invertSigns')
         const uploadContext = (formData.get('context') || 'bank') as 'bank' | 'income' | 'expense' | 'receipt' | 'payment'
         const rawCuentaId = formData.get('cuenta_id') as string
-        const cuentaId = (rawCuentaId && rawCuentaId.length > 5) ? rawCuentaId : null
+        let cuentaId = (rawCuentaId && rawCuentaId.length > 5) ? rawCuentaId : null
         let uniTransactions: any = null
 
         if (formatId || manualMapping) {
@@ -202,6 +202,22 @@ export async function POST(request: Request) {
                 reviewItems = res.reviewItems
             } else {
                 throw new Error('Formato no soportado')
+            }
+        }
+
+        // --- 3.4. Auto-resolve bank account if not provided ---
+        if (uploadContext === 'bank' && !cuentaId && transactions.length > 0) {
+            console.log('Attempting to auto-resolve bank account...')
+            const resolvedId = await resolveBankAccount(adminSupabase, orgId, buffer.toString('utf-8'))
+            if (resolvedId) {
+                console.log(`Auto-resolved to account: ${resolvedId}`)
+                cuentaId = resolvedId
+            } else {
+                console.log('Could not auto-resolve bank account. Requiring user selection.')
+                return NextResponse.json({
+                    status: 'requires_account_selection',
+                    message: 'No pudimos identificar la cuenta bancaria automáticamente por CBU o Nombre. Por favor selecciónala manualmente.'
+                }, { status: 422 })
             }
         }
 
@@ -832,6 +848,47 @@ function parsePDF(text: string, orgId: string) {
         reviewItems.push({ organization_id: orgId, datos_crudos: { line: trimmed }, motivo: 'PDF logic fail', estado: 'pendiente' })
     }
     return { transactions, warnings: [], reviewItems }
+}
+
+async function resolveBankAccount(supabase: any, orgId: string, text: string): Promise<string | null> {
+    try {
+        const { data: accounts } = await supabase
+            .from('cuentas_bancarias')
+            .select('id, banco_nombre, cbu')
+            .eq('organization_id', orgId);
+
+        if (!accounts || accounts.length === 0) return null;
+
+        // 1. Try match by CBU (Most reliable)
+        const cbuMatch = text.match(/\b\d{22}\b/);
+        if (cbuMatch) {
+            const found = accounts.find((a: any) => a.cbu === cbuMatch[0]);
+            if (found) return found.id;
+        }
+
+        // 2. Try match by Bank Name (Header check)
+        const headerText = text.slice(0, 1000).toLowerCase();
+        for (const account of accounts) {
+            if (account.banco_nombre && headerText.includes(account.banco_nombre.toLowerCase())) {
+                return account.id;
+            }
+        }
+
+        // 3. Fallback for common bank identifiers
+        if (headerText.includes('galicia')) {
+            const galicia = accounts.find((a: any) => a.banco_nombre?.toLowerCase().includes('galicia'));
+            if (galicia) return galicia.id;
+        }
+        if (headerText.includes('macro')) {
+            const macro = accounts.find((a: any) => a.banco_nombre?.toLowerCase().includes('macro'));
+            if (macro) return macro.id;
+        }
+
+        return null;
+    } catch (e) {
+        console.error('Error resolving bank account:', e);
+        return null;
+    }
 }
 
 function normalizeDate(str: string) {
