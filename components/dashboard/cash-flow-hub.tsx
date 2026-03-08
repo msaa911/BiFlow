@@ -85,13 +85,18 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
         )
     }, [currentBalance, invoices, excludedInvoices, projections, liquidityCushion, horizon]);
 
-    const monthlyData = useMemo(() => {
-        if (horizon !== 'mensual') return null;
-        return TreasuryEngine.getMonthlyCashFlow(
+    const gridData = useMemo(() => {
+        const isMonthly = horizon === 'mensual';
+        const granularity = isMonthly ? 'monthly' : 'daily';
+        const hValue = isMonthly ? 12 : parseInt(horizon);
+
+        return TreasuryEngine.getCashFlowGrid(
             currentBalance,
             invoices.filter(i => !excludedInvoices.includes(i.id)),
-            [], // Transactions currently not used in engine.ts logic for monthly but available for future
-            projections
+            [],
+            projections,
+            granularity,
+            hValue
         );
     }, [currentBalance, invoices, excludedInvoices, projections, horizon]);
 
@@ -208,12 +213,16 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
 
             {horizon === 'mensual' ? (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <MonthlyCashFlow data={monthlyData!} />
+                    <MonthlyCashFlow data={gridData} />
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-3 animate-in fade-in duration-500">
                     <div className="md:col-span-2 space-y-6">
                         <CashFlowChart data={dailyProjection} />
+
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-500">
+                            <MonthlyCashFlow data={gridData} />
+                        </div>
 
                         <Card className="bg-gray-900 border-gray-800">
                             <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800 px-6 py-4">

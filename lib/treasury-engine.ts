@@ -101,63 +101,96 @@ export class TreasuryEngine {
     }
 
     /**
-     * Generates a monthly cash flow grid similar to the Excel reference.
+     * Generates a cash flow grid (spreadsheet) similar to the Excel reference.
+     * Supports daily or monthly granularity.
      */
-    static getMonthlyCashFlow(
+    static getCashFlowGrid(
         currentBalance: number,
         invoices: Invoice[],
         transactions: any[],
-        projects: ProjectedMovement[]
+        projects: ProjectedMovement[],
+        granularity: 'daily' | 'monthly' = 'monthly',
+        horizon: number = 12
     ): MonthlyCashFlowData {
         const now = new Date();
-        const months: string[] = [];
-        for (let i = 0; i < 12; i++) {
-            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-            months.push(d.toISOString().substring(0, 7));
+        const labels: string[] = [];
+        const todayStr = now.toISOString().split('T')[0];
+
+        if (granularity === 'daily') {
+            for (let i = 0; i < horizon; i++) {
+                const d = new Date(now);
+                d.setDate(now.getDate() + i);
+                labels.push(d.toISOString().substring(0, 10));
+            }
+        } else {
+            for (let i = 0; i < horizon; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                labels.push(d.toISOString().substring(0, 7));
+            }
         }
 
         const data: MonthlyCashFlowData = {
-            months,
+            months: labels, // Reusing 'months' property name for compatibility but it represents columns
             rows: [
-                { label: 'Saldo Inicial', category: 'resumen', values: Array(12).fill(0) },
-                { label: 'Suma de cobros (+)', category: 'resumen', values: Array(12).fill(0) },
-                { label: 'Suma de pagos (-)', category: 'resumen', values: Array(12).fill(0) },
-                { label: 'Flujo de caja neto (=)', category: 'resumen', isTotal: true, values: Array(12).fill(0) },
-                { label: 'Saldo Final (=)', category: 'resumen', isTotal: true, values: Array(12).fill(0) },
+                { label: 'Saldo Inicial', category: 'resumen', values: Array(horizon).fill(0) },
+                { label: 'Suma de cobros (+)', category: 'resumen', values: Array(horizon).fill(0) },
+                { label: 'Suma de pagos (-)', category: 'resumen', values: Array(horizon).fill(0) },
+                { label: 'Flujo de caja neto (=)', category: 'resumen', isTotal: true, values: Array(horizon).fill(0) },
+                { label: 'Saldo Final (=)', category: 'resumen', isTotal: true, values: Array(horizon).fill(0) },
 
-                { label: 'Ventas al Contado/Plazo', category: 'operativo', values: Array(12).fill(0) },
-                { label: 'Pagos a Proveedores', category: 'operativo', values: Array(12).fill(0) },
-                { label: 'Pagos de Nóminas y Cargas', category: 'operativo', values: Array(12).fill(0) },
-                { label: 'Pagos de Impuestos y Tasas', category: 'operativo', values: Array(12).fill(0) },
-                { label: 'Pagos de Servicios Públicos', category: 'operativo', values: Array(12).fill(0) },
-                { label: 'Pagos de Arrendamientos', category: 'operativo', values: Array(12).fill(0) },
-                { label: 'Liquidación de IVA (Est.)', category: 'operativo', values: Array(12).fill(0) },
+                { label: 'Ventas al Contado/Plazo', category: 'operativo', values: Array(horizon).fill(0) },
+                { label: 'Pagos a Proveedores', category: 'operativo', values: Array(horizon).fill(0) },
+                { label: 'Pagos de Nóminas y Cargas', category: 'operativo', values: Array(horizon).fill(0) },
+                { label: 'Pagos de Impuestos y Tasas', category: 'operativo', values: Array(horizon).fill(0) },
+                { label: 'Pagos de Servicios Públicos', category: 'operativo', values: Array(horizon).fill(0) },
+                { label: 'Pagos de Arrendamientos', category: 'operativo', values: Array(horizon).fill(0) },
+                { label: 'Liquidación de IVA (Est.)', category: 'operativo', values: Array(horizon).fill(0) },
 
-                { label: 'Compras Activos Fijos', category: 'inversion', values: Array(12).fill(0) },
-                { label: 'Ventas Activos Fijos', category: 'inversion', values: Array(12).fill(0) },
+                { label: 'Compras Activos Fijos', category: 'inversion', values: Array(horizon).fill(0) },
+                { label: 'Ventas Activos Fijos', category: 'inversion', values: Array(horizon).fill(0) },
 
-                { label: 'Intereses Pagados/Cobrados', category: 'financiero', values: Array(12).fill(0) },
-                { label: 'Préstamos Recibidos/Pagados', category: 'financiero', values: Array(12).fill(0) },
-                { label: 'Dividendos', category: 'financiero', values: Array(12).fill(0) }
+                { label: 'Intereses Pagados/Cobrados', category: 'financiero', values: Array(horizon).fill(0) },
+                { label: 'Préstamos Recibidos/Pagados', category: 'financiero', values: Array(horizon).fill(0) },
+                { label: 'Dividendos', category: 'financiero', values: Array(horizon).fill(0) }
             ]
         };
 
         const getRow = (label: string) => data.rows.find(r => r.label === label);
 
-        // Helper to get month index
-        const getMonthIdx = (dateStr: string) => months.indexOf(dateStr.substring(0, 7));
+        // Helper to get grid index
+        const getIdx = (dateStr: string) => {
+            if (granularity === 'daily') {
+                return labels.indexOf(dateStr.substring(0, 10));
+            }
+            return labels.indexOf(dateStr.substring(0, 7));
+        };
 
         // 1. Process Invoices (Operating AR/AP)
         invoices.filter(i => i.estado !== 'pagado').forEach(inv => {
-            const idx = getMonthIdx(inv.fecha_vencimiento);
-            if (idx === -1) return;
+            const idx = getIdx(inv.fecha_vencimiento);
+            if (idx === -1) {
+                // Handle past due in first column if it's daily
+                if (granularity === 'daily' && new Date(inv.fecha_vencimiento) < now) {
+                    // We sum past due to first column or handle separately? 
+                    // Excel logic usually aggregates past due in first column
+                    const firstIdx = 0;
+                    if (inv.tipo === 'factura_venta') {
+                        getRow('Ventas al Contado/Plazo')!.values[firstIdx] += inv.monto_pendiente;
+                        getRow('Suma de cobros (+)')!.values[firstIdx] += inv.monto_pendiente;
+                    } else if (inv.tipo === 'factura_compra') {
+                        getRow('Pagos a Proveedores')!.values[firstIdx] += inv.monto_pendiente;
+                        getRow('Suma de pagos (-)')!.values[firstIdx] += inv.monto_pendiente;
+                    }
+                }
+                return;
+            }
 
             if (inv.tipo === 'factura_venta') {
                 getRow('Ventas al Contado/Plazo')!.values[idx] += inv.monto_pendiente;
                 getRow('Suma de cobros (+)')!.values[idx] += inv.monto_pendiente;
 
-                // IVA Estimation for settlement (next month)
-                if (idx < 11) {
+                // IVA Estimation for settlement (next month) - Only if monthly
+                if (granularity === 'monthly' && idx < horizon - 1) {
                     const iva = (inv.monto_pendiente / 1.21) * 0.21;
                     getRow('Liquidación de IVA (Est.)')!.values[idx + 1] -= iva;
                 }
@@ -165,8 +198,8 @@ export class TreasuryEngine {
                 getRow('Pagos a Proveedores')!.values[idx] += inv.monto_pendiente;
                 getRow('Suma de pagos (-)')!.values[idx] += inv.monto_pendiente;
 
-                // IVA Estimation for settlement (next month)
-                if (idx < 11) {
+                // IVA Estimation for settlement (next month) - Only if monthly
+                if (granularity === 'monthly' && idx < horizon - 1) {
                     const iva = (inv.monto_pendiente / 1.21) * 0.21;
                     getRow('Liquidación de IVA (Est.)')!.values[idx + 1] += iva;
                 }
@@ -175,7 +208,7 @@ export class TreasuryEngine {
 
         // 2. Process Projected Movements
         projects.forEach(p => {
-            const idx = getMonthIdx(p.fecha);
+            const idx = getIdx(p.fecha);
             if (idx === -1) return;
 
             const targetLabel = p.categoria || (p.monto > 0 ? 'Ventas al Contado/Plazo' : 'Pagos a Proveedores');
@@ -189,7 +222,7 @@ export class TreasuryEngine {
 
         // 3. Chain Balances
         let runningBalance = currentBalance;
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < horizon; i++) {
             getRow('Saldo Inicial')!.values[i] = runningBalance;
 
             const net = getRow('Suma de cobros (+)')!.values[i] - getRow('Suma de pagos (-)')!.values[i];
