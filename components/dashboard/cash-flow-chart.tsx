@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine, ReferenceArea } from 'recharts'
 import { DailyBalance } from '@/lib/treasury-engine'
 
 interface CashFlowChartProps {
@@ -89,19 +89,28 @@ export function CashFlowChart({ data, liquidityBuffer = 0 }: CashFlowChartProps)
                                 }}
                             />
                             {liquidityBuffer > 0 && (
+                                <ReferenceArea
+                                    y1={0}
+                                    y2={liquidityBuffer}
+                                    fill="#ef4444"
+                                    fillOpacity={0.05}
+                                    label={{
+                                        position: 'insideBottomRight',
+                                        value: 'Zona de Estrés',
+                                        fill: '#ef4444',
+                                        fontSize: 8,
+                                        fontWeight: 'bold',
+                                        opacity: 0.5
+                                    }}
+                                />
+                            )}
+                            {liquidityBuffer > 0 && (
                                 <ReferenceLine
                                     y={liquidityBuffer}
                                     stroke="#ef4444"
                                     strokeDasharray="5 5"
-                                    strokeOpacity={0.3}
-                                    label={{
-                                        position: 'insideBottomRight',
-                                        value: 'Buffer Mínimo',
-                                        fill: '#ef4444',
-                                        fontSize: 9,
-                                        fontWeight: 'bold',
-                                        opacity: 0.6
-                                    }}
+                                    strokeOpacity={0.4}
+                                    strokeWidth={1}
                                 />
                             )}
                             <ReferenceLine y={0} stroke="#374151" strokeOpacity={0.5} strokeWidth={2} />

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Trash2, Calculator, Save, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Calculator, Save, AlertCircle, ShieldCheck, Zap, TrendingDown, Target } from 'lucide-react'
 import { TreasuryEngine, ProjectedMovement, Invoice } from '@/lib/treasury-engine'
 import { CashFlowChart } from './cash-flow-chart'
 
@@ -79,6 +79,27 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
         projections,
         liquidityCushion
     )
+
+    // --- Financial Health Analytics ---
+    const lowestPoint = projection.length > 0 ? Math.min(...projection.map(p => p.balance)) : 0;
+    const isBelowBufferAtAnyPoint = projection.some(p => p.balance < liquidityCushion);
+    const criticalDate = projection.find(p => p.balance < liquidityCushion)?.date;
+
+    // Calculate Days of Coverage (until hitting cushion)
+    let daysOfCoverage = projection.length;
+    const firstLowIndex = projection.findIndex(p => p.balance < liquidityCushion);
+    if (firstLowIndex !== -1) {
+        daysOfCoverage = firstLowIndex;
+    }
+
+    const safetyMargin = liquidityCushion > 0 ? (currentBalance / liquidityCushion) : 100;
+
+    const riskLevel = isBelowBufferAtAnyPoint
+        ? (lowestPoint < 0 ? 'CRÍTICO' : 'MEDIO')
+        : 'BAJO';
+
+    const riskColor = riskLevel === 'CRÍTICO' ? 'text-red-500' : riskLevel === 'MEDIO' ? 'text-amber-500' : 'text-emerald-500';
+    const riskBg = riskLevel === 'CRÍTICO' ? 'bg-red-500/10' : riskLevel === 'MEDIO' ? 'bg-amber-500/10' : 'bg-emerald-500/10';
 
     const addProjection = () => {
         if (!newProjected.descripcion || !newProjected.monto || !newProjected.fecha) return
@@ -207,21 +228,51 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="bg-gray-900 border-gray-800 p-6">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Análisis de Estrés</h4>
+                    <Card className="bg-gray-900 border-gray-800 p-6 overflow-hidden relative">
+                        <div className={`absolute top-0 right-0 p-3 ${riskBg} rounded-bl-2xl border-l border-b border-gray-800 animate-pulse`}>
+                            <p className={`text-[9px] font-black tracking-tighter ${riskColor}`}>{riskLevel}</p>
+                        </div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Salud Financiera</h4>
                         <div className="space-y-4">
-                            <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
-                                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Saldo Final Proyectado</p>
-                                <p className={`text-xl font-black ${projection.length > 0 && projection[projection.length - 1].balance < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                    {projection.length > 0 ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(projection[projection.length - 1].balance) : '$0'}
-                                </p>
+                            <div className="flex items-center gap-3 p-3 bg-gray-950 rounded-xl border border-gray-800">
+                                <div className={`p-2 rounded-lg ${riskBg}`}>
+                                    <ShieldCheck className={`w-4 h-4 ${riskColor}`} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Cobertura Total</p>
+                                    <p className="text-lg font-black text-white">{daysOfCoverage} Días</p>
+                                </div>
                             </div>
-                            <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
-                                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Punto más bajo</p>
-                                <p className={`text-xl font-black ${Math.min(...projection.map(p => p.balance)) < 0 ? 'text-red-400' : 'text-white'}`}>
-                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.min(...projection.map(p => p.balance)))}
-                                </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
+                                    <p className="text-[9px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
+                                        <Target className="w-2.5 h-2.5" />
+                                        Mínimo
+                                    </p>
+                                    <p className={`text-md font-black ${lowestPoint < liquidityCushion ? 'text-red-400' : 'text-white'}`}>
+                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(lowestPoint)}
+                                    </p>
+                                </div>
+                                <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
+                                    <p className="text-[9px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
+                                        <Zap className="w-2.5 h-2.5" />
+                                        Margen
+                                    </p>
+                                    <p className="text-md font-black text-white">
+                                        {safetyMargin.toFixed(1)}x
+                                    </p>
+                                </div>
                             </div>
+
+                            {isBelowBufferAtAnyPoint && (
+                                <div className="p-3 bg-red-500/5 rounded-xl border border-red-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">
+                                    <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                    <p className="text-[10px] text-red-300">
+                                        Riesgo de tocar fondo el <span className="font-bold">{new Date(criticalDate!).toLocaleDateString('es-AR')}</span>.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </Card>
 
@@ -269,12 +320,14 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                         </div>
                     </Card>
 
-                    <Card className="bg-emerald-600/5 border-emerald-500/20 p-6">
-                        <h4 className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <Card className={`${riskBg} border-emerald-500/20 p-6`}>
+                        <h4 className={`text-xs font-bold ${riskColor} uppercase tracking-widest mb-2 flex items-center gap-2`}>
                             BiFLOW Advice
                         </h4>
                         <p className="text-sm text-gray-300 leading-relaxed italic">
-                            "Tu liquidez proyectada muestra estabilidad. Sin embargo, las proyecciones agregadas podrían reducir tu margen de seguridad operativo en la tercera semana."
+                            {riskLevel === 'BAJO' && `"Tu liquidez proyectada es excelente. Tienes una cobertura de ${daysOfCoverage} días y un margen de seguridad de ${safetyMargin.toFixed(1)} veces sobre tu colchón."`}
+                            {riskLevel === 'MEDIO' && `"Atención: Tu flujo de caja se acercará a la zona de estrés el día ${new Date(criticalDate!).toLocaleDateString('es-AR')}. Considera postergar egresos no esenciales."`}
+                            {riskLevel === 'CRÍTICO' && `"ALERTA: Se proyecta un déficit de caja para el día ${new Date(criticalDate!).toLocaleDateString('es-AR')}. Es urgente revisar facturas por cobrar o inyectar capital."`}
                         </p>
                     </Card>
                 </div>
