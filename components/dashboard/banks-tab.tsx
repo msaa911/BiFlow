@@ -243,31 +243,35 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                     <Landmark className="w-4 h-4 text-emerald-500" />
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vista de Banco</span>
                 </div>
-                <div className="flex flex-wrap gap-2 flex-1">
-                    <button
-                        onClick={() => setSelectedAccountId('all')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedAccountId === 'all'
-                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                            : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
-                            }`}
-                    >
-                        TODOS
-                    </button>
-                    {bankAccounts.map(acc => (
+                <div className="relative flex-1 overflow-hidden">
+                    <div className="flex overflow-x-auto no-scrollbar gap-2 py-1 scroll-smooth">
                         <button
-                            key={acc.id}
-                            onClick={() => setSelectedAccountId(acc.id)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${selectedAccountId === acc.id
+                            onClick={() => setSelectedAccountId('all')}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${selectedAccountId === 'all'
                                 ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800 border border-transparent select-none'
+                                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
                                 }`}
                         >
-                            {acc.banco_nombre}
-                            <span className={`text-[10px] font-bold font-mono ml-1 ${selectedAccountId === acc.id ? 'text-emerald-50' : 'text-gray-400'}`}>
-                                ({acc.cbu ? `*${acc.cbu.slice(-4)}` : (acc.moneda === 'USD' ? 'u$s' : '$')})
-                            </span>
+                            TODOS
                         </button>
-                    ))}
+                        {bankAccounts.map(acc => (
+                            <button
+                                key={acc.id}
+                                onClick={() => setSelectedAccountId(acc.id)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${selectedAccountId === acc.id
+                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                    : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800 border border-transparent select-none'
+                                    }`}
+                            >
+                                {acc.banco_nombre}
+                                <span className={`text-[10px] font-bold font-mono ml-1 ${selectedAccountId === acc.id ? 'text-emerald-50' : 'text-gray-400'}`}>
+                                    ({acc.cbu ? `*${acc.cbu.slice(-4)}` : (acc.moneda === 'USD' ? 'u$s' : '$')})
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                    {/* Gradient Fade for overflow indication */}
+                    <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-gray-900/80 to-transparent pointer-events-none" />
                 </div>
                 {selectedAccountId !== 'all' && (
                     <div className="px-4 animate-in fade-in slide-in-from-right-4">
