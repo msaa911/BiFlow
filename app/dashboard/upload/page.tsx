@@ -253,7 +253,7 @@ export default function UploadPage() {
                 invert,
                 undefined,
                 uploadContext,
-                selectedAccountId || accountId
+                selectedAccountId
             )
 
             setSuccess(true)
