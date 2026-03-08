@@ -49,7 +49,7 @@ export function BankNotesHistory({ orgId, accountId, onRefresh }: BankNotesHisto
                 .in('tipo', ['ndb_bancaria', 'ncb_bancaria'])
 
             if (accountId && accountId !== 'all') {
-                query = query.eq('cuenta_id', accountId)
+                query = query.eq('metadata->>cuenta_id', accountId)
             }
 
             const { data, error } = await query.order('fecha_emision', { ascending: false })

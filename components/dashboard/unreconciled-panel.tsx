@@ -210,8 +210,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                         monto_pendiente: 0,
                         estado: 'conciliado',
                         concepto: residualCategory,
-                        cuenta_id: selectedTx.cuenta_id,
-                        metadata: { bank_transaction_id: selectedTx.id, is_residual_note: true }
+                        metadata: {
+                            bank_transaction_id: selectedTx.id,
+                            is_residual_note: true,
+                            cuenta_id: selectedTx.cuenta_id
+                        }
                     })
                 }
             }
@@ -390,11 +393,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     condicion: 'contado',
                     concepto: category,
                     moneda: 'ARS',
-                    cuenta_id: selectedTx.cuenta_id,
                     metadata: {
                         ...metadata,
                         is_direct_bank_note: true,
                         bank_transaction_id: selectedTx.id,
+                        cuenta_id: selectedTx.cuenta_id,
                         categoria_principal: category
                     }
                 })
