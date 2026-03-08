@@ -88,11 +88,13 @@ export default async function DashboardPage() {
     const projectionDataWithChecks = PortfolioEngine.projectWithChecks(baseProjection, checks || [])
 
     // Calculate Monthly Data for the "Cherry on Top" view
-    const monthlyData = TreasuryEngine.getMonthlyCashFlow(
+    const monthlyData = TreasuryEngine.getCashFlowGrid(
         totalBalance,
         invoicesForProjection as any,
         allTransactions || [],
-        [] // No projects on main dashboard yet
+        [], // No projects on main dashboard yet
+        'monthly',
+        12
     )
 
     // 5. Fetch Other Widgets Data
