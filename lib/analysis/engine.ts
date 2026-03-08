@@ -122,15 +122,31 @@ export async function runAnalysis(organizationId: string) {
         { windowDays: 30 } // 30-day window as requested in Task 1.1
     )
 
-    // Keywords categorized to avoid confusion (Services vs direct Taxes)
+    // Keywords categorized for Cash Flow mapping (Operating, Investment, Financial)
     const KEYWORD_GROUPS = [
         {
             category: 'impuesto',
-            keywords: ['AFIP', 'ARBA', 'RETENCION', 'PERCEPCION', 'IIBB', 'SUSS', 'IMPUESTO', 'IVA', 'GANANCIAS', 'BIENES PERSONALES', 'DREI', 'CANON']
+            keywords: ['AFIP', 'ARBA', 'RETENCION', 'PERCEPCION', 'IIBB', 'SUSS', 'IMPUESTO', 'IVA', 'GANANCIAS', 'BIENES PERSONALES', 'DREI', 'CANON', 'TASAS', 'MUNICIPAL']
         },
         {
             category: 'servicio',
-            keywords: ['AYSA', 'EDENOR', 'EDESUR', 'METROGAS', 'TELECOM', 'PERSONAL', 'CLARO', 'MOVISTAR', 'TELMEX']
+            keywords: ['AYSA', 'EDENOR', 'EDESUR', 'METROGAS', 'TELECOM', 'PERSONAL', 'CLARO', 'MOVISTAR', 'TELMEX', 'INTERNET', 'ABL', 'LUZ', 'AGUA', 'GAS']
+        },
+        {
+            category: 'sueldos',
+            keywords: ['SUELDO', 'NOMINA', 'HABERES', 'SAC', 'AGUINALDO', 'VACACIONES', 'LIQUIDACION FINAL']
+        },
+        {
+            category: 'alquiler',
+            keywords: ['ALQUILER', 'EXPENSAS', 'LOCACION', 'ARRENDAMIENTO']
+        },
+        {
+            category: 'inversion',
+            keywords: ['COMPRA ACTIVO', 'MAQUINARIA', 'RODADO', 'VEHICULO', 'MUEBLES', 'EQUIPAMIENTO', 'SOFTWARE']
+        },
+        {
+            category: 'financiero',
+            keywords: ['INTERESES', 'PRESTAMO', 'CUOTA BANCO', 'DIVIDENDOS', 'ACCIONES', 'PLAZO FIJO', 'FCI']
         }
     ]
 
