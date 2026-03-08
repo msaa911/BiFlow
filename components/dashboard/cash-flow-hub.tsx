@@ -216,14 +216,65 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                     <MonthlyCashFlow data={gridData} />
                 </div>
             ) : (
-                <div className="grid gap-6 md:grid-cols-3 animate-in fade-in duration-500">
-                    <div className="md:col-span-2 space-y-6">
-                        <CashFlowChart data={dailyProjection} />
-
-                        <div className="animate-in fade-in slide-in-from-top-2 duration-500">
-                            <MonthlyCashFlow data={gridData} />
+                <div className="space-y-6 animate-in fade-in duration-500">
+                    {/* Top Row: Chart and Analytics */}
+                    <div className="grid gap-6 lg:grid-cols-3">
+                        <div className="lg:col-span-2">
+                            <CashFlowChart data={dailyProjection} />
                         </div>
+                        <div className="space-y-6">
+                            <Card className="bg-gray-900 border-gray-800 p-6 overflow-hidden relative h-full">
+                                <div className={`absolute top-0 right-0 p-3 ${riskBg} rounded-bl-2xl border-l border-b border-gray-800 animate-pulse`}>
+                                    <p className={`text-[9px] font-black tracking-tighter ${riskColor}`}>{riskLevel}</p>
+                                </div>
+                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Salud Financiera</h4>
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3 p-3 bg-gray-950 rounded-xl border border-gray-800">
+                                        <div className={`p-2 rounded-lg ${riskBg}`}>
+                                            <ShieldCheck className={`w-4 h-4 ${riskColor}`} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold">Cobertura ({horizon}d)</p>
+                                            <p className="text-lg font-black text-white">{daysOfCoverage} Días</p>
+                                        </div>
+                                    </div>
 
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
+                                            <p className="text-[9px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
+                                                <Target className="w-2.5 h-2.5" />
+                                                Mínimo
+                                            </p>
+                                            <p className={`text-md font-black ${lowestPoint < liquidityCushion ? 'text-red-400' : 'text-white'}`}>
+                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(lowestPoint)}
+                                            </p>
+                                        </div>
+                                        <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
+                                            <p className="text-[9px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
+                                                <Zap className="w-2.5 h-2.5" />
+                                                Margen
+                                            </p>
+                                            <p className="text-md font-black text-white">
+                                                {safetyMargin.toFixed(1)}x
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {isBelowBufferAtAnyPoint && (
+                                        <div className="p-3 bg-red-500/5 rounded-xl border border-red-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">
+                                            <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                            <p className="text-[10px] text-red-300">
+                                                Riesgo de tocar fondo el <span className="font-bold">{new Date(criticalDate!).toLocaleDateString('es-AR')}</span>.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        </div>
+                    </div>
+
+                    {/* Middle Row: Projections and Simulations */}
+                    <div className="grid gap-6 md:grid-cols-2">
                         <Card className="bg-gray-900 border-gray-800">
                             <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800 px-6 py-4">
                                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
@@ -240,14 +291,14 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                                 </Button>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="overflow-x-auto">
+                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-gray-800 text-xs font-medium text-gray-400 sticky top-0 z-10">
                                             <tr>
-                                                <th className="px-6 py-3 sticky top-0 z-20 bg-gray-800">Fecha</th>
-                                                <th className="px-6 py-3 sticky top-0 z-20 bg-gray-800">Descripción</th>
-                                                <th className="px-6 py-3 text-right sticky top-0 z-20 bg-gray-800">Monto</th>
-                                                <th className="px-6 py-3 text-right sticky top-0 z-20 bg-gray-800">Acción</th>
+                                                <th className="px-6 py-3 bg-gray-800">Fecha</th>
+                                                <th className="px-6 py-3 bg-gray-800">Descripción</th>
+                                                <th className="px-6 py-3 text-right bg-gray-800">Monto</th>
+                                                <th className="px-6 py-3 text-right bg-gray-800">Acción</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-800">
@@ -313,7 +364,7 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                                                 <tr>
                                                     <td colSpan={4} className="px-6 py-12 text-center text-gray-600">
                                                         <AlertCircle className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                                                        No hay papeles de trabajo registrados. <br /> Agrega una proyección para ver el impacto en tu flujo de caja.
+                                                        No hay papeles de trabajo registrados.
                                                     </td>
                                                 </tr>
                                             )}
@@ -322,58 +373,8 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                                 </div>
                             </CardContent>
                         </Card>
-                    </div>
 
-                    <div className="space-y-6">
-                        <Card className="bg-gray-900 border-gray-800 p-6 overflow-hidden relative">
-                            <div className={`absolute top-0 right-0 p-3 ${riskBg} rounded-bl-2xl border-l border-b border-gray-800 animate-pulse`}>
-                                <p className={`text-[9px] font-black tracking-tighter ${riskColor}`}>{riskLevel}</p>
-                            </div>
-                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Salud Financiera</h4>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3 p-3 bg-gray-950 rounded-xl border border-gray-800">
-                                    <div className={`p-2 rounded-lg ${riskBg}`}>
-                                        <ShieldCheck className={`w-4 h-4 ${riskColor}`} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] text-gray-500 uppercase font-bold">Cobertura ({horizon}d)</p>
-                                        <p className="text-lg font-black text-white">{daysOfCoverage} Días</p>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
-                                        <p className="text-[9px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
-                                            <Target className="w-2.5 h-2.5" />
-                                            Mínimo
-                                        </p>
-                                        <p className={`text-md font-black ${lowestPoint < liquidityCushion ? 'text-red-400' : 'text-white'}`}>
-                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(lowestPoint)}
-                                        </p>
-                                    </div>
-                                    <div className="p-3 bg-gray-950 rounded-xl border border-gray-800">
-                                        <p className="text-[9px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
-                                            <Zap className="w-2.5 h-2.5" />
-                                            Margen
-                                        </p>
-                                        <p className="text-md font-black text-white">
-                                            {safetyMargin.toFixed(1)}x
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {isBelowBufferAtAnyPoint && (
-                                    <div className="p-3 bg-red-500/5 rounded-xl border border-red-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">
-                                        <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                        <p className="text-[10px] text-red-300">
-                                            Riesgo de tocar fondo el <span className="font-bold">{new Date(criticalDate!).toLocaleDateString('es-AR')}</span>.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
-
-                        <Card className="bg-gray-900 border-gray-800 overflow-hidden min-h-[400px]">
+                        <Card className="bg-gray-900 border-gray-800 overflow-hidden">
                             <Tabs defaultValue="egresos" className="w-full">
                                 <div className="p-4 border-b border-gray-800 bg-gray-800/20 flex items-center justify-between">
                                     <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest shrink-0">
@@ -385,45 +386,32 @@ export function CashFlowHub({ invoices, currentBalance, liquidityCushion = 0 }: 
                                     </TabsList>
                                 </div>
 
-                                <TabsContent value="ingresos" className="m-0 p-2 space-y-1 max-h-[350px] overflow-y-auto custom-scrollbar">
-                                    <div className="px-2 py-1 mb-2 bg-red-500/5 rounded border border-red-500/10">
-                                        <p className="text-[9px] text-red-300 italic">Estresa el flujo: ¿Qué pasa si no cobras esto?</p>
-                                    </div>
+                                <TabsContent value="ingresos" className="m-0 p-2 space-y-1 max-h-[250px] overflow-y-auto custom-scrollbar">
                                     {renderExclusionList(invoices.filter(i => i.tipo === 'factura_venta'), excludedInvoices, setExcludedInvoices, true)}
                                 </TabsContent>
 
-                                <TabsContent value="egresos" className="m-0 p-2 space-y-1 max-h-[350px] overflow-y-auto custom-scrollbar">
-                                    <div className="px-2 py-1 mb-2 bg-emerald-500/5 rounded border border-emerald-500/10">
-                                        <p className="text-[9px] text-emerald-300 italic">Alivia el flujo: ¿Qué pasa si postergas esto?</p>
-                                    </div>
+                                <TabsContent value="egresos" className="m-0 p-2 space-y-1 max-h-[250px] overflow-y-auto custom-scrollbar">
                                     {renderExclusionList(invoices.filter(i => i.tipo === 'factura_compra'), excludedInvoices, setExcludedInvoices, false)}
                                 </TabsContent>
                             </Tabs>
-
-                            {excludedInvoices.length > 0 && (
-                                <div className="p-2 border-t border-gray-800 bg-gray-950">
-                                    <Button
-                                        onClick={() => setExcludedInvoices([])}
-                                        variant="ghost"
-                                        className="w-full text-[10px] h-7 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/5 font-bold"
-                                    >
-                                        Restaurar todas las simulaciones
-                                    </Button>
-                                </div>
-                            )}
-                        </Card>
-
-                        <Card className={`${riskBg} border-emerald-500/20 p-6`}>
-                            <h4 className={`text-xs font-bold ${riskColor} uppercase tracking-widest mb-2 flex items-center gap-2`}>
-                                BiFLOW Advice
-                            </h4>
-                            <p className="text-sm text-gray-300 leading-relaxed italic">
-                                {riskLevel === 'BAJO' && `"Tu liquidez proyectada es excelente. Tienes una cobertura de ${daysOfCoverage} días y un margen de seguridad de ${safetyMargin.toFixed(1)} veces sobre tu colchón."`}
-                                {riskLevel === 'MEDIO' && `"Atención: Tu flujo de caja se acercará a la zona de estrés el día ${new Date(criticalDate!).toLocaleDateString('es-AR')}. Considera postergar egresos no esenciales."`}
-                                {riskLevel === 'CRÍTICO' && `"ALERTA: Se proyecta un déficit de caja para el día ${new Date(criticalDate!).toLocaleDateString('es-AR')}. Es urgente revisar facturas por cobrar o inyectar capital."`}
-                            </p>
                         </Card>
                     </div>
+
+                    {/* Bottom Row: Full Width Spreadsheet */}
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-500">
+                        <MonthlyCashFlow data={gridData} />
+                    </div>
+
+                    <Card className={`${riskBg} border-emerald-500/20 p-6`}>
+                        <h4 className={`text-xs font-bold ${riskColor} uppercase tracking-widest mb-2 flex items-center gap-2`}>
+                            BiFLOW Advice
+                        </h4>
+                        <p className="text-sm text-gray-300 leading-relaxed italic">
+                            {riskLevel === 'BAJO' && `"Tu liquidez proyectada es excelente. Tienes una cobertura de ${daysOfCoverage} días y un margen de seguridad de ${safetyMargin.toFixed(1)} veces sobre tu colchón."`}
+                            {riskLevel === 'MEDIO' && `"Atención: Tu flujo de caja se acercará a la zona de estrés el día ${new Date(criticalDate!).toLocaleDateString('es-AR')}. Considera postergar egresos no esenciales."`}
+                            {riskLevel === 'CRÍTICO' && `"ALERTA: Se proyecta un déficit de caja para el día ${new Date(criticalDate!).toLocaleDateString('es-AR')}. Es urgente revisar facturas por cobrar o inyectar capital."`}
+                        </p>
+                    </Card>
                 </div>
             )}
         </div>
