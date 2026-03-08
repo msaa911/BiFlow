@@ -256,7 +256,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         >
                             {acc.banco_nombre}
                             <span className={`text-[10px] opacity-60 font-mono ${selectedAccountId === acc.id ? 'text-white' : 'text-gray-600'}`}>
-                                ({acc.cbu ? `*${acc.cbu.slice(-4)}` : (acc.moneda === 'ARS' ? '$' : acc.moneda || 'S/C')})
+                                ({acc.cbu ? `*${acc.cbu.slice(-4)}` : (acc.moneda === 'USD' ? 'u$s' : '$')})
                             </span>
                         </button>
                     ))}
