@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw, Landmark } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +40,14 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(20)
     const supabase = createClient()
+
+    const bankAccountMap = useMemo(() => {
+        const map: Record<string, string> = {}
+        bankAccounts.forEach(acc => {
+            map[acc.id] = acc.banco_nombre
+        })
+        return map
+    }, [bankAccounts])
 
     const counts = {
         all: initialTransactions.length,
@@ -460,7 +468,16 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                                 <td className="px-4 py-3 font-mono text-gray-500">
                                                     {formatDate(t.fecha)}
                                                 </td>
-                                                <td className="px-4 py-3 text-white font-medium truncate max-w-[180px]">{t.descripcion}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-white font-medium truncate max-w-[180px]">{t.descripcion}</span>
+                                                        {selectedAccountId === 'all' && t.cuenta_id && (
+                                                            <span className="text-[9px] text-emerald-500/60 font-bold uppercase tracking-tighter">
+                                                                {bankAccountMap[t.cuenta_id] || 'Banco Desconocido'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
                                                 <td className={`px-4 py-3 text-right font-black ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
                                                 </td>
@@ -571,6 +588,9 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                             </div>
                                         </th>
                                         <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Fecha</th>
+                                        {selectedAccountId === 'all' && (
+                                            <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Banco</th>
+                                        )}
                                         <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Descripción / Concepto</th>
                                         <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Referencia</th>
                                         <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Categoría</th>
@@ -592,6 +612,13 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                                 </div>
                                             </td>
                                             <td className="px-6 py-3 font-mono text-[11px] text-gray-500">{formatDate(t.fecha)}</td>
+                                            {selectedAccountId === 'all' && (
+                                                <td className="px-6 py-3">
+                                                    <Badge variant="outline" className="text-[9px] bg-emerald-500/5 text-emerald-400 border-emerald-500/20 font-bold px-2 py-0">
+                                                        {bankAccountMap[t.cuenta_id] || 'N/A'}
+                                                    </Badge>
+                                                </td>
+                                            )}
                                             <td className="px-6 py-3">
                                                 <div className="flex flex-col">
                                                     <span className="text-xs font-bold text-white group-hover:text-emerald-400 truncate max-w-[300px]">
