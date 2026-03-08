@@ -273,13 +273,6 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                     {/* Gradient Fade for overflow indication */}
                     <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-gray-900/80 to-transparent pointer-events-none" />
                 </div>
-                {selectedAccountId !== 'all' && (
-                    <div className="px-4 animate-in fade-in slide-in-from-right-4">
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold">
-                            Filtro Activo
-                        </Badge>
-                    </div>
-                )}
             </div>
             <div className="grid gap-4 md:grid-cols-3">
                 {/* Card 1: Conciliación */}
@@ -758,6 +751,6 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                     </div>
                 </TabsContent>
             </Tabs>
-        </div>
+        </div >
     )
 }
