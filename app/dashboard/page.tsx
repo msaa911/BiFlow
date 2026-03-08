@@ -27,28 +27,20 @@ export default async function DashboardPage() {
 
     const orgId = await getOrgId(supabase, user.id)
 
-    // 1. Fetch Transactions for Balance & Metrics
+    // 1. Fetch Bank Accounts for Initial Balance
+    const { data: bankAccounts } = await supabase.from('cuentas_bancarias').select('saldo_inicial').eq('organization_id', orgId)
+    const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
+
+    // 2. Fetch Transactions for Balance & Metrics
     const { data: allTransactions } = await supabase
         .from('transacciones')
         .select('id, monto, metadata, fecha, descripcion, created_at')
         .eq('organization_id', orgId)
         .order('fecha', { ascending: false })
 
-    // Calculate Balance
-    const latestWithSaldo = allTransactions?.find(t => t.metadata?.saldo !== undefined)
-    let totalBalance = 0;
-    if (latestWithSaldo) {
-        const baseBalance = Number(latestWithSaldo.metadata.saldo);
-        const moreRecentTransactions = allTransactions
-            ?.filter(t => new Date(t.fecha) > new Date(latestWithSaldo.fecha) || (t.fecha === latestWithSaldo.fecha && t.id !== latestWithSaldo.id && new Date(t.created_at || 0) > new Date(latestWithSaldo.created_at || 0)))
-            ?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
-        totalBalance = baseBalance + moreRecentTransactions;
-    } else {
-        const { data: bankAccounts } = await supabase.from('cuentas_bancarias').select('saldo_inicial').eq('organization_id', orgId)
-        const initialBalancesSum = bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
-        const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
-        totalBalance = initialBalancesSum + transactionsSum
-    }
+    // Calculate Total Balance (Consolidated)
+    const transactionsSum = allTransactions?.reduce((acc: number, curr: any) => acc + curr.monto, 0) || 0
+    const totalBalance = initialBalancesSum + transactionsSum
 
     // Burn Rate
     const thirtyDaysAgo = new Date()
