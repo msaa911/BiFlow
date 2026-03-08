@@ -82,10 +82,18 @@ export default async function DashboardPage() {
     }))
 
     // Base projection from Liquidity Engine
-    const baseProjection = TreasuryEngine.projectDailyBalance(totalBalance, invoicesForProjection as any, [], liquidityCushion)
+    const baseProjection = TreasuryEngine.projectDailyBalance(totalBalance, invoicesForProjection as any, [], liquidityCushion, 30)
 
     // Enrich with Checks Projection from Portfolio Engine
     const projectionDataWithChecks = PortfolioEngine.projectWithChecks(baseProjection, checks || [])
+
+    // Calculate Monthly Data for the "Cherry on Top" view
+    const monthlyData = TreasuryEngine.getMonthlyCashFlow(
+        totalBalance,
+        invoicesForProjection as any,
+        allTransactions || [],
+        [] // No projects on main dashboard yet
+    )
 
     // 5. Fetch Other Widgets Data
     const { data: taxItems } = await supabase.from('transacciones').select('*').eq('organization_id', orgId).contains('tags', ['impuesto_recuperable']).order('fecha', { ascending: false })
@@ -180,6 +188,7 @@ export default async function DashboardPage() {
                 overdraftLimit={overdraftLimit}
                 liquidityBuffer={liquidityCushion}
                 projectionData={projectionDataWithChecks}
+                monthlyData={monthlyData}
                 scoreHistory={scoreHistory || []}
             />
 

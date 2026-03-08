@@ -8,8 +8,11 @@ import { KPICard } from '@/components/ui/kpi-card'
 import { Activity, DollarSign, AlertCircle, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CashFlowChart } from './cash-flow-chart'
+import { MonthlyCashFlow } from './monthly-cash-flow'
 import { ReconciliationAlerts } from './reconciliation-alerts'
 import { DailyBalance } from '@/lib/treasury-engine'
+import { MonthlyCashFlowData } from '@/lib/treasury-engine'
+import { CalendarDays } from 'lucide-react'
 
 interface DashboardCFOProps {
     healthScore: number
@@ -22,6 +25,7 @@ interface DashboardCFOProps {
     overdraftLimit: number
     liquidityBuffer?: number
     projectionData?: DailyBalance[]
+    monthlyData?: MonthlyCashFlowData
     scoreHistory?: { score: number, fecha: string }[]
     apBatch?: { descripcion: string, monto: number, fecha: string }[]
 }
@@ -37,10 +41,12 @@ export function DashboardCFO({
     overdraftLimit,
     liquidityBuffer = 0,
     projectionData = [],
+    monthlyData,
     scoreHistory = [],
     apBatch = []
 }: DashboardCFOProps) {
     const [isStressTestOpen, setIsStressTestOpen] = useState(false)
+    const [horizon, setHorizon] = useState<'30' | 'mensual'>('30')
     const isUnderBuffer = totalBalance < liquidityBuffer
 
     return (
@@ -93,7 +99,37 @@ export function DashboardCFO({
                         </div>
                     )}
 
-                    <CashFlowChart data={projectionData} liquidityBuffer={liquidityBuffer} />
+                    <div className="flex items-center justify-between bg-gray-950 border border-gray-800 p-2 rounded-xl mb-4">
+                        <div className="flex items-center gap-2 pl-2">
+                            <CalendarDays className="w-4 h-4 text-emerald-500" />
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Horizonte Temporal</span>
+                        </div>
+                        <div className="flex bg-gray-900 border border-gray-800 rounded-lg p-1">
+                            {(['30', 'mensual'] as const).map((h) => (
+                                <button
+                                    key={h}
+                                    onClick={() => setHorizon(h)}
+                                    className={`
+                                        px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all
+                                        ${horizon === h
+                                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40'
+                                            : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
+                                        }
+                                    `}
+                                >
+                                    {h === 'mensual' ? 'Mensual (Estratégico)' : `${h} Días (Operativo)`}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {horizon === 'mensual' && monthlyData ? (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                            <MonthlyCashFlow data={monthlyData} />
+                        </div>
+                    ) : (
+                        <CashFlowChart data={projectionData} liquidityBuffer={liquidityBuffer} />
+                    )}
                 </div>
 
                 {/* Right Alerts Area */}
