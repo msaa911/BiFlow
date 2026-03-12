@@ -47,10 +47,10 @@ export async function POST(request: Request) {
         // 2. DUPLICATE PREVENTION: Fetch existing invoices to filter
         const { data: existing } = await admin
             .from('comprobantes')
-            .select('nro_factura, numero, cuit_socio, tipo')
+            .select('nro_factura, numero, cuit_socio, cuit_entidad, tipo')
             .eq('organization_id', orgId);
 
-        const existSet = new Set(existing?.map(e => `${e.tipo}_${e.nro_factura || e.numero || ''}_${e.cuit_socio}`) || []);
+        const existSet = new Set(existing?.map(e => `${e.tipo}_${e.nro_factura || e.numero || ''}_${e.cuit_entidad || e.cuit_socio}`) || []);
 
         // 3. Insert comprobantes with link (Filtering duplicates)
         const compsToInsert = comprobantes
@@ -91,8 +91,8 @@ export async function POST(request: Request) {
                     monto_pendiente: inv.monto_pendiente,
                     estado: inv.estado || 'pendiente',
                     condicion: inv.condicion,
-                    razon_social_socio: inv.razon_social_entidad || inv.razon_social_socio,
-                    cuit_socio: inv.cuit_entidad || inv.cuit_socio,
+                    razon_social_entidad: inv.razon_social_entidad || inv.razon_social_socio,
+                    cuit_entidad: inv.cuit_entidad || inv.cuit_socio,
                     concepto: inv.concepto || null
                 };
             });

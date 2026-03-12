@@ -38,6 +38,7 @@ async function diagnose() {
                 nro_factura: inv.nro_factura,
                 numero: inv.numero,
                 razon_social_socio: inv.razon_social_socio,
+                nombre_entidad: inv.nombre_entidad,
                 razon_social_entidad: inv.razon_social_entidad,
                 cuit_socio: inv.cuit_socio,
                 cuit_entidad: inv.cuit_entidad,
