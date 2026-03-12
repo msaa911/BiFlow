@@ -37,6 +37,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [reconcilingAdmin, setReconcilingAdmin] = useState(false)
     const [reconcilingBank, setReconcilingBank] = useState(false)
     const [selectedAccountId, setSelectedAccountId] = useState<string>('all')
+    const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all')
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(20)
     const supabase = createClient()
@@ -49,16 +50,18 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
         return map
     }, [bankAccounts])
 
-    const counts = {
-        all: initialTransactions.length,
-        pending: initialTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length,
-        reconciled: initialTransactions.filter(t => t.estado === 'conciliado').length
-    }
-
     // Filter by Account
     const accountFilteredTransactions = selectedAccountId === 'all'
         ? initialTransactions
-        : initialTransactions.filter(t => t.cuenta_id === selectedAccountId)
+        : initialTransactions.filter(t => t.banco_cuenta_id === selectedAccountId)
+
+    const counts = useMemo(() => ({
+        all: accountFilteredTransactions.length,
+        pending: accountFilteredTransactions.filter(t => t.estado === 'pendiente' || t.estado === 'parcial').length,
+        reconciled: accountFilteredTransactions.filter(t => t.estado === 'conciliado').length,
+        income: accountFilteredTransactions.filter(t => t.monto > 0).length,
+        expense: accountFilteredTransactions.filter(m => m.monto < 0).length
+    }), [accountFilteredTransactions])
 
     const accountFilteredPending = selectedAccountId === 'all'
         ? pendingTransactions
@@ -79,9 +82,19 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const expenses = accountFilteredTransactions.filter(t => t.monto < 0)
 
     const filteredTx = accountFilteredTransactions.filter(t => {
-        if (filterStatus === 'pending') return t.estado === 'pendiente' || t.estado === 'parcial'
-        if (filterStatus === 'reconciled') return t.estado === 'conciliado'
-        return true
+        const matchesStatus = filterStatus === 'all'
+            ? true
+            : filterStatus === 'pending'
+                ? (t.estado === 'pendiente' || t.estado === 'parcial')
+                : t.estado === 'conciliado'
+
+        const matchesType = filterType === 'all'
+            ? true
+            : filterType === 'income'
+                ? t.monto > 0
+                : t.monto < 0
+
+        return matchesStatus && matchesType
     })
 
     const totalPages = Math.ceil(filteredTx.length / itemsPerPage)
@@ -541,29 +554,56 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 <h3 className="font-bold text-white text-xs flex items-center gap-2 uppercase tracking-tighter">
                                     <List className="w-4 h-4 text-emerald-400" /> Listado Completo de Movimientos
                                 </h3>
-                                <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800 w-fit mt-1">
-                                    {[
-                                        { id: 'all', label: 'TODOS', color: 'emerald', count: counts.all },
-                                        { id: 'pending', label: 'PENDIENTES', color: 'amber', count: counts.pending },
-                                        { id: 'reconciled', label: 'CONCILIADOS', color: 'blue', count: counts.reconciled }
-                                    ].map((f) => (
-                                        <button
-                                            key={f.id}
-                                            onClick={() => setFilterStatus(f.id as any)}
-                                            className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all flex items-center gap-2 ${filterStatus === f.id
-                                                ? `bg-${f.color}-500 text-white shadow-lg shadow-${f.color}-500/20`
-                                                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900'
-                                                }`}
-                                        >
-                                            {f.label}
-                                            <span className={`
-                                                px-1.5 py-0.5 rounded text-[9px] font-black
-                                                ${filterStatus === f.id ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}
-                                            `}>
-                                                {f.count}
-                                            </span>
-                                        </button>
-                                    ))}
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800 w-fit">
+                                        {[
+                                            { id: 'all', label: 'TODOS', color: 'emerald', count: counts.all },
+                                            { id: 'pending', label: 'PENDIENTES', color: 'amber', count: counts.pending },
+                                            { id: 'reconciled', label: 'CONCILIADOS', color: 'blue', count: counts.reconciled }
+                                        ].map((f) => (
+                                            <button
+                                                key={f.id}
+                                                onClick={() => setFilterStatus(f.id as any)}
+                                                className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all flex items-center gap-2 ${filterStatus === f.id
+                                                    ? `bg-${f.color}-500 text-white shadow-lg shadow-${f.color}-500/20`
+                                                    : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900'
+                                                    }`}
+                                            >
+                                                {f.label}
+                                                <span className={`
+                                                    px-1.5 py-0.5 rounded text-[9px] font-black
+                                                    ${filterStatus === f.id ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}
+                                                `}>
+                                                    {f.count}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800 w-fit">
+                                        {[
+                                            { id: 'all', label: 'TODOS', color: 'emerald', count: counts.all },
+                                            { id: 'income', label: 'INGRESOS', color: 'emerald', count: counts.income },
+                                            { id: 'expense', label: 'EGRESOS', color: 'red', count: counts.expense }
+                                        ].map((f) => (
+                                            <button
+                                                key={f.id}
+                                                onClick={() => setFilterType(f.id as any)}
+                                                className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all flex items-center gap-2 ${filterType === f.id
+                                                    ? `bg-${f.color}-500 text-white shadow-lg shadow-${f.color}-500/20`
+                                                    : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900'
+                                                    }`}
+                                            >
+                                                {f.label}
+                                                <span className={`
+                                                    px-1.5 py-0.5 rounded text-[9px] font-black
+                                                    ${filterType === f.id ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}
+                                                `}>
+                                                    {f.count}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">

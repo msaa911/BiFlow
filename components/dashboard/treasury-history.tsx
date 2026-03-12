@@ -17,13 +17,15 @@ import {
     DownloadCloud,
     Tag,
     Plus,
-    Info
+    Info,
+    Printer
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { exportTreasuryMovementToExcel, downloadTreasuryTemplate } from '@/lib/excel-utils'
+import { exportTreasuryMovementToPDF } from '@/lib/pdf-utils'
 import { TreasuryManualEntry } from './treasury-manual-entry'
 
 interface TreasuryHistoryProps {
@@ -343,6 +345,7 @@ export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFi
                                             <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex justify-center gap-1">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-400" onClick={() => setExpandedMov(isExpanded ? null : mov.id)} title="Ver Detalles"><FileText className="w-4 h-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => exportTreasuryMovementToPDF(mov)} title="Descargar PDF"><Printer className="w-4 h-4" /></Button>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400" onClick={() => exportTreasuryMovementToExcel(mov)} title="Descargar EXCEL"><Download className="w-4 h-4" /></Button>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleDelete(mov.id)} title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></Button>
                                                 </div>
