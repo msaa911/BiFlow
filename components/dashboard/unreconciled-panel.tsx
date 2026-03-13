@@ -388,7 +388,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             const { data: existingVoucher } = await supabase
                 .from('comprobantes')
                 .select('id')
-                .eq('metadata->>bank_transaction_id', selectedTx.id)
+                .or(`metadata->>bank_transaction_id.eq.${selectedTx.id},metadata->>transaccion_id.eq.${selectedTx.id}`)
                 .maybeSingle()
 
             if (existingVoucher) {
@@ -432,7 +432,16 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             }
 
             // 5. Update Bank Transaction (Ensure it's reconciled)
-            const { error: txError } = await supabase
+            // Fetch latest tx just in case to avoid lost updates
+            const { data: latestTx } = await supabase
+                .from('transacciones')
+                .select('metadata')
+                .eq('id', selectedTx.id)
+                .single()
+
+            const currentMetadata = latestTx?.metadata || {}
+            
+            const { error: txError, data: updateData } = await supabase
                 .from('transacciones')
                 .update({
                     categoria: category,
@@ -440,7 +449,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     movimiento_id: null,
                     estado: 'conciliado',
                     metadata: {
-                        ...(selectedTx.metadata || {}),
+                        ...currentMetadata,
                         reconciled_at: new Date().toISOString(),
                         link_method: 'direct_note',
                         generated_voucher_id: voucher.id,
@@ -449,11 +458,20 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     }
                 })
                 .eq('id', selectedTx.id)
+                .eq('organization_id', currentOrgId) // Add orgId for RLS safety
+                .select()
 
             if (txError) {
-                console.error("Error linking transaction:", txError)
+                console.error("Error linking transaction (update failed):", txError)
                 throw new Error("No se pudo actualizar el estado de la transacción: " + txError.message)
             }
+
+            if (!updateData || updateData.length === 0) {
+                console.error("Transaction update successful but no rows affected for ID:", selectedTx.id)
+                throw new Error("La transacción no se pudo marcar como conciliada (posible problema de permisos)")
+            }
+
+            console.log("Transaction successfully updated to reconciled:", updateData[0].id)
 
             // Update local state for immediate feedback
             setCategorizedTxIds(prev => [...prev, selectedTx.id])
