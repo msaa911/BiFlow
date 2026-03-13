@@ -210,9 +210,9 @@ export class UniversalTranslator {
             banco: headers.findIndex((h: string) => ['banco', 'bank', 'entidad', 'origen', 'sucursal'].some(k => h.includes(k))),
             tipo: headers.findIndex((h: string) => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado', 'mod', 'comp'].some(k => h.includes(k))),
             vencimiento: headers.findIndex((h: string) => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
-            referencia: headers.findIndex((h: string) => ['detalle', 'referencia', 'nro op', 'nro rec', 'comprobante nro'].some(k => h.includes(k))),
-            nro_factura: headers.findIndex((h: string) => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta', 'nro doc'].some(k => h.includes(k))),
-            cheque: headers.findIndex((h: string) => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque', 'nro_valor'].some(k => h.includes(k))),
+            referencia: headers.findIndex((h: string) => ['det. ref', 'detalle ref', 'referencia', 'nro op', 'nro rec', 'comprobante nro', 'nro operacion', 'id trx', 'voucher', 'transaccion'].some(k => h.includes(k))),
+            nro_factura: headers.findIndex((h: string) => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta', 'nro doc', 'orden'].some(k => h.includes(k))),
+            cheque: headers.findIndex((h: string) => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque', 'nro_valor', 'num. chq'].some(k => h.includes(k))),
             cbu: headers.findIndex((h: string) => ['cbu', 'cta destino', 'cvu', 'cuenta destino', 'coordenada', 'cbu/alias'].some(k => h.includes(k))),
             debito: headers.findIndex((h: string) => ['debito', 'débito', 'debe', 'egreso', 'salida', 'cargo', 'retiro'].some(k => h.includes(k))),
             credito: headers.findIndex((h: string) => ['credito', 'crédito', 'haber', 'ingreso', 'entrada', 'abono', 'deposito'].some(k => h.includes(k))),
@@ -287,22 +287,22 @@ export class UniversalTranslator {
             let numero_cheque = idx.cheque !== -1 ? row[idx.cheque] : '';
             let referencia = idx.referencia !== -1 ? row[idx.referencia] : '';
 
-            if (!referencia || referencia === row[idx.desc]) {
-                const fullText = (row[idx.desc] || '') + ' ' + (row[idx.nro_factura] || '') + ' ' + line;
+            if (!referencia || referencia === row[idx.desc] || /[^0-9A-Z]/i.test(referencia)) {
+                // Si la referencia es igual al concepto o tiene basura, intentamos extraer el ID puro
+                const textToSearch = (row[idx.desc] || '') + ' ' + (row[idx.nro_factura] || '') + ' ' + (idx.referencia !== -1 ? row[idx.referencia] : '') + ' ' + line;
                 
-                // Lógica Secuencial de Patrones
+                // Lógica Secuencial de Patrones (De más específico a más general)
                 const patterns = [
-                    /\bTRF[:\s-]*([A-Z0-9-]+)\b/i,
-                    /\bREF[:\s-]*(\d+)\b/i,
-                    /\bLIQ[:\s-]*(\d+)\b/i,
-                    /\b(?:CH|CHQ|CHEQUE|VALOR)[:\s-]*(\d+)\b/i,
-                    /\b(?:TRANSF|TRANS)[:\s-]*(\d+)\b/i,
-                    /\b(\d{5,12})\b/ // Número suelto de 5-12 digitos (evitar dias/meses de fechas)
+                    /\b(?:TRF|TRANSF|TRANSFERENCIA|REF|ID|OP|OPER|VOU|VOUCHER|LIQ|COMP)[\s.:-]*([A-Z0-9]{4,15})\b/i,
+                    /\b(?:CH|CHQ|CHEQUE|VALOR)[\s.:-]*(\d{4,12})\b/i,
+                    /\b([A-Z0-9]{6,15})\b/i, // Alphanumeric IDs typical of transfers
+                    /\b(\d{4,12})\b/ // Numbers (Last resort, 4+ digits)
                 ];
 
                 for (const p of patterns) {
-                    const m = fullText.match(p);
+                    const m = textToSearch.match(p);
                     if (m && m[1]) {
+                        // Si ya teníamos una referencia de columna, pero el patrón encontró algo más "puro"
                         referencia = m[1];
                         if (p.toString().includes('CHEQUE') || p.toString().includes('CHQ') || p.toString().includes('VALOR')) {
                             numero_cheque = m[1];
@@ -311,12 +311,11 @@ export class UniversalTranslator {
                     }
                 }
             }
-
-            // Si aún no hay referencia y el numero de cheque existe, lo usamos
-            if (!referencia && numero_cheque) referencia = numero_cheque;
             
             // Limpieza final de la referencia para que sea puramente el ID
             if (referencia) {
+                // Eliminar prefijos comunes que el regex pudo haber capturado si no se usó grupo
+                referencia = referencia.replace(/^(TRF|REF|ID|OP|OPER|VOU|LIQ|COMP|CH|CHQ)[:\s.-]+/i, '');
                 referencia = referencia.replace(/^0+/, '').trim();
             }
 

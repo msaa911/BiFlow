@@ -162,7 +162,8 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                         <Clock className="w-4 h-4 text-emerald-400" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-white uppercase tracking-tighter">Historial de Notas Bancarias</h3>
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">Registro de Notas Bancarias (NDB/NCB)</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-1 ml-11">Historial de conciliaciones directas por banco</p>
                         <p className="text-[10px] text-gray-500">Documentos generados directamente desde el extracto.</p>
                     </div>
                 </div>
@@ -187,11 +188,11 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                     <table className="w-full text-left text-xs border-separate border-spacing-0">
                         <thead>
                             <tr className="bg-gray-800 text-[11px] font-bold text-gray-400 sticky top-0 z-10">
-                                <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Fecha</th>
-                                <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Nro Nota</th>
-                                <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Banco</th>
-                                <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Entidad / Concepto</th>
-                                <th className="px-6 py-4 text-right sticky top-0 z-20 bg-gray-800">Monto</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Banco</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-emerald-500/80">Referencia Bancaria</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Fecha</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Documento / Entidad</th>
+                                <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">Monto</th>
                                 <th className="px-6 py-4 text-center sticky top-0 z-20 bg-gray-800">Estado</th>
                                 <th className="px-6 py-4 text-center sticky top-0 z-20 bg-gray-800">Acciones</th>
                             </tr>
@@ -209,8 +210,6 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                                     return (
                                         <Fragment key={note.id}>
                                             <tr className={`hover:bg-emerald-500/[0.02] transition-colors cursor-pointer border-b border-gray-800/50 ${isExpanded ? 'bg-emerald-500/5' : ''}`} onClick={() => setExpandedNote(isExpanded ? null : note.id)}>
-                                                <td className="px-6 py-3 font-mono text-gray-400">{formatDate(note.fecha_emision)}</td>
-                                                <td className="px-6 py-3 font-bold text-emerald-400">{note.nro_factura}</td>
                                                 <td className="px-6 py-3">
                                                     {bankName ? (
                                                         <div className="flex items-center gap-1.5">
@@ -221,19 +220,28 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                                                         <span className="text-[10px] text-gray-600">—</span>
                                                     )}
                                                 </td>
+                                                {/* Principal: Referencia Highlighted */}
+                                                <td className="px-6 py-3">
+                                                    <span className="bg-amber-400 text-black px-2 py-1 rounded font-black text-[11px] shadow-[0_2px_8px_rgba(251,191,36,0.3)] whitespace-nowrap">
+                                                        {note.nro_factura || 'S/R'}
+                                                    </span>
+                                                </td>
+
+                                                <td className="px-6 py-3 text-gray-400 font-mono text-[11px]">
+                                                    {formatDate(note.fecha_emision)}
+                                                </td>
+
                                                 <td className="px-6 py-3">
                                                     <div className="flex flex-col">
-                                                        <span className="font-bold text-white text-[11px] uppercase tracking-tight">
-                                                            {note.concepto || note.metadata?.categoria_principal || tx?.categoria || 'Sin concepto'}
+                                                        <span className="text-xs font-bold text-white uppercase tracking-tight">
+                                                            {note.tipo === 'ndb_bancaria' ? 'Nota Débito' : 'Nota Crédito'}
                                                         </span>
-                                                        <div className="flex flex-col mt-0.5">
-                                                            <span className="text-[10px] text-emerald-400 font-medium italic">
-                                                                {note.entidades?.razon_social || 'Entidad no identificada'}
-                                                            </span>
-                                                            <span className="text-[9px] text-gray-500 truncate max-w-[250px]">
-                                                                {tx?.descripcion || note.metadata?.original_desc || note.metadata?.bank_desc || 'Nota bancaria de extracto'}
-                                                            </span>
-                                                        </div>
+                                                        <span className="text-[10px] font-black text-emerald-400/80 uppercase">
+                                                            {note.entidades?.razon_social || note.concepto || 'CONCEPTO BANCARIO'}
+                                                        </span>
+                                                        <span className="text-[9px] text-gray-500 truncate max-w-[250px]">
+                                                            {tx?.descripcion || note.metadata?.original_desc || note.metadata?.bank_desc || 'Nota bancaria de extracto'}
+                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className={`px-6 py-3 text-right font-black tabular-nums text-xs ${note.tipo === 'ndb_bancaria' ? 'text-red-400' : 'text-emerald-400'}`}>

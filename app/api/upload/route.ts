@@ -157,12 +157,13 @@ export async function POST(request: Request) {
                         vencimiento: t.vencimiento,
                         numero: t.numero,
                         numero_cheque: t.numero_cheque,
+                        referencia: t.referencia || t.numero || t.numero_cheque, // New: Explicit reference column
                         tags: t.tags || [],
                         moneda: 'ARS',
                         origen_dato: 'universal_translator',
                         estado: 'pendiente',
                         cuenta_id: uploadContext === 'bank' ? cuentaId : null,
-                        metadata: { ...t.metadata, cbu: t.cbu }
+                        metadata: { ...t.metadata, cbu: t.cbu, referencia: t.referencia || t.numero || t.numero_cheque }
                     }))
                     // Add balance check warnings if any (only for bank statements)
                     if (uploadContext === 'bank' && uniTransactions.metadata?.isBalanced === false) {
@@ -593,6 +594,7 @@ export async function POST(request: Request) {
                         cuit: t.cuit || null,
                         moneda: t.moneda || 'ARS',
                         numero_cheque: t.numero_cheque || null,
+                        referencia: t.referencia || null, // TOP LEVEL COLUMN
                         origen_dato: t.origen_dato,
                         estado: t.estado,
                         archivo_importacion_id: t.archivo_importacion_id,
@@ -746,7 +748,12 @@ function parseTreasuryExcelServer(buffer: Buffer, orgId: string, type: 'cobro' |
         const medioRaw = getValue(/medio|metodo|instrumento|forma/i)
         const medio = (medioRaw || 'Efectivo').toLowerCase().replace(' ', '_')
         const banco = getValue(/banco|entidad bancaria/i)
-        const referencia = getValue(/referencia|ref|cheque|transf|detalle/i)
+        const refRaw = getValue(/referencia|ref|cheque|transf|detalle/i)
+        
+        // Clean Reference: same logic as UniversalTranslator to ensure matching
+        let referencia = refRaw.replace(/^(TRF|REF|ID|OP|OPER|VOU|LIQ|COMP|CH|CHQ)[:\s.-]+/i, '')
+        referencia = referencia.replace(/^0+/, '').trim()
+
         const disponibilidad = getValue(/disponibilidad|acreditacion/i, true)
         const observaciones = getValue(/observaciones|obs|notas|cancelacion|^concepto$/i)
 
@@ -770,7 +777,8 @@ function parseTreasuryExcelServer(buffer: Buffer, orgId: string, type: 'cobro' |
                 referencia: referencia, // Ensure it's in the top level
                 metadata: {
                     metodo: medio,
-                    referencia,
+                    referencia: refRaw, // Store raw in metadata
+                    cleaned_ref: referencia
                 }
             })
         } else {

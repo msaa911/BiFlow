@@ -286,11 +286,20 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             }
 
             toast.success(`Conciliación completada exitosamente.`)
+            
+            // Locally hide for immediate feedback
+            setCategorizedTxIds(prev => [...prev, selectedTx.id])
+
+            // Delay refresh to allow DB propagation
+            setTimeout(() => {
+                console.log("Executing post-conciliation refresh...")
+                if (onRefresh) onRefresh()
+            }, 1200)
+
             setIsConciliating(false)
             setProcessResidualAsGasto(false)
             setSecondaryPaymentEnabled(false)
             setSelectedMovementIds([])
-            if (onRefresh) onRefresh()
         } catch (error: any) {
             console.error('Error in conciliation:', error)
             toast.error('Error al realizar la conciliación: ' + error.message)
@@ -441,15 +450,15 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
 
             const currentMetadata = latestTx?.metadata || {}
             
-            const { error: txError, data: updateData } = await supabase
+            const { error: updateError } = await supabase
                 .from('transacciones')
                 .update({
-                    categoria: category,
-                    comprobante_id: voucher.id,
-                    movimiento_id: null,
                     estado: 'conciliado',
+                    monto_usado: Math.abs(selectedTx.monto),
                     metadata: {
                         ...currentMetadata,
+                        categoria_transaccion: category,
+                        bank_note_id: voucher.id,
                         reconciled_at: new Date().toISOString(),
                         link_method: 'direct_note',
                         generated_voucher_id: voucher.id,
@@ -458,36 +467,37 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     }
                 })
                 .eq('id', selectedTx.id)
-                .eq('organization_id', currentOrgId) // Add orgId for RLS safety
+                .eq('organization_id', currentOrgId)
                 .select()
 
-            if (txError) {
-                console.error("Error linking transaction (update failed):", txError)
-                throw new Error("No se pudo actualizar el estado de la transacción: " + txError.message)
+            if (updateError) {
+                console.error("Critical error updating transaction:", updateError)
+                throw updateError
             }
 
-            if (!updateData || updateData.length === 0) {
-                console.error("Transaction update successful but no rows affected for ID:", selectedTx.id)
-                throw new Error("La transacción no se pudo marcar como conciliada (posible problema de permisos)")
-            }
-
-            console.log("Transaction successfully updated to reconciled:", updateData[0].id)
+            console.log("Transaction successfully marked as reconciled:", selectedTx.id)
 
             // Update local state for immediate feedback
             setCategorizedTxIds(prev => [...prev, selectedTx.id])
             
             // Success!
             toast.success(`${claseDoc} generada y registrada con éxito`)
-            setIsCategorizing(false)
             setIsSplitting(false)
             setSelectedCategory(null)
             setSplitAmount('0')
             setSelectedTx(null)
             
-            // Delay refresh slightly to ensure DB consistency
+            // Immediately mark as locally reconciled to hide from list
+            setCategorizedTxIds(prev => [...prev, selectedTx.id])
+            
+            // Allow more time for DB propagation before refreshing
             setTimeout(() => {
+                console.log("Executing post-categorization refresh...")
                 if (onRefresh) onRefresh()
-            }, 500)
+            }, 1200)
+
+            setIsCategorizing(false)
+            setSelectedCategory(null)
 
         } catch (error: any) {
             console.error('Error in banking accounting:', error)
@@ -615,10 +625,11 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                             )}
                                         </div>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[11px] font-mono text-gray-400">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
-                                            {tx.referencia && (
-                                                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
-                                                    REF: {tx.referencia}
+                                            <span className="text-[11px] font-mono text-gray-400 font-medium">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
+                                            {(tx.referencia || tx.metadata?.referencia) && (
+                                                <span className="text-[12px] bg-amber-400 text-black px-2.5 py-1 rounded font-black shadow-[0_2px_10px_rgba(251,191,36,0.3)] flex items-center gap-1.5 border-b-2 border-amber-600">
+                                                    <Tag className="w-3 h-3" />
+                                                    REF: {tx.referencia || tx.metadata?.referencia}
                                                 </span>
                                             )}
                                             <span className="text-[10px] text-gray-600 font-mono tracking-tighter uppercase ml-2">ID: {tx.id.split('-')[0]}</span>
@@ -846,20 +857,26 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     </DialogHeader>
 
                     {selectedTx && (
-                        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-3 my-1 shrink-0 flex justify-between items-center">
-                            <div>
-                                <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1 mb-0.5">
-                                    <Tag className="w-3 h-3" /> Banco {selectedTx.estado === 'parcial' && '(Remanente)'}
+                        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 my-2 shrink-0 flex justify-between items-center shadow-inner">
+                            <div className="min-w-0">
+                                <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
+                                    <Tag className="w-3.5 h-3.5" /> Transacción del Banco
                                 </p>
-                                <p className="text-xs font-bold text-white leading-tight truncate max-w-[280px]">{selectedTx.descripcion}</p>
+                                <p className="text-sm font-bold text-white leading-snug truncate max-w-[320px]">{selectedTx.descripcion}</p>
+                                {(selectedTx.referencia || selectedTx.metadata?.referencia) && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">REF BANCO:</span>
+                                        <span className="bg-emerald-500 text-black px-2 py-0.5 rounded text-[11px] font-mono font-black">
+                                            {selectedTx.referencia || selectedTx.metadata?.referencia}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
-                            <div className="text-right">
-                                <p className="text-lg font-black text-emerald-400">
+                            <div className="text-right shrink-0">
+                                <p className="text-xl font-black text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
                                 </p>
-                                {selectedTx.referencia && (
-                                    <p className="text-[9px] text-gray-400 font-mono">ID BANCO: {selectedTx.referencia}</p>
-                                )}
+                                <p className="text-[10px] text-gray-500 font-mono mt-0.5">{new Date(selectedTx.fecha).toLocaleDateString('es-AR')}</p>
                             </div>
                         </div>
                     )}
@@ -898,38 +915,47 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex flex-col gap-0.5">
-                                                            {/* Primary Matching Data: Name and Invoices/Ref */}
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-[13px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'text-gray-100'}`}>
-                                                                    {mov.razonSocial || 'Entidad no ident.'}
-                                                                </span>
-                                                                {/* Fallback Reference: If no instrument ref, show invoices */}
-                                                                {mov.aplicaciones?.length > 0 && (
-                                                                    <div className="flex gap-1 overflow-hidden shrink-0">
-                                                                        {mov.aplicaciones.slice(0, 2).map((app: any, idx: number) => (
-                                                                            <span key={idx} className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded border border-blue-500/30 font-bold whitespace-nowrap">
-                                                                                {app.comprobantes?.nro_factura || app.comprobantes?.numero || 'S/F'}
+                                                            {/* Primary Line: BRIGHT Reference + Business Name */}
+                                                            <div className="flex items-center gap-3">
+                                                                {/* THE REFERENCE: Amber for maximum visibility, moved to the left per user request */}
+                                                                {mov.instrumentos?.some((i: any) => i.detalle_referencia) ? (
+                                                                    <div className="flex items-center gap-1 shrink-0">
+                                                                        {mov.instrumentos.filter((i: any) => i.detalle_referencia).map((ins: any, idx: number) => (
+                                                                            <span key={idx} className="bg-amber-400 text-black px-2.5 py-1 rounded-[4px] text-[13px] font-black shadow-[0_2px_12px_rgba(251,191,36,0.4)] whitespace-nowrap border-b-2 border-amber-600">
+                                                                                {ins.detalle_referencia}
                                                                             </span>
                                                                         ))}
-                                                                        {mov.aplicaciones.length > 2 && <span className="text-[8px] text-gray-500 font-bold">+{mov.aplicaciones.length - 2}</span>}
                                                                     </div>
+                                                                ) : (
+                                                                    <span className="bg-gray-800 text-gray-500 px-2 py-1 rounded text-[11px] font-black whitespace-nowrap">
+                                                                        SIN REF.
+                                                                    </span>
                                                                 )}
+
+                                                                <span className={`text-[12px] font-bold uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                                                                    {mov.razonSocial || 'Entidad no ident.'}
+                                                                </span>
                                                             </div>
 
-                                                            {/* Context Data: Instrument details and Internal ID */}
-                                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-                                                                {/* Internal ID badge - moved down per user request */}
-                                                                <span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded border border-gray-700 font-mono font-bold">
-                                                                    {mov.tipo?.toUpperCase()} {mov.nro_comprobante || 'S/N'}
-                                                                </span>
+                                                            {/* Secondary Line: Internal ID, Invoices and Date */}
+                                                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                                {/* Internal ID (Voucher #): Moved here per user request */}
+                                                                <Badge variant="outline" className={`text-[9px] font-bold ${isSelected ? 'bg-white/10 text-white border-white/20' : 'bg-gray-800 text-gray-400 border-gray-700'} px-1.5 py-0`}>
+                                                                    {mov.nro_comprobante || 'S/N'}
+                                                                </Badge>
 
-                                                                {/* Payment instrument references - BRIGHT WHITE for visibility */}
-                                                                {mov.instrumentos?.map((ins: any, idx: number) => (
-                                                                    <span key={idx} className="text-[10px] bg-emerald-500/15 text-white px-2 py-0.5 rounded border border-emerald-500/50 font-bold shadow-sm">
-                                                                        {ins.metodo.toUpperCase()}: <span className="text-emerald-300">{ins.detalle_referencia || 'S/R'}</span>
-                                                                    </span>
-                                                                ))}
-                                                                
+                                                                {/* Invoices (Facturas) */}
+                                                                {mov.aplicaciones?.length > 0 && (
+                                                                    <div className="flex gap-1">
+                                                                        {mov.aplicaciones.slice(0, 3).map((app: any, idx: number) => (
+                                                                            <Badge key={idx} className="bg-blue-600 text-white text-[8px] font-black border-none px-1 py-0">
+                                                                                {app.comprobantes?.nro_factura || app.comprobantes?.numero || 'S/F'}
+                                                                            </Badge>
+                                                                        ))}
+                                                                        {mov.aplicaciones.length > 3 && <span className="text-[10px] text-gray-500">+{mov.aplicaciones.length - 3}</span>}
+                                                                    </div>
+                                                                )}
+
                                                                 <span className="text-[10px] text-gray-500 font-mono ml-auto">
                                                                     {new Date(mov.fecha).toLocaleDateString()}
                                                                 </span>

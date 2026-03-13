@@ -28,8 +28,27 @@ Este documento es la **única fuente de verdad** del proyecto. Integra la visió
 
 ---
 
-## 🗓️ PRÓXIMA SESIÓN (Marzo 5) - PIVOT ARQUITECTÓNICO DE CONCILIACIÓN
-**Objetivo Principal:** Cambiar el paradigma de conciliación bancaria para que trabaje exclusivamente contra Recibos y Órdenes de Pago (Movimientos de Tesorería), eliminando la autogeneración desde Facturas.
+## ✅ SESIÓN COMPLETADA (Marzo 13) - REFINAMIENTO DE CONCILIACIÓN
+**Objetivo Logrado:** Optimizar la precisión del "Match" automático y la usabilidad visual del panel de conciliación enfocándose en números de referencia.
+
+### 1. Motor de Extracción & Limpieza (Universal Translator) 🟢
+- [x] **Extracción Agresiva:** Captura de IDs de 4+ dígitos (antes 5+) para no perder transferencias cortas.
+- [x] **Limpieza de Prefijos:** Normalización automática (ej: `TRF-12345` -> `12345`) tanto en importación de Bancos como de Tesorería.
+- [x] **Match Robusto:** Asegurar que el cruce automático funcione independientemente de cómo el banco nombre la transacción.
+
+### 2. Rediseño de Interfaz (UX/UI) 🟢
+- [x] **Prioridad Visual:** Número de referencia en **Ámbar brillante** movido a la posición primaria (izquierda).
+- [x] **Jerarquía de Información:** Desplazamiento de números de comprobantes internos a badges secundarios (menos ruido).
+- [x] **Contexto Bancario:** Visualización clara del ID del banco en el diálogo de conciliación para cross-referencing manual rápido.
+
+### 3. Persistencia y Consistencia 🟢
+- [x] **Ocultamiento Inmediato:** Mejora en `handleConciliate` para que las transacciones desaparezcan localmente al instante.
+- [x] **Delay de Propagación:** Incremento de retardo de refresco (1200ms) para garantizar consistencia con Supabase.
+
+---
+
+## 🗓️ PRÓXIMA SESIÓN - VALIDACIÓN Y CIERRE DE SPRINT 2
+**Objetivo Principal:** Testeo integral de las mejoras de hoy y decisión sobre el pivot arquitectónico completo.
 
 ### 1. Refactorización Backend (`reconciliation-engine.ts`)
 - [ ] Detener la creación automática de Recibos/OP a partir de facturas.

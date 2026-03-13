@@ -771,17 +771,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
 
                 <TabsContent value="audit" className="animate-in fade-in duration-500">
                     <div className="space-y-6">
-                        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                                    <FileText className="w-5 h-5 text-emerald-400" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-white">Notas Bancarias (NDB/NCB)</h3>
-                                    <p className="text-xs text-gray-400">Consulta y exporta los movimientos generados directamente desde el extracto.</p>
-                                </div>
-                            </div>
-                        </div>
+                        {/* Redundant title removed as BankNotesHistory provides its own header */}
                         <div className="space-y-6">
                             <BankNotesHistory 
                                 orgId={orgId} 
