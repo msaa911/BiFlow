@@ -897,27 +897,43 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                         {isSelected && <Check className="w-3 h-3 text-black font-bold" />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex flex-col">
-                                                            {/* Primary match data (References) at the top as requested */}
-                                                            {mov.instrumentos?.length > 0 ? (
-                                                                <div className="flex flex-wrap gap-1 mb-1">
-                                                                    {mov.instrumentos.map((ins: any, idx: number) => (
-                                                                        <span key={idx} className="text-[10px] bg-emerald-500/20 text-white px-2 py-0.5 rounded border border-emerald-500/40 font-bold shadow-sm">
-                                                                            {ins.metodo.toUpperCase()}: {ins.detalle_referencia || 'S/R'}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-[10px] text-red-400 font-bold mb-1 uppercase tracking-tighter">Sin referencia de pago cargada</span>
-                                                            )}
+                                                        <div className="flex flex-col gap-0.5">
+                                                            {/* Primary Matching Data: Name and Invoices/Ref */}
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`text-[13px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'text-gray-100'}`}>
+                                                                    {mov.razonSocial || 'Entidad no ident.'}
+                                                                </span>
+                                                                {/* Fallback Reference: If no instrument ref, show invoices */}
+                                                                {mov.aplicaciones?.length > 0 && (
+                                                                    <div className="flex gap-1 overflow-hidden shrink-0">
+                                                                        {mov.aplicaciones.slice(0, 2).map((app: any, idx: number) => (
+                                                                            <span key={idx} className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded border border-blue-500/30 font-bold whitespace-nowrap">
+                                                                                {app.comprobantes?.nro_factura || app.comprobantes?.numero || 'S/F'}
+                                                                            </span>
+                                                                        ))}
+                                                                        {mov.aplicaciones.length > 2 && <span className="text-[8px] text-gray-500 font-bold">+{mov.aplicaciones.length - 2}</span>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
 
-                                                            <p className={`text-[11px] font-black tracking-tight transition-colors ${isSelected ? 'text-white' : 'text-gray-100 group-hover:text-emerald-300'}`}>
-                                                                {mov.razonSocial || 'Entidad no ident.'} • {mov.tipo?.toUpperCase()} {mov.nro_comprobante || 'S/N'}
-                                                            </p>
-                                                            
-                                                            <p className="text-[10px] text-gray-500 mt-0.5">
-                                                                FECHA: {new Date(mov.fecha).toLocaleDateString()}
-                                                            </p>
+                                                            {/* Context Data: Instrument details and Internal ID */}
+                                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                                                                {/* Internal ID badge - moved down per user request */}
+                                                                <span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded border border-gray-700 font-mono font-bold">
+                                                                    {mov.tipo?.toUpperCase()} {mov.nro_comprobante || 'S/N'}
+                                                                </span>
+
+                                                                {/* Payment instrument references - BRIGHT WHITE for visibility */}
+                                                                {mov.instrumentos?.map((ins: any, idx: number) => (
+                                                                    <span key={idx} className="text-[10px] bg-emerald-500/15 text-white px-2 py-0.5 rounded border border-emerald-500/50 font-bold shadow-sm">
+                                                                        {ins.metodo.toUpperCase()}: <span className="text-emerald-300">{ins.detalle_referencia || 'S/R'}</span>
+                                                                    </span>
+                                                                ))}
+                                                                
+                                                                <span className="text-[10px] text-gray-500 font-mono ml-auto">
+                                                                    {new Date(mov.fecha).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
