@@ -14,17 +14,21 @@ async function repairReferences() {
     const { data: txs, error } = await supabase
         .from('transacciones')
         .select('id, descripcion, numero_cheque, metadata')
-        .is('metadata->referencia', null)
 
     if (error) {
         console.error('Error:', error)
         return
     }
 
-    console.log(`Encontradas ${txs?.length || 0} transacciones sin referencia.`)
+    const txsToRepair = (txs || []).filter(tx => {
+        const metadata = tx.metadata as any;
+        return !metadata || metadata.referencia === null || metadata.referencia === undefined;
+    });
+
+    console.log(`Encontradas ${txsToRepair.length} transacciones sin referencia (de un total de ${txs?.length || 0}).`)
 
     let updatedCount = 0;
-    for (const tx of (txs || [])) {
+    for (const tx of txsToRepair) {
         let reference = null;
 
         if (tx.numero_cheque) {

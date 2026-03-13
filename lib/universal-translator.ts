@@ -287,13 +287,38 @@ export class UniversalTranslator {
             let numero_cheque = idx.cheque !== -1 ? row[idx.cheque] : '';
             let referencia = idx.referencia !== -1 ? row[idx.referencia] : '';
 
-            if (!numero_cheque) {
-                const chequeMatch = line.match(/\b(?:CH|CHEQUE|PAGO CH|VALOR)\s?(\d{6,10})\b/i);
-                if (chequeMatch) numero_cheque = chequeMatch[1];
+            if (!referencia || referencia === row[idx.desc]) {
+                const fullText = (row[idx.desc] || '') + ' ' + (row[idx.nro_factura] || '') + ' ' + line;
+                
+                // Lógica Secuencial de Patrones
+                const patterns = [
+                    /\bTRF[:\s-]*([A-Z0-9-]+)\b/i,
+                    /\bREF[:\s-]*(\d+)\b/i,
+                    /\bLIQ[:\s-]*(\d+)\b/i,
+                    /\b(?:CH|CHQ|CHEQUE|VALOR)[:\s-]*(\d+)\b/i,
+                    /\b(?:TRANSF|TRANS)[:\s-]*(\d+)\b/i,
+                    /\b(\d{5,12})\b/ // Número suelto de 5-12 digitos (evitar dias/meses de fechas)
+                ];
+
+                for (const p of patterns) {
+                    const m = fullText.match(p);
+                    if (m && m[1]) {
+                        referencia = m[1];
+                        if (p.toString().includes('CHEQUE') || p.toString().includes('CHQ') || p.toString().includes('VALOR')) {
+                            numero_cheque = m[1];
+                        }
+                        break;
+                    }
+                }
             }
 
+            // Si aún no hay referencia y el numero de cheque existe, lo usamos
             if (!referencia && numero_cheque) referencia = numero_cheque;
-            if (!referencia && row[idx.desc]) referencia = row[idx.desc];
+            
+            // Limpieza final de la referencia para que sea puramente el ID
+            if (referencia) {
+                referencia = referencia.replace(/^0+/, '').trim();
+            }
 
             // Lógica de Signos si viene en columna Tipo
             let tipo: 'DEBITO' | 'CREDITO' = monto < 0 ? 'DEBITO' : 'CREDITO';

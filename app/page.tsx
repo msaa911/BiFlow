@@ -338,7 +338,7 @@ export default function LandingPage() {
       <section className="social-proof-bar" id="social-proof">
         <div className="container">
           <div className="social-proof-bar__quote">
-            "Ya auditamos la caja de +120 PyMEs argentinas y detectamos fugas en el 78% de ellas."
+            &quot;Ya auditamos la caja de +120 PyMEs argentinas y detectamos fugas en el 78% de ellas.&quot;
           </div>
           <div className="social-proof-bar__metrics">
             <div className="metric">
@@ -420,9 +420,9 @@ export default function LandingPage() {
             {/* Testimonio Dueño */}
             <div className="testimonial-card">
               <div className="testimonial-card__quote">
-                "Pensábamos que nuestro contador controlaba todo. BiFlow encontró $340.000 en retenciones de IIBB sin
+                &quot;Pensábamos que nuestro contador controlaba todo. BiFlow encontró $340.000 en retenciones de IIBB sin
                 reclamar en nuestros primeros 3 extractos. Recuperamos eso en el primer mes — mucho más de lo que cuesta el
-                plan."
+                plan.&quot;
               </div>
               <div className="testimonial-card__author">
                 <div className="testimonial-card__avatar">MR</div>
@@ -435,8 +435,8 @@ export default function LandingPage() {
             {/* Testimonio CFO */}
             <div className="testimonial-card">
               <div className="testimonial-card__quote">
-                "Antes dedicaba 6 horas por semana a conciliar extractos de 4 bancos en Excel. Ahora subo los archivos,
-                BiFlow me da el dashboard y yo me enfoco en decisiones, no en data entry."
+                &quot;El módulo de comisiones bancarias se pagó solo. Identificamos cobros de mantenimiento en cuentas que
+                deberían ser bonificadas. El banco nos devolvió la diferencia sin chistar.&quot;
               </div>
               <div className="testimonial-card__author">
                 <div className="testimonial-card__avatar">LC</div>
@@ -465,8 +465,8 @@ export default function LandingPage() {
                 </div>
               </div>
               <div className="testimonial-card__quote testimonial-card__quote--small">
-                "Sabíamos que algo se escapaba, pero no teníamos tiempo de auditar cada extracto. BiFlow lo encontró en la
-                primera carga de archivos."
+                &quot;Sabíamos que algo se escapaba, pero no teníamos tiempo de auditar cada extracto. BiFlow lo encontró en la
+                primera carga de archivos.&quot;
               </div>
             </div>
           </div>
@@ -488,7 +488,7 @@ export default function LandingPage() {
             <p className="benefit__body">
               Hoy armas el lote de pagos con el saldo que ves en pantalla — el de ayer. No cruzas contra el cheque de $2M
               que se acredita mañana ni contra la cobranza que entra en 48&nbsp;horas. Esa decisión con datos viejos te
-              obliga a mantener colchones de liquidez innecesarios. Los $5M que dejás "por las dudas" en cuenta corriente
+              obliga a mantener colchones de liquidez innecesarios. Los $5M que dejás &quot;por las dudas&quot; en cuenta corriente
               sin remunerar pierden poder adquisitivo cada día. En un mes, esos $5M ya compran lo que compraban $4,75M.
             </p>
             <p className="benefit__body benefit__body--solution">
@@ -537,13 +537,13 @@ export default function LandingPage() {
               Mientras tanto, aceptas echeqs de clientes que ya figuran en categoría 3 del BCRA.
             </h2>
             <p className="benefit__body">
-              "¿Cómo estamos de caja?" El dueño hace esa pregunta y recibe un Excel armado a mano, con datos del jueves
+              &quot;¿Cómo estamos de caja?&quot; El dueño hace esa pregunta y recibe un Excel armado a mano, con datos del jueves
               pasado, sin visibilidad sobre retenciones pendientes ni cheques por vencer. El reporte llega 3 días tarde.
               Peor: mientras tu equipo concilia datos manualmente, la empresa acepta cheques y echeqs de clientes cuya
               situación crediticia cambió la semana pasada — y nadie lo sabe hasta que el cheque rebota.
             </p>
             <p className="benefit__body benefit__body--solution">
-              La IA de BiFlow centraliza todos tus bancos en un dashboard único. Genera un "Reporte de 1 Minuto" diario con
+              La IA de BiFlow centraliza todos tus bancos en un dashboard único. Genera un &quot;Reporte de 1 Minuto&quot; diario con
               3&nbsp;cifras: salud de caja (pesos disponibles vs. compromisos próximos), riesgos detectados (fugas,
               vencimientos, contrapartes deterioradas) y oportunidades de mejora (saldos ociosos, retenciones recuperables).
               El dueño abre, lee, decide — en 60&nbsp;segundos. Y con el monitoreo de riesgo, BiFlow vigila cada CUIT de
@@ -971,7 +971,7 @@ export default function LandingPage() {
           <div className="popup__finding">🔍 1 pago duplicado no identificado por el ERP</div>
         </div>
         <blockquote className="popup__quote">
-          "BiFlow lo encontró en la primera carga de archivos."
+          &quot;BiFlow lo encontró en la primera carga de archivos.&quot;
           <cite>— Gerente Financiero, PyME industrial</cite>
         </blockquote>
         <p className="popup__cta-lead">Descubrí qué se escapa de tu caja</p>

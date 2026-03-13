@@ -787,7 +787,7 @@ export default function UploadPage() {
                                         <h3 className="text-lg font-bold text-white">Seleccionar Banco</h3>
                                     </div>
                                     <p className="text-gray-400 text-sm mb-6">
-                                        No pudimos detectar automáticamente el banco para el archivo <span className="text-white font-bold">"{confirmationAccountData.file.name}"</span>. Por favor selecciónalo:
+                                        No pudimos detectar automáticamente el banco para el archivo <span className="text-white font-bold">&quot;{confirmationAccountData.file.name}&quot;</span>. Por favor selecciónalo:
                                     </p>
 
                                     <div className="space-y-3 mb-8 max-h-60 overflow-y-auto pr-2 scrollbar-thin">

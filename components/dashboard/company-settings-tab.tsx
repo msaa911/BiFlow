@@ -795,7 +795,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                             ))
                                         ) : (
                                             <div className="text-center py-8 px-4 rounded-xl border border-dashed border-gray-800 opacity-50">
-                                                <p className="text-[10px] text-gray-500 italic">No hay datos de entidades disponibles. Pulsa "Actualizar" para sincronizar.</p>
+                                                <p className="text-[10px] text-gray-500 italic">No hay datos de entidades disponibles. Pulsa &quot;Actualizar&quot; para sincronizar.</p>
                                             </div>
                                         )}
                                     </div>

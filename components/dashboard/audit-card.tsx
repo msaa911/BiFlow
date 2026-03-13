@@ -133,7 +133,7 @@ export function AuditCard({ finding: initialFinding }: AuditCardProps) {
 
                     <div className="mt-4 p-4 bg-gray-800/30 rounded-xl border border-gray-800/50 flex flex-col md:flex-row justify-between items-center gap-4">
                         <p className="text-sm text-gray-300 italic flex-1">
-                            "Hallazgo: {finding.detalle.razon}. {finding.detalle.duplicate_of ? `Este movimiento es idéntico a uno detectado el ${new Date(finding.detalle.duplicate_of.fecha).toLocaleDateString('es-AR')}.` : ''} {finding.detalle.historical_avg ? `El gasto histórico promedio es ${formatCurrency(finding.detalle.historical_avg)}.` : ''}"
+                            &quot;Hallazgo: {finding.detalle.razon}. {finding.detalle.duplicate_of ? `Este movimiento es idéntico a uno detectado el ${new Date(finding.detalle.duplicate_of.fecha).toLocaleDateString('es-AR')}.` : ''} {finding.detalle.historical_avg ? `El gasto histórico promedio es ${formatCurrency(finding.detalle.historical_avg)}.` : ''}&quot;
                         </p>
                         {finding.transaccion.archivo_importacion_id && (
                             <button
