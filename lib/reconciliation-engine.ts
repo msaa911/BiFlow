@@ -213,7 +213,6 @@ export class ReconciliationEngine {
                     // 0. Check Payment Reference Match (Ej: Numero de cheque, numero de transferencia que detalla el recibo)
                     let hasPaymentRefMatch = false;
                     const rawInstrRef = (m.detalle_referencia || '').toUpperCase().trim();
-                    const descUpper = (trans.descripcion || '').toUpperCase();
                     
                     if (rawInstrRef && rawInstrRef.length >= 3) {
                         // 1. Buscamos el número "nudo" (sin ceros a la izquierda y sin letras de prefijo)
