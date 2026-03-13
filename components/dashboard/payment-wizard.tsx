@@ -214,7 +214,12 @@ export function PaymentWizard({ isOpen, onClose, orgId, entidadId, razonSocial, 
                 await supabase.from('comprobantes')
                     .update({
                         monto_pendiente: newMontoPendiente,
-                        estado: newMontoPendiente <= 0.01 ? 'pagado' : 'parcial'
+                        estado: newMontoPendiente <= 0.01 ? 'pagado' : 'parcial',
+                        metadata: {
+                            ...(inv.metadata || {}),
+                            wizard_paid_at: new Date().toISOString(),
+                            movimiento_id: mov.id
+                        }
                     })
                     .eq('id', inv.id)
                 remainingPayment -= amountToApply

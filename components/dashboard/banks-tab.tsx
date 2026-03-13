@@ -193,9 +193,12 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     if (comp.tipo.includes('_bancaria') || ((comp.nro_factura || comp.numero) && (comp.nro_factura || comp.numero).includes('AUTO-'))) {
                                         await supabase.from('comprobantes').delete().eq('id', comp.id)
                                     } else {
+                                        // Limpiar claves de metadata de wizard al revertir
+                                        const { wizard_paid_at: _wpa, movimiento_id: _movId, reconciled_v2: _rv2, last_auto_reconciled: _lar, ...cleanMeta } = (comp.metadata || {})
                                         await supabase.from('comprobantes').update({
                                             estado: 'pendiente',
-                                            monto_pendiente: comp.monto_total
+                                            monto_pendiente: comp.monto_total,
+                                            metadata: cleanMeta
                                         }).eq('id', comp.id)
                                     }
                                 }
@@ -780,7 +783,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             </div>
                         </div>
                         <div className="space-y-6">
-                            <BankNotesHistory orgId={orgId} accountId={selectedAccountId} onRefresh={onRefresh} />
+                            <BankNotesHistory orgId={orgId} accountId={selectedAccountId} bankAccounts={bankAccounts} onRefresh={onRefresh} />
                             <div className="pt-8 border-t border-gray-800">
                                 <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Notas Históricas</h4>
                                 <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">

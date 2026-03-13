@@ -435,7 +435,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-end">
-                                            {inv.estado === 'conciliado' || inv.metadata?.reconciled_v2 || inv.metadata?.last_auto_reconciled ? (
+                                            {inv.estado === 'conciliado' || inv.metadata?.reconciled_v2 || inv.metadata?.last_auto_reconciled || inv.metadata?.wizard_paid_at || inv.metadata?.movimiento_id ? (
                                                 <div className="flex items-center justify-end gap-1.5 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg">
                                                     <div className="flex -space-x-1">
                                                         <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
