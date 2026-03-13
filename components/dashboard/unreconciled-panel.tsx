@@ -130,17 +130,27 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 // De-duplicate: A movement can have multiple instruments
                 const uniqueMovs = new Map()
                 unlinkedMovs.forEach(ins => {
-                    if (ins.movimientos_tesoreria && !uniqueMovs.has(ins.movimiento_id)) {
-                        uniqueMovs.set(ins.movimiento_id, {
-                            id: ins.movimiento_id,
-                            fecha: ins.movimientos_tesoreria.fecha,
-                            monto: ins.monto,
-                            observaciones: ins.movimientos_tesoreria.observaciones,
-                            nro_comprobante: ins.movimientos_tesoreria.nro_comprobante,
-                            entidad: ins.movimientos_tesoreria.entidad_id,
-                            razonSocial: ins.movimientos_tesoreria.entidades?.razon_social,
-                            tipo: ins.movimientos_tesoreria.tipo,
-                            aplicaciones: ins.movimientos_tesoreria.aplicaciones_pago || []
+                    if (ins.movimientos_tesoreria) {
+                        if (!uniqueMovs.has(ins.movimiento_id)) {
+                            uniqueMovs.set(ins.movimiento_id, {
+                                id: ins.movimiento_id,
+                                fecha: ins.movimientos_tesoreria.fecha,
+                                monto: 0, // Sum instruments
+                                observaciones: ins.movimientos_tesoreria.observaciones,
+                                nro_comprobante: ins.movimientos_tesoreria.nro_comprobante,
+                                entidad: ins.movimientos_tesoreria.entidad_id,
+                                razonSocial: ins.movimientos_tesoreria.entidades?.razon_social,
+                                tipo: ins.movimientos_tesoreria.tipo,
+                                aplicaciones: ins.movimientos_tesoreria.aplicaciones_pago || [],
+                                instrumentos: []
+                            })
+                        }
+                        const mov = uniqueMovs.get(ins.movimiento_id)
+                        mov.monto += Number(ins.monto)
+                        mov.instrumentos.push({
+                            metodo: ins.metodo,
+                            detalle_referencia: ins.detalle_referencia,
+                            monto: ins.monto
                         })
                     }
                 })
@@ -864,9 +874,20 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                         <p className={`text-xs font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-emerald-400'}`}>
                                                             {mov.tipo?.toUpperCase()} {mov.nro_comprobante || 'S/N'}
                                                         </p>
-                                                        <p className="text-[9px] text-gray-500 truncate max-w-[200px]">
-                                                            {mov.razonSocial || 'Entidad no ident.'} • {new Date(mov.fecha).toLocaleDateString()}
-                                                        </p>
+                                                        <div className="flex flex-col mt-0.5">
+                                                            <p className="text-[9px] text-gray-500 truncate max-w-[200px]">
+                                                                {mov.razonSocial || 'Entidad no ident.'} • {new Date(mov.fecha).toLocaleDateString()}
+                                                            </p>
+                                                            {mov.instrumentos?.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                                    {mov.instrumentos.map((ins: any, idx: number) => (
+                                                                        <span key={idx} className="text-[8px] bg-gray-600/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
+                                                                            {ins.metodo}: {ins.detalle_referencia || 'S/R'}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="text-right whitespace-nowrap">
