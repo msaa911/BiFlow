@@ -787,7 +787,12 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             <div className="pt-8 border-t border-gray-800">
                                 <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Notas Históricas</h4>
                                 <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
-                                    <TreasuryHistory orgId={orgId} accountId={selectedAccountId} claseDocumentoFilter={['NDB', 'NCB']} />
+                                    <TreasuryHistory 
+                                        orgId={orgId} 
+                                        accountId={selectedAccountId} 
+                                        claseDocumentoFilter={['NDB', 'NCB']} 
+                                        hideHeader={true}
+                                    />
                                 </div>
                             </div>
                         </div>

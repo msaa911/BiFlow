@@ -33,9 +33,11 @@ interface TreasuryHistoryProps {
     accountId?: string
     typeFilter?: 'cobro' | 'pago'
     claseDocumentoFilter?: string[]
+    title?: string
+    hideHeader?: boolean
 }
 
-export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFilter }: TreasuryHistoryProps) {
+export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFilter, title: customTitle, hideHeader }: TreasuryHistoryProps) {
     const [movements, setMovements] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [expandedMov, setExpandedMov] = useState<string | null>(null)
@@ -213,54 +215,56 @@ export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFi
         setLoading(false)
     }
 
-    const title = typeFilter === 'cobro' ? 'Recibos' : 'Órdenes de Pago'
+    const title = customTitle || (typeFilter === 'cobro' ? 'Recibos' : 'Órdenes de Pago')
     const subtitle = typeFilter === 'cobro' ? 'Gestión de cobranzas a clientes.' : 'Gestión de pagos a proveedores.'
 
     return (
-        <Card className="p-6 bg-gray-950 border-gray-800 text-white min-h-[500px]">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-emerald-400" />
-                        {title}
-                    </h2>
-                    <p className="text-sm text-gray-500">{subtitle}</p>
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <Button
-                        variant={selectedIds.size > 0 ? "destructive" : "outline"}
-                        size="sm"
-                        className={`gap-2 h-9 ${selectedIds.size > 0 ? '' : 'opacity-40 border-gray-700'}`}
-                        onClick={handleBulkDelete}
-                        disabled={isDeletingBulk || selectedIds.size === 0}
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        {isDeletingBulk ? '...' : (selectedIds.size > 0 ? `Borrar ${selectedIds.size}` : 'Borrar')}
-                    </Button>
+        <Card className={`p-6 bg-gray-950 border-gray-800 text-white min-h-[500px] ${hideHeader ? 'border-none shadow-none bg-transparent p-0' : ''}`}>
+            {!hideHeader && (
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-emerald-400" />
+                            {title}
+                        </h2>
+                        <p className="text-sm text-gray-500">{subtitle}</p>
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <Button
+                            variant={selectedIds.size > 0 ? "destructive" : "outline"}
+                            size="sm"
+                            className={`gap-2 h-9 ${selectedIds.size > 0 ? '' : 'opacity-40 border-gray-700'}`}
+                            onClick={handleBulkDelete}
+                            disabled={isDeletingBulk || selectedIds.size === 0}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            {isDeletingBulk ? '...' : (selectedIds.size > 0 ? `Borrar ${selectedIds.size}` : 'Borrar')}
+                        </Button>
 
-                    <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
+                        <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
 
-                    <Button variant="outline" size="sm" className="bg-gray-900 text-gray-300 gap-2 h-9" onClick={() => downloadTreasuryTemplate(typeFilter === 'cobro' ? 'cobro' : 'pago')}>
-                        <DownloadCloud className="w-4 h-4" />
-                        <span className="hidden sm:inline">Plantilla</span>
-                    </Button>
+                        <Button variant="outline" size="sm" className="bg-gray-900 text-gray-300 gap-2 h-9" onClick={() => downloadTreasuryTemplate(typeFilter === 'cobro' ? 'cobro' : 'pago')}>
+                            <DownloadCloud className="w-4 h-4" />
+                            <span className="hidden sm:inline">Plantilla</span>
+                        </Button>
 
-                    <Button variant="outline" size="sm" className="border-emerald-500/30 text-emerald-400 gap-2 h-9" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                        <Upload className="w-4 h-4" />
-                        <span className="hidden sm:inline">Importar</span>
-                    </Button>
+                        <Button variant="outline" size="sm" className="border-emerald-500/30 text-emerald-400 gap-2 h-9" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                            <Upload className="w-4 h-4" />
+                            <span className="hidden sm:inline">Importar</span>
+                        </Button>
 
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2 h-9 font-bold px-4 text-sm" onClick={() => setIsManualEntryOpen(true)}>
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">{typeFilter === 'cobro' ? 'Emitir Recibo' : 'Emitir Orden De Pago'}</span>
-                    </Button>
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2 h-9 font-bold px-4 text-sm" onClick={() => setIsManualEntryOpen(true)}>
+                            <Plus className="w-4 h-4" />
+                            <span className="hidden sm:inline">{typeFilter === 'cobro' ? 'Emitir Recibo' : 'Emitir Orden De Pago'}</span>
+                        </Button>
 
-                    <div className="relative flex-1 md:w-64">
-                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
-                        <Input placeholder="Buscar..." className="bg-gray-900 border-gray-800 pl-9 text-xs h-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <div className="relative flex-1 md:w-64">
+                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+                            <Input placeholder="Buscar..." className="bg-gray-900 border-gray-800 pl-9 text-xs h-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
 
             <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/50">
