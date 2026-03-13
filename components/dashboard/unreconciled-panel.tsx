@@ -615,7 +615,12 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                             )}
                                         </div>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[11px] font-mono text-gray-500">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
+                                            <span className="text-[11px] font-mono text-gray-400">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
+                                            {tx.referencia && (
+                                                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
+                                                    REF: {tx.referencia}
+                                                </span>
+                                            )}
                                             <span className="text-[10px] text-gray-600 font-mono tracking-tighter uppercase ml-2">ID: {tx.id.split('-')[0]}</span>
                                         </div>
                                     </div>
@@ -849,9 +854,12 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                 <p className="text-xs font-bold text-white leading-tight truncate max-w-[280px]">{selectedTx.descripcion}</p>
                             </div>
                             <div className="text-right">
-                                <p className={`text-base font-black ${selectedTx.monto < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.abs(selectedTx.monto) - (selectedTx.monto_usado || 0))}
+                                <p className="text-lg font-black text-emerald-400">
+                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
                                 </p>
+                                {selectedTx.referencia && (
+                                    <p className="text-[9px] text-gray-400 font-mono">ID BANCO: {selectedTx.referencia}</p>
+                                )}
                             </div>
                         </div>
                     )}
@@ -888,23 +896,28 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                                                     <div className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-emerald-800 bg-gray-950 group-hover:border-emerald-500'}`}>
                                                         {isSelected && <Check className="w-3 h-3 text-black font-bold" />}
                                                     </div>
-                                                    <div>
-                                                        <p className={`text-xs font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-emerald-400'}`}>
-                                                            {mov.tipo?.toUpperCase()} {mov.nro_comprobante || 'S/N'}
-                                                        </p>
-                                                        <div className="flex flex-col mt-0.5">
-                                                            <p className="text-[9px] text-gray-500 truncate max-w-[200px]">
-                                                                {mov.razonSocial || 'Entidad no ident.'} • {new Date(mov.fecha).toLocaleDateString()}
-                                                            </p>
-                                                            {mov.instrumentos?.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex flex-col">
+                                                            {/* Primary match data (References) at the top as requested */}
+                                                            {mov.instrumentos?.length > 0 ? (
+                                                                <div className="flex flex-wrap gap-1 mb-1">
                                                                     {mov.instrumentos.map((ins: any, idx: number) => (
-                                                                        <span key={idx} className="text-[8px] bg-gray-600/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
-                                                                            {ins.metodo}: {ins.detalle_referencia || 'S/R'}
+                                                                        <span key={idx} className="text-[10px] bg-emerald-500/20 text-white px-2 py-0.5 rounded border border-emerald-500/40 font-bold shadow-sm">
+                                                                            {ins.metodo.toUpperCase()}: {ins.detalle_referencia || 'S/R'}
                                                                         </span>
                                                                     ))}
                                                                 </div>
+                                                            ) : (
+                                                                <span className="text-[10px] text-red-400 font-bold mb-1 uppercase tracking-tighter">Sin referencia de pago cargada</span>
                                                             )}
+
+                                                            <p className={`text-[11px] font-black tracking-tight transition-colors ${isSelected ? 'text-white' : 'text-gray-100 group-hover:text-emerald-300'}`}>
+                                                                {mov.razonSocial || 'Entidad no ident.'} • {mov.tipo?.toUpperCase()} {mov.nro_comprobante || 'S/N'}
+                                                            </p>
+                                                            
+                                                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                                                FECHA: {new Date(mov.fecha).toLocaleDateString()}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </div>
