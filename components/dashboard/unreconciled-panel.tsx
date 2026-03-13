@@ -315,7 +315,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
         try {
             const currentOrgId = selectedTx.organization_id || orgId
 
-            // 1. Ensure "Gastos Varios / Banco" entity exists
+            // 1. Ensure "Gastos Varios / Otros" entity exists
             let { data: entity } = await supabase
                 .from('entidades')
                 .select('id, cuit, razon_social')
@@ -373,42 +373,56 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                 ]
             }
 
-            // 4. Create Comprobante (Voucher)
-            const bankNoteNumber = `BN-${selectedTx.id.split('-')[0].toUpperCase()}-${new Date().getTime().toString().slice(-4)}`
-
-            const { data: voucher, error: vError } = await supabase
+            // 4. Check if voucher already exists to avoid duplicates
+            let voucher;
+            const { data: existingVoucher } = await supabase
                 .from('comprobantes')
-                .insert({
-                    organization_id: currentOrgId,
-                    entidad_id: entity.id,
-                    tipo: voucherType,
-                    nro_factura: selectedTx.referencia || bankNoteNumber,
-                    cuit_socio: entity.cuit,
-                    razon_social_entidad: entity.razon_social,
-                    fecha_emision: selectedTx.fecha,
-                    fecha_vencimiento: selectedTx.fecha,
-                    monto_total: totalMonto,
-                    monto_pendiente: 0,
-                    estado: 'conciliado',
-                    condicion: 'contado',
-                    concepto: category,
-                    moneda: 'ARS',
-                    metadata: {
-                        ...metadata,
-                        is_direct_bank_note: true,
-                        bank_transaction_id: selectedTx.id,
-                        cuenta_id: selectedTx.cuenta_id,
-                        categoria_principal: category
-                    }
-                })
-                .select()
-                .single()
+                .select('id')
+                .eq('metadata->>bank_transaction_id', selectedTx.id)
+                .maybeSingle()
 
-            if (vError) throw vError
-            if (!voucher) throw new Error("No se pudo generar el comprobante bancario")
+            if (existingVoucher) {
+                voucher = existingVoucher
+                console.log("Voucher already exists, linking existing one:", voucher.id)
+            } else {
+                // Create Comprobante (Voucher)
+                const bankNoteNumber = `BN-${selectedTx.id.split('-')[0].toUpperCase()}-${new Date().getTime().toString().slice(-4)}`
 
-            // 5. Update Bank Transaction
-            const { data: txData, error: txError } = await supabase
+                const { data: newVoucher, error: vError } = await supabase
+                    .from('comprobantes')
+                    .insert({
+                        organization_id: currentOrgId,
+                        entidad_id: entity.id,
+                        tipo: voucherType,
+                        nro_factura: selectedTx.referencia || bankNoteNumber,
+                        cuit_socio: entity.cuit,
+                        razon_social_entidad: entity.razon_social,
+                        fecha_emision: selectedTx.fecha,
+                        fecha_vencimiento: selectedTx.fecha,
+                        monto_total: totalMonto,
+                        monto_pendiente: 0,
+                        estado: 'conciliado',
+                        condicion: 'contado',
+                        concepto: category,
+                        moneda: 'ARS',
+                        metadata: {
+                            ...metadata,
+                            is_direct_bank_note: true,
+                            bank_transaction_id: selectedTx.id,
+                            cuenta_id: selectedTx.cuenta_id,
+                            categoria_principal: category
+                        }
+                    })
+                    .select()
+                    .single()
+
+                if (vError) throw vError
+                if (!newVoucher) throw new Error("No se pudo generar el comprobante bancario")
+                voucher = newVoucher
+            }
+
+            // 5. Update Bank Transaction (Ensure it's reconciled)
+            const { error: txError } = await supabase
                 .from('transacciones')
                 .update({
                     categoria: category,
@@ -425,37 +439,28 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
                     }
                 })
                 .eq('id', selectedTx.id)
-                .select()
-                .maybeSingle()
 
             if (txError) {
                 console.error("Error linking transaction:", txError)
+                throw new Error("No se pudo actualizar el estado de la transacción: " + txError.message)
             }
 
-            if (!txData) {
-                console.warn("No transaction was updated in first attempt. Attempting second update.")
-                await supabase.from('transacciones')
-                    .update({
-                        comprobante_id: voucher.id,
-                        estado: 'conciliado',
-                        categoria: category
-                    })
-                    .eq('id', selectedTx.id)
-            }
-
-            // Update UI
+            // Update local state for immediate feedback
             setCategorizedTxIds(prev => [...prev, selectedTx.id])
-            selectedTx.estado = 'conciliado'
-            selectedTx.comprobante_id = voucher.id
-            selectedTx.concepto = category
-
+            
+            // Success!
             toast.success(`${claseDoc} generada y registrada con éxito`)
             setIsCategorizing(false)
             setIsSplitting(false)
             setSelectedCategory(null)
             setSplitAmount('0')
             setSelectedTx(null)
-            if (onRefresh) onRefresh()
+            
+            // Delay refresh slightly to ensure DB consistency
+            setTimeout(() => {
+                if (onRefresh) onRefresh()
+            }, 500)
+
         } catch (error: any) {
             console.error('Error in banking accounting:', error)
             toast.error('Error al generar nota: ' + (error.message || 'Desconocido'))
@@ -463,6 +468,7 @@ export function UnreconciledPanel({ orgId, transactions, onRefresh }: Unreconcil
             setIsSubmitting(false)
         }
     }
+
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
