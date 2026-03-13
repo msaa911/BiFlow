@@ -12,7 +12,8 @@ import {
     Search,
     RefreshCcw,
     Tag,
-    AlertCircle
+    AlertCircle,
+    Landmark
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,10 +23,11 @@ import { toast } from 'sonner'
 interface BankNotesHistoryProps {
     orgId: string
     accountId?: string
+    bankAccounts?: any[]
     onRefresh?: () => void
 }
 
-export function BankNotesHistory({ orgId, accountId, onRefresh }: BankNotesHistoryProps) {
+export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefresh }: BankNotesHistoryProps) {
     const [notes, setNotes] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [expandedNote, setExpandedNote] = useState<string | null>(null)
@@ -33,6 +35,11 @@ export function BankNotesHistory({ orgId, accountId, onRefresh }: BankNotesHisto
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(20)
     const supabase = createClient()
+
+    // Build a map of accountId -> bank name
+    const bankAccountMap = Object.fromEntries(
+        bankAccounts.map(acc => [acc.id, acc.banco_nombre])
+    )
 
     async function fetchNotes() {
         setLoading(true)
@@ -182,6 +189,7 @@ export function BankNotesHistory({ orgId, accountId, onRefresh }: BankNotesHisto
                             <tr className="bg-gray-800 text-[11px] font-bold text-gray-400 sticky top-0 z-10">
                                 <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Fecha</th>
                                 <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Nro Nota</th>
+                                <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Banco</th>
                                 <th className="px-6 py-4 sticky top-0 z-20 bg-gray-800 text-left">Entidad / Concepto</th>
                                 <th className="px-6 py-4 text-right sticky top-0 z-20 bg-gray-800">Monto</th>
                                 <th className="px-6 py-4 text-center sticky top-0 z-20 bg-gray-800">Estado</th>
@@ -190,18 +198,29 @@ export function BankNotesHistory({ orgId, accountId, onRefresh }: BankNotesHisto
                         </thead>
                         <tbody className="divide-y divide-gray-800/50">
                             {loading && notes.length === 0 ? (
-                                <tr><td colSpan={6} className="h-32 text-center text-gray-500 italic">Cargando notas bancarias...</td></tr>
+                                <tr><td colSpan={7} className="h-32 text-center text-gray-500 italic">Cargando notas bancarias...</td></tr>
                             ) : paginatedNotes.length === 0 ? (
-                                <tr><td colSpan={6} className="h-32 text-center text-gray-500 italic">No se encontraron notas bancarias directas.</td></tr>
+                                <tr><td colSpan={7} className="h-32 text-center text-gray-500 italic">No se encontraron notas bancarias directas.</td></tr>
                             ) : (
                                 paginatedNotes.map(note => {
                                     const isExpanded = expandedNote === note.id
                                     const tx = note.transacciones?.[0]
+                                    const bankName = bankAccountMap[note.metadata?.cuenta_id] || null
                                     return (
                                         <Fragment key={note.id}>
                                             <tr className={`hover:bg-emerald-500/[0.02] transition-colors cursor-pointer border-b border-gray-800/50 ${isExpanded ? 'bg-emerald-500/5' : ''}`} onClick={() => setExpandedNote(isExpanded ? null : note.id)}>
                                                 <td className="px-6 py-3 font-mono text-gray-400">{formatDate(note.fecha_emision)}</td>
                                                 <td className="px-6 py-3 font-bold text-emerald-400">{note.nro_factura}</td>
+                                                <td className="px-6 py-3">
+                                                    {bankName ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Landmark className="w-3 h-3 text-blue-400 shrink-0" />
+                                                            <span className="text-[11px] font-bold text-blue-300">{bankName}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] text-gray-600">—</span>
+                                                    )}
+                                                </td>
                                                 <td className="px-6 py-3">
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-white text-[11px] uppercase tracking-tight">
@@ -238,13 +257,21 @@ export function BankNotesHistory({ orgId, accountId, onRefresh }: BankNotesHisto
                                             </tr>
                                             {isExpanded && (
                                                 <tr className="bg-gray-950/80 border-gray-800/50">
-                                                    <td colSpan={6} className="p-6">
+                                                    <td colSpan={7} className="p-6">
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-200">
                                                             <div className="space-y-4">
                                                                 <div className="flex items-center gap-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest">
                                                                     <Tag className="w-3 h-3" /> Origen Bancario
                                                                 </div>
                                                                 <div className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 space-y-2">
+                                                                    {bankName && (
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-gray-500">Banco:</span>
+                                                                            <span className="flex items-center gap-1.5 text-blue-300 font-bold">
+                                                                                <Landmark className="w-3 h-3" />{bankName}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
                                                                     <div className="flex justify-between">
                                                                         <span className="text-gray-500">Transacción:</span>
                                                                         <span className="text-white font-medium">{tx?.descripcion || note.metadata?.original_desc || 'ID: ' + note.metadata?.transaccion_id?.slice(0, 8)}</span>
