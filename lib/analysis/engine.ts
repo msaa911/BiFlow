@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AnomalyEngine } from '@/lib/anomaly-engine'
 import { LiquidityEngine } from '@/lib/liquidity-engine'
+import { TrustLedger } from '@/lib/trust-ledger'
 
 interface Transaction {
     id: string
@@ -167,7 +168,8 @@ export async function runAnalysis(organizationId: string) {
     const transactionsToUpdate: any[] = []
 
     for (const t of processed) {
-        const descUpper = t.descripcion.toUpperCase()
+        const descripcion = t.descripcion || t.concepto || 'Sin descripción';
+        const descUpper = descripcion.toUpperCase()
 
         // Improved detection: use word boundaries for short keywords to avoid false positives (e.g. "IVA" in "RIVAS")
         const match = ALL_KEYWORDS.find(k => {
@@ -179,17 +181,17 @@ export async function runAnalysis(organizationId: string) {
         })
 
         if (match) {
-            console.log(`[ANALYSIS] [MATCH] "${t.descripcion}" matched with keyword "${match.word}" (${match.category})`)
+            console.log(`[ANALYSIS] [MATCH] "${descripcion}" matched with keyword "${match.word}" (${match.category})`)
             const config = taxMap.get(descUpper)
 
             if (!config) {
-                console.log(`[ANALYSIS] [NEW_TAX] No config found for "${t.descripcion}". Creating PENDIENTE rule.`)
+                console.log(`[ANALYSIS] [NEW_TAX] No config found for "${descripcion}". Creating PENDIENTE rule.`)
                 // First time seeing this patron in this org
                 if (!seenNewPatrons.has(descUpper)) {
-                    console.log(`[ANALYSIS] [LEGAL_LEARNING] Registering new rule for patron: "${t.descripcion}"`);
+                    console.log(`[ANALYSIS] [LEGAL_LEARNING] Registering new rule for patron: "${descripcion}"`);
                     newTaxConfigs.push({
                         organization_id: organizationId,
-                        patron_busqueda: t.descripcion,
+                        patron_busqueda: descripcion,
                         categoria: match.category,
                         estado: 'PENDIENTE'
                     })
@@ -207,7 +209,7 @@ export async function runAnalysis(organizationId: string) {
                     transactionsToUpdate.push({ id: t.id, tags: t.tags })
                 }
             } else if (config.estado === 'PENDIENTE') {
-                console.log(`[ANALYSIS] [EXISTING_PENDING] "${t.descripcion}" is already PENDIENTE.`)
+                console.log(`[ANALYSIS] [EXISTING_PENDING] "${descripcion}" is already PENDIENTE.`)
                 const tag = match.category === 'impuesto' ? 'pendiente_clasificacion' : 'servicio_detectado'
                 // Clean old tags to avoid mixing categories after logic update
                 let tags = (t.tags || []).filter((tg: string) => tg !== 'pendiente_clasificacion' && tg !== 'servicio_detectado')
@@ -218,7 +220,7 @@ export async function runAnalysis(organizationId: string) {
                     transactionsToUpdate.push({ id: t.id, tags: t.tags })
                 }
             } else if (config.es_recuperable && !config.omitir_siempre) {
-                console.log(`[ANALYSIS] [RECUPERABLE] "${t.descripcion}" is classified as tax recovery.`)
+                console.log(`[ANALYSIS] [RECUPERABLE] "${descripcion}" is classified as tax recovery.`)
                 // Already classified as manageable tax
                 let tags = (t.tags || []).filter((tg: string) => tg !== 'pendiente_clasificacion' && tg !== 'servicio_detectado' && tg !== 'costo_impositivo' && tg !== 'gasto_simple')
                 if (!tags.includes('impuesto_recuperable')) {
@@ -240,7 +242,7 @@ export async function runAnalysis(organizationId: string) {
                     }
                 })
             } else if (!config.es_recuperable && !config.omitir_siempre && config.estado === 'CLASIFICADO') {
-                console.log(`[ANALYSIS] [COSTO] "${t.descripcion}" classified as non-recoverable.`)
+                console.log(`[ANALYSIS] [COSTO] "${descripcion}" classified as non-recoverable.`)
                 const tag = config.categoria === 'servicio' ? 'gasto_simple' : 'costo_impositivo'
                 let tags = (t.tags || []).filter((tg: string) =>
                     tg !== 'pendiente_clasificacion' &&
@@ -260,7 +262,7 @@ export async function runAnalysis(organizationId: string) {
         }
 
         if (t.metadata?.anomaly) {
-            console.log(`[ANALYSIS] [ANOMALY] "${t.descripcion}" identified as ${t.metadata.anomaly}`)
+            console.log(`[ANALYSIS] [ANOMALY] "${descripcion}" identified as ${t.metadata.anomaly}`)
             findings.push({
                 organization_id: organizationId,
                 transaccion_id: t.id,
@@ -279,7 +281,7 @@ export async function runAnalysis(organizationId: string) {
             transactionsToUpdate.push({ id: t.id, tags: t.tags })
         } else if (stdDev > 0 && Math.abs(t.monto) > mean + (3 * stdDev)) {
             // Statistical Outlier Detection (Z-Score > 3)
-            console.log(`[ANALYSIS] [OUTLIER] "${t.descripcion}" is a statistical outlier ($ID: ${t.id})`)
+            console.log(`[ANALYSIS] [OUTLIER] "${descripcion}" is a statistical outlier ($ID: ${t.id})`)
             const zScore = (Math.abs(t.monto) - mean) / stdDev;
             findings.push({
                 organization_id: organizationId,
@@ -331,15 +333,14 @@ export async function runAnalysis(organizationId: string) {
     }
 
     // --- NUEVO: TRUST LEDGER (BEC PREVENTION) ---
-    const { TrustLedger } = require('@/lib/trust-ledger')
     console.log(`[ANALYSIS] Running TrustLedger check...`)
-    const becAlerts = await TrustLedger.validateTransactions(transactions, organizationId)
+    const becAlerts = await TrustLedger.validateTransactions(transactions, organizationId, supabase)
     if (becAlerts.length > 0) {
         console.log(`[ANALYSIS] TrustLedger found ${becAlerts.length} alerts`)
         findings.push(...becAlerts)
     }
     // Update profiles
-    await TrustLedger.learn(transactions, organizationId)
+    await TrustLedger.learn(transactions, organizationId, supabase)
 
     // Save New Tax Configs
     if (newTaxConfigs.length > 0) {

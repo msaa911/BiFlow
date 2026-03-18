@@ -167,7 +167,8 @@ export async function POST(request: Request) {
                     }))
                     // Add balance check warnings if any (only for bank statements)
                     if (uploadContext === 'bank' && uniTransactions.metadata?.isBalanced === false) {
-                        warnings.push(`Advertencia de Saldo: El total de movimientos no coincide con los saldos detectados (Dif: $${uniTransactions.metadata.diferencia?.toFixed(2)})`)
+                        const diff = typeof uniTransactions.metadata.diferencia === 'number' ? uniTransactions.metadata.diferencia.toFixed(2) : '0.00';
+                        warnings.push(`Advertencia de Saldo: El total de movimientos no coincide con los saldos detectados (Dif: $${diff})`)
                     }
                 } else if (uniTransactions.transactions.length === 0 && !hasConfirmedSign) {
                     console.log('Universal Translator yielded 0 results, requiring visual mapping')

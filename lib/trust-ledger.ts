@@ -1,12 +1,8 @@
-import { createClient } from '@/lib/supabase/client' // Using client for simpler server actions if needed, or import from server
-
 export class TrustLedger {
     /**
      * Analiza una lista de transacciones buscando discrepancias de CBU (BEC Prevention).
      */
-    static async validateTransactions(transactions: any[], orgId: string) {
-        const supabase = createClient()
-
+    static async validateTransactions(transactions: any[], orgId: string, supabase: any) {
         // 1. Obtener pares CUIT-CBU confiables para esta organización
         const { data: trusted } = await supabase
             .from('trust_ledger')
@@ -15,7 +11,7 @@ export class TrustLedger {
             .eq('is_trusted', true)
 
         const trustedMap = new Map<string, Set<string>>()
-        trusted?.forEach(t => {
+        trusted?.forEach((t: any) => {
             if (!trustedMap.has(t.cuit)) trustedMap.set(t.cuit, new Set())
             trustedMap.get(t.cuit)?.add(t.cbu)
         })
@@ -32,7 +28,7 @@ export class TrustLedger {
                 if (knownCBUs && !knownCBUs.has(cbu)) {
                     findings.push({
                         organization_id: orgId,
-                        transaccion_id: tx.db_id, // assuming db_id is passed after insertion
+                        transaccion_id: tx.id, // tx.id contains the UUID from DB
                         tipo: 'anomalia',
                         severidad: 'critical',
                         detalle: {
@@ -51,8 +47,7 @@ export class TrustLedger {
     /**
      * Registra nuevos pares CUIT-CBU como confiables y actualiza la lista de proveedores.
      */
-    static async learn(transactions: any[], orgId: string) {
-        const supabase = createClient()
+    static async learn(transactions: any[], orgId: string, supabase: any) {
         const newPairs = transactions
             .filter(t => t.cuit && t.metadata?.cbu)
             .map(t => ({
