@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -40,8 +40,6 @@ export function InvoiceImportPreviewModal({
 }: InvoiceImportPreviewModalProps) {
     const [isProcessing, setIsProcessing] = useState(false)
     const [editingRowId, setEditingRowId] = useState<string | null>(null)
-    const [entidades, setEntidades] = useState<any[]>([])
-    const [searchingEntidad, setSearchingEntidad] = useState(false)
 
     const validCount = data.filter((d: any) => d.isValid).length
     const errorCount = data.filter((d: any) => d.errors?.length > 0).length
@@ -66,7 +64,7 @@ export function InvoiceImportPreviewModal({
 
         if (!row.fecha_emision) errors.push('Falta Fecha')
         // El número ahora es opcional pero se advierte si falta
-        if (!row.numero || row.numero === '') {
+        if (!row.nro_factura || row.nro_factura === '') {
             warnings.push('Sin Número')
         }
         if (isNaN(row.monto_total) || row.monto_total <= 0) errors.push('Monto Inválido')
@@ -83,19 +81,6 @@ export function InvoiceImportPreviewModal({
         onRowUpdate(validateRow(updatedRow))
     }
 
-    const searchEntidades = async (term: string) => {
-        if (term.length < 2) return
-        setSearchingEntidad(true)
-        const supabase = createClient()
-        const { data } = await supabase
-            .from('entidades')
-            .select('id, razon_social, cuit, categoria')
-            .eq('organization_id', orgId)
-            .or(`razon_social.ilike.%${term}%,cuit.ilike.%${term}%`)
-            .limit(5)
-        if (data) setEntidades(data)
-        setSearchingEntidad(false)
-    }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -167,42 +152,20 @@ export function InvoiceImportPreviewModal({
                                             </div>
                                         </td>
                                         <td className="px-4 py-4">
-                                            <div className="space-y-2">
-                                                <div className="relative group">
-                                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
-                                                    <Input
-                                                        placeholder={`Buscar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`}
-                                                        className="h-7 bg-gray-900 border-gray-800 pl-7 text-[10px]"
-                                                        onChange={(e) => searchEntidades(e.target.value)}
-                                                    />
-                                                </div>
-                                                <Select
-                                                    value={row.entidad_id}
-                                                    onValueChange={(v) => {
-                                                        const s = entidades.find(e => e.id === v)
-                                                        if (s) {
-                                                            const updated = {
-                                                                ...row,
-                                                                entidad_id: s.id,
-                                                                razon_social_entidad: s.razon_social,
-                                                                cuit_entidad: s.cuit
-                                                            }
-                                                            onRowUpdate(validateRow(updated))
-                                                        }
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="h-7 bg-gray-950 border-gray-800 text-[10px]">
-                                                        <SelectValue placeholder={row.razon_social_entidad || "Seleccionar..."} />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                                        {entidades.map(e => (
-                                                            <SelectItem key={e.id} value={e.id} className="text-[10px]">
-                                                                {e.razon_social} ({e.cuit})
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                                            <EntidadSelector
+                                                row={row}
+                                                orgId={orgId}
+                                                type={type}
+                                                onSelect={(s) => {
+                                                    const updated = {
+                                                        ...row,
+                                                        entidad_id: s.id,
+                                                        razon_social_entidad: s.razon_social,
+                                                        cuit_entidad: s.cuit
+                                                    }
+                                                    onRowUpdate(validateRow(updated))
+                                                }}
+                                            />
                                         </td>
                                         <td className="px-4 py-4">
                                             <Input
@@ -270,5 +233,80 @@ export function InvoiceImportPreviewModal({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    )
+}
+
+interface EntidadSelectorProps {
+    row: any
+    orgId: string
+    type: 'factura_venta' | 'factura_compra'
+    onSelect: (s: any) => void
+}
+
+function EntidadSelector({ row, orgId, type, onSelect }: EntidadSelectorProps) {
+    const [entidades, setEntidades] = useState<any[]>([])
+    const [searching, setSearching] = useState(false)
+    const [query, setQuery] = useState('')
+
+    // Debounced search
+    useEffect(() => {
+        const timeout = setTimeout(async () => {
+            if (query.length < 2) return
+            setSearching(true)
+            try {
+                const supabase = createClient()
+                const { data } = await supabase
+                    .from('entidades')
+                    .select('id, razon_social, cuit, categoria')
+                    .eq('organization_id', orgId)
+                    .or(`razon_social.ilike.%${query}%,cuit.ilike.%${query}%`)
+                    .limit(8)
+                if (data) setEntidades(data)
+            } finally {
+                setSearching(false)
+            }
+        }, 500)
+        return () => clearTimeout(timeout)
+    }, [query, orgId])
+
+    return (
+        <div className="space-y-2">
+            <div className="relative group">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+                <Input
+                    placeholder={`Buscar ${type === 'factura_venta' ? 'cliente' : 'proveedor'}...`}
+                    className="h-7 bg-gray-900 border-gray-800 pl-7 text-[10px]"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                />
+                {searching && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-emerald-500 animate-spin" />}
+            </div>
+            <Select
+                value={row.entidad_id || ""}
+                onValueChange={(v) => {
+                    const s = entidades.find(e => e.id === v)
+                    if (s) onSelect(s)
+                }}
+            >
+                <SelectTrigger className="h-7 bg-gray-950 border-gray-800 text-[10px] w-full">
+                    <SelectValue>
+                        {row.razon_social_entidad || "Seleccionar..."}
+                    </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-800 text-white min-w-[200px]">
+                    {entidades.length === 0 && !row.entidad_id && (
+                        <div className="p-2 text-[10px] text-gray-400 italic">Escriba para buscar...</div>
+                    )}
+                    {entidades.map(e => (
+                        <SelectItem key={e.id} value={e.id} className="text-[10px]">
+                            <div className="flex flex-col">
+                                <span className="font-bold">{e.razon_social}</span>
+                                <span className="text-[9px] text-gray-500">{e.cuit}</span>
+                            </div>
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
     )
 }

@@ -1,103 +1,80 @@
-# 🗺️ BiFlow: Hoja de Ruta de Desarrollo Consolidada (Fuente de Verdad)
+# 🗺️ BiFlow: Plan General de Desarrollo (Fuente de Verdad)
 
-Este documento es la **única fuente de verdad** del proyecto. Integra la visión macro de lanzamiento, el estado de los Sprints y las tareas inmediatas.
-
----
-
-## 🏁 ESTADO DEL PROYECTO
-- **Fase 1: Core & Estabilidad** 🟢 *Terminado*
-- **Fase 2: Motor de Importación (Universal Translator)** 🟢 *Terminado*
-- **Fase 3: Robustez Enterprise & Tesorería (AR/AP)** 🟢 *Terminado*
-- **Sprint 2: Inteligencia & Liquidez** 🔵 **En curso (Cierre y Validación)**
-- **Cash Flow Avanzado (Scenarios/AI)** 🟡 *Planificado*
+Este documento es la **única fuente de verdad** del proyecto. Centraliza la visión macro, el estado actual de ejecución y la hoja de ruta a largo plazo.
 
 ---
 
-## 📅 SPRINT 2: INTELIGENCIA & LIQUIDEZ (PRIORIDAD ACTUAL)
-
-### Módulo 1: Core de Detección (Precisión) 🟢 COMPLETADO
-- Ventanas dinámicas (+/- 30 días), Tesauro Financiero y Re-ensamblado Multilínea.
-
-### Módulo 2: Liquidez y Tesorería 🟢 COMPLETADO
-- Stress Test de saldo, Costo de Oportunidad y Rediseño Treasury Hub v2.0.
-
-### Módulo 3: Seguridad y Conciliación (TRUST LEDGER) 🔵 EN CURSO
-- [ ] **3.1 Conciliación Automática**: Match real entre Bancos y Comprobantes vía CUIT/Cheque.
-- [ ] **3.2 Trust Ledger**: Validación CUIT vs CBU para prevención de fraudes (BEC).
-- [ ] **3.3 Extracción de CBU**: Captura de 22 dígitos en parsers bancarios.
+## 📊 ESTADO GLOBAL DEL PROYECTO
+- **Fase Actual:** `Sprint 2: Inteligencia & Liquidez` 🔵 **En curso**
+- **Siguiente Hito:** `Estabilidad & Robustez (Post-Auditoría Mar-18)` 🔶 **Prioridad Inmediata**
+- **Core de Negocio:** 🟢 Completado (Importación, Treasury AR/AP, Motores Básicos).
 
 ---
 
-## ✅ SESIÓN COMPLETADA (Marzo 13) - REFINAMIENTO DE CONCILIACIÓN
-**Objetivo Logrado:** Optimizar la precisión del "Match" automático y la usabilidad visual del panel de conciliación enfocándose en números de referencia.
+## 🚀 EJECUCIÓN ACTUAL (EL CAMPO DE BATALLA)
 
-### 1. Motor de Extracción & Limpieza (Universal Translator) 🟢
-- [x] **Extracción Agresiva:** Captura de IDs de 4+ dígitos (antes 5+) para no perder transferencias cortas.
-- [x] **Limpieza de Prefijos:** Normalización automática (ej: `TRF-12345` -> `12345`) tanto en importación de Bancos como de Tesorería.
-- [x] **Match Robusto:** Asegurar que el cruce automático funcione independientemente de cómo el banco nombre la transacción.
+### 1. Refactorización de Estabilidad (Resultados Auditoría Mar-18) 🔶 **ALTA PRIORIDAD**
+*Garantizar que el sistema no falle bajo carga y que los datos sean 100% íntegros.*
+- [x] **Atomicidad SQL (RPC)**: Migrado el core de `matchAndReconcile` a PostgreSQL RPC (`reconcile_v3_1`). Incluye Fase Administrativa (Comprobantes) y Fase Bancaria.
+- [x] **Tipado Estricto (TS)**: Erradicado el uso de `: any` en `ReconciliationEngine` y `admin.ts`.
+- [ ] **Capa de Pruebas**: Implementar Vitest para validar algoritmos financieros (IVA, Inflación, Suma de Subconjuntos).
+- [x] **Seguridad Admin**: Eliminado el fallback inseguro a `ANON_KEY` en `lib/supabase/admin.ts`.
+- [x] **Optimización UI**: Refactorizado el selector de entidades en el preview de facturas con debounce y estado por fila.
+- [x] **Seguridad del Entorno**: Eliminado fallback de `ANON_KEY` en el cliente administrativo para forzar errores explícitos.
 
-### 2. Rediseño de Interfaz (UX/UI) 🟢
-- [x] **Prioridad Visual:** Número de referencia en **Ámbar brillante** movido a la posición primaria (izquierda).
-- [x] **Jerarquía de Información:** Desplazamiento de números de comprobantes internos a badges secundarios (menos ruido).
-- [x] **Contexto Bancario:** Visualización clara del ID del banco en el diálogo de conciliación para cross-referencing manual rápido.
-
-### 3. Persistencia y Consistencia 🟢
-- [x] **Ocultamiento Inmediato:** Mejora en `handleConciliate` para que las transacciones desaparezcan localmente al instante.
-- [x] **Delay de Propagación:** Incremento de retardo de refresco (1200ms) para garantizar consistencia con Supabase.
-
----
-
-## 🗓️ PRÓXIMA SESIÓN - VALIDACIÓN Y CIERRE DE SPRINT 2
-**Objetivo Principal:** Testeo integral de las mejoras de hoy y decisión sobre el pivot arquitectónico completo.
-
-### 1. Refactorización Backend (`reconciliation-engine.ts`)
-- [ ] Detener la creación automática de Recibos/OP a partir de facturas.
-- [ ] Ajustar el motor `matchAndReconcile` para que solo busque enlazar transacciones bancarias contra `instrumentos_pago` de `movimientos_tesoreria` pendientes.
-
-### 2. Refactorización UI (`unreconciled-panel.tsx`)
-- [ ] **Vista por Defecto:** Al clicar "Conciliar", mostrar *únicamente* los Movimientos Previos Compatibles (Recibos/OP huérfanos).
-- [ ] **Flujo de Vinculación:** Simplificar el cruce de datos sin generar nuevos movimientos.
-- [ ] **Flujo Alternativo (Bajo Demanda):** Crear un botón explícito "Crear Nuevo Recibo / O.P." que abra el asistente completo (facturas, pagos mixtos, residuales) solo cuando el administrativo olvidó cargar el recibo previamente.
+### 2. Cierre de Sprint 2: Inteligencia de Conciliación 🔵 **EPIC ACTUAL**
+- [x] **Conciliación Automática 2.0**: Match real entre Bancos y Comprobantes vía CUIT, Cheque y Referencia (Hecho en RPC v3.1).
+- [x] **Trust Ledger**: Cruce CUIT vs CBU integrado en el motor de conciliación atómico.
+- [ ] **Pivot UX en Panel**: 
+    - Al clicar "Conciliar", mostrar *únicamente* Movimientos Previos (Recibos/OP huérfanos).
+    - Botón explícito para crear Recibo/OP solo si el usuario olvidó cargarlos previamente.
+- [ ] **UX de Importación**: Debouncing en búsquedas e independencia de estado por fila en el modal de previsualización.
 
 ---
 
-## 🛠️ BACKLOG TÉCNICO
-- [ ] **Test NDB/NCB**: Validar que las Notas Bancarias se emitan y dejen de estar "Pendientes".
-- [ ] **Impuestos**: Verificar persistencia de reglas de impuestos en extractos.
-- [ ] **UI Sidebar**: Actualizar navegación lateral.
+## 🛠️ BACKLOG TÉCNICO & DEUDA
+*Tareas menores y mantenimiento acumulado.*
+- [ ] **Refinamiento de UI**: Actualización de navegación lateral (Sidebar) y layouts de tablas reactivas.
+- [ ] **Persistencia de Impuestos**: Asegurar que las reglas de clasificación de impuestos en extractos sean 100% consistentes.
+- [ ] **Validación de Notas**: Asegurar que Notas de Débito/Crédito Bancarias se emitan y limpien el balance correctamente.
 
 ---
 
-## 📊 ROADMAP: CASH FLOW AVANZADO
+## 📈 HOJA DE RUTA (ROADMAP 2026)
 
-### Fase 4 & 5: Memoria de Formatos (Q2 2026)
-- **Plantillas & Huella Digital**: Reconocimiento automático de archivos conocidos.
-- **Visual Mapper**: Interfaz Drag & Drop para mapeo manual de columnas desconocidas.
+### Fase 3: Cash Flow Avanzado (Q2 2026)
+- **Escenarios Dinámicos**: Simulador de pagos diferidos y cobros adelantados.
+- **Asesor de IA (360°)**: Chat directo sobre riesgos de liquidez y proyecciones de caja.
+- **Visual Mapper**: Interfaz Drag & Drop para mapeo manual de formatos desconocidos.
 
-### Fase 6: The Diff-Engine (Executive View)
-- **Motor de Diferencias**: Sincronización bidireccional entre Excel y BiFlow.
-- **Asesor de Impacto (IA)**: Explicación de cómo los cambios manuales afectan la caja.
-
-### Fase 7: AI Advisor & Escenarios
-- **Scenario Planning**: Simulador de pagos diferidos, cobros adelantados y versiones de caja.
-- **Chat Advisor (360°)**: Preguntas directas a la IA sobre liquidez y riesgos.
-
-### Fase 8: Monetización & Multi-usuario (SaaS)
-- **Gestión de Equipos**: Invitaciones por email, roles (Admin/Member) y auditoría de accesos.
-- **Billing Automático**: Integración con Mercado Pago (Local) o Stripe (Global).
-- **Facturación AFIP**: Generación automática de comprobantes legales y portal de descarga para clientes.
-- **Lógica de Asientos (Seats)**: Cobro dinámico por usuario adicional a partir del 6to integrante.
+### Fase 4: SaaS & Monetización
+- **Gestión de Equipos**: Invitaciones, roles (Admin/Member) y auditoría de accesos.
+- **Fiscal & Legal**: Facturación automática AFIP y exportación de libros IVA.
+- **Billing**: Integración con Mercado Pago / Stripe para cobro de suscripciones.
 
 ---
 
-## 📱 Fase 9: Ecosistema "Cash Flow 360°"
-- Alertas Push móviles e integración directa con ERPs (Tango, Colppy, Bejerman).
+## 📄 HISTORIAL DE SESIONES (LOG)
+<details>
+<summary><b>Click para ver sesiones completadas</b></summary>
+
+### SESIÓN Marzo 13 - Refinamiento de Conciliación
+- **Objetivo:** Optimizar precisión del Match y usabilidad del panel.
+- [x] Extracción agresiva de IDs de 4+ dígitos.
+- [x] Limpieza de prefijos (`TRF-`, `CHQ-`) automática.
+- [x] Prioridad visual de referencia en ámbar brillante.
+- [x] Ocultamiento inmediato de transacciones conciliadas localmente.
+
+### FASE 1 & 2 - Core & Importación
+- [x] Universal Translator (Parsers para Macro, Galicia, Excel personalizado).
+- [x] Treasury Engine v1.0 (AR/AP).
+- [x] Detección de anomalías y alertas de precio.
+</details>
 
 ---
 
-## ⚙️ STACK TÉCNICO & INFRAESTRUCTURA
-- **Frontend**: Next.js 14+ (App Router).
-- **Backend**: Supabase (PG + Auth + RLS).
-- **E-mails**: Resend (Invitaciones y alertas de cobro).
-- **Pagos (Roadmap)**: Mercado Pago / Mobbex / Stripe.
-- **Motores**: AnomalyEngine, LiquidityEngine, TrustLedger.
+## ⚙️ STACK TÉCNICO
+- **Framework**: Next.js 14+ (App Router, SSR).
+- **Backend**: Supabase (PostgreSQL, Auth, RLS).
+- **Motores**: AnomalyEngine, LiquidityEngine, TrustLedger, ReconciliationEngine.
+- **Infra**: Resend (Emails), Vitest (Tests en camino).

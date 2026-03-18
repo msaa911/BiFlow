@@ -7,10 +7,13 @@ import { createClient } from '@supabase/supabase-js'
  */
 export function createAdminClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
-    if (!supabaseUrl || !serviceKey) {
-        throw new Error('Missing Supabase environment variables for admin client');
+    if (!supabaseUrl) {
+        throw new Error('[SECURITY] Missing NEXT_PUBLIC_SUPABASE_URL for admin client');
+    }
+    if (!serviceKey) {
+        throw new Error('[SECURITY_CRITICAL] Missing SUPABASE_SERVICE_ROLE_KEY. Admin client cannot be initialized safely.');
     }
 
     return createClient(supabaseUrl, serviceKey, {
