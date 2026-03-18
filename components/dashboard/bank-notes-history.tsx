@@ -150,6 +150,35 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
         }
     }
 
+    const handleDeleteAll = async () => {
+        const msg = accountId && accountId !== 'all' 
+            ? '¿Seguro que desea eliminar TODAS las notas bancarias de ESTA CUENTA? Esta acción no se puede deshacer.'
+            : '¿Seguro que desea eliminar TODAS las notas bancarias de LA ORGANIZACIÓN? Se borrarán todos los registros de NDB/NCB y se liberarán las transacciones asociadas.'
+
+        if (!confirm(`${msg}\n\nLas transacciones bancarias volverán a estar pendientes.`)) return
+
+        setLoading(true)
+        try {
+            const { data, error } = await supabase.rpc('delete_all_bank_notes', {
+                p_org_id: orgId,
+                p_account_id: accountId && accountId !== 'all' ? accountId : null
+            })
+
+            if (error) throw error
+
+            const count = data?.deleted_count || 0
+            toast.success(`${count} notas bancarias eliminadas y transacciones revertidas`)
+            
+            fetchNotes()
+            if (onRefresh) onRefresh()
+        } catch (error: any) {
+            console.error('Error deleting all bank notes:', error)
+            toast.error('Error al realizar el borrado masivo: ' + (error.message || error))
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
     }
@@ -177,6 +206,16 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="h-8 text-[10px] font-black uppercase flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20"
+                        onClick={handleDeleteAll}
+                        disabled={loading || notes.length === 0}
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Eliminar Todas
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-white" onClick={fetchNotes} disabled={loading}>
                         <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
