@@ -19,22 +19,19 @@ async function debugSchema() {
         const supabase = createClient(url, key);
 
         console.log('Fetching 1 invoice to see internal keys...');
-        const { data, error } = await supabase
-            .from('comprobantes')
-            .select('*')
-            .limit(1);
+        const { data: invoices, error: invErr } = await supabase.from('comprobantes').select('*').limit(1);
+        if (invErr) console.error('Inv error:', invErr);
+        if (invoices?.[0]) console.log('COMPROBANTES ROW:', invoices[0]);
 
-        if (error) {
-            console.error('Error fetching data:', error);
-            return;
-        }
+        console.log('\nFetching 1 treasury movement...');
+        const { data: movs, error: movErr } = await supabase.from('movimientos_tesoreria').select('*').limit(1);
+        if (movErr) console.error('Mov error:', movErr);
+        if (movs?.[0]) console.log('MOVIMIENTOS ROW:', movs[0]);
 
-        if (data && data.length > 0) {
-            console.log('ALL KEYS IN DB RESPONSE:', Object.keys(data[0]));
-            console.log('VALUES OF FIRST ROW:', data[0]);
-        } else {
-            console.log('No data found in comprobantes.');
-        }
+        console.log('\nFetching 1 payment application...');
+        const { data: apps, error: appErr } = await supabase.from('aplicaciones_pago').select('*').limit(1);
+        if (appErr) console.error('App error:', appErr);
+        if (apps?.[0]) console.log('APLICACIONES ROW:', apps[0]);
 
         console.log('\n--- SCHEMA DEBUG END ---');
     } catch (err) {

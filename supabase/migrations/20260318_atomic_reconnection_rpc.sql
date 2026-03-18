@@ -1,11 +1,11 @@
--- Final Atomic Reconciliation Engine v3.2.8 (Master)
+-- Final Atomic Reconciliation Engine v3.2.9 (Suggestions-Ready)
 -- Includes:
 -- - Atomic Phase 1 (Administrative) & Phase 2 (Banking)
 -- - Socio Support (entidad_id OR socio_id)
 -- - Elastic Number Matching (handles leading zeros and symbols)
 -- - Length Guards (min 4 chars) to prevent false positives
 -- - Correct Statistics for dry_run and match results
--- - Automatic payment application and status updates
+-- - FIX v3.2.9: Return detailed matches in dry_run mode for the Suggestions UI
 
 CREATE OR REPLACE FUNCTION reconcile_v3_1(
     p_org_id UUID,
@@ -22,6 +22,7 @@ DECLARE
     v_match_level INT;
     v_desc_clean TEXT;
     v_result JSONB;
+    v_matches JSONB := '[]'::jsonb; -- <--- v3.2.9: Accumulator for dry_run matches
 BEGIN
 
     -- PHASE 1: Conciliación Administrativa (Movimientos vs Facturas)
@@ -52,6 +53,16 @@ BEGIN
 
         IF v_inv_match.id IS NOT NULL THEN
             v_matched_count := v_matched_count + 1;
+            
+            -- v3.2.9: Record match for suggestions
+            v_matches := v_matches || jsonb_build_object(
+                'id', gen_random_uuid(),
+                'type', 'admin',
+                'level', 1,
+                'movement', jsonb_build_object('id', v_mov.id, 'concepto', v_mov.concepto, 'monto', v_mov.monto_total),
+                'invoice', jsonb_build_object('id', v_inv_match.id, 'numero', v_inv_match.nro_factura, 'monto', v_inv_match.monto_total)
+            );
+
             IF NOT p_dry_run THEN
                 INSERT INTO public.aplicaciones_pago (organization_id, movimiento_id, comprobante_id, monto_aplicado)
                 VALUES (p_org_id, v_mov.id, v_inv_match.id, abs(v_mov.monto_total));
@@ -78,37 +89,28 @@ BEGIN
         v_total_read := v_total_read + 1;
         v_match_id := NULL;
         v_match_level := 0;
-        v_desc_clean := upper(COALESCE(v_trans.descripcion_normalizada, v_trans.descripcion, ''));
 
+        -- We'll reuse the logic from v3.2.8 but record the matches
         -- L1: CUIT Exacto
         IF v_trans.cuit IS NOT NULL THEN
             SELECT mt.id INTO v_match_id FROM public.movimientos_tesoreria mt
-            WHERE mt.organization_id = p_org_id 
-              AND abs(mt.monto_total - abs(v_trans.monto)) <= 2.0
-              AND (
-                  EXISTS (SELECT 1 FROM public.entidades e WHERE e.id = mt.entidad_id AND e.cuit = v_trans.cuit)
-                  OR EXISTS (SELECT 1 FROM public.socios s WHERE s.id = mt.socio_id AND s.cuit = v_trans.cuit)
-              )
+            WHERE mt.organization_id = p_org_id AND abs(mt.monto_total - abs(v_trans.monto)) <= 2.0
+              AND (EXISTS (SELECT 1 FROM public.entidades e WHERE e.id = mt.entidad_id AND e.cuit = v_trans.cuit)
+                   OR EXISTS (SELECT 1 FROM public.socios s WHERE s.id = mt.socio_id AND s.cuit = v_trans.cuit))
               AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id)
-            ORDER BY mt.fecha ASC 
-            LIMIT 1;
+            ORDER BY mt.fecha ASC LIMIT 1;
             IF v_match_id IS NOT NULL THEN v_match_level := 1; END IF;
         END IF;
 
-        -- L2: Trust Ledger (CBU Match)
+        -- L2: Trust Ledger
         IF v_match_id IS NULL THEN
-            WITH matched_cbu AS (
-                SELECT cuit FROM public.trust_ledger WHERE organization_id = p_org_id AND cbu = (v_trans.metadata->>'cbu_origen') LIMIT 1
-            )
             SELECT mt.id INTO v_match_id FROM public.movimientos_tesoreria mt
-            JOIN matched_cbu mc ON (
-                EXISTS (SELECT 1 FROM public.entidades e WHERE e.id = mt.entidad_id AND e.cuit = mc.cuit)
-                OR EXISTS (SELECT 1 FROM public.socios s WHERE s.id = mt.socio_id AND s.cuit = mc.cuit)
-            )
             WHERE mt.organization_id = p_org_id AND abs(mt.monto_total - abs(v_trans.monto)) <= 2.0
+              AND EXISTS (SELECT 1 FROM public.trust_ledger tl WHERE tl.organization_id = p_org_id AND tl.cbu = (v_trans.metadata->>'cbu_origen')
+                          AND (EXISTS (SELECT 1 FROM public.entidades e WHERE e.id = mt.entidad_id AND e.cuit = tl.cuit)
+                               OR EXISTS (SELECT 1 FROM public.socios s WHERE s.id = mt.socio_id AND s.cuit = tl.cuit)))
               AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id)
-            ORDER BY mt.fecha ASC
-            LIMIT 1;
+            ORDER BY mt.fecha ASC LIMIT 1;
             IF v_match_id IS NOT NULL THEN v_match_level := 2; END IF;
         END IF;
 
@@ -117,16 +119,15 @@ BEGIN
             SELECT mt.id INTO v_match_id FROM public.movimientos_tesoreria mt
             WHERE mt.organization_id = p_org_id AND abs(mt.monto_total - abs(v_trans.monto)) <= 2.0
               AND COALESCE(mt.nro_comprobante, '') != ''
-              AND length(ltrim(regexp_replace(COALESCE(mt.nro_comprobante, ''), '\D', '', 'g'), '0')) >= 4
-              AND ( v_desc_clean LIKE '%' || upper(mt.nro_comprobante) || '%'
-                    OR v_desc_clean LIKE '%' || ltrim(regexp_replace(mt.nro_comprobante, '\D', '', 'g'), '0') || '%' )
+              AND length(ltrim(regexp_replace(mt.nro_comprobante, '\D', '', 'g'), '0')) >= 4
+              AND (upper(COALESCE(v_trans.descripcion_normalizada, v_trans.descripcion, '')) LIKE '%' || upper(mt.nro_comprobante) || '%'
+                   OR upper(COALESCE(v_trans.descripcion_normalizada, v_trans.descripcion, '')) LIKE '%' || ltrim(regexp_replace(mt.nro_comprobante, '\D', '', 'g'), '0') || '%')
               AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id)
-            ORDER BY mt.fecha ASC
-            LIMIT 1;
+            ORDER BY mt.fecha ASC LIMIT 1;
             IF v_match_id IS NOT NULL THEN v_match_level := 3; END IF;
         END IF;
 
-        -- L4: Proximidad de Monto
+        -- L4: Proximity
         IF v_match_id IS NULL THEN
             SELECT id INTO v_match_id FROM public.movimientos_tesoreria mt
             WHERE mt.organization_id = p_org_id AND abs(mt.monto_total - abs(v_trans.monto)) <= 0.05
@@ -138,17 +139,33 @@ BEGIN
 
         IF v_match_id IS NOT NULL THEN
             v_matched_count := v_matched_count + 1;
+            
+            -- v3.2.9: Record bank match
+            v_matches := v_matches || jsonb_build_object(
+                'id', gen_random_uuid(),
+                'type', 'bank',
+                'level', v_match_level,
+                'transactionId', v_trans.id,
+                'movementId', v_match_id
+            );
+
             IF NOT p_dry_run THEN
                 UPDATE public.transacciones 
                 SET movimiento_id = v_match_id, estado = 'conciliado', monto_usado = abs(monto),
-                    metadata = COALESCE(metadata, '{}'::jsonb) || json_build_object('linked_at', now(), 'match_level', v_match_level, 'method', 'auto_rpc_v3_full_atomic_v3.2.8_final')
+                    metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('linked_at', now(), 'match_level', v_match_level, 'method', 'auto_rpc_v3.2.9')
                 WHERE id = v_trans.id;
                 UPDATE public.instrumentos_pago SET estado = 'acreditado' WHERE movimiento_id = v_match_id;
             END IF;
         END IF;
     END LOOP;
 
-    v_result := jsonb_build_object('status', 'success', 'matched_count', v_matched_count, 'total_read', v_total_read, 'dry_run', p_dry_run);
+    v_result := jsonb_build_object(
+        'status', 'success', 
+        'matched_count', v_matched_count, 
+        'total_read', v_total_read, 
+        'dry_run', p_dry_run, 
+        'actions', v_matches -- <--- v3.2.9: Returning actions for the UI
+    );
 
     IF NOT p_dry_run THEN
         INSERT INTO public.reconciliation_logs (organization_id, metodo, total_leidos, total_conciliados, detalle)

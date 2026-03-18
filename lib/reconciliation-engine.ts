@@ -15,12 +15,14 @@ interface ReconciliationInternalResult {
     matched_count: number;
     total_read: number;
     dry_run: boolean;
+    actions?: any[]; // v3.2.9: Added for Suggestions API
     message?: string;
 }
 
 export interface ReconciliationResult {
     matched: number;
     total_read: number;
+    actions: any[]; // v3.2.9: Restored to support UI suggestions
     rpc_stats: ReconciliationInternalResult;
     method: string;
 }
@@ -47,12 +49,13 @@ export class ReconciliationEngine {
         console.log(`[RECONCILIATION v3.2.3] Triggering atomic server-side engine for org: ${organizationId}`)
 
         // PHASE 1 & 2 are now handled in ONE atomic transaction via RPC
-        // We pass the explicit type to .rpc<T>() for strict inference
-        const { data: rpcResult, error: rpcError } = await adminSupabase.rpc<ReconciliationInternalResult>('reconcile_v3_1', {
+        const { data, error: rpcError } = await adminSupabase.rpc('reconcile_v3_1', {
             p_org_id: organizationId,
             p_cuenta_id: cuentaId || null,
             p_dry_run: dryRun
         });
+
+        const rpcResult = data as unknown as ReconciliationInternalResult;
 
         if (rpcError) {
             console.error(`[RECONCILIATION] RPC High-Level Error:`, rpcError);
@@ -70,8 +73,9 @@ export class ReconciliationEngine {
         return {
             matched: rpcResult?.matched_count || 0,
             total_read: rpcResult?.total_read || 0,
+            actions: rpcResult?.actions || [],
             rpc_stats: rpcResult!,
-            method: 'atomic_postgres_rpc_v3_2.3'
+            method: 'atomic_postgres_rpc_v3_2.9'
         };
     }
 
