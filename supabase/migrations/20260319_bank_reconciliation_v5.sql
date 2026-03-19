@@ -1,7 +1,7 @@
--- Advanced Bank Reconciliation Engine v5.2.16 (TOTAL & EXPANDED)
+-- Advanced Bank Reconciliation Engine v5.3.0 (TOTAL & EXPANDED)
 -- Author: Antigravity AI
 -- Date: 2026-03-19
--- Rules: ROUND(monto, 0). FIXED v_result. ALL Labels.
+-- Rules: ROUND(monto, 0). 10-day window. Sequential Aging (Date > Num).
 
 CREATE OR REPLACE FUNCTION public.reconcile_v3_1(
     p_org_id UUID,
@@ -32,7 +32,7 @@ DECLARE
     v_candidates_count INT;
     v_is_bank_expense BOOLEAN;
 BEGIN
-    RAISE NOTICE 'Iniciando Reconciliación V5.2.16 (Totalmente Expandida)';
+    RAISE NOTICE 'Iniciando Reconciliación V5.3.0 (10 días / Aging Secuencial)';
 
     -- ============================================================
     -- FASE 1: CONCILIACIÓN ADMINISTRATIVA (Tesorería -> Facturas)
@@ -61,7 +61,7 @@ BEGIN
           )
           AND (c.entidad_id = v_mov.entidad_id)
           AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0)
-        ORDER BY c.fecha_emision ASC, c.created_at ASC
+        ORDER BY c.fecha_emision ASC, c.numero ASC, c.created_at ASC
         LIMIT 1;
 
         IF v_inv_match.id IS NOT NULL THEN
@@ -172,7 +172,7 @@ BEGIN
                 FROM public.movimientos_tesoreria mt
                 WHERE mt.organization_id = p_org_id 
                   AND ROUND(ABS(mt.monto_total), 0) = ROUND(ABS(v_trans.monto), 0)
-                  AND ABS(mt.fecha - v_trans.fecha) <= 30 
+                  AND ABS(mt.fecha - v_trans.fecha) <= 10 
                   AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id);
 
                 IF v_candidates_count = 1 THEN
@@ -207,7 +207,7 @@ BEGIN
 
         -- Diagnóstico final si nada coincidió
         IF v_match_id IS NULL AND v_fail_reason IS NULL THEN 
-            v_fail_reason := 'No hay registros por $' || ROUND(ABS(v_trans.monto), 0) || ' en el último mes.'; 
+            v_fail_reason := 'No hay registros por $' || ROUND(ABS(v_trans.monto), 0) || ' en los últimos 10 días.'; 
         END IF;
 
         -- Persistencia y Actualización
@@ -259,7 +259,7 @@ BEGIN
             detalle
         ) VALUES (
             p_org_id, 
-            'v5.2.16_complete', 
+            'v5.3.0_10_days', 
             v_total_read, 
             v_matched_count, 
             v_result
