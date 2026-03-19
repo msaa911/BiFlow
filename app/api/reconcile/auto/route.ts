@@ -11,15 +11,15 @@ export async function POST(request: Request) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
-        // Get organization_id from member table
+        // CORRECT TABLE: organization_members
         const { data: member, error: memberError } = await supabase
-            .from('members')
+            .from('organization_members')
             .select('organization_id')
             .eq('user_id', user.id)
             .single();
 
         if (memberError || !member) {
-            return new NextResponse('Organization not found', { status: 404 });
+            return NextResponse.json({ status: 'error', message: 'No se encontró la organización para este usuario.' }, { status: 404 });
         }
 
         const body = await request.json();
