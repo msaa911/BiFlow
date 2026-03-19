@@ -38,7 +38,7 @@ BEGIN
         WHERE c.organization_id = p_org_id
           AND c.estado NOT IN ('pagado', 'anulado', 'conciliado')
           AND ( (v_mov.tipo = 'cobro' AND c.tipo = 'factura_venta') OR (v_mov.tipo = 'pago' AND c.tipo = 'factura_compra') )
-          AND (COALESCE(c.entidad_id, c.socio_id) = COALESCE(v_mov.entidad_id, v_mov.socio_id))
+          AND (c.entidad_id = v_mov.entidad_id)
           AND abs(COALESCE(c.monto_pendiente, c.monto_total) - abs(v_mov.monto_total)) <= 2.0
           AND length(regexp_replace(COALESCE(c.nro_factura, ''), '[^A-Z0-9]', '', 'g')) >= 4
           AND (
@@ -95,8 +95,7 @@ BEGIN
         IF v_trans.cuit IS NOT NULL THEN
             SELECT mt.id INTO v_match_id FROM public.movimientos_tesoreria mt
             WHERE mt.organization_id = p_org_id AND abs(mt.monto_total - abs(v_trans.monto)) <= 2.0
-              AND (EXISTS (SELECT 1 FROM public.entidades e WHERE e.id = mt.entidad_id AND e.cuit = v_trans.cuit)
-                   OR EXISTS (SELECT 1 FROM public.socios s WHERE s.id = mt.socio_id AND s.cuit = v_trans.cuit))
+              AND EXISTS (SELECT 1 FROM public.entidades e WHERE e.id = mt.entidad_id AND e.cuit = v_trans.cuit)
               AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id)
             ORDER BY mt.fecha ASC LIMIT 1;
             IF v_match_id IS NOT NULL THEN v_match_level := 1; END IF;
@@ -107,8 +106,7 @@ BEGIN
             SELECT mt.id INTO v_match_id FROM public.movimientos_tesoreria mt
             WHERE mt.organization_id = p_org_id AND abs(mt.monto_total - abs(v_trans.monto)) <= 2.0
               AND EXISTS (SELECT 1 FROM public.trust_ledger tl WHERE tl.organization_id = p_org_id AND tl.cbu = (v_trans.metadata->>'cbu_origen')
-                          AND (EXISTS (SELECT 1 FROM public.entidades e WHERE e.id = mt.entidad_id AND e.cuit = tl.cuit)
-                               OR EXISTS (SELECT 1 FROM public.socios s WHERE s.id = mt.socio_id AND s.cuit = tl.cuit)))
+                          AND EXISTS (SELECT 1 FROM public.entidades e WHERE e.id = mt.entidad_id AND e.cuit = tl.cuit))
               AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id)
             ORDER BY mt.fecha ASC LIMIT 1;
             IF v_match_id IS NOT NULL THEN v_match_level := 2; END IF;
