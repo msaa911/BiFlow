@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2, Sparkles, HelpCircle } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -653,12 +653,25 @@ export function UnreconciledPanel({
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <p className="text-xs font-bold text-white group-hover:text-emerald-400 leading-tight">{tx.descripcion}</p>
-                                            {globalAiSuggestions.some(s => s.transId === tx.id) && (
+                                            {(globalAiSuggestions.some(s => s.transId === tx.id) || tx.metadata?.suggestions?.length > 0) && (
                                                 <Badge variant="outline" className="text-[9px] font-black h-4 bg-amber-500/10 text-amber-500 border-amber-500/20 px-1.5 leading-none animate-pulse">
-                                                    ✨ IA MATCH
+                                                    ✨ IA SUGGEST
                                                 </Badge>
                                             )}
                                         </div>
+                                        {tx.metadata?.suggestions?.length > 0 && (
+                                            <div className="mt-1.5 flex items-center gap-1.5 bg-amber-500/5 border border-amber-500/10 rounded-lg p-2 animate-in fade-in slide-in-from-left-2">
+                                                <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                                                <p className="text-[10px] text-amber-200/80 font-medium italic">
+                                                    {tx.metadata.suggestions[0].label}: <span className="text-white font-bold">{tx.metadata.suggestions[0].entidad}</span>
+                                                    {tx.metadata.suggestions[0].diff !== undefined && (
+                                                        <span className="ml-1 text-amber-400">
+                                                            (Dif: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(tx.metadata.suggestions[0].diff)})
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className="text-[11px] font-mono text-gray-400 font-medium">{new Date(tx.fecha).toLocaleDateString('es-AR')}</span>
                                             {(tx.referencia || tx.metadata?.referencia) && (

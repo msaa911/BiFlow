@@ -113,7 +113,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             if (!res.ok) throw new Error('Error en el motor de conciliación')
 
             const result = await res.json()
-            toast.success(`Conciliación finalizada: ${result.matches || 0} vínculos creados`, { id: toastId })
+            toast.success(`Conciliación finalizada: ${result.matched || 0} vínculos creados`, { id: toastId })
             fetchData()
         } catch (error: any) {
             toast.error(error.message, { id: toastId })
