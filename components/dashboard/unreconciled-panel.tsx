@@ -462,13 +462,13 @@ export function UnreconciledPanel({
 
             const currentMetadata = latestTx?.metadata || {}
             
-            const { error: updateError } = await supabase
+            const { data: updateData, error: updateError } = await supabase
                 .from('transacciones')
                 .update({
                     estado: 'conciliado',
                     monto_usado: Math.abs(selectedTx.monto),
                     metadata: {
-                        ...currentMetadata,
+                        ...(currentMetadata || {}),
                         categoria_transaccion: category,
                         bank_note_id: voucher.id,
                         reconciled_at: new Date().toISOString(),
@@ -479,12 +479,11 @@ export function UnreconciledPanel({
                     }
                 })
                 .eq('id', selectedTx.id)
-                .eq('organization_id', currentOrgId)
                 .select()
 
-            if (updateError) {
-                console.error("Critical error updating transaction:", updateError)
-                throw updateError
+            if (updateError || !updateData || updateData.length === 0) {
+                console.error("Critical error updating transaction:", updateError || "No rows matched ID")
+                throw new Error("No se pudo actualizar la transacción bancaria. Verifique que no haya sido procesada anteriormente.")
             }
 
             console.log("Transaction successfully marked as reconciled:", selectedTx.id)
