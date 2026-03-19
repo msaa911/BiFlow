@@ -512,7 +512,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
                                 <div className="p-3 border-b border-gray-800 bg-emerald-500/5">
                                     <h3 className="font-bold text-white text-[11px] flex items-center gap-2">
-                                        <TrendingUp className="w-3 h-3 text-emerald-500" /> Ingresos
+                                        <TrendingUp className="w-3 h-3 text-emerald-500" /> Créditos
                                     </h3>
                                 </div>
                                 <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20">
@@ -534,7 +534,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
                                 <div className="p-3 border-b border-gray-800 bg-red-500/5">
                                     <h3 className="font-bold text-white text-[11px] flex items-center gap-2">
-                                        <TrendingDown className="w-3 h-3 text-red-500" /> Egresos
+                                        <TrendingDown className="w-3 h-3 text-red-500" /> Débitos
                                     </h3>
                                 </div>
                                 <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-red-500/20">
@@ -593,8 +593,8 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800 w-fit">
                                         {[
                                             { id: 'all', label: 'TODOS', color: 'emerald', count: counts.all },
-                                            { id: 'income', label: 'INGRESOS', color: 'emerald', count: counts.income },
-                                            { id: 'expense', label: 'EGRESOS', color: 'red', count: counts.expense }
+                                            { id: 'income', label: 'CREDITOS', color: 'emerald', count: counts.income },
+                                            { id: 'expense', label: 'DEBITOS', color: 'red', count: counts.expense }
                                         ].map((f) => (
                                             <button
                                                 key={f.id}
@@ -661,7 +661,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                             <td className="px-6 py-3 font-mono text-[11px] text-gray-500">{formatDate(t.fecha)}</td>
                                             {selectedAccountId === 'all' && (
                                                 <td className="px-6 py-3">
-                                                    <Badge variant="outline" className="text-[9px] bg-emerald-500/5 text-emerald-400 border-emerald-500/20 font-bold px-2 py-0">
+                                                    <Badge variant="outline" className="text-[9px] bg-blue-500/10 text-blue-400 border-blue-500/30 font-bold px-2 py-0">
                                                         {bankAccountMap[t.cuenta_id] || 'N/A'}
                                                     </Badge>
                                                 </td>
