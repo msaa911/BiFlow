@@ -178,64 +178,65 @@ export default function UploadPage() {
         const filesToProcess = overrideFiles || files
         if (filesToProcess.length === 0) return
 
-        setUploading(true)
-        setSuccess(false)
-        setProgress(0)
-        setError(null)
-        setUploadResult(null)
+        try {
+            setUploading(true)
+            setSuccess(false)
+            setProgress(0)
+            setError(null)
+            setUploadResult(null)
 
-        let completed = 0
-        const totalFiles = filesToProcess.length
-        const totalProgressPerFile = 100 / totalFiles
+            let completed = 0
+            const totalFiles = filesToProcess.length
+            const totalProgressPerFile = 100 / totalFiles
 
-        // Accumulate results
-        let totalCount = 0
-        let totalSkipped = 0
-        let totalReview = 0
-        let allWarnings: string[] = []
+            // Accumulate results
+            let totalCount = 0
+            let totalSkipped = 0
+            let totalReview = 0
+            let allWarnings: string[] = []
 
-        for (const file of filesToProcess) {
-            try {
-                const result = await uploadSingleFile(file, (percent) => {
-                    const currentBase = completed * totalProgressPerFile
-                    const currentIncrement = (percent * totalProgressPerFile) / 100
-                    setProgress(Math.round(currentBase + currentIncrement))
-                }, undefined, undefined, overrideFormatId, uploadContext, selectedAccountId)
+            for (const file of filesToProcess) {
+                try {
+                    const result = await uploadSingleFile(file, (percent) => {
+                        const currentBase = completed * totalProgressPerFile
+                        const currentIncrement = (percent * totalProgressPerFile) / 100
+                        setProgress(Math.round(currentBase + currentIncrement))
+                    }, undefined, undefined, overrideFormatId, uploadContext, selectedAccountId)
 
-                if (result) {
-                    totalCount += result.count || 0
-                    totalSkipped += result.skipped || 0
-                    totalReview += result.reviewCount || 0
-                    const findings = result.findingsCount || 0
-                    if (result.warnings && Array.isArray(result.warnings)) {
-                        allWarnings = [...allWarnings, ...result.warnings]
+                    if (result) {
+                        totalCount += result.count || 0
+                        totalSkipped += result.skipped || 0
+                        totalReview += result.reviewCount || 0
+                        const findings = result.findingsCount || 0
+                        if (result.warnings && Array.isArray(result.warnings)) {
+                            allWarnings = [...allWarnings, ...result.warnings]
+                        }
+                        // Update findings count in state if present
+                        setUploadResult(prev => prev ? { ...prev, findingsCount: (prev.findingsCount || 0) + findings } : null)
                     }
-                    // Update findings count in state if present
-                    setUploadResult(prev => prev ? { ...prev, findingsCount: (prev.findingsCount || 0) + findings } : null)
+
+                    completed++
+                } catch (err: any) {
+                    console.error(err)
+                    setError(`Error al subir ${file.name}: ${err.message}`)
+                    return
                 }
-
-                completed++
-            } catch (err: any) {
-                console.error(err)
-                setError(`Error al subir ${file.name}: ${err.message}`)
-                setUploading(false)
-                return
             }
+
+            setSuccess(true)
+            setProgress(100)
+            setUploadResult({
+                count: totalCount,
+                skipped: totalSkipped,
+                warnings: allWarnings,
+                reviewCount: totalReview,
+                findingsCount: 0 
+            })
+            setRefreshHistory(prev => prev + 1)
+        } finally {
+            setUploading(false)
+            router.refresh()
         }
-
-        setSuccess(true)
-        setProgress(100)
-        setUploadResult({
-            count: totalCount,
-            skipped: totalSkipped,
-            warnings: allWarnings,
-            reviewCount: totalReview,
-            findingsCount: 0 // Will be updated if a single file returns it
-        })
-        setRefreshHistory(prev => prev + 1)
-
-        // Refresh Next.js data cache so other pages show new data immediately
-        router.refresh()
     }
 
     const handleSignConfirmation = async (invert: boolean) => {
@@ -981,7 +982,14 @@ export default function UploadPage() {
                                 </div>
 
                                 <button
-                                    onClick={() => setSuccess(false)}
+                                    onClick={() => {
+                                        setSuccess(false)
+                                        setFiles([])
+                                        setProgress(0)
+                                        setUploading(false)
+                                        setUploadResult(null)
+                                        setError(null)
+                                    }}
                                     className="text-xs text-gray-600 hover:text-white transition-colors"
                                 >
                                     Cargar otro archivo
