@@ -4,8 +4,9 @@ export class ReconciliationEngine {
   static async executeAuto(orgId: string, options: { 
     bankAccountId?: string; 
     dryRun?: boolean;
+    supabase?: any;
   } = {}) {
-    const supabase = await createClient();
+    const supabase = options.supabase || await createClient();
 
     // Mapping old 'bankAccountId' to the new 'p_cuenta_id' parameter
     const { data, error } = await supabase.rpc('reconcile_v3_1', {

@@ -29,7 +29,8 @@ export async function POST(request: Request) {
         // Calling the NEW executeAuto method
         const result = await ReconciliationEngine.executeAuto(member.organization_id, {
             bankAccountId,
-            dryRun
+            dryRun,
+            supabase
         });
 
         return NextResponse.json(result);
