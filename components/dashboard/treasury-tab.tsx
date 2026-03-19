@@ -107,7 +107,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
             const res = await fetch('/api/reconcile/auto', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orgId, options: { scope: 'all' } })
+                body: JSON.stringify({ orgId, scope: 'all' })
             })
 
             if (!res.ok) throw new Error('Error en el motor de conciliación')

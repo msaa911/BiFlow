@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw, Landmark } from 'lucide-react'
+import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw, Landmark, Zap, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CheckPortfolio } from './check-portfolio'
 import { Button } from '@/components/ui/button'
@@ -300,34 +300,28 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                 {/* Card 1: Conciliación */}
                 <div className="p-6 bg-gray-900 border border-gray-800 rounded-2xl shadow-xl flex flex-col justify-center gap-3">
                     <div>
-                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Banknote className="w-5 h-5 text-emerald-400 shrink-0" />
+                        <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Zap className="w-5 h-5 text-emerald-400 shrink-0" />
                             Automatización
-                        </h3>
+                        </h1>
                         <p className="text-gray-400 text-[10px] mt-1">
-                            Sincronización de extractos y facturación.
+                            Actualización automatizada y vinculación inteligente con el extracto.
                         </p>
                     </div>
                     <div className="flex flex-col gap-2">
                         <Button
-                            onClick={() => handleReconcile('admin')}
-                            disabled={reconcilingAdmin}
-                            className={`
-                                w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-9 rounded-lg transition-all active:scale-95 text-[11px]
-                                ${reconcilingAdmin ? 'animate-pulse opacity-80' : ''}
-                            `}
-                        >
-                            {reconcilingAdmin ? 'Procesando...' : 'Vincular Facturas'}
-                        </Button>
-                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-emerald-600/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20 font-bold w-full h-10 rounded-xl transition-all"
                             onClick={() => handleReconcile('bank')}
                             disabled={reconcilingBank}
-                            className={`
-                                w-full bg-amber-600 hover:bg-amber-500 text-white font-bold h-9 rounded-lg transition-all active:scale-95 text-[11px]
-                                ${reconcilingBank ? 'animate-pulse opacity-80' : ''}
-                            `}
                         >
-                            {reconcilingBank ? 'Procesando...' : 'Conciliación Bancaria'}
+                            {reconcilingBank ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                <Zap className="w-4 h-4 mr-2" />
+                            )}
+                            Ejecutar Conciliación Inteligente
                         </Button>
                     </div>
                 </div>
