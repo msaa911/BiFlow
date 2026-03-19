@@ -494,16 +494,15 @@ export function UnreconciledPanel({
                         categoria_transaccion: category,
                         bank_note_id: voucher.id,
                         reconciled_at: new Date().toISOString(),
-                        link_method: 'direct_note_rpc_v2',
+                        link_method: 'direct_note_v3_atomic',
                         generated_voucher_id: voucher.id,
                         category: category,
                         original_desc: selectedTx.descripcion
                     }
                 }, { count: 'exact' })
-                .eq('id', selectedTx.id)
-                .eq('organization_id', latestTx?.organization_id || orgId)
+                .eq('id', selectedTx.id.trim())
 
-            console.log("Update executed for tx:", selectedTx.id, "Error:", updateError, "Count:", count);
+            console.log("Atomic update executed for tx:", selectedTx.id, "Error:", updateError, "Count:", count);
 
             if (updateError || count === 0) {
                 console.error("Critical error updating transaction:", updateError || "No rows matched filters/permissions");
