@@ -21,7 +21,15 @@ export async function POST(request: Request) {
 
     try {
         // Use Admin client for archivos_importados state updates (bypasses RLS)
-        adminSupabase = createAdminClient()
+        try {
+            adminSupabase = createAdminClient()
+        } catch (e: any) {
+            console.error('FAILED TO INIT ADMIN CLIENT:', e.message)
+            return NextResponse.json({ 
+                error: `Error de configuración del servidor: ${e.message}`, 
+                details: 'Es posible que falten las variables de entorno SUPABASE_SERVICE_ROLE_KEY en Vercel.' 
+            }, { status: 500 })
+        }
         console.log('1. Parsing Form Data')
         const formData = await request.formData()
         const file = formData.get('file') as File
@@ -698,9 +706,10 @@ export async function POST(request: Request) {
             }
 
         return NextResponse.json({
-            error: 'Internal server error',
+            error: `Error al procesar el archivo (${fileName}): ${error.message || 'Error desconocido'}`,
             details: error.message || 'Unknown error',
-            fileName: fileName
+            fileName: fileName,
+            stack: error.stack
         }, { status: 500 })
     }
 }
