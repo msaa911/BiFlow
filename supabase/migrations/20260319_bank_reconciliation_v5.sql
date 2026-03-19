@@ -1,7 +1,7 @@
--- Advanced Bank Reconciliation Engine v5.2.9 (THE TOTAL & COMPLETE EDITION)
+-- Advanced Bank Reconciliation Engine v5.2.10 (SQL SCHEMA FIX)
 -- Author: Antigravity AI
 -- Date: 2026-03-19
--- Rules: ROUND(monto, 0) tolerance only. Diagnostic for Bank Notes. No shortcuts.
+-- Rules: ROUND(monto, 0). Fixed "updated_at" missing column bug.
 
 CREATE OR REPLACE FUNCTION public.reconcile_v3_1(
     p_org_id UUID,
@@ -26,7 +26,7 @@ DECLARE
     v_candidates_count INT;
     v_is_bank_expense BOOLEAN;
 BEGIN
-    RAISE NOTICE 'Iniciando Reconciliación V5.2.9 para Org: % (Tolerancia: Redondeo Entero)', p_org_id;
+    RAISE NOTICE 'Iniciando Reconciliación V5.2.10 para Org: % (Fix: Schema Transacciones)', p_org_id;
 
     -- ============================================================
     -- PHASE 1: CONCILIACIÓN ADMINISTRATIVA (Tesorería vs Facturas)
@@ -91,7 +91,7 @@ BEGIN
         v_match_id := NULL; v_match_level := 0; v_match_label := NULL;
         v_suggestions := NULL; v_fail_reason := NULL; v_candidates_count := 0;
 
-        -- ¿Es un gasto bancario obvio? (Criterio: No se busca en tesorería)
+        -- ¿Es un gasto bancario obvio?
         v_is_bank_expense := (v_trans.descripcion ~* 'COMISION' OR v_trans.descripcion ~* 'MANTENIMIENTO' OR 
                               v_trans.descripcion ~* 'IMPUESTO' OR v_trans.descripcion ~* 'IVA' OR 
                               v_trans.descripcion ~* 'GASTO' OR v_trans.descripcion ~* 'INTERES');
@@ -99,13 +99,12 @@ BEGIN
         IF v_is_bank_expense THEN
             v_fail_reason := 'Gasto bancario directo. Se recomienda generar Nota Bancaria.';
         ELSE
-            -- 1. Radar de CUIT (Regex)
+            -- Radar de CUIT
             BEGIN
                 v_extracted_cuit := (SELECT (regexp_matches(v_trans.descripcion, '(\d{11})'))[1] LIMIT 1);
             EXCEPTION WHEN OTHERS THEN v_extracted_cuit := NULL;
             END;
 
-            -- NIVEL 1: Match por CUIT + Monto Redondeado (ROUND 0)
             IF v_extracted_cuit IS NOT NULL THEN
                 SELECT mt.id INTO v_match_id FROM public.movimientos_tesoreria mt
                 JOIN public.entidades e ON mt.entidad_id = e.id
@@ -116,7 +115,7 @@ BEGIN
                 IF v_match_id IS NOT NULL THEN v_match_level := 1; v_match_label := 'CUIT Encontrado'; END IF;
             END IF;
 
-            -- NIVEL 3: Referencia de 4 dígitos (Solo si hay números claros en el banco)
+            -- Referencia (L3)
             IF v_match_id IS NULL AND LENGTH(REGEXP_REPLACE(COALESCE(v_trans.descripcion, ''), '[^0-9]', '', 'g')) >= 4 THEN
                 SELECT CASE WHEN COUNT(DISTINCT mt.id) = 1 THEN (ARRAY_AGG(mt.id))[1] ELSE NULL END INTO v_match_id
                 FROM public.movimientos_tesoreria mt
@@ -129,7 +128,7 @@ BEGIN
                 IF v_match_id IS NOT NULL THEN v_match_level := 3; v_match_label := 'Referencia coincidente'; END IF;
             END IF;
 
-            -- NIVEL 4: Monto y Fecha (30 días de ventana + Detección de Ambigüedad)
+            -- Proximidad (L4)
             IF v_match_id IS NULL THEN
                 SELECT COUNT(DISTINCT mt.id) INTO v_candidates_count FROM public.movimientos_tesoreria mt
                 WHERE mt.organization_id = p_org_id 
@@ -158,13 +157,12 @@ BEGIN
             END IF;
         END IF;
 
-        -- Si no hubo match, configuramos el mensaje de diagnóstico final
         IF v_match_id IS NULL AND v_fail_reason IS NULL THEN
             v_fail_reason := 'Sin movimientos de $' || ROUND(ABS(v_trans.monto), 0) || ' en tesorería para el último mes.';
         END IF;
 
         -- ============================================================
-        -- PERSISTENCIA DE LA FASE 2
+        -- PERSISTENCIA DE LA FASE 2 (Limpia de updated_at)
         -- ============================================================
         IF v_match_id IS NOT NULL THEN
             v_matched_count := v_matched_count + 1;
@@ -184,12 +182,13 @@ BEGIN
                         'match_level', v_match_level, 
                         'match_method', v_match_label, 
                         'reconciled_at', now()
-                    ),
-                    updated_at = now()
+                    )
                 WHERE id = v_trans.id;
 
-                -- Marcar el instrumento como acreditado (cierre de ciclo bancario)
-                UPDATE public.instrumentos_pago SET estado = 'acreditado', updated_at = now() 
+                -- Marcar el instrumento como acreditado
+                UPDATE public.instrumentos_pago SET 
+                    estado = 'acreditado', 
+                    updated_at = now() 
                 WHERE movimiento_id = v_match_id;
             END IF;
         ELSE
@@ -198,8 +197,7 @@ BEGIN
                     metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
                         'suggestions', v_suggestions, 
                         'diagnostic_message', v_fail_reason
-                    ),
-                    updated_at = now()
+                    )
                 WHERE id = v_trans.id;
             END IF;
         END IF;
@@ -221,14 +219,14 @@ BEGIN
         INSERT INTO public.reconciliation_logs (
             organization_id, método, total_leidos, total_conciliados, detalle
         ) VALUES (
-            p_org_id, 'v5.2.9_total_strict', v_total_read, v_matched_count, v_result
+            p_org_id, 'v5.2.10_total_strict', v_total_read, v_matched_count, v_result
         );
     END IF;
 
     RETURN v_result;
 
 EXCEPTION WHEN OTHERS THEN
-    RAISE WARNING 'Error Crítico en Motor v5.2.9: %', SQLERRM;
+    RAISE WARNING 'Error Crítico en Motor v5.2.10: %', SQLERRM;
     RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
