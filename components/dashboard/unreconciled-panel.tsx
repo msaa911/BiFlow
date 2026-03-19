@@ -681,7 +681,13 @@ export function UnreconciledPanel({
                                                 </span>
                                             )}
                                             <span className="text-[10px] text-gray-600 font-mono tracking-tighter uppercase ml-2">ID: {tx.id.split('-')[0]}</span>
+                                            {tx.metadata?.diagnostic_message && (
+                                                <div className="ml-1 inline-block" title={tx.metadata.diagnostic_message}>
+                                                    <HelpCircle className="w-3 h-3 text-emerald-500/50 cursor-help hover:text-emerald-400" />
+                                                </div>
+                                            )}
                                         </div>
+
                                     </div>
                                 </div>
 
