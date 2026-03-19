@@ -270,14 +270,14 @@ export class UniversalTranslator {
                 if (textCol) conceptoRaw = textCol;
             }
             const concepto = this.normalizeConcept(conceptoRaw, thesaurus);
-            let cuit = (idx.cuit !== -1 ? row[idx.cuit] : '').replace(/[^0-9]/g, '');
+            let cuit = (idx.cuit !== -1 ? String(row[idx.cuit] || '') : '').replace(/[^0-9]/g, '');
             if (cuit.length !== 11) {
                 const cuitMatch = line.match(/\b(20|23|24|27|30|33|34)-?\d{8}-?\d\b/);
                 if (cuitMatch) cuit = cuitMatch[0].replace(/-/g, '');
             }
 
             // Smart CBU Extraction (Search for 22 digits if not in explicit column)
-            let cbu = idx.cbu !== -1 ? row[idx.cbu].replace(/[^0-9]/g, '') : '';
+            let cbu = idx.cbu !== -1 ? String(row[idx.cbu] || '').replace(/[^0-9]/g, '') : '';
             if (cbu.length !== 22) {
                 const cbuMatch = line.match(/\b\d{22}\b/);
                 if (cbuMatch) cbu = cbuMatch[0];
@@ -322,7 +322,7 @@ export class UniversalTranslator {
             // Lógica de Signos si viene en columna Tipo
             let tipo: 'DEBITO' | 'CREDITO' = monto < 0 ? 'DEBITO' : 'CREDITO';
             if (monto !== 0 && idx.tipo !== -1 && row[idx.tipo]) {
-                const tr = row[idx.tipo].toUpperCase();
+                const tr = String(row[idx.tipo]).toUpperCase();
                 const isDebit = ['DEB', 'EGRESO', 'D', 'DEBITO', '-', '1', 'BAJA'].some(k => tr.includes(k));
                 if (isDebit) {
                     monto = -Math.abs(monto);
@@ -333,19 +333,19 @@ export class UniversalTranslator {
                 }
             }
 
-            if (monto !== 0) {
+            if (monto !== 0 && fecha) {
                 const category = this.categorizeTransaction(conceptoRaw, monto, numero_cheque || undefined);
                 transactions.push({
                     fecha,
                     concepto,
                     monto,
                     cuit: cuit || undefined,
-                    razon_social: idx.razon_social !== -1 ? row[idx.razon_social] : '',
-                    banco: idx.banco !== -1 ? row[idx.banco] : '',
+                    razon_social: idx.razon_social !== -1 ? String(row[idx.razon_social] || '') : '',
+                    banco: idx.banco !== -1 ? String(row[idx.banco] || '') : '',
                     // numero_cheque and cbu are now part of metadata or handled via numero / referencia
                     referencia: referencia || undefined,
                     vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
-                    numero: idx.nro_factura !== -1 ? row[idx.nro_factura] : undefined,
+                    numero: idx.nro_factura !== -1 ? String(row[idx.nro_factura] || '') : undefined,
                     tipo: tipo,
                     tags: [],
                     raw: row,
@@ -389,7 +389,7 @@ export class UniversalTranslator {
                 }
             }
 
-            if (monto !== 0) {
+            if (monto !== 0 && fecha) {
                 const category = this.categorizeTransaction(line, monto);
                 transactions.push({
                     fecha,
@@ -467,7 +467,7 @@ export class UniversalTranslator {
         return clean || 'Sin concepto';
     }
 
-    private static normalizeDate(raw: string): string | null {
+    private static normalizeDate(raw: any): string | null {
         if (!raw) return null;
         let clean = String(raw).replace(/[^\d/.-]/g, ''); // Limpiar caracteres invisibles
 
@@ -493,10 +493,10 @@ export class UniversalTranslator {
         return null;
     }
 
-    private static parseCurrency(str: string): number {
+    private static parseCurrency(str: any): number {
         if (!str) return 0;
         // Limpieza de símbolos de moneda y espacios, manteniendo signos iniciales
-        let clean = str.trim().replace(/[^0-9.,-]/g, '');
+        let clean = String(str).trim().replace(/[^0-9.,-]/g, '');
         if (!clean) return 0;
 
         // Detección automática de formato (EU/AR vs US)
@@ -533,7 +533,7 @@ export class UniversalTranslator {
         const taxCuits = Object.values(this.TAX_IDS).map(id => id.replace(/-/g, ''));
         if (taxCuits.includes(cleanCuit)) return true;
 
-        const upper = concepto.toUpperCase();
+        const upper = String(concepto || '').toUpperCase();
         const taxKeywords = ['SIRCREB', 'IIBB', 'RETENCION', 'IMPUESTO', 'AFIP', 'ARBA', 'PERCEPCION'];
         return taxKeywords.some(k => upper.includes(k)) && !upper.includes('IVA');
     }
@@ -699,7 +699,7 @@ export class UniversalTranslator {
     }
 
     private static categorizeTransaction(concepto: string, monto: number, numeroCheque?: string): string {
-        const c = concepto.toUpperCase();
+        const c = String(concepto || '').toUpperCase();
 
         // 1. CHEQUE (Prioridad Máxima)
         if (numeroCheque || c.includes('CHEQUE') || c.includes('CH ') || c.includes('VALOR') || c.includes('PAGO CH')) return 'CHEQUE';

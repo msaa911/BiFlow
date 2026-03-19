@@ -123,7 +123,7 @@ export class LiquidityEngine {
         const findings: any[] = [];
 
         for (const tx of transactions) {
-            const desc = tx.descripcion.toLowerCase();
+            const desc = (tx.descripcion || tx.concepto || '').toLowerCase();
             const montoAbs = Math.abs(tx.monto);
 
             // 1. Auditoría de Comisiones de Cheque (asumiendo monto de referencia en metadata si existiera, o sobre el total si es el item)

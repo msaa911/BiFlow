@@ -607,11 +607,16 @@ export async function POST(request: Request) {
                         }
                     }))
 
-                    const { error: insError } = await currentSupabase
+                    // Use adminSupabase for critical data insertion to ensure it bypasses RLS issues
+                    // We already verified the user's org membership at the beginning of the function
+                    const { error: insError } = await adminSupabase
                         .from('transacciones')
                         .insert(sanitizedTransactions)
 
-                    if (insError) throw new Error(`Error insertion: ${insError.message}`)
+                    if (insError) {
+                        console.error('Error insertion [v5.5]:', insError)
+                        throw new Error(`Error al insertar transacciones: ${insError.message}`)
+                    }
                 }
             }
 
@@ -663,33 +668,29 @@ export async function POST(request: Request) {
     } catch (error: any) {
         console.error('FATAL ERROR:', error)
         try {
-            if (currentSupabase && fileName !== 'unknown_file') {
-                // Determine importId if possible (it might not have been created yet)
-                // We'll try to find the latest "procesando" record for this file/org if importId is missing
-                // But safer to just look at the variable.
-                const { data: latest } = await currentSupabase
+                // Determine targetId if possible (it might not have been created yet or failed)
+                const { data: latest } = await adminSupabase
                     .from('archivos_importados')
                     .select('id')
                     .eq('nombre_archivo', fileName)
                     .eq('estado', 'procesando')
                     .order('created_at', { ascending: false })
                     .limit(1)
-                    .single()
+                    .maybeSingle()
 
                 const targetId = latest?.id
 
                 if (targetId) {
                     await adminSupabase.from('archivos_importados').update({
                         estado: 'error',
-                        metadata: { fatal_error: error.message }
+                        metadata: { fatal_error: error.message || 'Error desconocido', stack: error.stack }
                     }).eq('id', targetId)
                 }
 
-                await logError(currentSupabase, 'Unhandled Exception', error.message, fileName)
+                await logError(adminSupabase, 'Unhandled Exception', error.message || 'Error desconocido', fileName, orgId)
+            } catch (e) {
+                console.error('Logging/State fix failed in catch:', e)
             }
-        } catch (e) {
-            console.error('Logging/State fix failed in catch:', e)
-        }
 
         return NextResponse.json({
             error: 'Internal server error',
@@ -925,11 +926,23 @@ function normalizeDate(str: string) {
 }
 
 async function getOrgId(supabase: any, userId: string) {
-    const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', userId).single()
+    if (!userId) throw new Error('No user authenticated');
+
+    const { data: member, error: memberErr } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', userId)
+        .maybeSingle()
+    
+    if (memberErr) console.warn('Warning: member fetch error:', memberErr.message);
     if (member) return member.organization_id
 
     // Use RPC to bypass RLS issues during creation
+    console.log(`[AUTH] No organization found for user ${userId}. Attempting creation...`)
     const { data: orgId, error } = await supabase.rpc('create_new_organization', { org_name: 'Mi Empresa' })
-    if (error) throw new Error(`Could not create org: ${error.message}`)
+    if (error) {
+        console.error('CRITICAL: Organization creation failed:', error);
+        throw new Error(`No se pudo crear ni encontrar organización: ${error.message}`);
+    }
     return orgId
 }
