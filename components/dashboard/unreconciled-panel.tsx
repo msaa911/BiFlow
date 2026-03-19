@@ -454,11 +454,16 @@ export function UnreconciledPanel({
 
             // 5. Update Bank Transaction (Ensure it's reconciled)
             // Fetch latest tx just in case to avoid lost updates
-            const { data: latestTx } = await supabase
+            const { data: latestTx, error: latestTxErr } = await supabase
                 .from('transacciones')
-                .select('metadata')
+                .select('metadata, estado, organization_id')
                 .eq('id', selectedTx.id)
                 .single()
+
+            if (latestTxErr) {
+                console.error("Error fetching latest transaction state:", latestTxErr);
+            }
+            console.log("Latest transaction state from DB:", { latestTx, error: latestTxErr });
 
             const currentMetadata = latestTx?.metadata || {}
             console.log("Attempting to update transaction:", { id: selectedTx.id, currentMetadata, category });
