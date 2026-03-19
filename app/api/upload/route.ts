@@ -16,12 +16,12 @@ export async function POST(request: Request) {
     console.log('--- POST START ---')
     let fileName = 'unknown_file'
     let currentSupabase: any = null
+    let adminSupabase: any = null
     let orgId: string | null = null
 
-    // Use Admin client for archivos_importados state updates (bypasses RLS)
-    const adminSupabase = createAdminClient()
-
     try {
+        // Use Admin client for archivos_importados state updates (bypasses RLS)
+        adminSupabase = createAdminClient()
         console.log('1. Parsing Form Data')
         const formData = await request.formData()
         const file = formData.get('file') as File
@@ -670,25 +670,29 @@ export async function POST(request: Request) {
         console.error('FATAL ERROR:', error)
         try {
                 // Determine targetId if possible (it might not have been created yet or failed)
-                const { data: latest } = await adminSupabase
-                    .from('archivos_importados')
-                    .select('id')
-                    .eq('nombre_archivo', fileName)
-                    .eq('estado', 'procesando')
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle()
+                let targetId = null
+                if (adminSupabase) {
+                    const { data: latest } = await adminSupabase
+                        .from('archivos_importados')
+                        .select('id')
+                        .eq('nombre_archivo', fileName)
+                        .eq('estado', 'procesando')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle()
+                    targetId = latest?.id
+                }
 
-                const targetId = latest?.id
-
-                if (targetId) {
+                if (targetId && adminSupabase) {
                     await adminSupabase.from('archivos_importados').update({
                         estado: 'error',
                         metadata: { fatal_error: error.message || 'Error desconocido', stack: error.stack }
                     }).eq('id', targetId)
                 }
 
-                await logError(adminSupabase, 'Unhandled Exception', error.message || 'Error desconocido', fileName, orgId || undefined)
+                if (adminSupabase) {
+                    await logError(adminSupabase, 'Unhandled Exception', error.message || 'Error desconocido', fileName, orgId || undefined)
+                }
             } catch (e) {
                 console.error('Logging/State fix failed in catch:', e)
             }
