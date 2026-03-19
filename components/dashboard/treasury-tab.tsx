@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { InvoicePanel } from './invoice-panel'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Wallet, TrendingUp, TrendingDown, Calculator, Briefcase, Users } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, Calculator, Briefcase, Users, Zap, Loader2 } from 'lucide-react'
 import { TreasuryEngine } from '@/lib/treasury-engine'
 import { CashFlowHub } from './cash-flow-hub'
 import { SuppliersTab } from './suppliers-tab'
@@ -14,6 +14,7 @@ import { Shield, BookUser, History, Landmark, AlertCircle } from 'lucide-react'
 import { CheckPortfolio } from './check-portfolio'
 import { UnreconciledPanel } from './unreconciled-panel'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 
 interface TreasuryTabProps {
     orgId: string
@@ -29,8 +30,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
     const [realBalance, setRealBalance] = useState(0)
     const [loading, setLoading] = useState(true)
-    const [reconcilingAdmin, setReconcilingAdmin] = useState(false)
-    const [reconcilingBank, setReconcilingBank] = useState(false)
+    const [reconciling, setReconciling] = useState(false)
     const supabase = createClient()
 
     async function fetchData() {
@@ -99,44 +99,26 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
         setActiveTab(value)
     }
 
-    const handleReconcile = async (scope: 'admin' | 'bank' | 'all' = 'all') => {
-        if (scope === 'admin') setReconcilingAdmin(true)
-        if (scope === 'bank') setReconcilingBank(true)
-        if (scope === 'all') {
-            setReconcilingAdmin(true)
-            setReconcilingBank(true)
-        }
+    const handleReconcile = async () => {
+        setReconciling(true)
+        const toastId = toast.loading('Ejecutando conciliación inteligente...')
+
         try {
             const res = await fetch('/api/reconcile/auto', {
                 method: 'POST',
-                body: JSON.stringify({ scope })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orgId, options: { scope: 'all' } })
             })
-            const data = await res.json()
 
-            if (!res.ok) {
-                toast.error(`Error del servidor: ${data.error || 'Autenticación fallida.'}`)
-                return
-            }
+            if (!res.ok) throw new Error('Error en el motor de conciliación')
 
-            if (data.matched > 0) {
-                const message = scope === 'admin'
-                    ? `¡Éxito! Se vincularon ${data.matched} facturas con recibos/OP.`
-                    : `¡Éxito! Se conciliaron ${data.matched} movimientos con el extracto bancario.`;
-                toast.success(message)
-            } else {
-                toast.info(`Proceso finalizado. No se encontraron nuevas coincidencias (0).`)
-            }
-            await fetchData()
-        } catch (error) {
-            console.error('Reconciliation failed:', error)
-            toast.error('Error al ejecutar la acción.')
+            const result = await res.json()
+            toast.success(`Conciliación finalizada: ${result.matches || 0} vínculos creados`, { id: toastId })
+            fetchData()
+        } catch (error: any) {
+            toast.error(error.message, { id: toastId })
         } finally {
-            if (scope === 'admin') setReconcilingAdmin(false)
-            if (scope === 'bank') setReconcilingBank(false)
-            if (scope === 'all') {
-                setReconcilingAdmin(false)
-                setReconcilingBank(false)
-            }
+            setReconciling(false)
         }
     }
 
@@ -168,28 +150,21 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                             </p>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <button
-                                onClick={() => handleReconcile('admin')}
-                                disabled={reconcilingAdmin}
-                                title="Vincula automáticamente Recibos/OP pendientes con Facturas por monto y referencia."
-                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-sm ${reconcilingAdmin
-                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 active:scale-95'
-                                    }`}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-emerald-600/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20 font-bold w-full"
+                                onClick={handleReconcile}
+                                disabled={reconciling}
+                                title="Procesa cobros, pagos y vincula facturas con el extracto bancario automáticamente."
                             >
-                                {reconcilingAdmin ? 'Procesando...' : 'Vincular Facturas Con Cobros/Pagos'}
-                            </button>
-                            <button
-                                onClick={() => handleReconcile('bank')}
-                                disabled={reconcilingBank}
-                                title="Cruza los movimientos de Tesorería con las transacciones del Banco (Genera marca 'C')."
-                                className={`flex items-center justify-center w-full gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-sm ${reconcilingBank
-                                    ? 'bg-gray-900/50 text-gray-500 border border-gray-800 cursor-not-allowed'
-                                    : 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/20 active:scale-95'
-                                    }`}
-                            >
-                                {reconcilingBank ? 'Procesando...' : 'Conciliación Bancaria'}
-                            </button>
+                                {reconciling ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Zap className="w-4 h-4 mr-2" />
+                                )}
+                                Ejecutar Conciliación Inteligente
+                            </Button>
                         </div>
                     </div>
                 </Card>

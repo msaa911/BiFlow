@@ -446,7 +446,7 @@ export function TreasuryManualEntry({ isOpen, onClose, orgId, tipo, onSuccess }:
                                 <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                                     <div className="p-5 bg-gray-900/50 border border-gray-800 rounded-xl mb-6 flex justify-between items-center bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/5 via-transparent to-transparent">
                                         <div className="space-y-1">
-                                            <p className="text-xs uppercase font-bold text-gray-500 tracking-wider">Resumen de Imputación</p>
+                                            <p className="text-xs uppercase font-bold text-gray-500 tracking-wider">Resumen de Conciliación</p>
                                             <p className="text-lg font-bold text-white tracking-tight">{selectedEntidad?.razon_social}</p>
                                         </div>
                                         <div className="text-right space-y-1">

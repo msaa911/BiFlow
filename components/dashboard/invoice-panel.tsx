@@ -89,7 +89,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                     tipo: isCobro ? 'cobro' : 'pago',
                     fecha: tx.fecha,
                     monto_total: amount,
-                    observaciones: `IMPUTACIÓN MANUAL (Desde Comprobante): ${tx.descripcion}`,
+                    observaciones: `CONCILIACIÓN MANUAL (Desde Comprobante): ${tx.descripcion}`,
                     metadata: { transaccion_id: txId, manual: true }
                 })
                 .select()
@@ -157,12 +157,12 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
 
             if (txUpdError) throw txUpdError
 
-            toast.success('Factura imputada con éxito y circuito administrativo registrado')
+            toast.success('Factura conciliada con éxito y circuito administrativo registrado')
             setIsReconcileModalOpen(false)
             onRefresh()
         } catch (error: any) {
-            console.error('Error in reverse imputation:', error)
-            toast.error('Error al realizar la imputación: ' + error.message)
+            console.error('Error in reverse matching:', error)
+            toast.error('Error al realizar la conciliación: ' + error.message)
         }
     }
 
@@ -442,7 +442,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                                         <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
                                                     </div>
                                                     <span className="text-blue-400 text-[10px] font-black tracking-tight">
-                                                        {view === 'AR' ? 'COBRADO E IMPUTADO' : 'PAGADO E IMPUTADO'}
+                                                        {view === 'AR' ? 'COBRADO Y CONCILIADO' : 'PAGADO Y CONCILIADO'}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -483,7 +483,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                                 fetchPendingTransactions(inv)
                                             }}
                                         >
-                                            Imputar
+                                            Conciliar
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -678,7 +678,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
             <Dialog open={isReconcileModalOpen} onOpenChange={setIsReconcileModalOpen}>
                 <DialogContent className="max-w-2xl bg-gray-950 border-gray-800">
                     <DialogHeader>
-                        <DialogTitle className="text-white">Imputar con Banco</DialogTitle>
+                        <DialogTitle className="text-white">Conciliar con Banco</DialogTitle>
                         <DialogDescription className="text-gray-400">
                             Selecciona el movimiento bancario que cancela este comprobante.
                         </DialogDescription>

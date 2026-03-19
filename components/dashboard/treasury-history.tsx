@@ -277,7 +277,7 @@ export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFi
                                 <th className="px-6 py-4 text-gray-500 text-[11px] font-bold sticky top-0 z-20 bg-gray-800">Fecha</th>
                                 <th className="px-6 py-4 text-gray-500 text-[11px] font-bold sticky top-0 z-20 bg-gray-800">Comprobante</th>
                                 <th className="px-6 py-4 text-gray-500 text-[11px] font-bold sticky top-0 z-20 bg-gray-800">Entidad</th>
-                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold cursor-help sticky top-0 z-20 bg-gray-800" title="Si es blanco indica que el movimiento está imputado, si es verde que no lo está">
+                                <th className="px-6 py-4 text-gray-500 text-[11px] font-bold cursor-help sticky top-0 z-20 bg-gray-800" title="Si es blanco indica que el movimiento está conciliado, si es verde que no lo está">
                                     <div className="flex items-center gap-1">
                                         Concepto
                                         <Info className="w-3.5 h-3.5 text-emerald-500/50" />
@@ -391,7 +391,7 @@ export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFi
                                                             {/* Detalles de Aplicaciones (Facturas) */}
                                                             <div>
                                                                 <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                                                    <FileText className="w-3 h-3" /> Facturas Imputadas
+                                                                    <FileText className="w-3 h-3" /> Facturas Conciliadas
                                                                 </h4>
                                                                 <div className="space-y-2">
                                                                     {mov.aplicaciones_pago && mov.aplicaciones_pago.length > 0 ? (

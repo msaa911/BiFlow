@@ -335,7 +335,7 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                                                             </div>
                                                             <div className="space-y-4">
                                                                 <div className="flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest">
-                                                                    <FileText className="w-3 h-3" /> Detalle Imputación
+                                                                    <FileText className="w-3 h-3" /> Detalle Conciliación
                                                                 </div>
                                                                 <div className="p-3 bg-gray-900/50 rounded-lg border border-gray-800 space-y-2 text-gray-400 text-[10px]">
                                                                     <p>ID de Documento: <span className="text-white font-mono">{note.id}</span></p>
