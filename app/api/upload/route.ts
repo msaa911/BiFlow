@@ -166,7 +166,6 @@ export async function POST(request: Request) {
                         vencimiento: t.vencimiento,
                         numero: t.numero,
                         numero_cheque: t.numero_cheque,
-                        referencia: t.referencia || t.numero || t.numero_cheque, // New: Explicit reference column
                         tags: t.tags || [],
                         moneda: 'ARS',
                         origen_dato: 'universal_translator',
@@ -604,7 +603,6 @@ export async function POST(request: Request) {
                         cuit: t.cuit || null,
                         moneda: t.moneda || 'ARS',
                         numero_cheque: t.numero_cheque || null,
-                        referencia: t.referencia || null, // TOP LEVEL COLUMN
                         origen_dato: t.origen_dato,
                         estado: t.estado,
                         archivo_importacion_id: t.archivo_importacion_id,
@@ -790,7 +788,6 @@ function parseTreasuryExcelServer(buffer: Buffer, orgId: string, type: 'cobro' |
                 vencimiento: disponibilidad,
                 banco,
                 numero_cheque: referencia,
-                referencia: referencia, // Ensure it's in the top level
                 metadata: {
                     metodo: medio,
                     referencia: refRaw, // Store raw in metadata
