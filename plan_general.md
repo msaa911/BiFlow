@@ -37,6 +37,10 @@ Este documento es la **única fuente de verdad** del proyecto. Centraliza la vis
 - [ ] **Refinamiento de UI**: Actualización de navegación lateral (Sidebar) y layouts de tablas reactivas.
 - [ ] **Persistencia de Impuestos**: Asegurar que las reglas de clasificación de impuestos en extractos sean 100% consistentes.
 - [ ] **Validación de Notas**: Asegurar que Notas de Débito/Crédito Bancarias se emitan y limpien el balance correctamente.
+    - [x] Renombrar "Ingresos" a "Créditos" y "Egresos" a "Débitos".
+    - [x] Mejorar legibilidad de columna Banco.
+    - [x] Corregir eliminación de notas y reversión de estado (funciona la eliminación).
+    - [!] **BLOQUEADO**: Error de base de datos (Matched: 0) por RLS al intentar conciliar transacciones desde el panel.
 
 ---
 
