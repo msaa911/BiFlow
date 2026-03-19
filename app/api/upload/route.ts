@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     console.log('--- POST START ---')
     let fileName = 'unknown_file'
     let currentSupabase: any = null
+    let orgId: string | null = null
 
     // Use Admin client for archivos_importados state updates (bypasses RLS)
     const adminSupabase = createAdminClient()
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
         const buffer = Buffer.from(await file.arrayBuffer())
 
         console.log('5. Getting Org ID')
-        const orgId = await getOrgId(currentSupabase, user.id)
+        orgId = await getOrgId(currentSupabase, user.id)
         console.log(`Org ID obtained: ${orgId}`)
 
         if (!orgId) {
