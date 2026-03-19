@@ -1,7 +1,7 @@
--- Advanced Bank Reconciliation Engine v5.2.12 (EXPANDED & TOTAL)
+-- Advanced Bank Reconciliation Engine v5.2.13 (FIX METODO ACCENT)
 -- Author: Antigravity AI
 -- Date: 2026-03-19
--- Rules: ROUND(monto, 0). ZERO updated_at. FULL LOGGING.
+-- Rules: ROUND(monto, 0). FIXED "metodo" column name.
 
 CREATE OR REPLACE FUNCTION public.reconcile_v3_1(
     p_org_id UUID,
@@ -33,7 +33,7 @@ DECLARE
     v_candidates_count INT;
     v_is_bank_expense BOOLEAN;
 BEGIN
-    RAISE NOTICE 'Iniciando Reconciliación V5.2.12 (Edición Expandida)';
+    RAISE NOTICE 'Iniciando Reconciliación V5.2.13 (Fix: Metodo)';
 
     -- ============================================================
     -- FASE 1: CONCILIACIÓN ADMINISTRATIVA (Tesorería -> Facturas)
@@ -70,7 +70,7 @@ BEGIN
                     p_org_id, v_mov.id, v_inv_match.id, abs(v_mov.monto_total)
                 );
 
-                -- Actualizar Comprobante (Sin updated_at)
+                -- Actualizar Comprobante
                 UPDATE public.comprobantes
                 SET monto_pendiente = GREATEST(0, COALESCE(monto_pendiente, monto_total) - abs(v_mov.monto_total)),
                     estado = CASE 
@@ -188,7 +188,7 @@ BEGIN
                     )
                 WHERE id = v_trans.id;
 
-                -- Marcar instrumento (Sin updated_at)
+                -- Marcar instrumento
                 UPDATE public.instrumentos_pago SET estado = 'acreditado' WHERE movimiento_id = v_match_id;
             END IF;
         ELSE
@@ -212,14 +212,14 @@ BEGIN
     );
 
     IF NOT p_dry_run THEN
-        INSERT INTO public.reconciliation_logs (organization_id, método, total_leidos, total_conciliados, detalle)
-        VALUES (p_org_id, 'v5.2.12_final', v_total_read, v_matched_count, v_result);
+        INSERT INTO public.reconciliation_logs (organization_id, metodo, total_leidos, total_conciliados, detalle)
+        VALUES (p_org_id, 'v5.2.13_final', v_total_read, v_matched_count, v_result);
     END IF;
 
     RETURN v_result;
 
 EXCEPTION WHEN OTHERS THEN
-    RAISE WARNING 'Error Crítico en V5.2.12: %', SQLERRM;
+    RAISE WARNING 'Error Crítico en V5.2.13: %', SQLERRM;
     RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
