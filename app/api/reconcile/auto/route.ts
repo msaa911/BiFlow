@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { ReconciliationEngine } from '@/lib/reconciliation-engine';
+import { getOrgId } from '@/lib/supabase/utils';
 
 export async function POST(request: Request) {
     try {
@@ -11,14 +12,9 @@ export async function POST(request: Request) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
-        // CORRECT TABLE: organization_members
-        const { data: member, error: memberError } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-            .single();
+        const orgId = await getOrgId(supabase, user.id);
 
-        if (memberError || !member) {
+        if (!orgId) {
             return NextResponse.json({ status: 'error', message: 'No se encontró la organización para este usuario.' }, { status: 404 });
         }
 
@@ -27,7 +23,7 @@ export async function POST(request: Request) {
         const dryRun = body.dryRun || false;
 
         // Calling the NEW executeAuto method
-        const result = await ReconciliationEngine.executeAuto(member.organization_id, {
+        const result = await ReconciliationEngine.executeAuto(orgId, {
             bankAccountId,
             dryRun,
             supabase
