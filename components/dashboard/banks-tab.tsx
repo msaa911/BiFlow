@@ -54,7 +54,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     // Filter by Account
     const accountFilteredTransactions = selectedAccountId === 'all'
         ? initialTransactions
-        : initialTransactions.filter(t => t.banco_cuenta_id === selectedAccountId)
+        : initialTransactions.filter(t => t.cuenta_id === selectedAccountId)
 
     const counts = useMemo(() => ({
         all: accountFilteredTransactions.length,
@@ -339,7 +339,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <Clock className="w-6 h-6 text-blue-500" />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo Inicial Consol.</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo Inicial {selectedAccountId === 'all' ? 'Consol.' : (bankAccountMap[selectedAccountId] || '')}</p>
                         <h3 className="text-2xl font-bold text-white">
                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(initialSum)}
                         </h3>
@@ -353,7 +353,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <TrendingUp className="w-6 h-6 text-emerald-500" />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo Real en Banco</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo Real {selectedAccountId === 'all' ? 'Consol.' : (bankAccountMap[selectedAccountId] || '')}</p>
                         <h3 className="text-2xl font-bold text-white">
                             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(realBalance)}
                         </h3>
