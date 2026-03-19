@@ -22,10 +22,12 @@ export class ReconciliationEngine {
 
     // data now returns { status: 'success', matched_count: X, ... }
     return {
-      success: data.status === 'success',
-      matched: data.matched_count || 0,
-      total: data.total_read || 0,
-      actions: data.actions || []
+      success: data?.status === 'success',
+      matched: data?.matched_count || 0,
+      total: data?.total_read || 0,
+      actions: data?.actions || [],
+      status: data?.status || 'error',
+      message: data?.message || 'Error desconocido en el RPC'
     };
   }
 }

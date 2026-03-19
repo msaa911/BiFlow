@@ -110,9 +110,14 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 body: JSON.stringify({ orgId, scope: 'all' })
             })
 
-            if (!res.ok) throw new Error('Error en el motor de conciliación')
-
             const result = await res.json()
+
+            if (result.status === 'error') {
+                console.error('Reconciliation Engine Error:', result.message);
+                toast.error(`Error en el motor: ${result.message || 'Desconocido'}`, { id: toastId });
+                return;
+            }
+            
             toast.success(`Conciliación finalizada: ${result.matched || 0} vínculos creados`, { id: toastId })
             fetchData()
         } catch (error: any) {

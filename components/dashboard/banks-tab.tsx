@@ -158,9 +158,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
             })
             const data = await res.json()
 
-            if (!res.ok) {
-                toast.error(`Error: ${data.error || 'Fallo al conciliar.'}`)
-                return
+            if (!res.ok || data.status === 'error') {
+                console.error('Reconciliation Engine Error:', data.message || data.error);
+                toast.error(`Error en el motor: ${data.message || data.error || 'Fallo al conciliar.'}`);
+                return;
             }
 
             if (data.matched > 0) {
