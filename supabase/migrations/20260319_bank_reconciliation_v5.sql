@@ -61,7 +61,7 @@ BEGIN
           )
           AND (c.entidad_id = v_mov.entidad_id)
           AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0)
-        ORDER BY c.fecha_emision ASC, c.numero ASC, c.created_at ASC
+        ORDER BY c.fecha_emision ASC, c.nro_factura ASC, c.created_at ASC
         LIMIT 1;
 
         IF v_inv_match.id IS NOT NULL THEN
@@ -123,7 +123,7 @@ BEGIN
         );
 
         IF v_is_bank_expense THEN
-            v_fail_reason := 'Gasto bancario directo: Genere una Nota Bancaria.';
+            v_fail_reason := 'Operación conta banco directo: Genere una Nota Bancaria.';
         ELSE
             -- NIVEL 1: Radar de CUIT
             BEGIN
@@ -179,7 +179,7 @@ BEGIN
                     SELECT id INTO v_match_id FROM public.movimientos_tesoreria mt 
                     WHERE mt.organization_id = p_org_id 
                       AND ROUND(ABS(mt.monto_total), 0) = ROUND(ABS(v_trans.monto), 0) 
-                      AND ABS(mt.fecha - v_trans.fecha) <= 30 
+                      AND ABS(mt.fecha - v_trans.fecha) <= 10 
                       AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id);
                     
                     v_match_level := 4; 
@@ -207,7 +207,7 @@ BEGIN
 
         -- Diagnóstico final si nada coincidió
         IF v_match_id IS NULL AND v_fail_reason IS NULL THEN 
-            v_fail_reason := 'No hay registros por $' || ROUND(ABS(v_trans.monto), 0) || ' en los últimos 10 días.'; 
+            v_fail_reason := 'Importe hallado en Gestión, pero la fecha difiere por más de 10 días del Banco.'; 
         END IF;
 
         -- Persistencia y Actualización
