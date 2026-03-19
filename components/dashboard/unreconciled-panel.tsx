@@ -461,7 +461,8 @@ export function UnreconciledPanel({
                 .single()
 
             const currentMetadata = latestTx?.metadata || {}
-            
+            console.log("Attempting to update transaction:", { id: selectedTx.id, currentMetadata, category });
+
             const { data: updateData, error: updateError } = await supabase
                 .from('transacciones')
                 .update({
@@ -481,9 +482,11 @@ export function UnreconciledPanel({
                 .eq('id', selectedTx.id)
                 .select()
 
+            console.log("Update result:", { updateData, updateError });
+
             if (updateError || !updateData || updateData.length === 0) {
-                console.error("Critical error updating transaction:", updateError || "No rows matched ID")
-                throw new Error("No se pudo actualizar la transacción bancaria. Verifique que no haya sido procesada anteriormente.")
+                console.error("Critical error updating transaction:", updateError || "No rows matched ID");
+                throw new Error(`Error de base de datos: ${updateError?.message || "La transacción no existe o ya fue procesada (ID: " + selectedTx.id.slice(0,8) + ")"}`);
             }
 
             console.log("Transaction successfully marked as reconciled:", selectedTx.id)
