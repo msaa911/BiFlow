@@ -1,36 +1,40 @@
-import { createClient } from '@/lib/supabase/server'
-import { ReconciliationEngine } from '@/lib/reconciliation-engine'
-import { NextResponse } from 'next/server'
-
-export const dynamic = 'force-dynamic'
+import { createClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
+import { ReconciliationEngine } from '@/lib/reconciliation-engine';
 
 export async function POST(request: Request) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get organization ID
-    const { data: member } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single()
-
-    if (!member) {
-        return NextResponse.json({ error: 'No organization found' }, { status: 403 })
-    }
-
     try {
-        const body = await request.json().catch(() => ({}));
-        const scope = body.scope || 'all';
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
 
-        const result = await ReconciliationEngine.matchAndReconcile(supabase, member.organization_id, { scope })
-        return NextResponse.json(result)
+        if (!user) {
+            return new NextResponse('Unauthorized', { status: 401 });
+        }
+
+        // Get organization_id from member table
+        const { data: member, error: memberError } = await supabase
+            .from('members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+            .single();
+
+        if (memberError || !member) {
+            return new NextResponse('Organization not found', { status: 404 });
+        }
+
+        const body = await request.json();
+        const bankAccountId = body.bankAccountId || null;
+        const dryRun = body.dryRun || false;
+
+        // Calling the NEW executeAuto method
+        const result = await ReconciliationEngine.executeAuto(member.organization_id, {
+            bankAccountId,
+            dryRun
+        });
+
+        return NextResponse.json(result);
     } catch (error: any) {
-        console.error('[API_RECONCILE_AUTO] Error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        console.error('[API_RECONCILE_AUTO] Error:', error);
+        return new NextResponse(error.message || 'Internal Error', { status: 500 });
     }
 }
