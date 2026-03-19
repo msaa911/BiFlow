@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet, Landmark } from 'lucide-react'
+import { Home, List, Shield, Settings, FileText, LogOut, Clock, Wallet, Landmark, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -68,6 +69,37 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
                         <p className="text-xs text-gray-500">Plan Pro</p>
                     </div>
                 </div>
+                
+                {/* Botón de Modo Test (Dev Shortcut) */}
+                <button 
+                    onClick={async () => {
+                        const confirmReset = window.confirm('¿Estás seguro de resetear todos los datos e importar el set de prueba v5.3.0?');
+                        if (!confirmReset) return;
+                        
+                        try {
+                            const btn = document.getElementById('reset-test-btn');
+                            if (btn) btn.innerText = 'Reseteando...';
+                            const res = await fetch('/api/dev/reset-test', { method: 'POST' });
+                            const data = await res.json();
+                            if (data.success) {
+                                alert('✅ ¡Éxito! Datos de prueba cargados y conciliación ejecutada.');
+                                window.location.reload();
+                            } else {
+                                alert('❌ Error: ' + (data.error || 'Fallo desconocido'));
+                            }
+                        } catch (err) {
+                            alert('❌ Error de conexión al servidor.');
+                        } finally {
+                            const btn = document.getElementById('reset-test-btn');
+                            if (btn) btn.innerText = 'Resetear & Probar Datos';
+                        }
+                    }}
+                    id="reset-test-btn"
+                    className="flex w-full items-center gap-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 px-3 py-2 rounded-lg transition-colors mb-2 border border-emerald-500/20 bg-emerald-500/5 group"
+                >
+                    <RefreshCw className="h-4 w-4 group-active:animate-spin" />
+                    Resetear & Probar Datos
+                </button>
 
                 <form action="/auth/signout" method="post">
                     <button className="flex w-full items-center gap-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-2 rounded-lg transition-colors">
