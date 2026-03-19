@@ -95,7 +95,7 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
 
     useEffect(() => {
         fetchNotes()
-    }, [orgId])
+    }, [orgId, accountId])
 
     const filteredNotes = notes.filter(n =>
         n.entidades?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw, Landmark } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +40,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all')
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(20)
+    const [locallyCategorizedTxIds, setLocallyCategorizedTxIds] = useState<string[]>([])
     const supabase = createClient()
 
     const bankAccountMap = useMemo(() => {
@@ -63,9 +64,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
         expense: accountFilteredTransactions.filter(m => m.monto < 0).length
     }), [accountFilteredTransactions])
 
-    const accountFilteredPending = selectedAccountId === 'all'
+    const accountFilteredPending = (selectedAccountId === 'all'
         ? pendingTransactions
         : pendingTransactions.filter(t => t.cuenta_id === selectedAccountId)
+    ).filter(t => !locallyCategorizedTxIds.includes(t.id))
 
     // Dashboard Calculations (Filtered by Account)
     const targetAccounts = selectedAccountId === 'all'
@@ -98,6 +100,11 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     })
 
     const totalPages = Math.ceil(filteredTx.length / itemsPerPage)
+
+    // Clear local tracking when fresh data arrives from parent
+    useEffect(() => {
+        setLocallyCategorizedTxIds([])
+    }, [pendingTransactions])
     const paginatedTx = filteredTx.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -766,7 +773,13 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                 </TabsContent>
 
                 <TabsContent value="reconciliation" className="animate-in fade-in duration-500">
-                    <UnreconciledPanel orgId={orgId} transactions={accountFilteredPending} onRefresh={onRefresh} />
+                    <UnreconciledPanel 
+                        orgId={orgId} 
+                        transactions={accountFilteredPending} 
+                        onRefresh={onRefresh} 
+                        categorizedTxIds={locallyCategorizedTxIds}
+                        setCategorizedTxIds={setLocallyCategorizedTxIds}
+                    />
                 </TabsContent>
 
                 <TabsContent value="audit" className="animate-in fade-in duration-500">

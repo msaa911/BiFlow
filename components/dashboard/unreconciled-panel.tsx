@@ -32,14 +32,26 @@ interface UnreconciledPanelProps {
     orgId: string
     transactions: Transaction[]
     onRefresh?: () => void
+    categorizedTxIds?: string[]
+    setCategorizedTxIds?: React.Dispatch<React.SetStateAction<string[]>>
 }
 
-export function UnreconciledPanel({ orgId, transactions, onRefresh }: UnreconciledPanelProps) {
+export function UnreconciledPanel({ 
+    orgId, 
+    transactions, 
+    onRefresh,
+    categorizedTxIds: externalCategorizedTxIds,
+    setCategorizedTxIds: externalSetCategorizedTxIds
+}: UnreconciledPanelProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [categorizedTxIds, setCategorizedTxIds] = useState<string[]>([])
+    const [internalCategorizedTxIds, internalSetCategorizedTxIds] = useState<string[]>([])
+    
+    // Support both internal and external state
+    const categorizedTxIds = externalCategorizedTxIds || internalCategorizedTxIds
+    const setCategorizedTxIds = externalSetCategorizedTxIds || internalSetCategorizedTxIds
     const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set())
     const [isDeletingBulk, setIsDeletingBulk] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
