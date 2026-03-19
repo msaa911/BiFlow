@@ -483,30 +483,31 @@ export function UnreconciledPanel({
                 memberErr
             });
 
-            const { error: updateError, count } = await supabase
-                .from('transacciones')
-                .update({
-                    estado: 'conciliado',
-                    comprobante_id: voucher.id,
-                    monto_usado: Math.abs(selectedTx.monto),
-                    metadata: {
-                        ...(currentMetadata || {}),
-                        categoria_transaccion: category,
-                        bank_note_id: voucher.id,
-                        reconciled_at: new Date().toISOString(),
-                        link_method: 'direct_note_v3_atomic',
-                        generated_voucher_id: voucher.id,
-                        category: category,
-                        original_desc: selectedTx.descripcion
-                    }
-                }, { count: 'exact' })
-                .eq('id', selectedTx.id.trim())
+            const { data: rpcResult, error: updateError } = await supabase.rpc('categorize_tx_v1', {
+                p_tx_id: selectedTx.id,
+                p_voucher_id: voucher.id,
+                p_monto_usado: Math.abs(selectedTx.monto),
+                p_metadata: {
+                    ...(currentMetadata || {}),
+                    categoria_transaccion: category,
+                    bank_note_id: voucher.id,
+                    reconciled_at: new Date().toISOString(),
+                    link_method: 'direct_note_v4_rpc',
+                    generated_voucher_id: voucher.id,
+                    category: category,
+                    original_desc: selectedTx.descripcion
+                },
+                p_organization_id: currentOrgId
+            })
+
+            const count = (rpcResult as any)?.success ? 1 : 0
+            const rpcErrorMsg = (rpcResult as any)?.error || updateError?.message
 
             console.log("Atomic update executed for tx:", selectedTx.id, "Error:", updateError, "Count:", count);
 
             if (updateError || count === 0) {
-                console.error("Critical error updating transaction:", updateError || "No rows matched filters/permissions");
-                throw new Error(`Error BD: ${updateError?.message || "No se pudo actualizar (Matched: " + count + "). Membresía: " + (memberCount && memberCount > 0 ? 'OK' : 'NO')}`);
+                console.error("Critical error updating transaction (RPC):", updateError || rpcErrorMsg || "No matched rows");
+                throw new Error(`Error BD (RPC): ${updateError?.message || rpcErrorMsg || ("No se pudo actualizar (Matched: " + count + "). Membresía: " + (memberCount && memberCount > 0 ? 'OK' : 'NO'))}`);
             }
 
             console.log("Transaction successfully marked as reconciled:", selectedTx.id)

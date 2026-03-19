@@ -231,24 +231,23 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                 }
             }
 
-            // 6. Reset Bank Transaction
-            const { error: txErr } = await supabase
-                .from('transacciones')
-                .update({
-                    movimiento_id: null,
-                    comprobante_id: null,
-                    estado: 'pendiente',
-                    monto_usado: 0,
-                    metadata: {
-                        ...(tx.metadata || {}),
-                        reverted_at: new Date().toISOString(),
-                        previous_state: 'conciliado',
-                        reversal_method: 'unreconcile_tool'
-                    }
-                })
-                .eq('id', tx.id)
+            // 6. Reset Bank Transaction via RPC
+            const { data: rpcResult, error: txErr } = await supabase.rpc('unreconcile_tx_v1', {
+                p_tx_id: tx.id,
+                p_metadata: {
+                    ...(tx.metadata || {}),
+                    reverted_at: new Date().toISOString(),
+                    previous_state: 'conciliado',
+                    reversal_method: 'unreconcile_v1_rpc'
+                },
+                p_organization_id: tx.organization_id || orgId
+            })
 
-            if (txErr) throw txErr
+            const count = (rpcResult as any)?.success ? 1 : 0
+            if (txErr || count === 0) {
+                const rpcErrorMsg = (rpcResult as any)?.error || txErr?.message
+                throw new Error(`Error BD al revertir (RPC): ${rpcErrorMsg || "No rows matched"}`)
+            }
 
             toast.success('Conciliación revertida exitosamente')
             if (onRefresh) onRefresh()
