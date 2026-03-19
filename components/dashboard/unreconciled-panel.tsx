@@ -472,6 +472,7 @@ export function UnreconciledPanel({
                 .from('transacciones')
                 .update({
                     estado: 'conciliado',
+                    comprobante_id: voucher.id, // Set the actual column
                     monto_usado: Math.abs(selectedTx.monto),
                     metadata: {
                         ...(currentMetadata || {}),
@@ -485,8 +486,9 @@ export function UnreconciledPanel({
                     }
                 })
                 .eq('id', selectedTx.id)
+                .eq('organization_id', latestTx?.organization_id || orgId)
 
-            console.log("Update executed. Error:", updateError);
+            console.log("Update executed for tx:", selectedTx.id, "Error:", updateError);
 
             if (updateError) {
                 console.error("Critical error updating transaction:", updateError);
