@@ -661,9 +661,9 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                             <td className="px-6 py-3 font-mono text-[11px] text-gray-500">{formatDate(t.fecha)}</td>
                                             {selectedAccountId === 'all' && (
                                                 <td className="px-6 py-3">
-                                                    <Badge variant="outline" className="text-[9px] bg-blue-500/10 text-blue-400 border-blue-500/30 font-bold px-2 py-0">
+                                                    <span className="text-[10px] font-black text-blue-300 uppercase tracking-tighter bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20 shadow-sm">
                                                         {bankAccountMap[t.cuenta_id] || 'N/A'}
-                                                    </Badge>
+                                                    </span>
                                                 </td>
                                             )}
                                             <td className="px-6 py-3">
