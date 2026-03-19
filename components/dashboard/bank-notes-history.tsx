@@ -112,21 +112,32 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
         setLoading(true)
         try {
             // 1. Reset the linked transaction first if it exists
-            const txId = note.metadata?.bank_transaction_id || note.transacciones?.[0]?.id
+            const txId = note.metadata?.bank_transaction_id || note.metadata?.transaccion_id || (note.transacciones && note.transacciones[0]?.id)
 
             if (txId) {
+                // Fetch latest metadata to avoid overwriting
+                const { data: latestTx } = await supabase
+                    .from('transacciones')
+                    .select('metadata')
+                    .eq('id', txId)
+                    .single()
+
                 const { error: txErr } = await supabase
                     .from('transacciones')
                     .update({
                         comprobante_id: null,
                         estado: 'pendiente',
+                        monto_usado: 0,
                         metadata: {
-                            ...(note.transacciones?.[0]?.metadata || {}),
+                            ...(latestTx?.metadata || {}),
                             reverted_at: new Date().toISOString(),
-                            reversal_source: 'bank_note_direct_delete'
+                            reversal_source: 'bank_note_direct_delete',
+                            bank_note_id: null,
+                            generated_voucher_id: null
                         }
                     })
                     .eq('id', txId)
+                    .eq('organization_id', orgId)
 
                 if (txErr) throw txErr
             }
@@ -136,6 +147,7 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                 .from('comprobantes')
                 .delete()
                 .eq('id', note.id)
+                .eq('organization_id', orgId)
 
             if (delErr) throw delErr
 
