@@ -80,7 +80,8 @@ async function runTest() {
     if (entErr) throw entErr;
     
     const entMap = entRows.reduce((acc, row) => {
-        acc[row.cuit] = row.id;
+        const cleanCuit = (row.cuit || '').replace(/[^0-9]/g, '');
+        acc[cleanCuit] = row.id;
         return acc;
     }, {});
 
@@ -95,9 +96,10 @@ async function runTest() {
     ];
 
     for (const inv of allInvoices) {
-        const entityId = entMap[inv.cuit];
+        const cleanCuit = (inv.cuit || '').replace(/[^0-9]/g, '');
+        const entityId = entMap[cleanCuit];
         if (!entityId) {
-            console.warn(`Entity not found for CUIT: ${inv.cuit} for invoice ${inv.numero}. Skipping.`);
+            console.warn(`Entity not found for CUIT: ${inv.cuit} (${cleanCuit}) for invoice ${inv.numero}. Skipping.`);
             continue;
         }
 
@@ -106,10 +108,10 @@ async function runTest() {
             entidad_id: entityId,
             tipo: inv.tipo === 'venta' ? 'factura_venta' : 'factura_compra',
             nro_factura: inv.numero,
-            cuit_socio: inv.cuit,
+            cuit_socio: cleanCuit,
             razon_social_socio: inv['razón social'] || inv.cliente || inv.proveedor,
-            razon_social_entidad: inv['razón social'] || inv.cliente || inv.proveedor, // Assuming same for now
-            cuit_entidad: inv.cuit, // Assuming same for now
+            razon_social_entidad: inv['razón social'] || inv.cliente || inv.proveedor, 
+            cuit_entidad: cleanCuit, 
             fecha_emision: inv.fecha.split('/').reverse().join('-'),
             fecha_vencimiento: inv.fecha.split('/').reverse().join('-'), // Using emission date for simplicity
             monto_total: parseFloat(inv.monto),
@@ -131,10 +133,10 @@ async function runTest() {
     ];
 
     for (const mov of allMovements) {
-        const cuit = mov.cuit;
-        const entidadId = entMap[cuit];
+        const cleanCuit = (mov.cuit || '').replace(/[^0-9]/g, '');
+        const entidadId = entMap[cleanCuit];
         if (!entidadId) {
-            console.warn(`Entity not found for CUIT: ${cuit} for movement ${mov.numero}. Skipping.`);
+            console.warn(`Entity not found for CUIT: ${mov.cuit} (${cleanCuit}) for movement ${mov.numero}. Skipping.`);
             continue;
         }
         

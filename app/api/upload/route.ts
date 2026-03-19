@@ -327,6 +327,51 @@ export async function POST(request: Request) {
                 archivo_importacion_id: importId
             }))
 
+            // Unified Entity Resolver for all contexts
+            const resolveOrCreateEntity = async (razonSocialRaw: string, cuitRaw: string | undefined, categoria: string) => {
+                const cleanCuit = (cuitRaw || '').replace(/[^0-9]/g, '');
+                const razonSocial = (razonSocialRaw || 'Sin Razón Social').trim();
+
+                // 1. Try match by CUIT
+                if (cleanCuit && cleanCuit.length === 11) {
+                    const { data: byCuit } = await currentSupabase
+                        .from('entidades')
+                        .select('id')
+                        .eq('organization_id', orgId)
+                        .eq('cuit', cleanCuit)
+                        .maybeSingle();
+                    if (byCuit) return byCuit.id;
+                }
+
+                // 2. Try match by Reason Social (Case-insensitive)
+                const { data: byName } = await currentSupabase
+                    .from('entidades')
+                    .select('id')
+                    .eq('organization_id', orgId)
+                    .ilike('razon_social', razonSocial)
+                    .maybeSingle();
+                if (byName) return byName.id;
+
+                // 3. Create new entity (Requires CUIT because of NOT NULL constraint)
+                const { data: newEnt, error: entErr } = await currentSupabase
+                    .from('entidades')
+                    .insert({
+                        organization_id: orgId,
+                        razon_social: razonSocial,
+                        cuit: (cleanCuit && cleanCuit.length === 11) ? cleanCuit : '00000000000',
+                        categoria: categoria,
+                        metadata: { origen: 'importacion_v5.3.2' }
+                    })
+                    .select('id')
+                    .single();
+                
+                if (entErr) {
+                    console.error('[UPLOAD] [ENTITY_RESOLVER] Error creating entity:', entErr);
+                    return null;
+                }
+                return newEnt?.id;
+            };
+
             if (uploadContext === 'income' || uploadContext === 'expense' || uploadContext === 'receipt' || uploadContext === 'payment') {
                 console.log(`[UPLOAD] [TREASURY] Routing ${transactions.length} rows to ${uploadContext}`)
                 uniqueCount = transactions.length
@@ -340,21 +385,32 @@ export async function POST(request: Request) {
 
                     const existSet = new Set(existingInvs?.map((e: any) => `${e.tipo}_${e.nro_factura}_${e.cuit_socio}`) || []);
 
-                    const sanitizedComprobantes = transactionsWithLink
-                        .filter((t: any) => {
-                            const num = t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`);
-                            const cuit = t.cuit || '00-00000000-0';
-                            const tipo = uploadContext === 'income' ? 'factura_venta' : 'factura_compra';
-                            return !existSet.has(`${tipo}_${num}_${cuit}`);
-                        })
-                        .map((t: any) => ({
+                    const invoiceItems = []
+                    console.log(`[UPLOAD] [INVOICE] Resolving entities for ${transactionsWithLink.length} comprobantes...`)
+                    for (const t of transactionsWithLink) {
+                        const num = t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`);
+                        const cleanCuit = (t.cuit || '').replace(/[^0-9]/g, '');
+                        const tipo = uploadContext === 'income' ? 'factura_venta' : 'factura_compra';
+                        
+                        if (existSet.has(`${tipo}_${num}_${cleanCuit}`)) continue;
+
+                        const entidadId = await resolveOrCreateEntity(
+                            t.razon_social || t.concepto || 'Sin Razón Social',
+                            t.cuit,
+                            uploadContext === 'income' ? 'cliente' : 'proveedor'
+                        );
+
+                        invoiceItems.push({
                             organization_id: t.organization_id || orgId,
+                            entidad_id: entidadId,
                             archivo_importacion_id: importId,
-                            tipo: uploadContext === 'income' ? 'factura_venta' : 'factura_compra',
-                            nro_factura: t.numero || (t.concepto?.includes('FAC') ? t.concepto : `FILE-${importId.substring(0, 6)}`),
-                            cuit_socio: t.cuit || '00-00000000-0',
-                            razon_social_socio: t.razon_social || t.concepto || 'Sin Razón Social',
-                            nombre_entidad: t.razon_social || t.descripcion || 'Sin Razón Social',
+                            tipo: tipo,
+                            nro_factura: num,
+                            cuit_socio: cleanCuit || '00000000000',
+                            razon_social_socio: (t.razon_social || t.concepto || 'Sin Razón Social').trim(),
+                            razon_social_entidad: (t.razon_social || t.concepto || 'Sin Razón Social').trim(),
+                            nombre_entidad: (t.razon_social || t.descripcion || 'Sin Razón Social').trim(),
+                            cuit_entidad: cleanCuit,
                             banco: t.banco || null,
                             numero_cheque: t.numero_cheque || null,
                             fecha_emision: t.fecha,
@@ -364,14 +420,15 @@ export async function POST(request: Request) {
                             estado: 'pendiente',
                             moneda: t.moneda || 'ARS',
                             metadata: { ...(t.metadata || {}), raw_row: t.raw }
-                        }))
+                        })
+                    }
 
-                    uniqueCount = sanitizedComprobantes.length
+                    uniqueCount = invoiceItems.length
 
-                    if (sanitizedComprobantes.length > 0) {
+                    if (invoiceItems.length > 0) {
                         const { error: compError } = await currentSupabase
                             .from('comprobantes')
-                            .insert(sanitizedComprobantes)
+                            .insert(invoiceItems)
 
                         if (compError) {
                             console.error('[UPLOAD] [TREASURY] Insert Error:', compError)
@@ -385,37 +442,11 @@ export async function POST(request: Request) {
                     // 1. Resolve Entities (Entidades)
                     console.log(`[UPLOAD] [TREASURY] Resolving entities for ${transactionsWithLink.length} movements...`)
                     for (const t of transactionsWithLink) {
-                        const razonSocial = t.razon_social || t.concepto || 'Sin Razón Social'
-
-                        // Try to find existing entity
-                        const { data: existingEntity } = await currentSupabase
-                            .from('entidades')
-                            .select('id')
-                            .eq('organization_id', orgId)
-                            .ilike('razon_social', razonSocial)
-                            .single()
-
-                        if (existingEntity) {
-                            t.entidad_id = existingEntity.id
-                        } else {
-                            // Create new entity
-                            const { data: newEntity, error: createError } = await currentSupabase
-                                .from('entidades')
-                                .insert({
-                                    organization_id: orgId,
-                                    razon_social: razonSocial,
-                                    categoria: isCobro ? 'cliente' : 'proveedor',
-                                    metadata: { origen: 'importacion_tesoreria_automatica' }
-                                })
-                                .select('id')
-                                .single()
-
-                            if (newEntity) {
-                                t.entidad_id = newEntity.id
-                            } else {
-                                console.error('[UPLOAD] [TREASURY] Error creating entity:', createError)
-                            }
-                        }
+                        t.entidad_id = await resolveOrCreateEntity(
+                            t.razon_social || t.concepto || 'Sin Razón Social',
+                            t.cuit,
+                            isCobro ? 'cliente' : 'proveedor'
+                        );
                     }
 
                     // GROUPING LOGIC FOR MIXED PAYMENTS (MULTI-INSTRUMENT)
