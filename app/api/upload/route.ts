@@ -688,7 +688,7 @@ export async function POST(request: Request) {
                     }).eq('id', targetId)
                 }
 
-                await logError(adminSupabase, 'Unhandled Exception', error.message || 'Error desconocido', fileName, orgId)
+                await logError(adminSupabase, 'Unhandled Exception', error.message || 'Error desconocido', fileName, orgId || undefined)
             } catch (e) {
                 console.error('Logging/State fix failed in catch:', e)
             }
