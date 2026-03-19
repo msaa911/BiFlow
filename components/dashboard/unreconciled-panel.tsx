@@ -468,31 +468,34 @@ export function UnreconciledPanel({
             const currentMetadata = latestTx?.metadata || {}
             console.log("Attempting to update transaction:", { id: selectedTx.id, currentMetadata, category });
 
-            const { error: updateError } = await supabase
+            const { data: { user } } = await supabase.auth.getUser();
+            console.log("Current session context:", { userId: user?.id, orgId, latestTxOrg: latestTx?.organization_id });
+
+            const { error: updateError, count } = await supabase
                 .from('transacciones')
                 .update({
                     estado: 'conciliado',
-                    comprobante_id: voucher.id, // Set the actual column
+                    comprobante_id: voucher.id,
                     monto_usado: Math.abs(selectedTx.monto),
                     metadata: {
                         ...(currentMetadata || {}),
                         categoria_transaccion: category,
                         bank_note_id: voucher.id,
                         reconciled_at: new Date().toISOString(),
-                        link_method: 'direct_note',
+                        link_method: 'direct_note_rpc_v2',
                         generated_voucher_id: voucher.id,
                         category: category,
                         original_desc: selectedTx.descripcion
                     }
-                })
+                }, { count: 'exact' })
                 .eq('id', selectedTx.id)
                 .eq('organization_id', latestTx?.organization_id || orgId)
 
-            console.log("Update executed for tx:", selectedTx.id, "Error:", updateError);
+            console.log("Update executed for tx:", selectedTx.id, "Error:", updateError, "Count:", count);
 
-            if (updateError) {
-                console.error("Critical error updating transaction:", updateError);
-                throw new Error(`Error de base de datos: ${updateError?.message || "Error al actualizar estado"}`);
+            if (updateError || count === 0) {
+                console.error("Critical error updating transaction:", updateError || "No rows matched filters/permissions");
+                throw new Error(`Database Error: ${updateError?.message || "La transacción no pudo ser actualizada (Matched: " + count + ")"}`);
             }
 
             console.log("Transaction successfully marked as reconciled:", selectedTx.id)
