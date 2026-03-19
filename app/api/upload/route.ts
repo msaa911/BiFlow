@@ -500,15 +500,15 @@ export async function POST(request: Request) {
                         // FETCH ACCOUNTS FOR MATCHING
                         const { data: accounts } = await adminSupabase
                             .from('cuentas_bancarias')
-                            .select('id, nombre, banco')
+                            .select('id, banco_nombre, cbu')
                             .eq('organization_id', orgId);
 
                         const findAccountId = (bankName: string) => {
                             if (!bankName || !accounts) return null;
                             const search = bankName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                            const exact = accounts.find(a =>
-                                (a.nombre?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "").includes(search) ||
-                                (a.banco?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "").includes(search)
+                            const exact = accounts.find((a: any) =>
+                                (a.banco_nombre?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "").includes(search) ||
+                                (a.cbu?.includes(search))
                             );
                             return exact ? exact.id : null;
                         };
