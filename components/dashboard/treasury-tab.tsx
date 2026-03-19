@@ -118,7 +118,8 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 return;
             }
             
-            toast.success(`Conciliación finalizada: ${result.matched || 0} vínculos creados`, { id: toastId })
+            const totalMatched = (result.adminCount || 0) + (result.matched || 0)
+            toast.success(`Conciliación finalizada: ${totalMatched} vínculos creados (${result.adminCount || 0} administrativos, ${result.matched || 0} bancarios)`, { id: toastId })
             fetchData()
         } catch (error: any) {
             toast.error(error.message, { id: toastId })

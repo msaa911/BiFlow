@@ -151,9 +151,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
         try {
             const res = await fetch('/api/reconcile/auto', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     scope,
-                    cuentaId: selectedAccountId !== 'all' ? selectedAccountId : undefined
+                    bankAccountId: selectedAccountId !== 'all' ? selectedAccountId : undefined
                 })
             })
             const data = await res.json()
@@ -164,14 +165,13 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                 return;
             }
 
-            if (data.matched > 0) {
-                const message = scope === 'admin'
-                    ? `¡Éxito! Se vincularon ${data.matched} facturas con recibos/OP.`
-                    : `¡Éxito! Se conciliaron ${data.matched} movimientos con el extracto bancario.`;
-                toast.success(message)
+            const totalMatched = (data.adminCount || 0) + (data.matched || 0)
+
+            if (totalMatched > 0) {
+                toast.success(`Conciliación finalizada: ${totalMatched} vínculos creados (${data.adminCount || 0} administrativos, ${data.matched || 0} bancarios)`)
                 if (onRefresh) onRefresh()
             } else {
-                toast.info(`Proceso finalizado. No se encontraron nuevos matches (0).`)
+                toast.info(`Proceso finalizado. No se encontraron nuevos vínculos (0).`)
             }
         } catch (error) {
             console.error('Reconciliation failed:', error)

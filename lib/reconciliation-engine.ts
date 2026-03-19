@@ -24,6 +24,7 @@ export class ReconciliationEngine {
     return {
       success: data?.status === 'success',
       matched: data?.matched_count || 0,
+      adminCount: data?.admin_results || 0,
       total: data?.total_read || 0,
       actions: data?.actions || [],
       status: data?.status || 'error',
