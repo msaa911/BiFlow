@@ -417,6 +417,7 @@ export async function POST(request: Request) {
                             fecha_vencimiento: t.vencimiento || t.fecha,
                             monto_total: Math.abs(t.monto),
                             monto_pendiente: Math.abs(t.monto),
+                            concepto: t.concepto || t.descripcion || 'Sin concepto',
                             estado: 'pendiente',
                             moneda: t.moneda || 'ARS',
                             metadata: { ...(t.metadata || {}), raw_row: t.raw }

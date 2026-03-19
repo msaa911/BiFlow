@@ -109,13 +109,14 @@ async function runTest() {
             tipo: inv.tipo === 'venta' ? 'factura_venta' : 'factura_compra',
             nro_factura: inv.numero,
             cuit_socio: cleanCuit,
-            razon_social_socio: inv['razón social'] || inv.cliente || inv.proveedor,
-            razon_social_entidad: inv['razón social'] || inv.cliente || inv.proveedor, 
+            razon_social_socio: inv.razon_social || inv.cliente || inv.proveedor || 'Sin Razón Social',
+            razon_social_entidad: inv.razon_social || inv.cliente || inv.proveedor || 'Sin Razón Social', 
             cuit_entidad: cleanCuit, 
             fecha_emision: inv.fecha.split('/').reverse().join('-'),
-            fecha_vencimiento: inv.fecha.split('/').reverse().join('-'), // Using emission date for simplicity
+            fecha_vencimiento: inv.fecha.split('/').reverse().join('-'),
             monto_total: parseFloat(inv.monto),
             monto_pendiente: parseFloat(inv.monto),
+            concepto: inv.concepto || inv.detalle || 'Test Concept',
             estado: 'pendiente',
             moneda: 'ARS'
         });
