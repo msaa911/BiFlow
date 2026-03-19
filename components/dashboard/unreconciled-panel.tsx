@@ -469,7 +469,19 @@ export function UnreconciledPanel({
             console.log("Attempting to update transaction:", { id: selectedTx.id, currentMetadata, category });
 
             const { data: { user } } = await supabase.auth.getUser();
-            console.log("Current session context:", { userId: user?.id, orgId, latestTxOrg: latestTx?.organization_id });
+            const { count: memberCount, error: memberErr } = await supabase
+                .from('organization_members')
+                .select('id', { count: 'exact', head: true })
+                .eq('organization_id', latestTx?.organization_id || orgId)
+                .eq('user_id', user?.id || '');
+
+            console.log("Current session context:", { 
+                userId: user?.id, 
+                orgId, 
+                latestTxOrg: latestTx?.organization_id,
+                isMember: memberCount && memberCount > 0,
+                memberErr
+            });
 
             const { error: updateError, count } = await supabase
                 .from('transacciones')
@@ -495,7 +507,7 @@ export function UnreconciledPanel({
 
             if (updateError || count === 0) {
                 console.error("Critical error updating transaction:", updateError || "No rows matched filters/permissions");
-                throw new Error(`Database Error: ${updateError?.message || "La transacción no pudo ser actualizada (Matched: " + count + ")"}`);
+                throw new Error(`Error BD: ${updateError?.message || "No se pudo actualizar (Matched: " + count + "). Membresía: " + (memberCount && memberCount > 0 ? 'OK' : 'NO')}`);
             }
 
             console.log("Transaction successfully marked as reconciled:", selectedTx.id)
