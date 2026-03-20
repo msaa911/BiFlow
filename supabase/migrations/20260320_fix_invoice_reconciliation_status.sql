@@ -62,13 +62,13 @@ BEGIN
           )
           AND (
               -- Match por Entidad ID + Monto
-              (v_mov.entidad_id IS NOT NULL AND c.entidad_id = v_mov.entidad_id AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0))
+              (v_mov.entidad_id IS NOT NULL AND c.entidad_id = v_mov.entidad_id AND ABS(COALESCE(c.monto_pendiente, c.monto_total) - ABS(v_mov.monto_total)) <= 1.0)
               OR
               -- Match por Nro Factura en Observaciones (si entidad es nula) + Monto
-              (v_mov.entidad_id IS NULL AND v_mov.observaciones ~ c.nro_factura AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0))
+              (v_mov.entidad_id IS NULL AND v_mov.observaciones ~ c.nro_factura AND ABS(COALESCE(c.monto_pendiente, c.monto_total) - ABS(v_mov.monto_total)) <= 1.0)
               OR
               -- Match por Monto solamente (último recurso si no hay ambigüedad)
-              (v_mov.entidad_id IS NULL AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0) AND (SELECT COUNT(*) FROM public.comprobantes c2 WHERE c2.organization_id = p_org_id AND ROUND(ABS(COALESCE(c2.monto_pendiente, c2.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0)) = 1)
+              (v_mov.entidad_id IS NULL AND ABS(COALESCE(c.monto_pendiente, c.monto_total) - ABS(v_mov.monto_total)) <= 1.0 AND (SELECT COUNT(*) FROM public.comprobantes c2 WHERE c2.organization_id = p_org_id AND ABS(COALESCE(c2.monto_pendiente, c2.monto_total) - ABS(v_mov.monto_total)) <= 1.0) = 1)
           )
         ORDER BY c.fecha_emision ASC, c.nro_factura ASC, c.created_at ASC
         LIMIT 1;
@@ -154,7 +154,7 @@ BEGIN
                 JOIN public.entidades e ON mt.entidad_id = e.id
                 WHERE mt.organization_id = p_org_id 
                   AND REGEXP_REPLACE(e.cuit, '[^0-9]', '', 'g') = v_extracted_cuit
-                  AND ROUND(ABS(mt.monto_total), 0) = ROUND(ABS(v_trans.monto), 0) 
+                  AND ABS(ABS(mt.monto_total) - ABS(v_trans.monto)) <= 1.0 
                   AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id)
                 ORDER BY mt.fecha ASC 
                 LIMIT 1;
@@ -171,7 +171,7 @@ BEGIN
                 FROM public.movimientos_tesoreria mt
                 JOIN public.instrumentos_pago ip ON ip.movimiento_id = mt.id
                 WHERE mt.organization_id = p_org_id
-                  AND ROUND(ABS(ip.monto), 0) = ROUND(ABS(v_trans.monto), 0)
+                  AND ABS(ABS(ip.monto) - ABS(v_trans.monto)) <= 1.0
                   AND RIGHT(REGEXP_REPLACE(COALESCE(ip.detalle_referencia, ''), '[^0-9]', '', 'g'), 4) = 
                       RIGHT(REGEXP_REPLACE(COALESCE(v_trans.descripcion, ''), '[^0-9]', '', 'g'), 4)
                   AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id);
@@ -187,14 +187,14 @@ BEGIN
                 SELECT COUNT(DISTINCT mt.id) INTO v_candidates_count 
                 FROM public.movimientos_tesoreria mt
                 WHERE mt.organization_id = p_org_id 
-                  AND ROUND(ABS(mt.monto_total), 0) = ROUND(ABS(v_trans.monto), 0)
+                  AND ABS(ABS(mt.monto_total) - ABS(v_trans.monto)) <= 1.0
                   AND ABS(mt.fecha - v_trans.fecha) <= 10 
                   AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id);
 
                 IF v_candidates_count = 1 THEN
                     SELECT id INTO v_match_id FROM public.movimientos_tesoreria mt 
                     WHERE mt.organization_id = p_org_id 
-                      AND ROUND(ABS(mt.monto_total), 0) = ROUND(ABS(v_trans.monto), 0) 
+                      AND ABS(ABS(mt.monto_total) - ABS(v_trans.monto)) <= 1.0 
                       AND ABS(mt.fecha - v_trans.fecha) <= 10 
                       AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id);
                     
@@ -213,7 +213,7 @@ BEGIN
                         SELECT mt.* 
                         FROM public.movimientos_tesoreria mt 
                         WHERE mt.organization_id = p_org_id 
-                          AND ROUND(ABS(mt.monto_total), 0) = ROUND(ABS(v_trans.monto), 0) 
+                          AND ABS(ABS(mt.monto_total) - ABS(v_trans.monto)) <= 1.0 
                         LIMIT 3
                     ) mt 
                     JOIN public.entidades e ON mt.entidad_id = e.id;
