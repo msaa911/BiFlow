@@ -372,6 +372,8 @@ export async function POST(request: Request) {
                 return newEnt?.id;
             };
 
+            const normalize = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+
             if (uploadContext === 'income' || uploadContext === 'expense' || uploadContext === 'receipt' || uploadContext === 'payment') {
                 console.log(`[UPLOAD] [TREASURY] Routing ${transactions.length} rows to ${uploadContext}`)
                 uniqueCount = transactions.length
@@ -466,7 +468,7 @@ export async function POST(request: Request) {
 
                     // Prepare consolidated movements
                     const movementsToInsert: any[] = []
-                    const instrumentDataMap: any[] = [] // Temporary map to link instruments after insert
+                    const instrumentDataMap: any[] = [] 
 
                     // Process grouped
                     Object.keys(groupedByNum).forEach(num => {
@@ -494,9 +496,14 @@ export async function POST(request: Request) {
                         instrumentDataMap.push(rows)
                     })
 
-                    // Process ungrouped (one-to-one)
+                    // Process ungrouped (one-to-one) - Use deterministic number to avoid duplicates on re-import
+                    const getDeterministicId = (t: any) => {
+                        const base = `${t.fecha}-${t.entidad_id || 'noent'}-${Math.abs(t.monto)}-${normalize(t.descripcion || t.concepto)}`;
+                        return (isCobro ? 'REC-D-' : 'OP-D-') + Buffer.from(base).toString('base64').substring(0, 12).toUpperCase();
+                    }
+
                     ungrouped.forEach(t => {
-                        const num = (isCobro ? 'REC' : 'OP') + '-' + Math.random().toString(36).substring(7).toUpperCase()
+                        const num = t.numero || getDeterministicId(t);
                         movementsToInsert.push({
                             organization_id: orgId,
                             entidad_id: t.entidad_id || null,
@@ -510,19 +517,39 @@ export async function POST(request: Request) {
                             metadata: {
                                 raw_row: t.raw,
                                 import_type: uploadContext,
-                                archivo_importacion_id: importId
+                                archivo_importacion_id: importId,
+                                is_deterministic: !t.numero
                             }
                         })
                         instrumentDataMap.push([t])
                     })
 
-                    uniqueCount = movementsToInsert.length
+                    // --- DUPLICATE CHECK FOR TREASURY ---
+                    const { data: existingMovs } = await currentSupabase
+                        .from('movimientos_tesoreria')
+                        .select('nro_comprobante')
+                        .eq('organization_id', orgId)
+                        .in('nro_comprobante', movementsToInsert.map(m => m.nro_comprobante));
+                    
+                    const existingMovSet = new Set(existingMovs?.map((e: any) => e.nro_comprobante) || []);
+                    
+                    const finalMovements: any[] = [];
+                    const finalInstrumentMap: any[] = [];
 
+                    movementsToInsert.forEach((m, idx) => {
+                        if (!existingMovSet.has(m.nro_comprobante)) {
+                            finalMovements.push(m);
+                            finalInstrumentMap.push(instrumentDataMap[idx]);
+                        }
+                    });
+
+                    uniqueCount = finalMovements.length
                     let insertedMovs: any[] = []
-                    if (movementsToInsert.length > 0) {
+
+                    if (finalMovements.length > 0) {
                         const { data, error: movsError } = await currentSupabase
                             .from('movimientos_tesoreria')
-                            .insert(movementsToInsert)
+                            .insert(finalMovements)
                             .select()
 
                         if (movsError) {
@@ -593,13 +620,13 @@ export async function POST(request: Request) {
 
                 const { data: existing } = await currentSupabase
                     .from('transacciones')
-                    .select('fecha, descripcion, monto, numero_cheque')
+                    .select('fecha, descripcion, monto, numero_cheque, metadata')
                     .eq('organization_id', orgId)
                     .gte('fecha', minDate)
                     .lte('fecha', maxDate)
 
-                const normalize = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
-                const getHash = (t: any) => `${t.fecha}-${normalize(t.descripcion || t.concepto)}-${t.monto}-${t.numero_cheque || ''}-${t.metadata?.saldo || ''}`;
+                const getHash = (t: any) => `${t.fecha}-${normalize(t.descripcion || t.concepto)}-${t.monto}-${t.numero_cheque || ''}`;
+
 
                 // Occurrence-aware de-duplication:
                 // We count how many times a transaction (same date, desc, amount, partial hash) exists in DB
