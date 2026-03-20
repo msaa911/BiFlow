@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2, Sparkles, HelpCircle, TrendingDown, TrendingUp } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2, Sparkles, HelpCircle } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -75,7 +75,9 @@ export function UnreconciledPanel({
     const [isConciliating, setIsConciliating] = useState(false)
     const [globalAiSuggestions, setGlobalAiSuggestions] = useState<any[]>([])
     const [suggestedMovements, setSuggestedMovements] = useState<any[]>([])
+    const [suggestedInvoices, setSuggestedInvoices] = useState<any[]>([])
     const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([])
+    const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
     const [loadingInvoices, setLoadingInvoices] = useState(false)
 
     const [currentPage, setCurrentPage] = useState(1)
@@ -124,46 +126,34 @@ export function UnreconciledPanel({
             const txAmount = Math.abs(txToMatch.monto)
 
 
-            // 2. Fetch Treasury Movements (Recibos/OPs) already created but unlinked to any transaction
+            // 2. Fetch Treasury Movements (Recibos/OPs) candidates
             const { data: linkedTxData } = await supabase.from('transacciones').select('movimiento_id').not('movimiento_id', 'is', null)
             const linkedMovIds = linkedTxData?.map(t => t.movimiento_id).filter(Boolean) || []
 
-            const { data: instruments, error: insError } = await supabase
-                .from('instrumentos_pago')
-                .select('*, movimientos_tesoreria(*, entidades(razon_social), aplicaciones_pago(comprobantes(nro_factura, tipo)))')
+            const { data: movements, error: movsError } = await supabase
+                .from('movimientos_tesoreria')
+                .select('*, entidades(razon_social), aplicaciones_pago(comprobantes(nro_factura, tipo, id)), instrumentos_pago(*)')
                 .eq('organization_id', orgId)
-                // Filter by type: match bank inflow (cobro) or outflow (pago)
-                .filter('movimientos_tesoreria.tipo', 'eq', txToMatch.monto > 0 ? 'cobro' : 'pago')
+                .eq('tipo', txToMatch.monto > 0 ? 'cobro' : 'pago')
+                .not('id', 'in', `(${linkedMovIds.join(',') || '00000000-0000-0000-0000-000000000000'})`)
 
-            if (!insError && instruments) {
-                // Filter out those already linked
-                const unlinkedMovs = instruments.filter(ins => !linkedMovIds.includes(ins.movimiento_id))
-
-                // De-duplicate: A movement can have multiple instruments
-                const uniqueMovs = new Map()
-                unlinkedMovs.forEach(ins => {
-                    if (ins.movimientos_tesoreria) {
-                        if (!uniqueMovs.has(ins.movimiento_id)) {
-                            uniqueMovs.set(ins.movimiento_id, {
-                                id: ins.movimiento_id,
-                                fecha: ins.movimientos_tesoreria.fecha,
-                                monto: 0, // Sum instruments
-                                observaciones: ins.movimientos_tesoreria.observaciones,
-                                nro_comprobante: ins.movimientos_tesoreria.nro_comprobante,
-                                entidad: ins.movimientos_tesoreria.entidad_id,
-                                razonSocial: ins.movimientos_tesoreria.entidades?.razon_social,
-                                tipo: ins.movimientos_tesoreria.tipo,
-                                aplicaciones: ins.movimientos_tesoreria.aplicaciones_pago || [],
-                                instrumentos: []
-                            })
-                        }
-                        const mov = uniqueMovs.get(ins.movimiento_id)
-                        mov.monto += Number(ins.monto)
-                        mov.instrumentos.push({
-                            metodo: ins.metodo,
-                            detalle_referencia: ins.detalle_referencia,
-                            monto: ins.monto
-                        })
+            if (!movsError && movements) {
+                const uniqueMovs = movements.map(mov => {
+                    const instrumentsTotal = mov.instrumentos_pago?.reduce((acc: number, curr: any) => acc + Number(curr.monto), 0) || 0
+                    
+                    return {
+                        id: mov.id,
+                        fecha: mov.fecha,
+                        monto: instrumentsTotal || Number(mov.monto), // Use movement total if no instruments
+                        observaciones: mov.observaciones,
+                        nro_comprobante: mov.nro_comprobante,
+                        entidad: mov.entidad_id,
+                        razonSocial: mov.entidades?.razon_social,
+                        tipo: mov.tipo,
+                        aplicaciones: mov.aplicaciones_pago || [],
+                        instrumentos: mov.instrumentos_pago || [],
+                        isMissingInstruments: (mov.instrumentos_pago?.length || 0) === 0,
+                        isMissingInvoices: (mov.aplicaciones_pago?.length || 0) === 0
                     }
                 })
 
@@ -190,16 +180,44 @@ export function UnreconciledPanel({
             } else {
                 setSuggestedMovements([])
             }
+
+            // 5. Fetch Pending Invoices (Comprobantes)
+            // If tx.monto > 0 (Inflow) -> Look for factura_venta
+            // If tx.monto < 0 (Outflow) -> Look for factura_compra
+            const invType = txToMatch.monto > 0 ? 'factura_venta' : 'factura_compra'
+            const { data: pendingInvoices, error: invError } = await supabase
+                .from('comprobantes')
+                .select('*')
+                .eq('organization_id', orgId)
+                .eq('tipo', invType)
+                .gt('monto_pendiente', 0)
+                .order('fecha_vencimiento', { ascending: true })
+
+            if (!invError && pendingInvoices) {
+                // Sort invoices by proximity to transaction amount and date
+                const sortedInvoices = pendingInvoices.sort((a, b) => {
+                    const diffA = Math.abs(Number(a.monto_pendiente) - txAmount)
+                    const diffB = Math.abs(Number(b.monto_pendiente) - txAmount)
+                    if (diffA !== diffB) return diffA - diffB
+                    
+                    const dateDiffA = Math.abs(new Date(a.fecha_emision).getTime() - new Date(txToMatch.fecha).getTime())
+                    const dateDiffB = Math.abs(new Date(b.fecha_emision).getTime() - new Date(txToMatch.fecha).getTime())
+                    return dateDiffA - dateDiffB
+                })
+                setSuggestedInvoices(sortedInvoices)
+            } else {
+                setSuggestedInvoices([])
+            }
         } catch (error) {
-            console.error('Error fetching suggested movements:', error)
-            toast.error('Error al cargar movimientos de tesorería')
+            console.error('Error fetching suggested movements/invoices:', error)
+            toast.error('Error al cargar datos para conciliación')
         } finally {
             setLoadingInvoices(false)
         }
     }
 
     const handleConciliate = async () => {
-        if (!selectedTx || selectedMovementIds.length === 0) return
+        if (!selectedTx || (selectedMovementIds.length === 0 && selectedInvoiceIds.length === 0)) return
         setIsSubmitting(true)
         try {
             const currentOrgId = selectedTx.organization_id || orgId
@@ -207,12 +225,82 @@ export function UnreconciledPanel({
             const previouslyUsed = Number(selectedTx.monto_usado || 0)
             const availableAmount = totalBankAmount - previouslyUsed
 
-            const selectedTotal = suggestedMovements
+            const selectedTotalMovements = suggestedMovements
                 .filter(m => selectedMovementIds.includes(m.id))
                 .reduce((acc, curr) => acc + Number(curr.monto), 0)
 
+            // If using Fast Track (invoice), the "selected total" is the full bank amount (or what we're about to generate)
+            const selectedTotal = selectedInvoiceIds.length > 0 
+                ? availableAmount 
+                : selectedTotalMovements
+
             const difference = availableAmount - selectedTotal
             const shortfall = selectedTotal - availableAmount
+
+            let finalMovementId = selectedMovementIds[0]
+
+            // 0. If an invoice was selected (Fast Track), generate the Receipt/OP first
+            if (selectedInvoiceIds.length > 0) {
+                const targetInvoice = suggestedInvoices.find(inv => inv.id === selectedInvoiceIds[0])
+                if (!targetInvoice) throw new Error("Factura seleccionada no encontrada")
+
+                const movementType = selectedTx.monto > 0 ? 'cobro' : 'pago'
+                const movementNumber = `${movementType === 'cobro' ? 'REC' : 'OP'}-AUTO-${selectedTx.id.split('-')[0].toUpperCase()}`
+
+                // 0.1 Create Treasury Movement
+                const { data: newMov, error: movErr } = await supabase
+                    .from('movimientos_tesoreria')
+                    .insert({
+                        organization_id: currentOrgId,
+                        entidad_id: targetInvoice.entidad_id,
+                        tipo: movementType,
+                        fecha: selectedTx.fecha,
+                        monto: Math.abs(selectedTx.monto),
+                        estado: 'acreditado',
+                        nro_comprobante: movementNumber,
+                        moneda: 'ARS',
+                        descripcion: `Generado automáticamente desde Factura ${targetInvoice.numero} por conciliación bancaria`
+                    })
+                    .select()
+                    .single()
+
+                if (movErr) throw movErr
+                finalMovementId = newMov.id
+
+                // 0.2 Create Application
+                const { error: appErr } = await supabase
+                    .from('aplicaciones_pago')
+                    .insert({
+                        organization_id: currentOrgId,
+                        comprobante_id: targetInvoice.id,
+                        movimiento_id: newMov.id,
+                        monto: Math.abs(selectedTx.monto),
+                        fecha: selectedTx.fecha
+                    })
+
+                if (appErr) throw appErr
+
+                // 0.3 Update Invoice status if fully paid? 
+                // (Already handled by standard SQL triggers/logic usually, but let's be explicit if needed)
+            }
+
+            // 0.4 Handle Missing Instruments in treasury (Auto-create them)
+            const movementsToRepair = suggestedMovements.filter(m => 
+                selectedMovementIds.includes(m.id) && m.isMissingInstruments
+            )
+
+            for (const movToRepair of movementsToRepair) {
+                const { error: insRepErr } = await supabase.from('instrumentos_pago').insert({
+                    organization_id: currentOrgId,
+                    movimiento_id: movToRepair.id,
+                    metodo: 'transferencia',
+                    monto: movToRepair.monto,
+                    estado: 'acreditado',
+                    detalle_referencia: selectedTx.referencia || 'VINC_BANCO_AUTO',
+                    fecha_disponibilidad: selectedTx.fecha
+                })
+                if (insRepErr) console.warn("Could not auto-create missing instrument:", insRepErr)
+            }
 
             // 1. Process Residual as Gasto/Ingreso if enabled
             if (processResidualAsGasto && difference > 0.05) {
@@ -280,14 +368,14 @@ export function UnreconciledPanel({
             const { error: txLinkErr } = await supabase
                 .from('transacciones')
                 .update({
-                    movimiento_id: selectedMovementIds[0],
+                    movimiento_id: finalMovementId,
                     estado: isFullyUsed ? 'conciliado' : 'parcial',
                     monto_usado: isFullyUsed ? totalBankAmount : (previouslyUsed + selectedTotal),
                     metadata: {
                         ...(selectedTx.metadata || {}),
                         linked_at: new Date().toISOString(),
-                        link_method: 'batch_match_with_assistant',
-                        all_movement_ids: selectedMovementIds,
+                        link_method: selectedInvoiceIds.length > 0 ? 'invoice_fast_track_v1' : 'batch_match_with_assistant',
+                        all_movement_ids: selectedInvoiceIds.length > 0 ? [finalMovementId] : selectedMovementIds,
                         residual_processed: processResidualAsGasto,
                         mixed_payment: secondaryPaymentEnabled
                     }
@@ -300,7 +388,7 @@ export function UnreconciledPanel({
             await supabase
                 .from('instrumentos_pago')
                 .update({ estado: 'acreditado' })
-                .in('movimiento_id', selectedMovementIds)
+                .in('movimiento_id', selectedInvoiceIds.length > 0 ? [finalMovementId] : selectedMovementIds)
 
             // 5. Propagate conciliation state (standard logic)
             const { data: apps } = await supabase
@@ -962,95 +1050,182 @@ export function UnreconciledPanel({
                                 <Loader2 className="w-8 h-8 animate-spin mb-2" />
                                 <p className="text-[10px] font-black uppercase tracking-widest">Buscando documentos...</p>
                             </div>
-                        ) : suggestedMovements.length > 0 ? (
+                        ) : (suggestedMovements.length > 0 || suggestedInvoices.length > 0) ? (
                             <div className="flex flex-col h-full overflow-hidden">
-                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2 shrink-0">
-                                    <CheckCircle2 className="w-3.5 h-3.5" /> sugerencias de tesorería
-                                </p>
-                                <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar max-h-[400px]">
-                                    {suggestedMovements.map((mov) => {
-                                        const isSelected = selectedMovementIds.includes(mov.id)
-                                        const txAmount = Math.abs(selectedTx.monto)
-                                        
-                                        const diffAmount = Math.abs(ROUND_TO_0(mov.monto) - txAmount)
-                                        const diffDays = Math.abs(new Date(mov.fecha).getTime() - new Date(selectedTx.fecha).getTime()) / (1000 * 60 * 60 * 24)
-                                        
-                                        let probabilityLabel = "Lejana"
-                                        let probabilityClass = "bg-red-500/10 text-red-500 border-red-500/20"
-                                        
-                                        if (diffAmount < 0.05 && diffDays <= 10) {
-                                            probabilityLabel = "Exacta"
-                                            probabilityClass = "bg-emerald-500 text-black border-emerald-500"
-                                        } else if (diffAmount < 0.05 || (diffAmount < txAmount * 0.05 && diffDays <= 15)) {
-                                            probabilityLabel = "Probable"
-                                            probabilityClass = "bg-amber-500/20 text-amber-500 border-amber-500/30"
-                                        }
+                                {suggestedMovements.length > 0 && (
+                                    <div className="shrink-0 mb-4">
+                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2 shrink-0">
+                                            <CheckCircle2 className="w-3.5 h-3.5" /> sugerencias de tesorería
+                                        </p>
+                                        <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar max-h-[250px]">
+                                            {suggestedMovements.map((mov) => {
+                                                const isSelected = selectedMovementIds.includes(mov.id)
+                                                const txAmount = Math.abs(selectedTx?.monto || 0)
+                                                
+                                                const diffAmount = Math.abs(ROUND_TO_0(mov.monto) - txAmount)
+                                                const diffDays = Math.abs(new Date(mov.fecha).getTime() - new Date(selectedTx?.fecha || '').getTime()) / (1000 * 60 * 60 * 24)
+                                                
+                                                let probabilityLabel = "Lejana"
+                                                let probabilityClass = "bg-red-500/10 text-red-500 border-red-500/20"
+                                                
+                                                if (diffAmount < 0.05 && diffDays <= 10) {
+                                                    probabilityLabel = "Exacta"
+                                                    probabilityClass = "bg-emerald-500 text-black border-emerald-500"
+                                                } else if (diffAmount < 0.05 || (diffAmount < txAmount * 0.05 && diffDays <= 15)) {
+                                                    probabilityLabel = "Probable"
+                                                    probabilityClass = "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                                                }
 
-                                        return (
-                                            <button
-                                                key={mov.id}
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    const newSelected = isSelected
-                                                        ? selectedMovementIds.filter(id => id !== mov.id)
-                                                        : [...selectedMovementIds, mov.id]
-                                                    setSelectedMovementIds(newSelected)
-                                                }}
-                                                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 group text-left ${isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-gray-950/40 border-gray-800 hover:border-gray-700 hover:bg-gray-900/40'}`}
-                                            >
-                                                <div className="flex items-center gap-3 overflow-hidden">
-                                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-gray-700 group-hover:border-gray-500'}`}>
-                                                        {isSelected && <Check className="w-3.5 h-3.5 text-black font-black" />}
-                                                    </div>
-                                                    <div className="flex-1 overflow-hidden">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase ${probabilityClass}`}>
-                                                                {probabilityLabel}
-                                                            </span>
-                                                            <span className={`text-[12px] font-bold uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'text-gray-300'}`}>
-                                                                {mov.razonSocial || 'Entidad no ident.'}
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                                            <Badge variant="outline" className={`text-[9px] font-bold ${isSelected ? 'bg-white/10 text-white border-white/20' : 'bg-gray-800 text-gray-400 border-gray-700'} px-1.5 py-0`}>
-                                                                {mov.nro_comprobante || 'S/N'}
-                                                            </Badge>
-
-                                                            {mov.aplicaciones?.length > 0 && (
-                                                                <div className="flex gap-1">
-                                                                    {mov.aplicaciones.slice(0, 2).map((app: any, idx: number) => (
-                                                                        <Badge key={idx} className="bg-blue-600 text-white text-[8px] font-black border-none px-1 py-0">
-                                                                            {app.comprobantes?.nro_factura || 'S/F'}
-                                                                        </Badge>
-                                                                    ))}
+                                                return (
+                                                    <button
+                                                        key={mov.id}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            const newSelected = isSelected
+                                                                ? selectedMovementIds.filter(id => id !== mov.id)
+                                                                : [...selectedMovementIds, mov.id]
+                                                            setSelectedMovementIds(newSelected)
+                                                            if (!isSelected) setSelectedInvoiceIds([])
+                                                        }}
+                                                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 group text-left ${isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-gray-950/40 border-gray-800 hover:border-gray-700 hover:bg-gray-900/40'}`}
+                                                    >
+                                                        <div className="flex items-center gap-3 overflow-hidden">
+                                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-gray-700 group-hover:border-gray-500'}`}>
+                                                                {isSelected && <Check className="w-3.5 h-3.5 text-black font-black" />}
+                                                            </div>
+                                                            <div className="flex-1 overflow-hidden">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase ${probabilityClass}`}>
+                                                                        {probabilityLabel}
+                                                                    </span>
+                                                                    <span className={`text-[12px] font-bold uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                                                                        {mov.razonSocial || 'Entidad no ident.'}
+                                                                    </span>
                                                                 </div>
-                                                            )}
-
-                                                            <span className="text-[10px] text-gray-500 font-mono ml-auto">
-                                                                {new Date(mov.fecha).toLocaleDateString()}
-                                                            </span>
+                                                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                                    <Badge variant="outline" className={`text-[9px] font-bold ${isSelected ? 'bg-white/10 text-white border-white/20' : 'bg-gray-800 text-gray-400 border-gray-700'} px-1.5 py-0`}>
+                                                                        {mov.nro_comprobante || 'S/N'}
+                                                                    </Badge>
+                                                                    {mov.isMissingInstruments && (
+                                                                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-red-400 uppercase">
+                                                                            Sin Comprobante de Pago
+                                                                        </span>
+                                                                    )}
+                                                                    {mov.isMissingInvoices && (
+                                                                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400 uppercase">
+                                                                            Sin Factura
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right whitespace-nowrap">
-                                                    <p className={`text-xs font-black ${isSelected ? 'text-emerald-400' : 'text-white'}`}>
-                                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto)}
-                                                    </p>
-                                                    <span className={`text-[8px] font-black px-1.5 rounded uppercase mt-0.5 inline-block border ${isSelected ? 'bg-emerald-500 text-black border-emerald-500' : 'text-emerald-500/50 bg-emerald-500/5 border-emerald-500/20'}`}>
-                                                        {isSelected ? 'Seleccionado' : 'Vincular'}
-                                                    </span>
-                                                </div>
-                                            </button>
-                                        )
-                                    })}
-                                </div>
+                                                        <div className="text-right ml-4">
+                                                            <p className={`text-sm font-black ${isSelected ? 'text-emerald-400' : 'text-white'}`}>
+                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(mov.monto)}
+                                                            </p>
+                                                            <p className="text-[9px] text-gray-500 font-mono">{new Date(mov.fecha).toLocaleDateString('es-AR')}</p>
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {suggestedInvoices.length > 0 && (
+                                    <div className="flex-1 min-h-0 flex flex-col">
+                                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2 shrink-0">
+                                            <FileText className="w-3.5 h-3.5" /> facturas pendientes (generar recibo/op)
+                                        </p>
+                                        <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+                                            {suggestedInvoices.map((inv) => {
+                                                const isSelected = selectedInvoiceIds.includes(inv.id)
+                                                const txAmount = Math.abs(selectedTx?.monto || 0)
+                                                const diffAmount = Math.abs(Number(inv.monto_pendiente) - txAmount)
+                                                
+                                                let probabilityLabel = "Lejana"
+                                                let probabilityClass = "bg-red-500/10 text-red-500 border-red-500/20"
+                                                if (diffAmount < 1) {
+                                                    probabilityLabel = "Exacta"
+                                                    probabilityClass = "bg-amber-500 text-black border-amber-500"
+                                                } else if (diffAmount < txAmount * 0.05) {
+                                                    probabilityLabel = "Cercana"
+                                                    probabilityClass = "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                                                }
+
+                                                return (
+                                                    <button
+                                                        key={inv.id}
+                                                        onClick={() => {
+                                                            const newSelected = isSelected ? [] : [inv.id]
+                                                            setSelectedInvoiceIds(newSelected)
+                                                            if (newSelected.length > 0) setSelectedMovementIds([])
+                                                        }}
+                                                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 group text-left ${isSelected ? 'bg-amber-500/10 border-amber-500/50' : 'bg-gray-950/40 border-gray-800 hover:border-gray-700 hover:bg-gray-900/40'}`}
+                                                    >
+                                                        <div className="flex items-center gap-3 overflow-hidden">
+                                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-amber-500 border-amber-500' : 'border-gray-700 group-hover:border-gray-500'}`}>
+                                                                {isSelected && <Check className="w-3.5 h-3.5 text-black font-black" />}
+                                                            </div>
+                                                            <div className="flex-1 overflow-hidden">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase ${probabilityClass}`}>
+                                                                        {probabilityLabel}
+                                                                    </span>
+                                                                    <span className={`text-[12px] font-bold uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                                                                        {inv.razon_social_socio || 'Socio no ident.'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <Badge variant="outline" className="text-[9px] font-bold bg-gray-800 text-gray-400 border-gray-700 px-1.5 py-0">
+                                                                        {inv.numero || 'Factura S/N'}
+                                                                    </Badge>
+                                                                    <span className="text-[9px] text-gray-500 font-mono">{new Date(inv.fecha_emision).toLocaleDateString('es-AR')}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right ml-4">
+                                                            <p className={`text-sm font-black ${isSelected ? 'text-amber-400' : 'text-white'}`}>
+                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inv.monto_pendiente)}
+                                                            </p>
+                                                            <p className="text-[9px] text-gray-400">Saldo Pendiente</p>
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center py-12 text-center text-gray-600 border border-dashed border-gray-800 rounded-xl m-2">
-                                <AlertCircle className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Sin movimientos sugeridos</p>
-                                <p className="text-[10px] mt-1 px-8">No se encontraron cobros o pagos que coincidan con los criterios bancarios.</p>
+                            <div className="flex-1 flex flex-col items-center justify-center py-12 text-center border border-dashed border-gray-800 rounded-xl m-2 bg-gray-900/20">
+                                <div className="bg-amber-500/10 p-3 rounded-full mb-4">
+                                    <AlertTriangle className="w-6 h-6 text-amber-500" />
+                                </div>
+                                <p className="text-sm font-bold text-white mb-1">
+                                    {selectedTx?.monto && selectedTx.monto > 0 
+                                        ? "No encontramos recibos emitidos para este importe"
+                                        : "No encontramos orden de pago emitida para este importe"
+                                    }
+                                </p>
+                                <p className="text-[10px] text-gray-500 max-w-[280px]">
+                                    Por favor, regularice la situación emitiendo el documento correspondiente en Tesorería o verifique los datos del extracto.
+                                </p>
+                                
+                                <div className="mt-6 flex flex-col gap-2 w-full px-8">
+                                    <p className="text-[9px] text-gray-600 font-bold uppercase tracking-wider">Solo si corresponde:</p>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => {
+                                            setIsConciliating(false);
+                                            setIsCategorizing(true);
+                                        }}
+                                        className="border-gray-800 hover:bg-gray-800 text-gray-400 text-[10px] h-8"
+                                    >
+                                        Generar Nota Bancaria (Solo Impuestos/Banco/Sueldos)
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1244,7 +1419,7 @@ export function UnreconciledPanel({
                             </Button>
                             <Button
                                 onClick={handleConciliate}
-                                disabled={isSubmitting || selectedMovementIds.length === 0}
+                                disabled={isSubmitting || (selectedMovementIds.length === 0 && selectedInvoiceIds.length === 0)}
                                 className="bg-blue-600 hover:bg-blue-500 text-white font-bold"
                             >
                                 {isSubmitting ? (
@@ -1252,7 +1427,10 @@ export function UnreconciledPanel({
                                 ) : (
                                     <CheckCircle2 className="w-4 h-4 mr-2" />
                                 )}
-                                Conciliar Seleccionados
+                                {selectedInvoiceIds.length > 0 
+                                    ? (selectedTx?.monto && selectedTx.monto > 0 ? "Generar Recibo y Conciliar" : "Generar OP y Conciliar")
+                                    : "Conciliar Seleccionados"
+                                }
                             </Button>
                         </div>
                     </DialogFooter>
