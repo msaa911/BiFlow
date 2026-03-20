@@ -1,7 +1,8 @@
--- Advanced Bank Reconciliation Engine v5.3.0 (TOTAL & EXPANDED)
+-- Advanced Bank Reconciliation Engine v5.3.1 (TOTAL & EXPANDED)
 -- Author: Antigravity AI
--- Date: 2026-03-19
+-- Date: 2026-03-20
 -- Rules: ROUND(monto, 0). 10-day window. Sequential Aging (Date > Num).
+-- v5.3.1: Refuerzo administrativo y auto-asignación de entidad.
 
 CREATE OR REPLACE FUNCTION public.reconcile_v3_1(
     p_org_id UUID,
@@ -32,7 +33,7 @@ DECLARE
     v_candidates_count INT;
     v_is_bank_expense BOOLEAN;
 BEGIN
-    RAISE NOTICE 'Iniciando Reconciliación V5.3.0 (10 días / Aging Secuencial)';
+    RAISE NOTICE 'Iniciando Reconciliación V5.3.1 (Auto-asignación & Refuerzo)';
 
     -- ============================================================
     -- FASE 1: CONCILIACIÓN ADMINISTRATIVA (Tesorería -> Facturas)
@@ -49,7 +50,7 @@ BEGIN
     LOOP
         v_inv_match := NULL; 
         
-        -- Buscamos el comprobante por monto redondeado
+        -- Buscamos el comprobante por monto redondeado y entidad (si existe)
         SELECT * INTO v_inv_match 
         FROM public.comprobantes c
         WHERE c.organization_id = p_org_id 
@@ -59,8 +60,16 @@ BEGIN
               OR 
               (v_mov.tipo = 'pago' AND c.tipo IN ('factura_compra', 'nota_debito_compra'))
           )
-          AND (c.entidad_id = v_mov.entidad_id)
-          AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0)
+          AND (
+              -- Match por Entidad ID + Monto
+              (v_mov.entidad_id IS NOT NULL AND c.entidad_id = v_mov.entidad_id AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0))
+              OR
+              -- Match por Nro Factura en Observaciones (si entidad es nula) + Monto
+              (v_mov.entidad_id IS NULL AND v_mov.observaciones ~ c.nro_factura AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0))
+              OR
+              -- Match por Monto solamente (último recurso si no hay ambigüedad)
+              (v_mov.entidad_id IS NULL AND ROUND(ABS(COALESCE(c.monto_pendiente, c.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0) AND (SELECT COUNT(*) FROM public.comprobantes c2 WHERE c2.organization_id = p_org_id AND ROUND(ABS(COALESCE(c2.monto_pendiente, c2.monto_total)), 0) = ROUND(ABS(v_mov.monto_total), 0)) = 1)
+          )
         ORDER BY c.fecha_emision ASC, c.nro_factura ASC, c.created_at ASC
         LIMIT 1;
 
@@ -89,6 +98,13 @@ BEGIN
                         ELSE estado 
                     END
                 WHERE id = v_inv_match.id;
+
+                -- AUTO-ASIGNACIÓN DE ENTIDAD: Si el movimiento no tenía entidad, se la ponemos
+                IF v_mov.entidad_id IS NULL THEN
+                    UPDATE public.movimientos_tesoreria 
+                    SET entidad_id = v_inv_match.entidad_id 
+                    WHERE id = v_mov.id;
+                END IF;
             END IF;
         END IF;
     END LOOP;
@@ -207,7 +223,7 @@ BEGIN
 
         -- Diagnóstico final si nada coincidió
         IF v_match_id IS NULL AND v_fail_reason IS NULL THEN 
-            v_fail_reason := 'Importe hallado en Gestión, pero la fecha difiere por más de 10 días del Banco.'; 
+            v_fail_reason := 'No se halló el importe en Tesorería dentro de la ventana de 10 días.'; 
         END IF;
 
         -- Persistencia y Actualización
@@ -261,7 +277,7 @@ BEGIN
             detalle
         ) VALUES (
             p_org_id, 
-            'v5.3.0_10_days', 
+            'v5.3.1_refined', 
             v_total_read, 
             v_matched_count, 
             v_result
@@ -271,7 +287,11 @@ BEGIN
     RETURN v_result;
 
 EXCEPTION WHEN OTHERS THEN
-    RAISE WARNING 'Error Crítico V5.2.16: %', SQLERRM;
-    RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
+    RAISE WARNING 'Error Crítico V5.3.1: %', SQLERRM;
+    RETURN jsonb_build_object(
+        'status', 'error', 
+        'message', SQLERRM,
+        'hint', 'Revisar logs de base de datos'
+    );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

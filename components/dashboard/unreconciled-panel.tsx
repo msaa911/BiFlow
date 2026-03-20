@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2, Sparkles, HelpCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2, Sparkles, HelpCircle, TrendingDown, TrendingUp } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -167,7 +167,26 @@ export function UnreconciledPanel({
                     }
                 })
 
-                setSuggestedMovements(Array.from(uniqueMovs.values()))
+                // 4. Transform Map to Array and SORT by relevance to the transaction
+                const suggestedArray = Array.from(uniqueMovs.values())
+                
+                // Sort logic: 
+                // 1. Same amount (rounded)
+                // 2. Proximity in days (abs difference)
+                // 3. Absolute amount difference
+                const sortedMovs = suggestedArray.sort((a, b) => {
+                    const diffA = Math.abs(ROUND_TO_0(a.monto) - txAmount)
+                    const diffB = Math.abs(ROUND_TO_0(b.monto) - txAmount)
+                    
+                    if (diffA !== diffB) return diffA - diffB
+                    
+                    const dateDiffA = Math.abs(new Date(a.fecha).getTime() - new Date(txToMatch.fecha).getTime())
+                    const dateDiffB = Math.abs(new Date(b.fecha).getTime() - new Date(txToMatch.fecha).getTime())
+                    
+                    return dateDiffA - dateDiffB
+                })
+
+                setSuggestedMovements(sortedMovs)
             } else {
                 setSuggestedMovements([])
             }
@@ -580,6 +599,8 @@ export function UnreconciledPanel({
         }
     }
 
+    const ROUND_TO_0 = (val: number | string) => Math.round(Math.abs(Number(val)))
+
     return (
         <Card className="bg-gray-900 border-gray-800 animate-in fade-in duration-500">
             <CardHeader className="flex flex-row items-center justify-between border-b border-gray-800 px-6 py-4">
@@ -947,73 +968,68 @@ export function UnreconciledPanel({
                                     <CheckCircle2 className="w-3.5 h-3.5" /> sugerencias de tesorería
                                 </p>
                                 <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar max-h-[400px]">
-                                    {suggestedMovements.map(mov => {
+                                    {suggestedMovements.map((mov) => {
                                         const isSelected = selectedMovementIds.includes(mov.id)
+                                        const txAmount = Math.abs(selectedTx.monto)
+                                        
+                                        const diffAmount = Math.abs(ROUND_TO_0(mov.monto) - txAmount)
+                                        const diffDays = Math.abs(new Date(mov.fecha).getTime() - new Date(selectedTx.fecha).getTime()) / (1000 * 60 * 60 * 24)
+                                        
+                                        let probabilityLabel = "Lejana"
+                                        let probabilityClass = "bg-red-500/10 text-red-500 border-red-500/20"
+                                        
+                                        if (diffAmount < 0.05 && diffDays <= 10) {
+                                            probabilityLabel = "Exacta"
+                                            probabilityClass = "bg-emerald-500 text-black border-emerald-500"
+                                        } else if (diffAmount < 0.05 || (diffAmount < txAmount * 0.05 && diffDays <= 15)) {
+                                            probabilityLabel = "Probable"
+                                            probabilityClass = "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                                        }
+
                                         return (
                                             <button
                                                 key={mov.id}
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
                                                     const newSelected = isSelected
                                                         ? selectedMovementIds.filter(id => id !== mov.id)
                                                         : [...selectedMovementIds, mov.id]
                                                     setSelectedMovementIds(newSelected)
                                                 }}
-                                                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left group
-                                                    ${isSelected ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
-                                                        : 'border-emerald-500/10 bg-gray-900/40 hover:border-emerald-500/50 hover:bg-emerald-500/5'
-                                                    }`}
+                                                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 group text-left ${isSelected ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-gray-950/40 border-gray-800 hover:border-gray-700 hover:bg-gray-900/40'}`}
                                             >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-emerald-800 bg-gray-950 group-hover:border-emerald-500'}`}>
-                                                        {isSelected && <Check className="w-3 h-3 text-black font-bold" />}
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-gray-700 group-hover:border-gray-500'}`}>
+                                                        {isSelected && <Check className="w-3.5 h-3.5 text-black font-black" />}
                                                     </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex flex-col gap-0.5">
-                                                            {/* Primary Line: BRIGHT Reference + Business Name */}
-                                                            <div className="flex items-center gap-3">
-                                                                {/* THE REFERENCE: Amber for maximum visibility, moved to the left per user request */}
-                                                                {mov.instrumentos?.some((i: any) => i.detalle_referencia) ? (
-                                                                    <div className="flex items-center gap-1 shrink-0">
-                                                                        {mov.instrumentos.filter((i: any) => i.detalle_referencia).map((ins: any, idx: number) => (
-                                                                            <span key={idx} className="bg-amber-400 text-black px-2.5 py-1 rounded-[4px] text-[13px] font-black shadow-[0_2px_12px_rgba(251,191,36,0.4)] whitespace-nowrap border-b-2 border-amber-600">
-                                                                                {ins.detalle_referencia}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="bg-gray-800 text-gray-500 px-2 py-1 rounded text-[11px] font-black whitespace-nowrap">
-                                                                        SIN REF.
-                                                                    </span>
-                                                                )}
+                                                    <div className="flex-1 overflow-hidden">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase ${probabilityClass}`}>
+                                                                {probabilityLabel}
+                                                            </span>
+                                                            <span className={`text-[12px] font-bold uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                                                                {mov.razonSocial || 'Entidad no ident.'}
+                                                            </span>
+                                                        </div>
 
-                                                                <span className={`text-[12px] font-bold uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'text-gray-300'}`}>
-                                                                    {mov.razonSocial || 'Entidad no ident.'}
-                                                                </span>
-                                                            </div>
+                                                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                            <Badge variant="outline" className={`text-[9px] font-bold ${isSelected ? 'bg-white/10 text-white border-white/20' : 'bg-gray-800 text-gray-400 border-gray-700'} px-1.5 py-0`}>
+                                                                {mov.nro_comprobante || 'S/N'}
+                                                            </Badge>
 
-                                                            {/* Secondary Line: Internal ID, Invoices and Date */}
-                                                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                                                {/* Internal ID (Voucher #): Moved here per user request */}
-                                                                <Badge variant="outline" className={`text-[9px] font-bold ${isSelected ? 'bg-white/10 text-white border-white/20' : 'bg-gray-800 text-gray-400 border-gray-700'} px-1.5 py-0`}>
-                                                                    {mov.nro_comprobante || 'S/N'}
-                                                                </Badge>
+                                                            {mov.aplicaciones?.length > 0 && (
+                                                                <div className="flex gap-1">
+                                                                    {mov.aplicaciones.slice(0, 2).map((app: any, idx: number) => (
+                                                                        <Badge key={idx} className="bg-blue-600 text-white text-[8px] font-black border-none px-1 py-0">
+                                                                            {app.comprobantes?.nro_factura || 'S/F'}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            )}
 
-                                                                {/* Invoices (Facturas) */}
-                                                                {mov.aplicaciones?.length > 0 && (
-                                                                    <div className="flex gap-1">
-                                                                        {mov.aplicaciones.slice(0, 3).map((app: any, idx: number) => (
-                                                                            <Badge key={idx} className="bg-blue-600 text-white text-[8px] font-black border-none px-1 py-0">
-                                                                                {app.comprobantes?.nro_factura || app.comprobantes?.numero || 'S/F'}
-                                                                            </Badge>
-                                                                        ))}
-                                                                        {mov.aplicaciones.length > 3 && <span className="text-[10px] text-gray-500">+{mov.aplicaciones.length - 3}</span>}
-                                                                    </div>
-                                                                )}
-
-                                                                <span className="text-[10px] text-gray-500 font-mono ml-auto">
-                                                                    {new Date(mov.fecha).toLocaleDateString()}
-                                                                </span>
-                                                            </div>
+                                                            <span className="text-[10px] text-gray-500 font-mono ml-auto">
+                                                                {new Date(mov.fecha).toLocaleDateString()}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
