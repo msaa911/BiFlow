@@ -7,7 +7,7 @@ import path from 'path'
 function parseCSVFromPath(filePath: string) {
     if (!fs.existsSync(filePath)) return []
     const content = fs.readFileSync(filePath, 'utf8')
-    const lines = content.split('\n')
+    const lines = content.split('\r\n').join('\n').split('\n')
     let headerIdx = 0
     while (headerIdx < lines.length) {
         if (lines[headerIdx].split(',').length >= 2) break
@@ -53,55 +53,109 @@ export async function POST() {
 
         // 2. Load Data from CSVs (relative to project root)
         const baseDir = process.cwd()
-        const entitiesData = parseCSVFromPath(path.join(baseDir, 'test_data', 'entidades.csv'))
-        const invoicesData = parseCSVFromPath(path.join(baseDir, 'test_data', 'ventas_ingresos.csv'))
-        const receiptsData = parseCSVFromPath(path.join(baseDir, 'test_data', 'recibos.csv'))
-        const bankData = parseCSVFromPath(path.join(baseDir, 'test_data', 'extracto_galicia_demo.csv'))
+        const clientesData = parseCSVFromPath(path.join(baseDir, 'test_data', 'clientes.csv'))
+        const proveedoresData = parseCSVFromPath(path.join(baseDir, 'test_data', 'proveedores.csv'))
+        const ventasData = parseCSVFromPath(path.join(baseDir, 'test_data', 'ventas_ingresos.csv'))
+        const comprasData = parseCSVFromPath(path.join(baseDir, 'test_data', 'compras_egresos.csv'))
+        const recibosData = parseCSVFromPath(path.join(baseDir, 'test_data', 'recibos.csv'))
+        const pagosData = parseCSVFromPath(path.join(baseDir, 'test_data', 'ordenes_pago.csv'))
+        const bankData = parseCSVFromPath(path.join(baseDir, 'test_data', 'extracto_macro_demo.csv')) // Usar Macro para probar el caso del usuario
 
-        // Insert Entities
-        if (entitiesData.length > 0) {
-            await supabase.from('entidades').insert(entitiesData.map(e => ({
-                id: e.id,
+        // Insert Entities (Clientes)
+        if (clientesData.length > 0) {
+            await supabase.from('entidades').insert(clientesData.map(e => ({
                 organization_id: orgId,
                 razon_social: e.razon_social,
                 cuit: e.cuit,
                 tipo_entidad: 'cliente'
             })))
         }
-
-        // Insert Invoices
-        if (invoicesData.length > 0) {
-            await supabase.from('comprobantes').insert(invoicesData.map(inv => ({
+        // Insert Entities (Proveedores)
+        if (proveedoresData.length > 0) {
+            await supabase.from('entidades').insert(proveedoresData.map(e => ({
                 organization_id: orgId,
-                entidad_id: inv.entidad_id,
-                tipo: inv.tipo,
+                razon_social: e.razon_social,
+                cuit: e.cuit,
+                tipo_entidad: 'proveedor'
+            })))
+        }
+
+        // Fetch entities back to map by CUIT
+        const { data: entities } = await supabase.from('entidades').select('id, cuit').eq('organization_id', orgId)
+        const entityMap = new Map(entities?.map(e => [e.cuit, e.id]) || [])
+
+        // Insert Invoices (Ventas)
+        if (ventasData.length > 0) {
+            await supabase.from('comprobantes').insert(ventasData.map(inv => ({
+                organization_id: orgId,
+                entidad_id: entityMap.get(inv.cuit) || null,
+                tipo: 'factura_venta',
                 nro_factura: inv.numero,
-                fecha_emision: inv.fecha,
+                fecha_emision: inv.fecha.split('/').reverse().join('-'),
+                monto_total: parseFloat(inv.monto),
+                monto_pendiente: parseFloat(inv.monto),
+                estado: 'pendiente'
+            })))
+        }
+        // Insert Invoices (Compras)
+        if (comprasData.length > 0) {
+            await supabase.from('comprobantes').insert(comprasData.map(inv => ({
+                organization_id: orgId,
+                entidad_id: entityMap.get(inv.cuit) || null,
+                tipo: 'factura_compra',
+                nro_factura: inv.numero,
+                fecha_emision: inv.fecha.split('/').reverse().join('-'),
                 monto_total: parseFloat(inv.monto),
                 monto_pendiente: parseFloat(inv.monto),
                 estado: 'pendiente'
             })))
         }
 
-        // Insert Treasury & Instruments
-        for (const rec of receiptsData) {
+        // Insert Treasury & Instruments (Recibos)
+        for (const rec of recibosData) {
             const { data: mov } = await supabase.from('movimientos_tesoreria').insert({
                 organization_id: orgId,
-                entidad_id: rec.entidad_id,
+                entidad_id: entityMap.get(rec.cuit) || null,
                 tipo: 'cobro',
-                fecha: rec.fecha,
-                monto_total: parseFloat(rec.monto),
-                nro_comprobante: rec.numero,
-                concepto: 'Recibo de Prueba'
+                fecha: rec.fecha.split('/').reverse().join('-'),
+                monto_total: parseFloat(rec.importe),
+                nro_comprobante: rec.recibo,
+                concepto: 'Recibo Importado'
             }).select().single()
 
             if (mov) {
                 await supabase.from('instrumentos_pago').insert({
                     organization_id: orgId,
                     movimiento_id: mov.id,
-                    tipo_instrumento: rec.medio_pago,
-                    monto: parseFloat(rec.monto),
-                    detalle_referencia: rec.referencia,
+                    metodo: rec.medio?.toLowerCase() === 'cheque' ? 'cheque_terceros' : (rec.medio?.toLowerCase() || 'efectivo'),
+                    monto: parseFloat(rec.importe),
+                    detalle_referencia: rec.detalle,
+                    banco: rec.banco,
+                    estado: 'pendiente'
+                })
+            }
+        }
+
+        // Insert Treasury & Instruments (Pagos)
+        for (const p of pagosData) {
+            const { data: mov } = await supabase.from('movimientos_tesoreria').insert({
+                organization_id: orgId,
+                entidad_id: entityMap.get(p.cuit) || null,
+                tipo: 'pago',
+                fecha: p.fecha.split('/').reverse().join('-'),
+                monto_total: parseFloat(p.importe),
+                nro_comprobante: p.orden,
+                concepto: 'Orden de Pago Importada'
+            }).select().single()
+
+            if (mov) {
+                await supabase.from('instrumentos_pago').insert({
+                    organization_id: orgId,
+                    movimiento_id: mov.id,
+                    metodo: p.medio?.toLowerCase().includes('cheque') ? 'cheque_propio' : (p.medio?.toLowerCase() || 'transferencia'),
+                    monto: parseFloat(p.importe),
+                    detalle_referencia: p.detalle,
+                    banco: p.banco,
                     estado: 'pendiente'
                 })
             }
@@ -109,12 +163,16 @@ export async function POST() {
 
         // Insert Bank Transactions
         if (bankData.length > 0) {
+            const { data: accounts } = await supabase.from('cuentas_bancarias').select('id').eq('organization_id', orgId).limit(1)
+            const defaultAccId = accounts?.[0]?.id
+
             await supabase.from('transacciones').insert(bankData.map(t => ({
                 organization_id: orgId,
                 fecha: t.fecha.split('/').reverse().join('-'),
                 descripcion: t.concepto,
                 monto: parseFloat(t.credito || '0') - parseFloat(t.debito || '0'),
-                estado: 'pendiente'
+                estado: 'pendiente',
+                cuenta_id: defaultAccId // Assing first account found
             })))
         }
 

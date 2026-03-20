@@ -233,7 +233,11 @@ export async function POST(request: Request) {
 
         // --- 3.5 Force account association if context is bank ---
         if (uploadContext === 'bank' && transactions && transactions.length > 0) {
-            console.log(`Force-associating ${transactions.length} transactions with cuenta_id: ${cuentaId}`)
+            if (!cuentaId) {
+                console.warn('[UPLOAD] [BANK] WARNING: No cuentaId resolved at force-association step.');
+            } else {
+                console.log(`[UPLOAD] [BANK] Force-associating ${transactions.length} transactions with cuenta_id: ${cuentaId}`)
+            }
             transactions = transactions.map((t: any) => ({
                 ...t,
                 cuenta_id: t.cuenta_id || cuentaId
@@ -672,6 +676,24 @@ export async function POST(request: Request) {
                             referencia: t.referencia || null
                         }
                     }))
+
+                    // FINAL GUARD [v5.6]: Ensure no bank transaction is inserted without an account
+                    if (uploadContext === 'bank') {
+                        const orphans = sanitizedTransactions.filter(t => !t.cuenta_id);
+                        if (orphans.length > 0) {
+                            console.error(`[CRITICAL] [UPLOAD] [BANK] ${orphans.length} transactions have NO account assigned!`);
+                            
+                            // Last-ditch effort: Assign account if we have one globally
+                            if (cuentaId) {
+                                console.log(`[UPLOAD] [FIX] Assigning global account ${cuentaId} to ${orphans.length} orphans.`);
+                                sanitizedTransactions.forEach(t => {
+                                    if (!t.cuenta_id) t.cuenta_id = cuentaId;
+                                });
+                            } else {
+                                throw new Error('No se pudo asociar las transacciones a una cuenta bancaria. Selecciona una cuenta manualmente.');
+                            }
+                        }
+                    }
 
                     // Use adminSupabase for critical data insertion to ensure it bypasses RLS issues
                     // We already verified the user's org membership at the beginning of the function
