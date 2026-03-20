@@ -247,7 +247,9 @@ BEGIN
         'status', 'success', 
         'matched_count', v_matched_count, 
         'admin_results', v_admin_matched,
-        'total_read', v_total_read
+        'total_read', v_total_read,
+        'total_admin_matches', (SELECT COUNT(*) FROM public.aplicaciones_pago WHERE organization_id = p_org_id),
+        'total_bank_matches', (SELECT COUNT(*) FROM public.transacciones WHERE organization_id = p_org_id AND estado = 'conciliado')
     );
 
     IF NOT p_dry_run THEN

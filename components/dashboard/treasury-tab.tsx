@@ -118,8 +118,13 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                 return;
             }
             
-            const totalMatched = (result.adminCount || 0) + (result.matched || 0)
-            toast.success(`Conciliación finalizada: ${totalMatched} vínculos creados (${result.adminCount || 0} administrativos, ${result.matched || 0} bancarios)`, { id: toastId })
+            const newMatches = (result.adminCount || 0) + (result.matched || 0)
+            
+            if (newMatches > 0) {
+                toast.success(`Conciliación finalizada: ${newMatches} nuevos vínculos creados (${result.adminCount || 0} administrativos, ${result.matched || 0} bancarios)`, { id: toastId })
+            } else {
+                toast.success(`Conciliación finalizada: No se encontraron nuevos vínculos, los datos ya están al día.`, { id: toastId })
+            }
             fetchData()
         } catch (error: any) {
             toast.error(error.message, { id: toastId })

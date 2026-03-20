@@ -165,13 +165,13 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                 return;
             }
 
-            const totalMatched = (data.adminCount || 0) + (data.matched || 0)
+            const newMatches = (data.adminCount || 0) + (data.matched || 0)
 
-            if (totalMatched > 0) {
-                toast.success(`Conciliación finalizada: ${totalMatched} vínculos creados (${data.adminCount || 0} administrativos, ${data.matched || 0} bancarios)`)
+            if (newMatches > 0) {
+                toast.success(`Conciliación finalizada: ${newMatches} nuevos vínculos creados (${data.adminCount || 0} administrativos, ${data.matched || 0} bancarios)`)
                 if (onRefresh) onRefresh()
             } else {
-                toast.info(`Proceso finalizado. No se encontraron nuevos vínculos (0).`)
+                toast.success(`Conciliación finalizada: No se encontraron nuevos vínculos, los datos ya están al día.`)
             }
         } catch (error) {
             console.error('Reconciliation failed:', error)
