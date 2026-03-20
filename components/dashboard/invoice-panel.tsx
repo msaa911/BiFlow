@@ -129,7 +129,7 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                 .from('comprobantes')
                 .update({
                     monto_pendiente: Math.max(0, newPendiente),
-                    estado: newPendiente <= 0.05 ? 'pagado' : 'parcial',
+                    estado: newPendiente <= 0.05 ? 'conciliado' : 'parcial',
                     metadata: {
                         ...(selectedInvoice.metadata || {}),
                         reconciled_at: new Date().toISOString(),
@@ -441,14 +441,14 @@ export function InvoicePanel({ orgId, invoices, loading, defaultView = 'AR', onR
                                                         <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
                                                         <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
                                                     </div>
-                                                    <span className="text-blue-400 text-[10px] font-black tracking-tight">
+                                                    <span className="text-white text-[10px] font-black tracking-tight">
                                                         {view === 'AR' ? 'COBRADO Y CONCILIADO' : 'PAGADO Y CONCILIADO'}
                                                     </span>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center justify-end gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
                                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                                    <span className="text-emerald-400 text-[10px] font-black tracking-tight">
+                                                    <span className="text-white text-[10px] font-black tracking-tight">
                                                         {/* Map 'pagado' to 'COBRADO' for AR view */}
                                                         {view === 'AR' ? 'COBRADO' : 'PAGADO'}
                                                     </span>

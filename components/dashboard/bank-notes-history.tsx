@@ -299,7 +299,7 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                                                     {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(note.monto_total)}
                                                 </td>
                                                 <td className="px-6 py-3 text-center">
-                                                    <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[9px] uppercase font-black tracking-tighter">
+                                                    <Badge className="bg-blue-500/10 text-white border-blue-500/20 text-[9px] uppercase font-black tracking-tighter">
                                                         Conciliado
                                                     </Badge>
                                                 </td>
