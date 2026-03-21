@@ -1,6 +1,6 @@
 -- Migration: Fix Invoice Reconciliation Status Propagation
 -- Author: Antigravity AI
--- Date: 2026-03-20
+-- Date: 2026-03-20alv
 -- Description: Updates reconcile_v3_1 to ensure that when a bank transaction is matched 
 -- with a movement, all invoices linked to that movement are updated to 'conciliado'.
 
@@ -150,8 +150,8 @@ BEGIN
                 'entidad', e.razon_social,
                 'monto', ip.monto,
                 'metodo', ip.metodo,
-                'referencia', ip.referencia,
-                'label', 'Sugerencia: Vincular con Rechazo de Cheque ' || COALESCE(ip.referencia, '')
+                'referencia', ip.detalle_referencia,
+                'label', 'Sugerencia: Vincular con Rechazo de Cheque ' || COALESCE(ip.detalle_referencia, '')
             )) INTO v_suggestions
             FROM public.instrumentos_pago ip
             JOIN public.movimientos_tesoreria mt ON ip.movimiento_id = mt.id
