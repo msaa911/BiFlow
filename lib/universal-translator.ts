@@ -335,6 +335,21 @@ export class UniversalTranslator {
 
             if (monto !== 0 && fecha) {
                 const category = this.categorizeTransaction(conceptoRaw, monto, numero_cheque || undefined);
+                // 5. Detectar Factura dentro de descripción si nro_factura es genérico o vacío
+                let nroFactura = idx.nro_factura !== -1 ? String(row[idx.nro_factura] || '') : '';
+                const textForInvoice = `${conceptoRaw} ${row[idx.referencia] || ''} ${nroFactura}`;
+                
+                // Si el nro_factura actual no parece factura (ej: solo números secuenciales) 
+                // y encontramos un patrón FAC-A-0001-00001016, priorizamos el patrón.
+                const facMatch = textForInvoice.match(/FAC-[A-C]-\d{4,5}-\d{5,12}/i);
+                if (facMatch) {
+                    const fullFac = facMatch[0];
+                    const lastDigits = fullFac.split('-').pop() || '';
+                    if (lastDigits.length >= 4) {
+                        nroFactura = lastDigits;
+                    }
+                }
+
                 transactions.push({
                     fecha,
                     concepto,
@@ -342,6 +357,19 @@ export class UniversalTranslator {
                     cuit: cuit || undefined,
                     razon_social: idx.razon_social !== -1 ? String(row[idx.razon_social] || '') : '',
                     banco: idx.banco !== -1 ? String(row[idx.banco] || '') : '',
+                    referencia: referencia || undefined,
+                    vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
+                    numero: nroFactura,
+                    tipo: tipo,
+                    tags: [],
+                    raw: row,
+                    metadata: {
+                        categoria: category,
+                        cbu: cbu || undefined,
+                        numero_cheque: numero_cheque || undefined,
+                        saldo: idx.saldo !== -1 ? this.parseCurrency(row[idx.saldo]) : undefined
+                    }
+                });
             }
         }
 
