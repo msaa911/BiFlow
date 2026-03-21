@@ -140,6 +140,31 @@ BEGIN
 
         IF v_is_bank_expense THEN
             v_fail_reason := 'Operación contra banco directo (Comisión/Impuesto/Gasto). Genere una Nota Bancaria.';
+        ELSIF (v_trans.descripcion ~* 'RECHAZO' OR v_trans.descripcion ~* 'VALOR') THEN
+            v_fail_reason := 'Operación de Cartera detectada (Posible Rechazo).';
+            
+            -- Buscamos si existe un instrumento (cheque) que coincida con este monto (en valor absoluto)
+            -- que esté en estado 'acreditado' (ya conciliado antes) o 'pendiente'
+            SELECT jsonb_agg(jsonb_build_object(
+                'instrument_id', ip.id,
+                'entidad', e.razon_social,
+                'monto', ip.monto,
+                'metodo', ip.metodo,
+                'referencia', ip.referencia,
+                'label', 'Sugerencia: Vincular con Rechazo de Cheque ' || COALESCE(ip.referencia, '')
+            )) INTO v_suggestions
+            FROM public.instrumentos_pago ip
+            JOIN public.movimientos_tesoreria mt ON ip.movimiento_id = mt.id
+            JOIN public.entidades e ON mt.entidad_id = e.id
+            WHERE mt.organization_id = p_org_id
+              AND ip.metodo = 'cheque_terceros'
+              AND ABS(ABS(ip.monto) - ABS(v_trans.monto)) <= 1.0
+              AND ip.estado IN ('acreditado', 'pendiente')
+            LIMIT 3;
+
+            IF v_suggestions IS NOT NULL THEN
+                v_fail_reason := 'RECHAZO DETECTADO: Se encontró un cheque coincidente en Cartera. ¿Desea registrar el rechazo?';
+            END IF;
         ELSE
             -- NIVEL 1: Radar de CUIT
             BEGIN
@@ -221,7 +246,31 @@ BEGIN
 
         -- Diagnóstico final si nada coincidió
         IF v_match_id IS NULL AND v_fail_reason IS NULL THEN 
-            v_fail_reason := 'Transacción detectada en el banco que no tiene un Recibo o una OP cargada en Tesorería.'; 
+            -- Verificar Error de Sentido (Mismo monto, distinto signo)
+            SELECT COUNT(*) INTO v_candidates_count 
+            FROM public.movimientos_tesoreria mt 
+            WHERE mt.organization_id = p_org_id 
+              AND ABS(ABS(mt.monto_total) - ABS(v_trans.monto)) <= 1.0
+              AND ((v_trans.monto > 0 AND mt.monto_total < 0) OR (v_trans.monto < 0 AND mt.monto_total > 0));
+
+            IF v_candidates_count > 0 THEN
+                v_fail_reason := 'Error de Sentido: existe un movimiento con este importe pero con signo opuesto en Tesorería.';
+            ELSE
+                -- Verificar Detección de Pase (Transferencia entre cuentas propias el mismo día)
+                SELECT COUNT(*) INTO v_candidates_count 
+                FROM public.transacciones t2 
+                WHERE t2.organization_id = p_org_id 
+                  AND t2.id != v_trans.id
+                  AND t2.fecha = v_trans.fecha 
+                  AND ABS(ABS(t2.monto) - ABS(v_trans.monto)) <= 1.0
+                  AND ((v_trans.monto > 0 AND t2.monto < 0) OR (v_trans.monto < 0 AND t2.monto > 0));
+
+                IF v_candidates_count > 0 THEN
+                    v_fail_reason := 'Detección de Pase: se halló un ingreso del mismo monto entre otra cuenta propia el mismo día.';
+                ELSE
+                    v_fail_reason := 'Transacción detectada en el banco que no tiene un Recibo o una OP cargada en Tesorería.'; 
+                END IF;
+            END IF;
         END IF;
 
         -- Persistencia y Actualización

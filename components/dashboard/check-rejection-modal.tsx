@@ -29,6 +29,7 @@ interface CheckRejectionModalProps {
     orgId: string
     check: any | null
     onSuccess: () => void
+    transactionId?: string // Link to the bank debit if coming from reconciliation
 }
 
 export function CheckRejectionModal({
@@ -36,7 +37,8 @@ export function CheckRejectionModal({
     onOpenChange,
     orgId,
     check,
-    onSuccess
+    onSuccess,
+    transactionId
 }: CheckRejectionModalProps) {
     const [loading, setLoading] = useState(false)
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
@@ -77,52 +79,22 @@ export function CheckRejectionModal({
 
         setLoading(true)
         try {
-            // 1. Update check status to 'rechazado'
-            const { error: checkError } = await supabase
-                .from('instrumentos_pago')
-                .update({
-                    estado: 'rechazado',
-                    metadata: {
-                        ...check?.metadata,
-                        fecha_rechazo: new Date().toISOString(),
-                        banco_rechazo_id: selectedAccountId,
-                        comision_rechazo: Number(feeAmount)
-                    }
-                })
-                .eq('id', check.id)
+            // Use the atomic RPC
+            const { data, error } = await supabase.rpc('handle_cheque_rejection', {
+                p_instrument_id: check.id,
+                p_fee_amount: Number(feeAmount) || 0,
+                p_transaction_id: transactionId || null
+            })
 
-            if (checkError) throw checkError
+            if (error) throw error
+            if (!data.success) throw new Error(data.error || 'Error desconocido')
 
-            // 2. Create Bank Expense (movimientos_tesoreria) if fee > 0
-            if (Number(feeAmount) > 0) {
-                const { error: movementError } = await supabase
-                    .from('movimientos_tesoreria')
-                    .insert({
-                        organization_id: orgId,
-                        tipo: 'egreso',
-                        monto: Number(feeAmount),
-                        moneda: 'ARS',
-                        fecha: new Date().toISOString().split('T')[0],
-                        descripcion: `Gasto Bancario: Rechazo Cheque ${check.detalle_referencia || 'S/N'}`,
-                        concepto: 'Gastos Bancarios',
-                        metodo_pago: 'transferencia',
-                        estado: 'completado',
-                        metadata: {
-                            check_id: check.id,
-                            tipo_gasto: 'comision_rechazo',
-                            cuenta_bancaria_id: selectedAccountId
-                        }
-                    })
-
-                if (movementError) throw movementError
-            }
-
-            toast.success(`Cheque marcado como RECHAZADO. Se registró el gasto bancario.`)
+            toast.success(`Cheque rechazado con éxito. Se reactivaron ${data.affected_invoices} facturas y se registró el circuito administrativo.`)
             onSuccess()
             onOpenChange(false)
         } catch (err: any) {
             console.error('Error rejecting check:', err)
-            toast.error('Error al procesar el rechazo')
+            toast.error('Error al procesar el rechazo: ' + err.message)
         } finally {
             setLoading(false)
         }

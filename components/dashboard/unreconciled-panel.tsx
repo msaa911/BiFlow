@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, AlertTriangle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2, Sparkles, HelpCircle } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Search, ExternalLink, Tag, FileDown, Loader2, X, PlusCircle, Check, FileText, DollarSign, Pencil, Trash2, Sparkles, HelpCircle, TrendingDown, TrendingUp, Undo2 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { CheckRejectionModal } from './check-rejection-modal'
 
 interface Transaction {
     id: string
@@ -84,6 +85,11 @@ export function UnreconciledPanel({
     const [itemsPerPage, setItemsPerPage] = useState(25)
     const [residualCategory, setResidualCategory] = useState('Gastos Bancarios')
     const [processResidualAsGasto, setProcessResidualAsGasto] = useState(false)
+
+    // Rejection States
+    const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false)
+    const [rejectionTargetCheck, setRejectionTargetCheck] = useState<any | null>(null)
+    const [rejectionTransactionId, setRejectionTransactionId] = useState<string | null>(null)
 
     const filtered = transactions
         .filter(t => (t.estado === 'pendiente' || t.estado === 'parcial') && !categorizedTxIds.includes(t.id))
@@ -848,6 +854,29 @@ export function UnreconciledPanel({
                                                     <FileText className="w-3.5 h-3.5" />
                                                     <span className="text-[10px] font-bold uppercase">Nota Bancaria</span>
                                                 </Button>
+
+                                                {/* Botón de Rechazo Sugerido */}
+                                                {tx.metadata?.suggestions?.some((s: any) => s.instrument_id) && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-9 px-3 border-amber-500/30 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500 flex items-center gap-2 bg-amber-500/5 group/rej"
+                                                        onClick={() => {
+                                                            const sugg = tx.metadata.suggestions.find((s: any) => s.instrument_id)
+                                                            setRejectionTargetCheck({
+                                                                id: sugg.instrument_id,
+                                                                referencia: sugg.referencia,
+                                                                detalle_referencia: sugg.referencia,
+                                                                monto: sugg.monto
+                                                            })
+                                                            setRejectionTransactionId(tx.id)
+                                                            setIsRejectionModalOpen(true)
+                                                        }}
+                                                    >
+                                                        <Undo2 className="w-3.5 h-3.5 group-hover/rej:rotate-[-45deg] transition-transform" />
+                                                        <span className="text-[10px] font-bold uppercase text-amber-500">Registrar Rechazo</span>
+                                                    </Button>
+                                                )}
                                             </>
                                         )}
                                         {tx.estado === 'conciliado' && (
@@ -1488,46 +1517,20 @@ export function UnreconciledPanel({
                 </DialogContent>
             </Dialog>
 
+            <CheckRejectionModal 
+                open={isRejectionModalOpen}
+                onOpenChange={setIsRejectionModalOpen}
+                orgId={orgId}
+                check={rejectionTargetCheck}
+                transactionId={rejectionTransactionId || undefined}
+                onSuccess={() => {
+                    if (onRefresh) onRefresh()
+                    if (rejectionTransactionId) {
+                        setCategorizedTxIds(prev => [...prev, rejectionTransactionId])
+                    }
+                    setIsRejectionModalOpen(false)
+                }}
+            />
         </Card>
-    )
-}
-
-function TrendingUp(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-            <polyline points="16 7 22 7 22 13" />
-        </svg>
-    )
-}
-
-function TrendingDown(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <polyline points="22 17 13.5 8.5 8.5 13.5 2 7" />
-            <polyline points="16 17 22 17 22 11" />
-        </svg>
     )
 }
