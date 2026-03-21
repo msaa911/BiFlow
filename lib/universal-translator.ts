@@ -340,8 +340,8 @@ export class UniversalTranslator {
                 const textForInvoice = `${conceptoRaw} ${row[idx.referencia] || ''} ${nroFactura}`;
                 
                 // Si el nro_factura actual no parece factura (ej: solo números secuenciales) 
-                // y encontramos un patrón FAC-A-0001-00001016, priorizamos el patrón.
-                const facMatch = textForInvoice.match(/FAC-[A-C]-\d{4,5}-\d{5,12}/i);
+                // y encontramos un patrón FAC/NCR/NDB-A-0001-00001016, priorizamos el patrón.
+                const facMatch = textForInvoice.match(/(FAC|NCR|NDB)-[A-C]-\d{4,5}-\d{5,12}/i);
                 if (facMatch) {
                     const fullFac = facMatch[0];
                     const lastDigits = fullFac.split('-').pop() || '';
