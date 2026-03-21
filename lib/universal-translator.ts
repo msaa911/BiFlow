@@ -342,20 +342,6 @@ export class UniversalTranslator {
                     cuit: cuit || undefined,
                     razon_social: idx.razon_social !== -1 ? String(row[idx.razon_social] || '') : '',
                     banco: idx.banco !== -1 ? String(row[idx.banco] || '') : '',
-                    // numero_cheque and cbu are now part of metadata or handled via numero / referencia
-                    referencia: referencia || undefined,
-                    vencimiento: idx.vencimiento !== -1 ? this.normalizeDate(row[idx.vencimiento]) : null,
-                    numero: idx.nro_factura !== -1 ? String(row[idx.nro_factura] || '') : undefined,
-                    tipo: tipo,
-                    tags: [],
-                    raw: row,
-                    metadata: {
-                        categoria: category,
-                        cbu: cbu || undefined,
-                        numero_cheque: numero_cheque || undefined,
-                        saldo: idx.saldo !== -1 ? this.parseCurrency(row[idx.saldo]) : undefined
-                    }
-                });
             }
         }
 
