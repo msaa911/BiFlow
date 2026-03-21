@@ -332,9 +332,13 @@ export async function POST(request: Request) {
             }))
 
             // Unified Entity Resolver for all contexts
+            const entityCache = new Map<string, string>();
             const resolveOrCreateEntity = async (razonSocialRaw: string, cuitRaw: string | undefined, categoria: string) => {
                 const cleanCuit = (cuitRaw || '').replace(/[^0-9]/g, '');
                 const razonSocial = (razonSocialRaw || 'Sin Razón Social').trim();
+                const cacheKey = cleanCuit ? `cuit_${cleanCuit}` : `name_${razonSocial.toLowerCase()}`;
+                
+                if (entityCache.has(cacheKey)) return entityCache.get(cacheKey);
 
                 // 1. Try match by CUIT
                 if (cleanCuit && cleanCuit.length === 11) {
@@ -343,8 +347,12 @@ export async function POST(request: Request) {
                         .select('id')
                         .eq('organization_id', orgId)
                         .eq('cuit', cleanCuit)
+                        .limit(1)
                         .maybeSingle();
-                    if (byCuit) return byCuit.id;
+                    if (byCuit) {
+                        entityCache.set(cacheKey, byCuit.id);
+                        return byCuit.id;
+                    }
                 }
 
                 // 2. Try match by Reason Social (Case-insensitive)
@@ -353,10 +361,15 @@ export async function POST(request: Request) {
                     .select('id')
                     .eq('organization_id', orgId)
                     .ilike('razon_social', razonSocial)
+                    .limit(1)
                     .maybeSingle();
-                if (byName) return byName.id;
+                
+                if (byName) {
+                    entityCache.set(cacheKey, byName.id);
+                    return byName.id;
+                }
 
-                // 3. Create new entity (Requires CUIT because of NOT NULL constraint)
+                // 3. Create new entity
                 const { data: newEnt, error: entErr } = await currentSupabase
                     .from('entidades')
                     .insert({
@@ -364,7 +377,7 @@ export async function POST(request: Request) {
                         razon_social: razonSocial,
                         cuit: (cleanCuit && cleanCuit.length === 11) ? cleanCuit : '00000000000',
                         categoria: categoria,
-                        metadata: { origen: 'importacion_v5.3.2' }
+                        metadata: { origen: 'importacion_v5.4.1' }
                     })
                     .select('id')
                     .single();
@@ -373,6 +386,8 @@ export async function POST(request: Request) {
                     console.error('[UPLOAD] [ENTITY_RESOLVER] Error creating entity:', entErr);
                     return null;
                 }
+                
+                if (newEnt) entityCache.set(cacheKey, newEnt.id);
                 return newEnt?.id;
             };
 
