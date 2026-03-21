@@ -188,14 +188,12 @@ BEGIN
                 FROM public.movimientos_tesoreria mt
                 WHERE mt.organization_id = p_org_id 
                   AND ABS(ABS(mt.monto_total) - ABS(v_trans.monto)) <= 1.0
-                  AND ABS(mt.fecha - v_trans.fecha) <= 10 
                   AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id);
 
                 IF v_candidates_count = 1 THEN
                     SELECT id INTO v_match_id FROM public.movimientos_tesoreria mt 
                     WHERE mt.organization_id = p_org_id 
                       AND ABS(ABS(mt.monto_total) - ABS(v_trans.monto)) <= 1.0 
-                      AND ABS(mt.fecha - v_trans.fecha) <= 10 
                       AND NOT EXISTS (SELECT 1 FROM public.transacciones WHERE movimiento_id = mt.id);
                     
                     v_match_level := 4; 
@@ -223,7 +221,7 @@ BEGIN
 
         -- Diagnóstico final si nada coincidió
         IF v_match_id IS NULL AND v_fail_reason IS NULL THEN 
-            v_fail_reason := 'No se halló el importe en Tesorería dentro de la ventana de 10 días.'; 
+            v_fail_reason := 'No se halló el importe exacto en Tesorería.'; 
         END IF;
 
         -- Persistencia y Actualización
