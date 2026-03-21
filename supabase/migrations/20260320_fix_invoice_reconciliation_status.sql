@@ -139,7 +139,7 @@ BEGIN
         );
 
         IF v_is_bank_expense THEN
-            v_fail_reason := 'Operación conta banco directo: Genere una Nota Bancaria.';
+            v_fail_reason := 'Operación contra banco directo (Comisión/Impuesto/Gasto). Genere una Nota Bancaria.';
         ELSE
             -- NIVEL 1: Radar de CUIT
             BEGIN
@@ -199,7 +199,7 @@ BEGIN
                     v_match_level := 4; 
                     v_match_label := 'Monto Redondeado';
                 ELSIF v_candidates_count > 1 THEN
-                    v_fail_reason := 'Ambigüedad: se hallaron ' || v_candidates_count || ' registros con el mismo importe.';
+                    v_fail_reason := 'Ambigüedad: se hallaron ' || v_candidates_count || ' movimientos en Tesorería con el mismo importe exacto.';
                     
                     SELECT jsonb_agg(jsonb_build_object(
                         'mov_id', mt.id, 
@@ -221,7 +221,7 @@ BEGIN
 
         -- Diagnóstico final si nada coincidió
         IF v_match_id IS NULL AND v_fail_reason IS NULL THEN 
-            v_fail_reason := 'No se halló el importe exacto en Tesorería.'; 
+            v_fail_reason := 'Transacción detectada en el banco que no tiene un Recibo o una OP cargada en Tesorería.'; 
         END IF;
 
         -- Persistencia y Actualización
