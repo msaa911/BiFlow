@@ -1033,25 +1033,48 @@ export function UnreconciledPanel({
 
                     {selectedTx && (
                         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 my-2 shrink-0 flex justify-between items-center shadow-inner">
-                            <div className="min-w-0">
-                                <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
-                                    <Tag className="w-3.5 h-3.5" /> Transacción del Banco
-                                </p>
-                                <p className="text-sm font-bold text-white leading-snug truncate max-w-[320px]">{selectedTx.descripcion}</p>
-                                {(selectedTx.referencia || selectedTx.metadata?.referencia) && (
-                                    <div className="mt-2 flex items-center gap-2">
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">REF BANCO:</span>
-                                        <span className="bg-emerald-500 text-black px-2 py-0.5 rounded text-[11px] font-mono font-black">
-                                            {selectedTx.referencia || selectedTx.metadata?.referencia}
-                                        </span>
+                            <div className="flex flex-col gap-1 w-full">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5 overflow-hidden">
+                                        <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                        <h4 className="font-black text-xs text-white truncate uppercase tracking-tighter">
+                                            {selectedTx.descripcion}
+                                        </h4>
                                     </div>
-                                )}
-                            </div>
-                            <div className="text-right shrink-0">
-                                <p className="text-xl font-black text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
-                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(selectedTx.monto)}
-                                </p>
-                                <p className="text-[10px] text-gray-500 font-mono mt-0.5">{new Date(selectedTx.fecha).toLocaleDateString('es-AR')}</p>
+                                    <div className="text-[14px] font-black text-emerald-400 shrink-0">
+                                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Math.abs(selectedTx.monto))}
+                                    </div>
+                                </div>
+
+                                {/* Referencia Bancaria (Pura o Extraída) */}
+                                {(() => {
+                                    const rawRef = selectedTx.referencia || selectedTx.metadata?.referencia;
+                                    const descRef = selectedTx.descripcion?.match(/\b(CH|TRF|REF|ID|OP)?[\s.-]*(\d{5,12})\b/i)?.[0];
+                                    const finalRef = rawRef || descRef;
+
+                                    if (!finalRef) return null;
+
+                                    return (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">REFERENCIA IDENTIFICADA:</span>
+                                            <span className="bg-amber-400 text-black px-2 py-0.5 rounded text-[11px] font-mono font-black border border-amber-500/50 shadow-sm animate-pulse">
+                                                {finalRef.toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )
+                                })()}
+                                
+                                <div className="flex items-center justify-between mt-1 pt-1 border-t border-white/5">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] text-gray-500 font-medium">BFE:</span>
+                                        <span className="text-[10px] text-gray-400 font-mono">{new Date(selectedTx.fecha).toLocaleDateString()}</span>
+                                        {selectedTx.cuit_origen && (
+                                            <Badge variant="outline" className="text-[9px] border-emerald-500/20 bg-emerald-500/5 text-emerald-500 px-1 py-0">
+                                                CUIT: {selectedTx.cuit_origen}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1118,11 +1141,22 @@ export function UnreconciledPanel({
                                                                     <Badge variant="outline" className={`text-[9px] font-bold ${isSelected ? 'bg-white/10 text-white border-white/20' : 'bg-gray-800 text-gray-400 border-gray-700'} px-1.5 py-0`}>
                                                                         {mov.nro_comprobante || 'S/N'}
                                                                     </Badge>
-                                                                    {mov.instrumentos && mov.instrumentos.length > 0 && mov.instrumentos[0].detalle_referencia && (
-                                                                        <span className="text-[10px] bg-amber-400/10 text-amber-500 px-2 py-0.5 rounded font-black border border-amber-500/20">
-                                                                            REF: {mov.instrumentos[0].detalle_referencia}
-                                                                        </span>
-                                                                    )}
+                                                                    {(() => {
+                                                                        // Prefer instrument reference, but if it looks like an invoice and observations has another number, show both
+                                                                        const instRef = mov.instrumentos?.[0]?.detalle_referencia;
+                                                                        const obs = mov.observaciones || '';
+                                                                        const obsRef = obs.match(/\b(CH|TRF|REF|ID|OP)?[\s.-]*(\d{5,12})\b/i)?.[0];
+                                                                        
+                                                                        if (!instRef && !obsRef) return null;
+
+                                                                        const showRef = instRef || obsRef;
+
+                                                                        return (
+                                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${isSelected ? 'bg-amber-400 text-black border-amber-500' : 'bg-amber-400/10 text-amber-500 border-amber-500/20'}`}>
+                                                                                REF: {showRef}
+                                                                            </span>
+                                                                        )
+                                                                    })()}
                                                                     {mov.isMissingInstruments && (
                                                                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-red-400 uppercase">
                                                                             Sin Comprobante de Pago

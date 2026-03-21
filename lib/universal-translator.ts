@@ -184,7 +184,7 @@ export class UniversalTranslator {
         const rows = lines.map(l => this.splitSmart(l, delimiter));
 
         let headerIdx = -1;
-        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'movimiento', 'concepto', 'descripcion', 'detalle', 'detalle movimiento', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'cuil', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto', 'banco', 'bank', 'cheque', 'nro ch', 'nº cheque', 'iva', 'neto', 'bruto', 'subtotal', 'total', 'remito', 'orden de pago', 'op', 'orden de compra', 'oc', 'comision', 'cargo'];
+        const keys = ['fecha', 'date', 'fec', 'emision', 'emisión', 'movimiento', 'concepto', 'descripcion', 'detalle', 'detalle movimiento', 'monto', 'importe', 'mto', 'referencia', 'debito', 'credito', 'débito', 'crédito', 'comprobante', 'factura', 'cuit', 'cuil', 'razon social', 'razón social', 'cliente', 'proveedor', 'vencimiento', 'vto', 'banco', 'bank', 'cheque', 'nro ch', 'nº cheque', 'iva', 'neto', 'bruto', 'subtotal', 'total', 'remito', 'orden de pago', 'op', 'orden de compra', 'oc', 'comision', 'cargo', 'referencia pgo'];
 
         for (let i = 0; i < Math.min(lines.length, 200); i++) {
             const row = lines[i].toLowerCase();
@@ -210,7 +210,7 @@ export class UniversalTranslator {
             banco: headers.findIndex((h: string) => ['banco', 'bank', 'entidad', 'origen', 'sucursal'].some(k => h.includes(k))),
             tipo: headers.findIndex((h: string) => ['tipo', 'deb/cre', 'd/c', 'signo', 'movimiento', 'estado', 'mod', 'comp'].some(k => h.includes(k))),
             vencimiento: headers.findIndex((h: string) => ['vencimiento', 'vto', 'due date', 'vence', 'vto.'].some(k => h.includes(k))),
-            referencia: headers.findIndex((h: string) => ['det. ref', 'detalle ref', 'referencia', 'nro op', 'nro rec', 'comprobante nro', 'nro operacion', 'id trx', 'voucher', 'transaccion'].some(k => h.includes(k))),
+            referencia: headers.findIndex((h: string) => ['det. ref', 'detalle ref', 'detalle', 'referencia', 'nro op', 'nro rec', 'comprobante nro', 'nro operacion', 'id trx', 'voucher', 'transaccion'].some(k => h.includes(k))),
             nro_factura: headers.findIndex((h: string) => ['numero', 'número', 'nro', 'comprobante', 'factura', 'fac', 'id', 'punto vta', 'pto vta', 'nro doc', 'orden'].some(k => h.includes(k))),
             cheque: headers.findIndex((h: string) => ['cheque', 'nro ch', 'nº ch', 'nro. ch', 'numero de cheque', 'num cheque', 'nro_valor', 'num. chq'].some(k => h.includes(k))),
             cbu: headers.findIndex((h: string) => ['cbu', 'cta destino', 'cvu', 'cuenta destino', 'coordenada', 'cbu/alias'].some(k => h.includes(k))),
