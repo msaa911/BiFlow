@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw, Landmark, Zap, Loader2 } from 'lucide-react'
+import { LayoutDashboard, List, Banknote, TrendingUp, TrendingDown, Clock, FileUp, Settings, ChevronDown, AlertCircle, FileText, Trash2, RotateCcw, Landmark, Zap, Loader2, CheckCircle2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CheckPortfolio } from './check-portfolio'
 import { Button } from '@/components/ui/button'
@@ -377,11 +377,11 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 Transacciones
                             </TabsTrigger>
                             <TabsTrigger
-                                value="portfolio"
-                                className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400 gap-2 px-6"
+                                value="reconciled"
+                                className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 gap-2 px-6"
                             >
-                                <Banknote className="w-4 h-4" />
-                                Cartera
+                                <CheckCircle2 className="w-4 h-4" />
+                                Conciliados
                             </TabsTrigger>
                             <TabsTrigger
                                 value="reconciliation"
@@ -396,6 +396,13 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             >
                                 <FileText className="w-4 h-4" />
                                 Notas Bancarias
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="portfolio"
+                                className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400 gap-2 px-6"
+                            >
+                                <Banknote className="w-4 h-4" />
+                                Cartera
                             </TabsTrigger>
                         </TabsList>
                     </div>
@@ -762,9 +769,56 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                     </div>
                 </TabsContent>
 
-                <TabsContent value="portfolio" className="animate-in fade-in duration-500">
-                    <CheckPortfolio orgId={orgId} accountId={selectedAccountId} />
+                <TabsContent value="reconciled" className="animate-in fade-in duration-500">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-emerald-500/5">
+                            <h3 className="font-bold text-white text-xs flex items-center gap-2 uppercase tracking-tighter">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Movimientos Conciliados
+                            </h3>
+                            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-none">
+                                {counts.reconciled} Transacciones
+                            </Badge>
+                        </div>
+                        <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-emerald-500/20">
+                            <table className="w-full text-[11px] text-left">
+                                <thead className="text-gray-400 uppercase tracking-wider text-[10px] border-b border-gray-800">
+                                    <tr>
+                                        <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Estado</th>
+                                        <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Fecha</th>
+                                        <th className="px-6 py-4 font-black sticky top-0 z-20 bg-gray-800 text-left">Descripción / Concepto</th>
+                                        <th className="px-6 py-4 text-right font-black sticky top-0 z-20 bg-gray-800">Monto (ARS)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-800/50">
+                                    {accountFilteredTransactions
+                                        .filter(t => t.estado === 'conciliado')
+                                        .slice(0, 50)
+                                        .map((t: any) => (
+                                            <tr key={t.id} className="group hover:bg-emerald-500/[0.02] transition-colors border-b border-gray-800/50">
+                                                <td className="px-6 py-3">
+                                                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">C</div>
+                                                </td>
+                                                <td className="px-6 py-3 font-mono text-[11px] text-gray-500">{formatDate(t.fecha)}</td>
+                                                <td className="px-6 py-3">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-white group-hover:text-emerald-400 truncate max-w-[400px]">
+                                                            {t.descripcion}
+                                                        </span>
+                                                        <span className="text-[9px] text-gray-600 font-mono tracking-tighter uppercase">ID: {t.id.split('-')[0]}</span>
+                                                    </div>
+                                                </td>
+                                                <td className={`px-6 py-3 text-right font-black text-xs ${t.monto < 0 ? 'text-red-400' : 'text-emerald-400'} whitespace-nowrap`}>
+                                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(t.monto)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </TabsContent>
+
+
 
                 <TabsContent value="reconciliation" className="animate-in fade-in duration-500">
                     <UnreconciledPanel 
@@ -788,6 +842,10 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                             />
                         </div>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="portfolio" className="animate-in fade-in duration-500">
+                    <CheckPortfolio orgId={orgId} accountId={selectedAccountId} />
                 </TabsContent>
             </Tabs>
         </div >

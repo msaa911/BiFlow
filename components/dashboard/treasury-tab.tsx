@@ -253,10 +253,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                         <History className="w-3.5 h-3.5 mr-2 text-red-400" />
                         Órdenes de Pago
                     </TabsTrigger>
-                    <TabsTrigger value="cartera" className="rounded-lg">
-                        <Landmark className="w-3.5 h-3.5 mr-2 text-blue-400" />
-                        Cartera
-                    </TabsTrigger>
+
                 </TabsList>
 
                 <TabsContent value="cashflow">
@@ -269,9 +266,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                     )}
                 </TabsContent>
 
-                <TabsContent value="cartera">
-                    <CheckPortfolio orgId={orgId} />
-                </TabsContent>
+
 
                 <TabsContent value="ingresos" className="space-y-6">
                     <InvoicePanel orgId={orgId} invoices={invoices} loading={loading} defaultView="AR" onRefresh={fetchData} hideViewSelector={true} />
@@ -297,9 +292,7 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
                     <TreasuryHistory orgId={orgId} typeFilter="pago" />
                 </TabsContent>
 
-                <TabsContent value="cartera">
-                    <CheckPortfolio orgId={orgId} />
-                </TabsContent>
+
 
                 <TabsContent value="advisor">
                     <Card className="p-12 text-center bg-gray-900 border-gray-800">
