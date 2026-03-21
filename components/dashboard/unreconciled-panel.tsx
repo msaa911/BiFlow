@@ -1049,7 +1049,7 @@ export function UnreconciledPanel({
                                 {/* Referencia Bancaria (Pura o Extraída) */}
                                 {(() => {
                                     const rawRef = selectedTx.referencia || selectedTx.metadata?.referencia;
-                                    const descRef = selectedTx.descripcion?.match(/\b(CH|TRF|REF|ID|OP)?[\s.-]*(\d{5,12})\b/i)?.[0];
+                                    const descRef = selectedTx.descripcion?.match(/\b(CH|TRF|REF|ID|OP)?[\s.-]*(\d{4,12})\b/i)?.[0];
                                     const finalRef = rawRef || descRef;
 
                                     if (!finalRef) return null;
@@ -1145,7 +1145,7 @@ export function UnreconciledPanel({
                                                                         // Prefer instrument reference, but if it looks like an invoice and observations has another number, show both
                                                                         const instRef = mov.instrumentos?.[0]?.detalle_referencia;
                                                                         const obs = mov.observaciones || '';
-                                                                        const obsRef = obs.match(/\b(CH|TRF|REF|ID|OP)?[\s.-]*(\d{5,12})\b/i)?.[0];
+                                                                        const obsRef = obs.match(/\b(CH|TRF|REF|ID|OP)?[\s.-]*(\d{4,12})\b/i)?.[0];
                                                                         
                                                                         if (!instRef && !obsRef) return null;
 
