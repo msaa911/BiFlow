@@ -124,18 +124,24 @@ export function UnreconciledPanel({
         try {
             const orgId = (transactions[0] as any)?.organization_id
             const txAmount = Math.abs(txToMatch.monto)
-
+            const cuitToFilter = txToMatch.cuit_origen || txToMatch.cuit_destino
 
             // 2. Fetch Treasury Movements (Recibos/OPs) candidates
             const { data: linkedTxData } = await supabase.from('transacciones').select('movimiento_id').not('movimiento_id', 'is', null)
             const linkedMovIds = linkedTxData?.map(t => t.movimiento_id).filter(Boolean) || []
 
-            const { data: movements, error: movsError } = await supabase
+            let movQuery = supabase
                 .from('movimientos_tesoreria')
-                .select('*, entidades(razon_social), aplicaciones_pago(comprobantes(nro_factura, tipo, id)), instrumentos_pago(*)')
+                .select('*, entidades!inner(razon_social, cuit), aplicaciones_pago(comprobantes(nro_factura, tipo, id)), instrumentos_pago(*)')
                 .eq('organization_id', orgId)
                 .eq('tipo', txToMatch.monto > 0 ? 'cobro' : 'pago')
                 .not('id', 'in', `(${linkedMovIds.join(',') || '00000000-0000-0000-0000-000000000000'})`)
+
+            if (cuitToFilter) {
+                movQuery = movQuery.eq('entidades.cuit', cuitToFilter)
+            }
+
+            const { data: movements, error: movsError } = await movQuery
 
             if (!movsError && movements) {
                 const uniqueMovs = movements.map(mov => {
@@ -148,7 +154,7 @@ export function UnreconciledPanel({
                         observaciones: mov.observaciones,
                         nro_comprobante: mov.nro_comprobante,
                         entidad: mov.entidad_id,
-                        razonSocial: mov.entidades?.razon_social,
+                        razonSocial: (mov.entidades as any)?.razon_social,
                         tipo: mov.tipo,
                         aplicaciones: mov.aplicaciones_pago || [],
                         instrumentos: mov.instrumentos_pago || [],
@@ -185,13 +191,18 @@ export function UnreconciledPanel({
             // If tx.monto > 0 (Inflow) -> Look for factura_venta
             // If tx.monto < 0 (Outflow) -> Look for factura_compra
             const invType = txToMatch.monto > 0 ? 'factura_venta' : 'factura_compra'
-            const { data: pendingInvoices, error: invError } = await supabase
+            let invQuery = supabase
                 .from('comprobantes')
                 .select('*')
                 .eq('organization_id', orgId)
                 .eq('tipo', invType)
                 .gt('monto_pendiente', 0)
-                .order('fecha_vencimiento', { ascending: true })
+
+            if (cuitToFilter) {
+                invQuery = invQuery.eq('cuit_socio', cuitToFilter)
+            }
+
+            const { data: pendingInvoices, error: invError } = await invQuery.order('fecha_vencimiento', { ascending: true })
 
             if (!invError && pendingInvoices) {
                 // Sort invoices by proximity to transaction amount and date
@@ -215,6 +226,7 @@ export function UnreconciledPanel({
             setLoadingInvoices(false)
         }
     }
+
 
     const handleConciliate = async () => {
         if (!selectedTx || (selectedMovementIds.length === 0 && selectedInvoiceIds.length === 0)) return
@@ -1106,6 +1118,11 @@ export function UnreconciledPanel({
                                                                     <Badge variant="outline" className={`text-[9px] font-bold ${isSelected ? 'bg-white/10 text-white border-white/20' : 'bg-gray-800 text-gray-400 border-gray-700'} px-1.5 py-0`}>
                                                                         {mov.nro_comprobante || 'S/N'}
                                                                     </Badge>
+                                                                    {mov.instrumentos && mov.instrumentos.length > 0 && mov.instrumentos[0].detalle_referencia && (
+                                                                        <span className="text-[10px] bg-amber-400/10 text-amber-500 px-2 py-0.5 rounded font-black border border-amber-500/20">
+                                                                            REF: {mov.instrumentos[0].detalle_referencia}
+                                                                        </span>
+                                                                    )}
                                                                     {mov.isMissingInstruments && (
                                                                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-red-400 uppercase">
                                                                             Sin Comprobante de Pago
