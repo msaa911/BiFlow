@@ -162,7 +162,7 @@ export function EntityModal({ isOpen, onClose, orgId, entity, onSuccess, default
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-gray-950 border-gray-800 text-white sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-md glass-premium text-white border-white/10 p-0 overflow-hidden shadow-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                         {entity ? `Editar ${titleLabel}` : `Nuevo ${titleLabel}`}

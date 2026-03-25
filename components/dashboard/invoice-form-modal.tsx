@@ -72,7 +72,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
     useEffect(() => {
         if (isOpen && !initialized) {
-            console.log('[InvoiceForm] Initializing form...')
             fetchInitialEntities()
 
             if (invoice) {
@@ -131,7 +130,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log('[InvoiceForm] START handleSubmit', { formData, type })
         setLoading(true)
 
         try {
@@ -218,8 +216,6 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
                 timeoutPromise
             ])) as { data: any, error: any }
 
-            console.log(`[InvoiceForm] DB Response in ${Date.now() - startTime}ms`, { error })
-
             if (error) {
                 console.error('[InvoiceForm] Database error:', error)
                 toast.error(`Error de base de datos: ${error.message}`)
@@ -277,14 +273,13 @@ export function InvoiceFormModal({ isOpen, onClose, orgId, type, invoice, onSucc
             console.error('[InvoiceForm] CRITICAL ERROR:', err)
             toast.error('Error crítico: ' + (err.message || 'Error desconocido'))
         } finally {
-            console.log('[InvoiceForm] END handleSubmit')
             setLoading(false)
         }
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-gray-950 border-gray-800 text-white sm:max-w-[500px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <DialogContent className="glass-premium text-white sm:max-w-[500px] max-h-[90vh] flex flex-col p-0 overflow-hidden border-white/10 shadow-2xl">
                 <div className="p-6 pb-2">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">

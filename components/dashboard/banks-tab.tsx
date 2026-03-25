@@ -28,7 +28,7 @@ const formatDate = (dateStr: string) => {
 }
 
 export function BanksTab({ orgId, initialTransactions, pendingTransactions = [], bankAccounts = [], onRefresh }: BanksTabProps) {
-    const [activeTab, setActiveTab] = useState('summary')
+    const [activeTab, setActiveTab] = useState('reconciliation')
     const [showFormatBuilder, setShowFormatBuilder] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'reconciled'>('all')
@@ -160,7 +160,6 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
             const data = await res.json()
 
             if (!res.ok || data.status === 'error') {
-                console.error('Reconciliation Engine Error:', data.message || data.error);
                 toast.error(`Error en el motor: ${data.message || data.error || 'Fallo al conciliar.'}`);
                 return;
             }
@@ -261,7 +260,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
     return (
         <div className="space-y-6">
             {/* Bank Account Selector */}
-            <div className="flex bg-gray-900/50 border border-gray-800 p-2 rounded-2xl items-center gap-3">
+            <div className="flex bg-gray-900/40 backdrop-blur-md border border-white/10 p-2 rounded-2xl items-center gap-3">
                 <div className="px-4 py-1 border-r border-gray-800 flex items-center gap-2">
                     <Landmark className="w-4 h-4 text-emerald-500" />
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vista de Banco</span>
@@ -296,6 +295,15 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                     {/* Gradient Fade for overflow indication */}
                     <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-gray-900/80 to-transparent pointer-events-none" />
                 </div>
+
+                {/* Botón Nueva Carga como CTA principal (Task 3.2) */}
+                <Link
+                    href={`/dashboard/upload?context=bank${selectedAccountId !== 'all' ? `&cuenta_id=${selectedAccountId}` : ''}`}
+                    className="flex items-center gap-2 px-6 py-2 glass-premium-button rounded-xl text-xs font-bold shrink-0 shadow-lg shadow-emerald-500/10 active:scale-95 transition-all text-emerald-400 border-emerald-500/20"
+                >
+                    <FileUp className="w-4 h-4" />
+                    NUEVA CARGA
+                </Link>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
                 {/* Card 1: Conciliación */}
@@ -313,7 +321,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                         <Button
                             variant="outline"
                             size="sm"
-                            className="bg-emerald-600/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20 font-bold w-full h-10 rounded-xl transition-all"
+                            className="bg-emerald-600/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20 font-bold w-full h-10 rounded-xl transition-all duration-300"
                             onClick={() => handleReconcile('bank')}
                             disabled={reconcilingBank}
                         >
@@ -414,7 +422,7 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                 className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6 px-6 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-3 transition-all active:scale-95 text-sm"
                             >
                                 <FileUp className="w-5 h-5" />
-                                Carga De Extracto
+                                Opciones
                                 <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
                             </Button>
 
@@ -423,21 +431,8 @@ export function BanksTab({ orgId, initialTransactions, pendingTransactions = [],
                                     <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
                                     <div className="absolute right-0 mt-3 w-64 bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl z-50 py-3 animate-in fade-in slide-in-from-top-4 duration-300">
                                         <div className="px-4 py-2 mb-1">
-                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">Opciones de Entrada</p>
+                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">Ajustes de Importación</p>
                                         </div>
-                                        <Link
-                                            href={`/dashboard/upload?context=bank${selectedAccountId !== 'all' ? `&cuenta_id=${selectedAccountId}` : ''}`}
-                                            className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-900 hover:text-emerald-400 transition-all group"
-                                            onClick={() => setIsMenuOpen(false)}
-                                        >
-                                            <div className="p-2 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                                                <FileUp className="w-4 h-4" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="font-bold">Carga Tradicional</span>
-                                                <span className="text-[10px] text-gray-500">Detección Inteligente v4.0</span>
-                                            </div>
-                                        </Link>
 
                                         <div className="h-px bg-gray-900 my-2 mx-3" />
 

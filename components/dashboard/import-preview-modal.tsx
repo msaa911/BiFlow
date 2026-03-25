@@ -14,7 +14,46 @@ import { Input } from '@/components/ui/input'
 import { AlertCircle, CheckCircle2, Info, Loader2, Edit2, Check, X, MapPin } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { HierarchicalLocationSelector } from './location-selector'
-import { isValidCUIT } from '@/lib/excel-utils'
+import { useEffect, useRef } from 'react'
+import { toast } from 'sonner'
+
+interface DebouncedInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+    value: string
+    onChangeValue: (value: string) => void
+    delay?: number
+}
+
+// Componente de Input con Debounce para optimizar el rendimiento de la UI
+// Permite que el usuario escriba fluidamente sin disparar validaciones/guardados en cada tecla
+function DebouncedInput({ value: initialValue, onChangeValue, delay = 300, ...props }: DebouncedInputProps) {
+    const [localValue, setLocalValue] = useState(initialValue)
+
+    // Sincronizar el valor local si el valor inicial (de props) cambia externamente
+    useEffect(() => {
+        setLocalValue(initialValue)
+    }, [initialValue])
+
+    // Efecto de Debounce: dispara el cambio después de 'delay' ms de inactividad
+    useEffect(() => {
+        // Solo disparamos si el valor local es distinto al valor inicial
+        if (localValue === initialValue) return
+
+        const timer = setTimeout(() => {
+            onChangeValue(localValue)
+        }, delay)
+
+        // Limpieza del timer si el usuario sigue escribiendo o el componente se desmonta
+        return () => clearTimeout(timer)
+    }, [localValue, delay, initialValue, onChangeValue])
+
+    return (
+        <Input
+            {...props}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+        />
+    )
+}
 
 interface ImportPreviewModalProps {
     isOpen: boolean
@@ -36,19 +75,16 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
     const warningCount = data.filter((d: any) => d.isValid && d.warnings?.length > 0).length
 
     const handleConfirm = async () => {
-        console.log('[PreviewModal] Confirm button CLICKED. Records to send:', data.filter(d => d.isValid).length)
         setIsProcessing(true)
         try {
             const validData = data.filter((d: any) => d.isValid)
-            console.log('[PreviewModal] Calling parent onConfirm function...')
             await onConfirm(validData)
-            console.log('[PreviewModal] Parent onConfirm SUCCESS. Closing modal.')
             onClose()
-        } catch (error) {
-            console.error('[PreviewModal] handleConfirm ERROR:', error)
+        } catch (err: any) {
+            console.error('[InvoiceForm] CRITICAL ERROR:', err)
+            toast.error('Error crítico: ' + (err.message || 'Error desconocido'))
         } finally {
             setIsProcessing(false)
-            console.log('[PreviewModal] handleConfirm flow complete.')
         }
     }
 
@@ -59,7 +95,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
     const validateFieldChange = (row: any, field: string, value: string) => {
         const updatedRow = { ...row, [field]: value }
 
-        // Re-validate row
+        // Re-validar la fila
         const newErrors: string[] = []
         if (!updatedRow.razon_social?.trim()) newErrors.push('Falta Razón Social')
 
@@ -77,7 +113,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
         const updatedRow = {
             ...row,
             ...updates,
-            // Clear warnings only if we are actually editing/saving
+            // Solo limpiamos advertencias si estamos editando/guardando
         }
         onRowUpdate(updatedRow)
     }
@@ -85,7 +121,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
     const startEditing = (row: any) => {
         setEditingRowBackup({ ...row })
         setEditingRowId(row.id)
-        // Auto-show panel only if there's a location warning
+        // Mostrar el panel automáticamente si hay advertencias de ubicación o falta la localidad
         setShowLocationPanel(row.warnings?.length > 0 || !row.localidad)
     }
 
@@ -99,7 +135,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
     }
 
     const finishEditing = (row: any) => {
-        // Clear all warnings once corrected
+        // Limpiar todas las advertencias una vez corregido
         const cleanRow = { ...row, warnings: [] }
         onRowUpdate(cleanRow)
         setEditingRowId(null)
@@ -109,16 +145,16 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-6xl bg-gray-900 border-gray-800 text-white max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-6xl glass-premium text-white max-h-[90vh] flex flex-col p-0 overflow-hidden border-white/10 shadow-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-xl flex items-center gap-2 font-bold">
                         Previsualización de Importación ({category === 'cliente' ? 'Clientes' : 'Proveedores'})
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* Stats Cards */}
+                {/* Tarjetas de Estadísticas */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    {/* Ready Card */}
+                    {/* Tarjeta de Listos para Importar */}
                     <div className={`p-4 rounded-xl border-2 transition-all ${errorCount === 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
                         <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-lg ${errorCount === 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-700 text-gray-400'}`}>
@@ -131,7 +167,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                         </div>
                     </div>
 
-                    {/* Errors Card */}
+                    {/* Tarjeta de Errores */}
                     <div className={`p-4 rounded-xl border-2 transition-all ${errorCount > 0 ? 'bg-red-500/10 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'bg-gray-800/50 border-gray-700'}`}>
                         <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-lg ${errorCount > 0 ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-400'}`}>
@@ -170,20 +206,20 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                         <td className="px-4 py-4 text-gray-500 tabular-nums font-mono">#{row.rowNum}</td>
 
                                         <td className="px-4 py-4">
-                                            <Input
+                                            <DebouncedInput
                                                 value={row.razon_social}
                                                 placeholder="Ej: ACME S.A."
-                                                onChange={(e) => validateFieldChange(row, 'razon_social', e.target.value)}
-                                                className={`bg-gray-900 border-gray-700 h-8 text-sm focus:border-emerald-500 ${!row.razon_social ? 'border-red-500/50' : ''}`}
+                                                onChangeValue={(val) => validateFieldChange(row, 'razon_social', val)}
+                                                className={`bg-gray-900/50 border-gray-700/50 h-8 text-sm focus:border-emerald-500/50 transition-all ${!row.razon_social ? 'border-red-500/50' : ''}`}
                                             />
                                         </td>
 
                                         <td className="px-4 py-4">
-                                            <Input
+                                            <DebouncedInput
                                                 value={row.cuit}
                                                 placeholder="20123456789"
-                                                onChange={(e) => validateFieldChange(row, 'cuit', e.target.value)}
-                                                className={`bg-gray-900 border-gray-700 h-8 text-sm font-mono focus:border-emerald-500 ${row.errors?.some((e: string) => e.includes('CUIT')) ? 'border-red-500/50' : ''}`}
+                                                onChangeValue={(val) => validateFieldChange(row, 'cuit', val)}
+                                                className={`bg-gray-900/50 border-gray-700/50 h-8 text-sm font-mono focus:border-emerald-500/50 transition-all ${row.errors?.some((e: string) => e.includes('CUIT')) ? 'border-red-500/50' : ''}`}
                                             />
                                         </td>
 
@@ -228,29 +264,29 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                                         </td>
 
                                         <td className="px-4 py-4">
-                                            <Input
+                                            <DebouncedInput
                                                 value={row.cbu_habitual || ''}
                                                 placeholder="22 dígitos"
-                                                onChange={(e) => handleFieldChange(row, 'cbu_habitual', e.target.value)}
-                                                className="h-8 bg-gray-900 border-gray-700 font-mono text-[10px]"
+                                                onChangeValue={(val) => handleFieldChange(row, 'cbu_habitual', val)}
+                                                className="h-8 bg-gray-900/50 border-gray-700/50 font-mono text-[10px] focus:border-emerald-500/50"
                                             />
                                         </td>
 
                                         <td className="px-4 py-4">
-                                            <Input
+                                            <DebouncedInput
                                                 value={row.email || ''}
                                                 placeholder="email@ejemplo.com"
-                                                onChange={(e) => handleFieldChange(row, 'email', e.target.value)}
-                                                className="h-8 bg-gray-900 border-gray-700 text-[10px]"
+                                                onChangeValue={(val) => handleFieldChange(row, 'email', val)}
+                                                className="h-8 bg-gray-900/50 border-gray-700/50 text-[10px] focus:border-emerald-500/50"
                                             />
                                         </td>
 
                                         <td className="px-4 py-4">
-                                            <Input
+                                            <DebouncedInput
                                                 value={row.telefono_1 || ''}
                                                 placeholder="Teléfono"
-                                                onChange={(e) => handleFieldChange(row, 'telefono_1', e.target.value)}
-                                                className="h-8 bg-gray-900 border-gray-700 text-[10px]"
+                                                onChangeValue={(val) => handleFieldChange(row, 'telefono_1', val)}
+                                                className="h-8 bg-gray-900/50 border-gray-700/50 text-[10px] focus:border-emerald-500/50"
                                             />
                                         </td>
 
@@ -325,7 +361,7 @@ export function ImportPreviewModal({ isOpen, onClose, data, category, onConfirm,
                     <Button
                         onClick={handleConfirm}
                         disabled={validCount === 0 || isProcessing}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 h-10 shadow-lg shadow-emerald-500/10"
+                        className="btn-premium-emerald px-8 h-10"
                     >
                         {isProcessing ? (
                             <>

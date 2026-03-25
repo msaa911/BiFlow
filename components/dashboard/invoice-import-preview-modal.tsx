@@ -84,7 +84,7 @@ export function InvoiceImportPreviewModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-7xl bg-gray-900 border-gray-800 text-white max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-7xl glass-premium text-white max-h-[90vh] flex flex-col p-0 overflow-hidden border-white/10 shadow-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-xl flex items-center gap-2 font-bold uppercase tracking-tight">
                         {type === 'factura_venta' ? 'Pre-visualizar Ingresos' : 'Pre-visualizar Egresos'} ({data.length})
