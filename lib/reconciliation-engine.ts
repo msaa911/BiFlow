@@ -9,9 +9,11 @@ export interface ReconciliationOptions {
 
 export interface ReconciliationResult {
   success: boolean;
+  matched: number;
   matchedCount: number;
   totalRead: number;
   status: 'success' | 'error';
+  actions: any[];
   message?: string;
   metadata?: Record<string, unknown>;
 }
@@ -36,18 +38,22 @@ export class ReconciliationEngine {
       console.error('RPC reconcile_v4_0 error:', error);
       return {
         success: false,
+        matched: 0,
         matchedCount: 0,
         totalRead: 0,
         status: 'error',
+        actions: [],
         message: error.message
       };
     }
 
     return {
       success: data?.status === 'success',
+      matched: data?.matched_count || 0,
       matchedCount: data?.matched_count || 0,
       totalRead: data?.total_read || 0,
       status: data?.status || 'success',
+      actions: data?.actions || [],
       metadata: data
     };
   }
