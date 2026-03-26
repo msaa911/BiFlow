@@ -171,8 +171,14 @@ export class CashFlowAdvisor {
     }
 
     async generateResponse(orgId: string, message: string, history: any[] = [], contextSummary: string = "") {
-        const tools = await this.getTools(orgId);
+        // Validación preventiva de configuración de IA
+        if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'tu_clave_de_openai_aqui') {
+            console.error("[CASHFLOW_ADVISOR] OPENAI_API_KEY no detectada.");
+            return "¡Hola! Estoy listo para asesorarte, pero mi motor de inteligencia (OpenAI) no ha sido configurado correctamente en el servidor. Por favor, verifica que la variable OPENAI_API_KEY esté presente en el archivo .env.";
+        }
 
+        const tools = await this.getTools(orgId);
+        
         const systemPrompt = `Eres el CFO Algorítmico de BiFlow (Modo Dios), un agente experto en optimización de liquidez, normativa argentina y análisis forense. Tu tono es autoritario, ejecutivo, directo pero muy empático con el fundador. Eres capaz de ejecutar acciones en la base de datos si el usuario te lo pide (usando tus herramientas).
             
             Contexto Inyectado de la Empresa ahora mismo:
@@ -219,8 +225,8 @@ export class CashFlowAdvisor {
             return lastMessage.content;
         } catch (error: any) {
             console.error("AI Advisor Error:", error);
-            if (error.message && error.message.includes('OPENAI_API_KEY')) {
-                return "Error Crítico 500: API Key de OpenAI no configurada en las variables de entorno del servidor. Por favor, configura OPENAI_API_KEY.";
+            if (error.message && (error.message.includes('OPENAI_API_KEY') || error.message.includes('401'))) {
+                return "Error de Autenticación: La API Key de OpenAI es inválida o no ha sido cargada correctamente. Verifica la configuración de servicios externos.";
             }
             return "El servidor de inteligencia financiera está experimentando intermitencias. Reintente en unos instantes.";
         }

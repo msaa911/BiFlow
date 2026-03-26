@@ -119,8 +119,8 @@ export async function runAnalysis(organizationId: string) {
     const { processed } = AnomalyEngine.analyze(
         transactions,
         historyMap,
-        transactions, // Using the same batch for intra-batch duplicate check
-        { windowDays: 30 } // 30-day window as requested in Task 1.1
+        [], // Empty array for existing transactions since the batch already contains history
+        { windowDays: 30 }
     )
 
     // Keywords categorized for Cash Flow mapping (Operating, Investment, Financial)
@@ -354,10 +354,17 @@ export async function runAnalysis(organizationId: string) {
 
     // Update Transaction Tags (if modified)
     if (transactionsToUpdate.length > 0) {
-        console.log(`[ANALYSIS] Updating tags for ${transactionsToUpdate.length} transactions...`)
-        for (const update of transactionsToUpdate) {
-            const { error: tagError } = await supabase.from('transacciones').update({ tags: update.tags }).eq('id', update.id)
-            if (tagError) console.error(`[ANALYSIS] Error updating tag for ${update.id}:`, tagError.message)
+        console.log(`[ANALYSIS] Bulk updating tags for ${transactionsToUpdate.length} transactions...`)
+        const { error: batchError } = await supabase
+            .from('transacciones')
+            .upsert(transactionsToUpdate, { onConflict: 'id' })
+        
+        if (batchError) {
+            console.error(`[ANALYSIS] FATAL: Error in batch tag update:`, batchError.message)
+            // Fallback strategy: try individual updates if batch fails for specific reason
+            // For now, robust logging is sufficient for the tech debt phase
+        } else {
+            console.log(`[ANALYSIS] successfully updated ${transactionsToUpdate.length} transactions in batch.`)
         }
     }
 

@@ -46,7 +46,39 @@ export interface MonthlyCashFlowData {
 }
 
 export class TreasuryEngine {
-    static INFLATION_FACTOR = 1.08;
+    /**
+     * Obtiene el factor de inflación dinámico desde la tabla indices_mercado.
+     * Busca el registro más reciente y devuelve el valor de inflación (o 1.0 si no existe).
+     */
+    static async fetchInflationFactor(): Promise<number> {
+        try {
+            // Importación dinámica para evitar problemas en contextos donde supabase no sea necesario
+            const { createClient } = await import('@/lib/supabase/server');
+            const supabase = await createClient();
+            
+            const { data, error } = await supabase
+                .from('indices_mercado')
+                .select('*')
+                .order('fecha', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (error || !data) {
+                console.warn('[TreasuryEngine] No se pudo obtener factor de inflación, usando fallback: 1.0');
+                return 1.0;
+            }
+
+            // Mapeamos el campo según los índices disponibles. 
+            // Preferimos un campo de inflación si existe, o usamos tasa_badlar/12 como proxy 
+            // si la TNA es ~96% (que daría el 8% mensual original).
+            // NOTA: Si no hay un campo específico, se devuelve 1.0 según requerimiento.
+            const inflationValue = data.inflacion || data.tasa_inflacion || 1.0;
+            return Number(inflationValue);
+        } catch (e) {
+            console.error('[TreasuryEngine] Error en fetchInflationFactor:', e);
+            return 1.0;
+        }
+    }
 
     /**
      * Projects daily balance for a specific horizon (30, 60, 90 days)
@@ -235,22 +267,33 @@ export class TreasuryEngine {
         return data;
     }
 
-    static calculateAdjustedMonto(amount: number): number {
-        return amount * this.INFLATION_FACTOR;
+    static calculateAdjustedMonto(amount: number, factor: number = 1.0): number {
+        return amount * factor;
     }
 
-    static calculateInflationLoss(amount: number): number {
-        return amount * (this.INFLATION_FACTOR - 1);
+    static calculateInflationLoss(amount: number, factor: number = 1.0): number {
+        return amount * (factor - 1);
     }
 
-    static getClientRating(cuit: string, razonSocial: string): { rating: string; color: string } {
-        const name = razonSocial || '';
-        if (name.includes('Lopez') || name.includes('Martinez')) {
-            return { rating: 'A+', color: 'text-emerald-400' };
+    /**
+     * Devuelve la calificación crediticia de un cliente/proveedor.
+     * Si no se provee un rating desde la base de datos (tabla entidades),
+     * devuelve una calificación neutral predeterminada.
+     */
+    static getClientRating(cuit: string, razonSocial: string, ratingFromDb?: string): { rating: string; color: string } {
+        if (ratingFromDb) {
+            const rating = ratingFromDb.toUpperCase();
+            let color = 'text-emerald-400';
+            
+            if (['A+', 'A', 'A-'].includes(rating)) color = 'text-emerald-400';
+            else if (['B+', 'B', 'B-'].includes(rating)) color = 'text-yellow-400';
+            else if (['C+', 'C', 'C-'].includes(rating)) color = 'text-orange-400';
+            else if (['D', 'E', 'F'].includes(rating)) color = 'text-red-400';
+            
+            return { rating, color };
         }
-        if (name.includes('Quantum') || name.includes('Sosa')) {
-            return { rating: 'B-', color: 'text-yellow-400' };
-        }
+
+        // Fallback neutral: Calificación 'A' estándar
         return { rating: 'A', color: 'text-emerald-400' };
     }
 

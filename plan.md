@@ -1,67 +1,71 @@
-# 📋 Plan de Diseño Técnico: Sprint 3 - BiFlow Frontend/UX
+# Plan de Limpieza y Estructura - Sprint 6 (BiFlow)
 
-Este documento detalla la aproximación técnica para implementar las mejoras de performance y estética visual requeridas para el Sprint 3.
+Este plan detalla las acciones para el Sprint final, enfocado en la higiene del repositorio, la consolidación de la base de datos y el cumplimiento de estándares de estructura.
 
-## 🕒 1. Implementación de Debounce (300ms) en `import-preview-modal.tsx`
+## 🎯 Objetivos Principales
 
-**Objetivo:** Evitar re-renders costosos y validaciones innecesarias en cada pulsación de tecla durante la edición de datos importados.
-
-- **Problema:** Actualmente, `handleFieldChange` activa `onRowUpdate(validateRow(updatedRow))` inmediatamente. En tablas con 100+ filas, esto degrada la experiencia del usuario (lag al escribir).
-- **Aproximación Técnica:** 
-    - Introducir un estado local `localValue` para el campo que se está editando.
-    - Implementar un hook `useEffect` con un `setTimeout` de 300ms que dispare la validación y el guardado en el estado global solo al dejar de escribir.
-    - Se usará la lógica de limpieza de efecto (`clearTimeout`) para reiniciar el debounce si el usuario sigue tecleando.
-
-```typescript
-// Lógica propuesta
-const [localValue, setLocalValue] = useState(row[field]);
-useEffect(() => {
-    const handler = setTimeout(() => {
-        onRowUpdate(validateRow({ ...row, [field]: localValue }));
-    }, 300);
-    return () => clearTimeout(handler);
-}, [localValue]);
-```
+1. **Higiene del Root**: Eliminar archivos temporales de auditoría, logs y volcados de código que ensucian la raíz.
+2. **Orden de Migraciones**: Limpiar el directorio de migraciones de Supabase de archivos de prueba y borradores.
+3. **Estandarización**: Unificar carpetas de datos de prueba y asegurar que la estructura cumpla con las mejores prácticas de Next.js.
 
 ---
 
-## 💎 2. Estilos Premium & Glassmorphism (Tailwind + Shadcn)
+## 🛠️ Acciones Propuestas
 
-**Objetivo:** Transformar la interfaz en una herramienta financiera de élite con estética moderna y profundidad visual.
+### 1. Limpieza del Root (Archivos de Debug y Temporales)
 
-- **Utilidades de Tailwind CSS:**
-    - **Efecto Glassmorphism:** Combinación de `bg-gray-950/60`, `backdrop-blur-xl` y `border-white/10`.
-    - **Profundidad sutil:** Sombras personalizadas mediante `shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]`.
-    - **Gradientes Premium:** Uso de `bg-gradient-to-br from-emerald-600 to-teal-800` para acciones primarias.
-- **Componentes Shadcn UI:**
-    - Refuerzo de `Dialog` y `Tabs` con bordes sutiles de color `border-emerald-500/20`.
-    - Botones con efectos de "glow" en hover usando `shadow-emerald-500/20 shadow-lg transition-all duration-300`.
+#### [ELIMINAR] Archivos de Auditoría y Logs
+Estos archivos son subproductos de procesos anteriores y ya no son necesarios:
+- `BiFlow_Audit_Dump_20260305.txt`
+- `BiFlow_Audit_Dump_20260305_v2.txt`
+- `BiFlow_Mega_Audit.dat`
+- `full_codebase_dump.txt`
+- `sprint_3_dump.txt`
+- `diagnosis.log`
+- `diagnosis_output.txt`
+- `auto-debug-output.txt`
+
+#### [REUBICAR] Herramientas de Diagnóstico y Scripts
+Mover a un nuevo directorio `scripts/debug/` para mantener la raíz limpia pero conservar las herramientas útiles:
+- **TS/JS**: `check_rls.ts`, `check_specific_tx.ts`, `debug-dashboard.ts`, `debug_bank_notes.ts`, `deep_diagnose.js`, `diagnose.js`, `diagnose_errors.js`, `inspect_invoices.js`, `verify-treasury.js`, `test-advisor.ts`, `test-ai.mjs`.
+- **SQL**: `check_columns.sql`, `check_rls.sql`, `fix_missing_table.sql`.
+
+#### [REUBICAR] Datos de Prueba
+Mover los archivos `.csv` sueltos de la raíz a la carpeta de test unificada:
+- `test_extracto_anomalias.csv`
+- `test_import.csv`
+- `test_treasury.csv`
+
+---
+
+### 2. Consolidación de Base de Datos (Supabase)
+
+#### [LIMPIAR] Migraciones
+Eliminar o reubicar archivos que no forman parte del esquema de producción:
+- **Mover a `supabase/tests/`**: `test_bank_audit.sql`, `test_treasury_data.sql`.
+- **Eliminar**: `draft_reconcile_rpc_v3_1.sql` (borrador obsoleto).
+- **Mantener**: Todas las migraciones numeradas (100+) se mantendrán por ahora para asegurar compatibilidad con entornos existentes, a menos que se requiera un "squash" explícito.
 
 ---
 
-## 🏗️ 3. Reestructuración de `banks-tab.tsx`
+### 3. Estandarización de Carpetas (Next.js Standards)
 
-**Objetivo:** Mejorar el flujo de trabajo de conciliación priorizando la vista de pendientes y facilitando la carga de datos.
+#### [UNIFICAR] Datos de Prueba
+Existen dos carpetas: `test_data` y `test-data`. 
+- **Propuesta**: Mover el contenido de `test_data` a `test-data/` y eliminar `test_data/` para seguir la convención kebab-case predominante.
 
-- **Pivot de Pestaña por Defecto:**
-    - Cambiar el estado inicial de `activeTab` de `'summary'` a `'reconciliation'` (Pestaña "Pendientes").
-- **Integración del Botón "Nueva Carga":**
-    - **Ubicación:** Extraer la acción de "Carga De Extracto" del menú desplegable actual y colocarla como un botón primario (`Button` de shadcn) a la derecha del selector de cuenta bancaria.
-    - **Estilo:** Variante `"Action CTA"` con gradiente esmeralda para atraer la atención visual.
-    - **Lógica:** Implementación directa al modal de carga sin interrupciones por menús secundarios innecesarios.
+#### [LIMPIAR] Configuración de Estilos (PostCSS)
+- **Eliminar**: `postcss.config.mjs`. El proyecto ya cuenta con `postcss.config.js` orientado a Tailwind v3. El archivo `.mjs` contiene referencias a v4 que no coinciden con las dependencias actuales.
 
----
-
-## 🚦 Plan de Verificación
-
-### Pruebas Automatizadas
-- [ ] Verificar que el debounce no interrumpa el foco del input durante la escritura rápida.
-- [ ] Confirmar que las validaciones se ejecuten exactamente 300ms después del último cambio.
-
-### Verificación Manual
-- [ ] Inspección visual del efecto glassmorphism en dispositivos con diferentes capacidades de rendering.
-- [ ] Validar que al cargar el dashboard, la vista activa sea efectivamente "Pendientes".
-- [ ] Probar el botón "Nueva Carga" desde diferentes estados de la tabla.
+#### [MANTENIMIENTO] Estructura Root y Git
+- Asegurar que `.env.local` no se suba al control de versiones (verificar `.gitignore`).
+- Eliminar `tsconfig.tsbuildinfo` de la raíz (ya está en `.gitignore`).
+- Mover cualquier script JS/TS restante en la raíz a la carpeta `scripts/`.
 
 ---
-_Nota: Tras la aprobación de este plan, se procederá a la implementación de los cambios en los archivos correspondientes._
+
+## ✅ Plan de Verificación
+
+1. **Build Check**: Ejecutar `npm run build` para asegurar que la reubicación de archivos no afecte las rutas de importación.
+2. **Database Reset**: Ejecutar `supabase db reset` (en entorno local) para validar que el orden de las migraciones sigue siendo consistente tras la limpieza.
+3. **Scan Final**: Realizar un `ls -R` final para validar que la raíz solo contiene archivos de configuración esenciales.

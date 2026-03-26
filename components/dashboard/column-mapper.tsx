@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check, ArrowRight, Table as TableIcon } from 'lucide-react'
 
 type ColumnMapperProps = {
@@ -34,7 +34,7 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
     const [templateName, setTemplateName] = useState('')
 
     // Fetch preview on mount
-    useState(() => {
+    useEffect(() => {
         if (initialData) {
             setHeaders(initialData.headers)
             setPreviewRows(initialData.previewRows)
@@ -42,12 +42,16 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
             return
         }
 
+        const controller = new AbortController()
+
         const fetchPreview = async () => {
             try {
                 let data;
                 if (importId) {
                     // Fetch for existing import from storage
-                    const res = await fetch(`/api/imports/preview?id=${importId}`)
+                    const res = await fetch(`/api/imports/preview?id=${importId}`, {
+                        signal: controller.signal
+                    })
                     if (!res.ok) throw new Error('Error al leer el archivo desde el historial')
                     data = await res.json()
                 } else if (file && file.size > 0) {
@@ -56,7 +60,8 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
                     formData.append('file', file)
                     const res = await fetch('/api/upload/preview', {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        signal: controller.signal
                     })
                     if (!res.ok) throw new Error('Error al leer el archivo')
                     data = await res.json()
@@ -68,12 +73,18 @@ export function ColumnMapper({ file, onMappingComplete, onCancel, importId, init
                 setPreviewRows(data.previewData)
                 setLoading(false)
             } catch (e: any) {
+                if (e.name === 'AbortError') return
                 setError(e.message)
                 setLoading(false)
             }
         }
+
         fetchPreview()
-    })
+
+        return () => {
+            controller.abort()
+        }
+    }, [file, importId, initialData])
 
     const handleSelect = (field: string, index: string) => {
         setMapping(prev => ({ ...prev, [field]: parseInt(index) }))
