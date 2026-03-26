@@ -33,3 +33,10 @@
 - [x] ✅ Ejecutar `npm run build` (Se detectó error preexistente en `next/headers` no relacionado a la limpieza).
 - [x] ✅ Validar levantamiento local de Supabase (Migraciones consistentes).
 - [x] ✅ Generar reporte final de limpieza (`walkthrough.md`).
+
+## 🛠️ Fase EXTRA: Hotfixes & QA (Post-Regresión)
+- [x] ✅ **Seguridad**: Eliminar ruta `/api/dev-schema` (ALTER TABLE risk).
+- [x] ✅ **Refactor**: Centralizar `getOrgId` en `lib/supabase/utils.ts` y eliminar duplicados.
+- [x] ✅ **QA**: Corregir error de compilación por importación de `next/headers` en TreasuryEngine.
+- [x] ✅ **QA**: Resolver error 400 en Dashboard Auditoría corrigiendo sintaxis de unión PostgREST.
+- [x] ✅ **Higiene**: Eliminar archivos temporales de `tmp/` bloqueadores de build.

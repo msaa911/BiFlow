@@ -100,7 +100,7 @@ export default function AuditCenterPage() {
             .from('hallazgos')
             .select(`
                 *,
-                transaccion:transaccion_id (id, fecha, descripcion, monto)
+                transaccion:transacciones (id, fecha, descripcion, monto)
             `)
             .order('created_at', { ascending: false })
 
@@ -109,7 +109,7 @@ export default function AuditCenterPage() {
             .from('hallazgos_auditoria')
             .select(`
                 *,
-                transaccion:transaccion_id (id, fecha, descripcion, monto)
+                transaccion:transacciones (id, fecha, descripcion, monto)
             `)
             .order('created_at', { ascending: false })
 

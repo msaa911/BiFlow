@@ -7,7 +7,7 @@ export async function getOrgId(supabase: any, userId: string): Promise<string> {
         .from('organization_members')
         .select('organization_id')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
     if (!error && member) {
         return member.organization_id
@@ -23,7 +23,7 @@ export async function getOrgId(supabase: any, userId: string): Promise<string> {
             .from('organization_members')
             .select('organization_id')
             .eq('user_id', userId)
-            .single()
+            .maybeSingle()
 
         if (adminMember) return adminMember.organization_id
     }
