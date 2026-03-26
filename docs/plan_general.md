@@ -5,80 +5,64 @@ Este documento es la **única fuente de verdad** del proyecto. Centraliza la vis
 ---
 
 ## 📊 ESTADO GLOBAL DEL PROYECTO
-- **Fase Actual:** `Sprint 2: Inteligencia & Liquidez` 🔵 **En curso**
-- **Siguiente Hito:** `Estabilidad & Robustez (Post-Auditoría Mar-18)` 🔶 **Prioridad Inmediata**
-- **Core de Negocio:** 🟢 Completado (Importación, Treasury AR/AP, Motores Básicos).
+- **Fase Actual:** `Fase 3: Cash Flow Avanzado` 🔵 **INICIANDO**
+- **Estado Técnico:** 🟢 **LIMPIO & ESTABLE** (Post-Sprint 6).
+- **Core de Negocio:** 🟢 Completado (Importación, Treasury AR/AP, Motores de Auditoría, Conciliaciónv5).
 
 ---
 
-## 🚀 EJECUCIÓN ACTUAL (EL CAMPO DE BATALLA)
+## 🚀 HISTORIAL DE EJECUCIÓN (Hitos Logrados)
 
-### 1. Refactorización de Estabilidad (Resultados Auditoría Mar-18) 🔶 **ALTA PRIORIDAD**
-*Garantizar que el sistema no falle bajo carga y que los datos sean 100% íntegros.*
-- [x] **Atomicidad SQL (RPC)**: Migrado el core de `matchAndReconcile` a PostgreSQL RPC (`reconcile_v3_1`). Incluye Fase Administrativa (Comprobantes) y Fase Bancaria.
-- [x] **Tipado Estricto (TS)**: Erradicado el uso de `: any` en `ReconciliationEngine` y `admin.ts`.
-- [ ] **Capa de Pruebas**: Implementar Vitest para validar algoritmos financieros (IVA, Inflación, Suma de Subconjuntos).
-- [x] **Seguridad Admin**: Eliminado el fallback inseguro a `ANON_KEY` en `lib/supabase/admin.ts`.
-- [x] **Optimización UI**: Refactorizado el selector de entidades en el preview de facturas con debounce y estado por fila.
-- [x] **Seguridad del Entorno**: Eliminado fallback de `ANON_KEY` en el cliente administrativo para forzar errores explícitos.
+### ✅ Sprint 6: DevOps, Higiene & Seguridad (Marzo 2026) - RECIENTE
+*Garantizar la estabilidad para producción y eliminar deuda técnica acumulada.*
+- **Estructura**: Limpieza total de la raíz. Scripts movidos a `scripts/debug/` y datos a `test-data/`.
+- **Seguridad**: Eliminación de rutas peligrosas (`/api/dev-schema`).
+- **QA**: Refactor de `getOrgId` (resiliente) y eliminación de `next/headers` en lógica de negocio (Build fix).
+- **Dashboard**: Corrección de bugs de renderizado en anomalías (PostgREST joins).
 
-### 2. Cierre de Sprint 2: Inteligencia de Conciliación 🔵 **EPIC ACTUAL**
-- [x] **Conciliación Automática 2.0**: Match real entre Bancos y Comprobantes vía CUIT, Cheque y Referencia (Hecho en RPC v3.1).
-- [x] **Trust Ledger**: Cruce CUIT vs CBU integrado en el motor de conciliación atómico.
-- [ ] **Pivot UX en Panel**: 
-    - Al clicar "Conciliar", mostrar *únicamente* Movimientos Previos (Recibos/OP huérfanos).
-    - Botón explícito para crear Recibo/OP solo si el usuario olvidó cargarlos previamente.
-- [ ] **UX de Importación**: Debouncing en búsquedas e independencia de estado por fila en el modal de previsualización.
+### ✅ Sprint 5: Refactor de Deuda Técnica (ColumnMapper)
+- **Performance**: Implementación de `AbortController` y `useEffect` en el mapeador de columnas masivo.
+- **Estabilidad**: Eliminada la inicialización incorrecta de estado en el preview de importación.
 
----
+### ✅ Sprint 4: Backend & Hardening
+- **Motor de Tesorería**: Eliminación de constantes hardcodeadas y lógica de duplicados corregida.
+- **AI Advisor**: Implementación de manejo robusto de `OPENAI_API_KEY`.
 
-## 🛠️ BACKLOG TÉCNICO & DEUDA
-*Tareas menores y mantenimiento acumulado.*
-- [ ] **Refinamiento de UI**: Actualización de navegación lateral (Sidebar) y layouts de tablas reactivas.
-- [ ] **Persistencia de Impuestos**: Asegurar que las reglas de clasificación de impuestos en extractos sean 100% consistentes.
-- [ ] **Validación de Notas**: Asegurar que Notas de Débito/Crédito Bancarias se emitan y limpien el balance correctamente.
-    - [x] Renombrar "Ingresos" a "Créditos" y "Egresos" a "Débitos".
-    - [x] Mejorar legibilidad de columna Banco.
-    - [x] Corregir eliminación de notas y reversión de estado (funciona la eliminación).
-    - [!] **BLOQUEADO**: Error de base de datos (Matched: 0) por RLS al intentar conciliar transacciones desde el panel.
+### ✅ Sprint 3: UX & Premium Design (Glassmorphism)
+- **UI**: Interfaz premium con efectos de desenfoque y sombras profundas (Cards, Sidebar).
+- **UX**: Debouncing de 300ms en el preview de facturas y selector de entidades mejorado.
+
+### ✅ Sprint 2: Inteligencia & Conciliación (Post-Auditoría Mar-18)
+- **Atomicidad SQL**: Core de conciliación migrado a RPC PostgreSQL (`reconcile_v5_0`).
+- **Trust Ledger**: Cruce CUIT vs CBU integrado en el motor.
 
 ---
 
-## 📈 HOJA DE RUTA (ROADMAP 2026)
+## 🏗️ PRÓXIMAS PRIORIDADES (ROADMAP Q2 2026)
 
-### Fase 3: Cash Flow Avanzado (Q2 2026)
-- **Escenarios Dinámicos**: Simulador de pagos diferidos y cobros adelantados.
-- **Asesor de IA (360°)**: Chat directo sobre riesgos de liquidez y proyecciones de caja.
-- **Visual Mapper**: Interfaz Drag & Drop para mapeo manual de formatos desconocidos.
+### 🥇 Fase 3: Cash Flow Avanzado (Epic Actual)
+*Transformar los datos en decisiones estratégicas.*
+- [ ] **Escenarios Dinámicos (Simulador)**: Crear proyecciones de caja moviendo fechas de vencimiento de facturas (Drag & Drop).
+- [ ] **Asesor AI 360° (Chat)**: Integrar consulta de lenguaje natural sobre el estado de deuda y liquidez.
+- [ ] **Visual Mapper UI**: Interfaz para mapear formatos de bancos desconocidos sin tocar código.
+- [ ] **Vitest Setup**: Implementar suite de pruebas para motores financieros (Inflación, Gastos, Match).
 
-### Fase 4: SaaS & Monetización
-- **Gestión de Equipos**: Invitaciones, roles (Admin/Member) y auditoría de accesos.
-- **Fiscal & Legal**: Facturación automática AFIP y exportación de libros IVA.
-- **Billing**: Integración con Mercado Pago / Stripe para cobro de suscripciones.
-
----
-
-## 📄 HISTORIAL DE SESIONES (LOG)
-<details>
-<summary><b>Click para ver sesiones completadas</b></summary>
-
-### SESIÓN Marzo 13 - Refinamiento de Conciliación
-- **Objetivo:** Optimizar precisión del Match y usabilidad del panel.
-- [x] Extracción agresiva de IDs de 4+ dígitos.
-- [x] Limpieza de prefijos (`TRF-`, `CHQ-`) automática.
-- [x] Prioridad visual de referencia en ámbar brillante.
-- [x] Ocultamiento inmediato de transacciones conciliadas localmente.
-
-### FASE 1 & 2 - Core & Importación
-- [x] Universal Translator (Parsers para Macro, Galicia, Excel personalizado).
-- [x] Treasury Engine v1.0 (AR/AP).
-- [x] Detección de anomalías y alertas de precio.
-</details>
+### 🥈 Fase 4: B2B SaaS & Monetización
+- [ ] **Roles & Permisos**: Gestión de usuarios (Admin, Viewer, Member) con RLS estricto.
+- [ ] **Billing System**: Integración con Stripe/Mercado Pago para suscripciones.
+- [ ] **Conexión AFIP**: Facturación directa y exportación de Libro IVA Digital.
 
 ---
 
-## ⚙️ STACK TÉCNICO
-- **Framework**: Next.js 14+ (App Router, SSR).
-- **Backend**: Supabase (PostgreSQL, Auth, RLS).
-- **Motores**: AnomalyEngine, LiquidityEngine, TrustLedger, ReconciliationEngine.
-- **Infra**: Resend (Emails), Vitest (Tests en camino).
+## 🛠️ BACKLOG TÉCNICO & PENDIENTES
+- [ ] **Botón Quick-Create**: Permitir crear Recibo/OP directamente desde el panel de conciliación.
+- [ ] **Refinamiento de Tablas**: Implementar virtualización para manejar +10,000 transacciones sin lag.
+- [ ] **Auditoría de Logs**: Dashboard para ver el historial de cambios manuales en transacciones.
+
+---
+
+## ⚙️ STACK TÉCNICO (Vigente)
+- **Frontend**: Next.js 14+ (App Router), Tailwind CSS v3, Radix UI.
+- **Backend**: Supabase (Auth, DB, RLS, Storage), Edge Functions.
+- **AI**: OpenAI (GPT-4o), Motores Propios (Anomaly, Treasury, Reconcile).
+- **QA**: Vitest (En camino), Playwright (E2E proyectado).

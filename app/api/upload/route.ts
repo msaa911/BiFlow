@@ -10,6 +10,7 @@ import { runAnalysis } from '@/lib/analysis/engine'
 import { UniversalTranslator } from '@/lib/universal-translator'
 import { ReconciliationEngine } from '@/lib/reconciliation-engine'
 import { getOrgId } from '@/lib/supabase/utils'
+import { extractTransactionsFromPdfBuffer } from '@/lib/ai/pdf-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,6 +81,13 @@ export async function POST(request: Request) {
         const rawCuentaId = formData.get('cuenta_id') as string
         let cuentaId = (rawCuentaId && rawCuentaId.length > 5) ? rawCuentaId : null
         let uniTransactions: any = null
+
+        // Batch Metadata
+        const isChunk = formData.get('isChunk') === 'true'
+        const sessionId = formData.get('sessionId') as string
+        const chunkIndex = parseInt(formData.get('chunkIndex') as string || '0')
+        const totalChunks = parseInt(formData.get('totalChunks') as string || '1')
+        const originalName = formData.get('originalName') as string || fileName
 
         if (formatId || manualMapping) {
             console.log(`9. Using ${formatId ? 'Custom Format' : 'Manual Mapping'}`)
@@ -204,13 +212,39 @@ export async function POST(request: Request) {
                     reviewItems = res.reviewItems
                 }
             } else if (fileName.endsWith('.pdf')) {
-                console.log('Loading pdf-parse dynamically')
-                const pdf = require('pdf-parse')
-                const pdfData = await pdf(buffer)
-                const res = parsePDF(pdfData.text, orgId)
-                transactions = res.transactions
-                warnings = res.warnings
-                reviewItems = res.reviewItems
+                console.log(`[AI-PDF] Processing ${isChunk ? `chunk ${chunkIndex + 1}/${totalChunks}` : 'full PDF'} with Gemini...`)
+                try {
+                    const extracted = await extractTransactionsFromPdfBuffer(buffer)
+                    transactions = extracted.map(t => ({
+                        organization_id: orgId,
+                        fecha: normalizeDate(t.fecha) || t.fecha,
+                        descripcion: t.descripcion,
+                        monto: t.monto,
+                        cuit: t.cuit_emisor,
+                        referencia: t.referencia,
+                        moneda: 'ARS',
+                        origen_dato: 'gemini-ocr',
+                        estado: 'pendiente',
+                        cuenta_id: uploadContext === 'bank' ? cuentaId : null,
+                        metadata: { 
+                            ai_extracted: true, 
+                            chunk_index: chunkIndex,
+                            original_filename: originalName,
+                            session_id: sessionId
+                        }
+                    }))
+                    console.log(`[AI-PDF] Successfully extracted ${transactions.length} transactions.`)
+                } catch (aiError: any) {
+                    console.error('[AI-PDF] Gemini Error:', aiError)
+                    warnings.push(`AI OCR Error: ${aiError.message}. Reintentando con parseo básico...`)
+                    // Fallback to legacy parser if AI fails
+                    const pdf = require('pdf-parse')
+                    const pdfData = await pdf(buffer)
+                    const res = parsePDF(pdfData.text, orgId)
+                    transactions = res.transactions
+                    warnings = [...warnings, ...res.warnings]
+                    reviewItems = res.reviewItems
+                }
             } else {
                 throw new Error('Formato no soportado')
             }
@@ -273,41 +307,62 @@ export async function POST(request: Request) {
         }
 
         console.log('11. Creating Audit Log Entry [v5.4-ULTRA]')
-        const auditPayload: any = {
-            organization_id: orgId,
-            cuenta_id: cuentaId,
-            nombre_archivo: fileName,
-            storage_path: storagePath,
-            estado: (transactions[0]?.origen_dato === 'universal_translator' && uniTransactions?.metadata?.lowQuality)
-                ? 'requiere_ajuste'
-                : 'procesando',
-            metadata: {
-                size: buffer.length,
-                type: file.type,
-                hasExplicitTipo,
-                signsInverted: invertSigns,
-                uploadVersion: '5.4-ULTRA'
+        let importId = null
+        
+        // Lookup existing Import record for chunks
+        if (isChunk && sessionId && chunkIndex > 0) {
+            const { data: existingImport } = await adminSupabase
+                .from('archivos_importados')
+                .select('id')
+                .contains('metadata', { session_id: sessionId })
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+            
+            if (existingImport) {
+                importId = existingImport.id
+                console.log(`Found existing Import ID for session ${sessionId}: ${importId}`)
             }
-        };
-
-        const { data: importLog, error: dbLogErr } = await adminSupabase
-            .from('archivos_importados')
-            .insert(auditPayload)
-            .select()
-            .single()
-
-        if (dbLogErr || !importLog) {
-            console.error('DB Log Error [v5.4-ULTRA]:', dbLogErr)
-            const errorMsg = `ERROR AUDIT [v5.4-ULTRA]: ${dbLogErr?.message || 'Sin mensaje'} (Code: ${dbLogErr?.code || 'N/A'})`;
-            return NextResponse.json({
-                error: errorMsg,
-                details: dbLogErr?.message,
-                code: dbLogErr?.code,
-                diagnostic: { orgId, state: auditPayload.estado }
-            }, { status: 500 })
         }
 
-        const importId = importLog.id
+        if (!importId) {
+            const auditPayload: any = {
+                organization_id: orgId,
+                cuenta_id: cuentaId,
+                nombre_archivo: originalName || fileName,
+                storage_path: storagePath,
+                estado: (transactions[0]?.origen_dato === 'universal_translator' && uniTransactions?.metadata?.lowQuality)
+                    ? 'requiere_ajuste'
+                    : 'procesando',
+                metadata: {
+                    size: buffer.length,
+                    type: file.type,
+                    hasExplicitTipo,
+                    signsInverted: invertSigns,
+                    uploadVersion: '5.5-AI-PDF',
+                    session_id: sessionId,
+                    total_chunks: totalChunks
+                }
+            };
+
+            const { data: importLog, error: dbLogErr } = await adminSupabase
+                .from('archivos_importados')
+                .insert(auditPayload)
+                .select()
+                .single()
+
+            if (dbLogErr || !importLog) {
+                console.error('DB Log Error [v5.4-ULTRA]:', dbLogErr)
+                const errorMsg = `ERROR AUDIT [v5.4-ULTRA]: ${dbLogErr?.message || 'Sin mensaje'} (Code: ${dbLogErr?.code || 'N/A'})`;
+                return NextResponse.json({
+                    error: errorMsg,
+                    details: dbLogErr?.message,
+                    code: dbLogErr?.code,
+                    diagnostic: { orgId, state: auditPayload.estado }
+                }, { status: 500 })
+            }
+            importId = importLog.id
+        }
         console.log(`Audit ID: ${importId}`)
 
         console.log(`Parsing metadata: ${transactions.length} trans, ${reviewItems.length} review`)

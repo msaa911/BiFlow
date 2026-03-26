@@ -1,7 +1,30 @@
-
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 
 export async function getOrgId(supabase: any, userId: string): Promise<string> {
+    // 0. CHECK IMPERSONATION (MODO DIOS) 
+    // This allows admins to view data from other organizations using a secure cookie.
+    try {
+        const cookieStore = cookies();
+        const impersonatedOrgId = cookieStore.get('biflow_impersonation')?.value;
+
+        if (impersonatedOrgId) {
+            // SECURITY: Verify the requester is actually an admin before honoring the cookie.
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', userId)
+                .single();
+
+            if (profile && ['admin', 'superadmin'].includes(profile.role)) {
+                return impersonatedOrgId;
+            }
+        }
+    } catch (error) {
+        // Handlers where cookies() are not available (like internal client-side utilities)
+        // or execution outside of request context. 
+    }
+
     // 1. Try with the provided client (standard RLS)
     const { data: member, error } = await supabase
         .from('organization_members')

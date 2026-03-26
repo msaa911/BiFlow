@@ -8,6 +8,8 @@ import Link from 'next/link'
 import { ImportHistory } from '@/components/dashboard/import-history'
 import { ColumnMapper } from '@/components/dashboard/column-mapper'
 import { SmartFormatBuilder } from '@/components/dashboard/smart-format-builder'
+import { dividePdfIntoChunks } from '@/lib/pdf/chunker'
+import { v4 as uuidv4 } from 'uuid'
 
 export const dynamic = 'force-dynamic'
 
@@ -155,14 +157,14 @@ export default function UploadPage() {
     }, [])
 
     const onFileSelect = (newFiles: File[]) => {
-        const validExtensions = ['.csv', '.xls', '.xlsx', '.txt', '.dat']
+        const validExtensions = ['.csv', '.xls', '.xlsx', '.txt', '.dat', '.pdf']
         const validFiles = newFiles.filter(file => {
             const extension = '.' + file.name.split('.').pop()?.toLowerCase();
             return validExtensions.includes(extension);
         })
 
         if (validFiles.length !== newFiles.length) {
-            setError('Algunos archivos no eran compatibles. Formatos aceptados: Excel, CSV, TXT, DAT.')
+            setError('Algunos archivos no eran compatibles. Formatos aceptados: Excel, CSV, TXT, DAT, PDF.')
         } else {
             setError(null)
         }
@@ -197,22 +199,76 @@ export default function UploadPage() {
 
             for (const file of filesToProcess) {
                 try {
-                    const result = await uploadSingleFile(file, (percent) => {
-                        const currentBase = completed * totalProgressPerFile
-                        const currentIncrement = (percent * totalProgressPerFile) / 100
-                        setProgress(Math.round(currentBase + currentIncrement))
-                    }, undefined, undefined, overrideFormatId, uploadContext, selectedAccountId)
-
-                    if (result) {
-                        totalCount += result.count || 0
-                        totalSkipped += result.skipped || 0
-                        totalReview += result.reviewCount || 0
-                        const findings = result.findingsCount || 0
-                        if (result.warnings && Array.isArray(result.warnings)) {
-                            allWarnings = [...allWarnings, ...result.warnings]
+                    const isPDF = file.name.toLowerCase().endsWith('.pdf')
+                    
+                    if (isPDF) {
+                        // PDF Batch Processing Flow
+                        const chunks = await dividePdfIntoChunks(file, 5)
+                        const sessionId = uuidv4()
+                        const totalChunks = chunks.length
+                        
+                        for (let i = 0; i < totalChunks; i++) {
+                            const chunkName = `${file.name.replace('.pdf', '')}_part_${i + 1}.pdf`
+                            // @ts-ignore - Avoid Uint8Array vs BlobPart alignment issues in some TS versions
+                            const chunkFile = new File([chunks[i]], chunkName, { type: 'application/pdf' })
+                            
+                            const result = await uploadSingleFile(
+                                chunkFile, 
+                                (percent) => {
+                                    const chunkBase = (i / totalChunks) * 100
+                                    const chunkWeight = (1 / totalChunks)
+                                    const overallPercent = chunkBase + (percent * chunkWeight)
+                                    
+                                    const fileBase = completed * totalProgressPerFile
+                                    const fileIncrement = (overallPercent * totalProgressPerFile) / 100
+                                    setProgress(Math.round(fileBase + fileIncrement))
+                                },
+                                undefined,
+                                undefined,
+                                overrideFormatId,
+                                uploadContext,
+                                selectedAccountId,
+                                {
+                                    isChunk: 'true',
+                                    chunkIndex: i.toString(),
+                                    totalChunks: totalChunks.toString(),
+                                    sessionId,
+                                    originalName: file.name
+                                }
+                            )
+                            
+                            if (result && i === totalChunks - 1) { // Only update stats on last chunk to avoid overcounting?
+                                // Actually, we should probably update count on every chunk
+                                totalCount += result.count || 0
+                                totalSkipped += result.skipped || 0
+                                totalReview += result.reviewCount || 0
+                                if (result.warnings && Array.isArray(result.warnings)) {
+                                    allWarnings = [...allWarnings, ...result.warnings]
+                                }
+                            } else if (result) {
+                                // Intermediate chunks
+                                totalCount += result.count || 0
+                                totalSkipped += result.skipped || 0
+                            }
                         }
-                        // Update findings count in state if present
-                        setUploadResult(prev => prev ? { ...prev, findingsCount: (prev.findingsCount || 0) + findings } : null)
+                    } else {
+                        // Standard Flow (CSV/Excel)
+                        const result = await uploadSingleFile(file, (percent) => {
+                            const currentBase = completed * totalProgressPerFile
+                            const currentIncrement = (percent * totalProgressPerFile) / 100
+                            setProgress(Math.round(currentBase + currentIncrement))
+                        }, undefined, undefined, overrideFormatId, uploadContext, selectedAccountId)
+
+                        if (result) {
+                            totalCount += result.count || 0
+                            totalSkipped += result.skipped || 0
+                            totalReview += result.reviewCount || 0
+                            const findings = result.findingsCount || 0
+                            if (result.warnings && Array.isArray(result.warnings)) {
+                                allWarnings = [...allWarnings, ...result.warnings]
+                            }
+                            setUploadResult(prev => prev ? { ...prev, findingsCount: (prev.findingsCount || 0) + findings } : null)
+                        }
                     }
 
                     completed++
@@ -275,7 +331,16 @@ export default function UploadPage() {
         }
     }
 
-    const uploadSingleFile = (file: File, onProgress: (percent: number) => void, mapping?: any, invertSigns?: boolean, overrideFormatId?: string, context?: string, accountId?: string): Promise<any> => {
+    const uploadSingleFile = (
+        file: File, 
+        onProgress: (percent: number) => void, 
+        mapping?: any, 
+        invertSigns?: boolean, 
+        overrideFormatId?: string, 
+        context?: string, 
+        accountId?: string,
+        batchMeta?: { isChunk: string, chunkIndex: string, totalChunks: string, sessionId: string, originalName: string }
+    ): Promise<any> => {
         return new Promise((resolve, reject) => {
             const formData = new FormData()
             formData.append('file', file)
@@ -287,6 +352,13 @@ export default function UploadPage() {
             }
             if (accountId) {
                 formData.append('cuenta_id', accountId)
+            }
+            if (batchMeta) {
+                formData.append('isChunk', batchMeta.isChunk)
+                formData.append('chunkIndex', batchMeta.chunkIndex)
+                formData.append('totalChunks', batchMeta.totalChunks)
+                formData.append('sessionId', batchMeta.sessionId)
+                formData.append('originalName', batchMeta.originalName)
             }
 
             const formatToUse = overrideFormatId || selectedFormat
@@ -688,11 +760,11 @@ export default function UploadPage() {
                                 <p className="mb-1 text-base font-medium text-gray-300">
                                     Arrastra tus archivos aquí
                                 </p>
-                                <p className="text-xs text-gray-500">Haz clic para seleccionar (Excel, Txt, Dat, CSV)</p>
+                                <p className="text-xs text-gray-500">Haz clic para seleccionar (Excel, Txt, Dat, CSV, PDF)</p>
                             </div>
                             <input
                                 type="file"
-                                accept=".csv,.xls,.xlsx,.txt,.dat"
+                                accept=".csv,.xls,.xlsx,.txt,.dat,.pdf"
                                 multiple
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 onChange={handleChange}
