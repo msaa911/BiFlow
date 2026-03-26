@@ -9,6 +9,7 @@ import { AnomalyEngine } from '@/lib/anomaly-engine'
 import { runAnalysis } from '@/lib/analysis/engine'
 import { UniversalTranslator } from '@/lib/universal-translator'
 import { ReconciliationEngine } from '@/lib/reconciliation-engine'
+import { getOrgId } from '@/lib/supabase/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -1032,24 +1033,3 @@ function normalizeDate(str: string) {
     return null;
 }
 
-async function getOrgId(supabase: any, userId: string) {
-    if (!userId) throw new Error('No user authenticated');
-
-    const { data: member, error: memberErr } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', userId)
-        .maybeSingle()
-    
-    if (memberErr) console.warn('Warning: member fetch error:', memberErr.message);
-    if (member) return member.organization_id
-
-    // Use RPC to bypass RLS issues during creation
-    console.log(`[AUTH] No organization found for user ${userId}. Attempting creation...`)
-    const { data: orgId, error } = await supabase.rpc('create_new_organization', { org_name: 'Mi Empresa' })
-    if (error) {
-        console.error('CRITICAL: Organization creation failed:', error);
-        throw new Error(`No se pudo crear ni encontrar organización: ${error.message}`);
-    }
-    return orgId
-}
