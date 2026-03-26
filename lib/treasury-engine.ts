@@ -1,3 +1,5 @@
+import { type SupabaseClient } from '@supabase/supabase-js';
+
 export interface Invoice {
     id: string;
     tipo: 'factura_venta' | 'factura_compra' | 'nota_credito' | 'nota_debito';
@@ -50,12 +52,8 @@ export class TreasuryEngine {
      * Obtiene el factor de inflación dinámico desde la tabla indices_mercado.
      * Busca el registro más reciente y devuelve el valor de inflación (o 1.0 si no existe).
      */
-    static async fetchInflationFactor(): Promise<number> {
+    static async fetchInflationFactor(supabase: SupabaseClient): Promise<number> {
         try {
-            // Importación dinámica para evitar problemas en contextos donde supabase no sea necesario
-            const { createClient } = await import('@/lib/supabase/server');
-            const supabase = await createClient();
-            
             const { data, error } = await supabase
                 .from('indices_mercado')
                 .select('*')

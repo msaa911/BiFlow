@@ -6,7 +6,9 @@ async function verify() {
     // 1. Check fetchInflationFactor
     // Since we don't have actual DB data in this test environment or it might fail, we check fallback
     console.log("Fetching inflation factor...")
-    const factor = await TreasuryEngine.fetchInflationFactor()
+    const { createClient } = await import('./lib/supabase/server')
+    const supabase = await createClient()
+    const factor = await TreasuryEngine.fetchInflationFactor(supabase)
     console.log(`Factor obtained: ${factor}`)
     
     if (factor === 1.0 || factor === 1.08) {
