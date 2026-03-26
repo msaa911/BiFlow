@@ -15,7 +15,8 @@ import {
   ShieldCheck, 
   RefreshCcw,
   Clock,
-  ExternalLink
+  ExternalLink,
+  LogOut
 } from 'lucide-react';
 
 interface AuditLog {
