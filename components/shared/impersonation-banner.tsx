@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '../../lib/supabase/server';
 import { ShieldAlert, LogOut } from 'lucide-react';
-import { toggleImpersonation } from '../../app/actions/admin-actions';
+import { toggleImpersonation } from '../../app/admin/organizations/actions';
 import { revalidatePath } from 'next/cache';
 
 /**
