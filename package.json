@@ -21,7 +21,7 @@
     "@supabase/ssr": "^0.1.0",
     "@supabase/supabase-js": "^2.39.7",
     "clsx": "^2.1.0",
-    "dotenv": "^17.3.1",
+    "dotenv": "^16.4.5",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "langchain": "^1.2.28",
@@ -40,6 +40,9 @@
     "tailwindcss-animate": "^1.0.7",
     "xlsx": "^0.18.5",
     "zod": "^3.25.10"
+  },
+  "overrides": {
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.20",
