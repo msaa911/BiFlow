@@ -42,6 +42,14 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
     )
 
     async function fetchNotes() {
+        // 1. Validar orgId (debe ser un UUID válido para evitar errores 400 en Postgres)
+        if (!orgId || orgId.length < 30) {
+            console.warn('BankNotesHistory: Invalid orgId provided:', orgId)
+            setLoading(false)
+            setNotes([])
+            return
+        }
+
         setLoading(true)
         try {
             // Query comprobantes directly for bank notes
@@ -56,7 +64,8 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
                 .in('tipo', ['ndb_bancaria', 'ncb_bancaria'])
 
             if (accountId && accountId !== 'all') {
-                query = query.eq('metadata->>cuenta_id', accountId)
+                // Fix: PostgREST JSONB filtering syntax for Supabase JS client
+                query = query.eq('metadata->cuenta_id', accountId)
             }
 
             const { data, error } = await query.order('fecha_emision', { ascending: false })
@@ -64,17 +73,17 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
             if (error) throw error
 
             // Post-processing to ensure we have transaction data even if link is broken in DB
-            // but exists in metadata
+            // but exists in metadata (resiliencia post-purga)
             const processedNotes = await Promise.all((data || []).map(async (note) => {
                 if ((!note.transacciones || note.transacciones.length === 0) && note.metadata?.transaccion_id) {
                     try {
-                        const { data: txData } = await supabase
+                        const { data: txData, error: txErr } = await supabase
                             .from('transacciones')
                             .select('*')
                             .eq('id', note.metadata.transaccion_id)
-                            .single()
+                            .maybeSingle()
 
-                        if (txData) {
+                        if (txData && !txErr) {
                             return { ...note, transacciones: [txData] }
                         }
                     } catch (e) {
