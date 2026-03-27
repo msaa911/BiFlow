@@ -1,5 +1,5 @@
 import { createClient } from '../../../../lib/supabase/server';
-import { AlertTriangle, Clock, MapPin, Fingerprint, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Clock, MapPin, Fingerprint, ExternalLink, ShieldCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 

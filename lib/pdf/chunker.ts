@@ -10,8 +10,8 @@ export async function dividePdfIntoChunks(
   file: File | Uint8Array,
   pagesPerChunk: number = 5
 ): Promise<Uint8Array[]> {
-  const arrayBuffer = file instanceof File ? await file.arrayBuffer() : file.buffer
-  const pdfDoc = await PDFDocument.load(arrayBuffer)
+  const data = file instanceof File ? await file.arrayBuffer() : file;
+  const pdfDoc = await PDFDocument.load(data as ArrayBuffer | Uint8Array);
   const pageCount = pdfDoc.getPageCount()
   const chunks: Uint8Array[] = []
 
