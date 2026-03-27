@@ -1,5 +1,6 @@
 
 import { createClient } from '@/lib/supabase/server'
+import { getOrgId } from '@/lib/supabase/utils'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -9,19 +10,14 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Get Org
-    const { data: member } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single()
-
-    if (!member) return NextResponse.json({ error: 'No org' }, { status: 400 })
+    // Get Org ID using the utility that respects Impersonation (Modo Dios)
+    const orgId = await getOrgId(supabase, user.id)
+    if (!orgId) return NextResponse.json({ error: 'No org' }, { status: 400 })
 
     const { data, error } = await supabase
         .from('transacciones_revision')
         .select('*')
-        .eq('organization_id', member.organization_id)
+        .eq('organization_id', orgId)
         .eq('estado', 'pendiente')
         .order('created_at', { ascending: false })
 

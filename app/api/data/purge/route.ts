@@ -1,6 +1,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getOrgId } from '@/lib/supabase/utils'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -11,11 +12,9 @@ export async function POST(request: Request) {
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Get Org ID
-    const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).single()
-    if (!member) return NextResponse.json({ error: 'No org' }, { status: 404 })
-
-    const orgId = member.organization_id
+    // Get Org ID using the utility that respects Impersonation (Modo Dios)
+    const orgId = await getOrgId(supabase, user.id)
+    if (!orgId) return NextResponse.json({ error: 'No org' }, { status: 404 })
 
     const { mode } = await request.json().catch(() => ({}));
 
@@ -89,10 +88,9 @@ export async function DELETE(request: Request) {
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).single()
-    if (!member) return NextResponse.json({ error: 'No org' }, { status: 404 })
-
-    const orgId = member.organization_id
+    // Get Org ID using the utility that respects Impersonation (Modo Dios)
+    const orgId = await getOrgId(supabase, user.id)
+    if (!orgId) return NextResponse.json({ error: 'No org' }, { status: 404 })
 
     try {
         await performFullReset(orgId);

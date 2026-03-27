@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getOrgId } from '@/lib/supabase/utils'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 
@@ -14,15 +15,15 @@ export async function GET(request: Request) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-        // Get Org ID
-        const { data: member } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).single()
-        if (!member) return NextResponse.json({ error: 'No organization found' }, { status: 404 })
+        // Get Org ID using the utility that respects Impersonation (Modo Dios)
+        const orgId = await getOrgId(supabase, user.id)
+        if (!orgId) return NextResponse.json({ error: 'No organization found' }, { status: 404 })
 
         // Query transactions with tag 'impuesto_recuperable'
         let query = supabase
             .from('transacciones')
             .select('*')
-            .eq('organization_id', member.organization_id)
+            .eq('organization_id', orgId)
             .contains('tags', ['impuesto_recuperable'])
             .order('fecha', { ascending: false })
 
