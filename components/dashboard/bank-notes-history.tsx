@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { getBankNotesAction } from '@/app/actions/bank-notes'
 
 interface BankNotesHistoryProps {
     orgId: string
@@ -42,7 +43,6 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
     )
 
     async function fetchNotes() {
-        // 1. Validar orgId (debe ser un UUID válido para evitar errores 400 en Postgres)
         if (!orgId || orgId.length < 30) {
             console.warn('BankNotesHistory: Invalid orgId provided:', orgId)
             setLoading(false)
@@ -52,50 +52,18 @@ export function BankNotesHistory({ orgId, accountId, bankAccounts = [], onRefres
 
         setLoading(true)
         try {
-            // Query comprobantes directly for bank notes
-            let query = supabase
-                .from('comprobantes')
-                .select(`
-                    *,
-                    entidades (razon_social),
-                    transacciones!comprobante_id (*)
-                `)
-                .eq('organization_id', orgId)
-                .in('tipo', ['ndb_bancaria', 'ncb_bancaria'])
+            // Usamos el Server Action que maneja "Modo Dios" y resiliencia post-purga
+            const { data, error } = await getBankNotesAction(accountId === 'all' ? undefined : accountId)
 
-            if (accountId && accountId !== 'all') {
-                // Fix: PostgREST JSONB filtering syntax for Supabase JS client
-                query = query.eq('metadata->cuenta_id', accountId)
+            if (error) {
+                console.error('Error fetching bank notes via action:', error)
+                toast.error('Error al cargar historial de notas')
+                return
             }
 
-            const { data, error } = await query.order('fecha_emision', { ascending: false })
-
-            if (error) throw error
-
-            // Post-processing to ensure we have transaction data even if link is broken in DB
-            // but exists in metadata (resiliencia post-purga)
-            const processedNotes = await Promise.all((data || []).map(async (note) => {
-                if ((!note.transacciones || note.transacciones.length === 0) && note.metadata?.transaccion_id) {
-                    try {
-                        const { data: txData, error: txErr } = await supabase
-                            .from('transacciones')
-                            .select('*')
-                            .eq('id', note.metadata.transaccion_id)
-                            .maybeSingle()
-
-                        if (txData && !txErr) {
-                            return { ...note, transacciones: [txData] }
-                        }
-                    } catch (e) {
-                        console.warn(`Could not recover tx for note ${note.id}`, e)
-                    }
-                }
-                return note
-            }))
-
-            setNotes(processedNotes)
+            setNotes(data || [])
         } catch (error: any) {
-            console.error('Error fetching bank notes:', error)
+            console.error('Unexpected error fetching bank notes:', error)
             toast.error('Error al cargar historial de notas')
         } finally {
             setLoading(false)
