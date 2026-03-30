@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect, useCallback } from 'react'
+import { getCompanySettingsAction, saveCompanySettingsAction, removeOrganizationMemberAction, deleteTaxRuleAction, deleteBankAccountAction } from '@/app/actions/settings'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -66,7 +66,6 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     const [inviteEmail, setInviteEmail] = useState('')
     const [inviting, setInviting] = useState(false)
 
-    const supabase = useMemo(() => createClient(), [])
 
     useEffect(() => {
         async function loadData() {
@@ -79,57 +78,51 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
             setLoading(true)
 
             try {
-                // Ejecutar todas las consultas en paralelo
-                const [
-                    confRes,
-                    accsRes,
-                    marketRes,
-                    rulesRes,
-                    teamRes
-                ] = await Promise.all([
-                    supabase.from('configuracion_empresa').select('*').eq('organization_id', organizationId).maybeSingle(),
-                    supabase.from('cuentas_bancarias').select('*').eq('organization_id', organizationId),
-                    supabase.from('indices_mercado').select('tasa_plazo_fijo_30d, tasa_plazo_fijo, tasa_badlar, tasas_bancos, updated_at').order('fecha', { ascending: false }).limit(1).maybeSingle(),
-                    supabase.from('tax_intelligence_rules').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }),
-                    supabase.from('organization_members').select('id, role, user_id, created_at').eq('organization_id', organizationId)
-                ])
+                const { data, error } = await getCompanySettingsAction()
 
-                if (confRes.data) {
+                if (error) {
+                    console.error("Error loading settings via action:", error)
+                    return
+                }
+
+                if (data?.config) {
                     setConfig({
-                        tna: confRes.data.tna,
-                        limite_descubierto: confRes.data.limite_descubierto,
-                        modo_tasa: confRes.data.modo_tasa || 'AUTOMATICO',
-                        tasa_referencia_auto: confRes.data.tasa_referencia_auto || 'PLAZO_FIJO',
-                        colchon_liquidez: confRes.data.colchon_liquidez || 0
+                        tna: data.config.tna,
+                        limite_descubierto: data.config.limite_descubierto,
+                        modo_tasa: data.config.modo_tasa || 'AUTOMATICO',
+                        tasa_referencia_auto: data.config.tasa_referencia_auto || 'PLAZO_FIJO',
+                        colchon_liquidez: data.config.colchon_liquidez || 0
                     })
                 }
 
-                // 3. Procesar Cuentas Bancarias
-                if (accsRes.data && accsRes.data.length > 0) {
-                    setAccounts(accsRes.data)
+                // Cuentas Bancarias
+                if (data?.bankAccounts && data.bankAccounts.length > 0) {
+                    setAccounts(data.bankAccounts)
                 } else {
                     setAccounts([{ banco_nombre: 'Banco Principal', cbu: '', saldo_inicial: 0, colchon_liquidez: 0, limite_descubierto: 0, mantenimiento_pactado: 0, comision_cheque: 0 }])
                 }
 
-                if (marketRes.data) {
+                // Índices de mercado
+                if (data?.marketIndices && data.marketIndices.length > 0) {
+                    const latestMarket = data.marketIndices[0]
                     setMarketRates({
-                        PLAZO_FIJO: (marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo || 0) > 1 ? (marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo || 0) / 100 : (marketRes.data.tasa_plazo_fijo_30d || marketRes.data.tasa_plazo_fijo || 0),
-                        BADLAR: (marketRes.data.tasa_badlar || 0) > 1 ? (marketRes.data.tasa_badlar || 0) / 100 : (marketRes.data.tasa_badlar || 0),
+                        PLAZO_FIJO: (latestMarket.tasa_plazo_fijo_30d || latestMarket.tasa_plazo_fijo || 0) > 1 ? (latestMarket.tasa_plazo_fijo_30d || latestMarket.tasa_plazo_fijo || 0) / 100 : (latestMarket.tasa_plazo_fijo_30d || latestMarket.tasa_plazo_fijo || 0),
+                        BADLAR: (latestMarket.tasa_badlar || 0) > 1 ? (latestMarket.tasa_badlar || 0) / 100 : (latestMarket.tasa_badlar || 0),
                         bancos: Object.fromEntries(
-                            Object.entries(marketRes.data.tasas_bancos || {}).map(([b, t]: [string, any]) => [b, (t > 1 ? t / 100 : t)])
+                            Object.entries(latestMarket.tasas_bancos || {}).map(([b, t]: [string, any]) => [b, (t > 1 ? t / 100 : t)])
                         ),
-                        updatedAt: marketRes.data.updated_at
+                        updatedAt: latestMarket.updated_at
                     })
                 }
 
-                // 5. Procesar Reglas de Impuestos
-                if (rulesRes.data) {
-                    setTaxRules(rulesRes.data)
+                // Reglas de Impuestos
+                if (data?.taxRules) {
+                    setTaxRules(data.taxRules)
                 }
 
-                // 6. Procesar Miembros del Equipo
-                if (teamRes.data) {
-                    setMembers(teamRes.data)
+                // Miembros del Equipo
+                if (data?.members) {
+                    setMembers(data.members)
                 }
 
             } catch (err) {
@@ -140,7 +133,7 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         }
 
         loadData()
-    }, [organizationId, supabase])
+    }, [organizationId])
 
     const toggleTaxRule = async (ruleId: string, currentStatus: boolean) => {
         // We use the same API as the widget to ensure tags are synced
@@ -175,16 +168,16 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
 
         setSaving(true)
         try {
-            const { error } = await supabase.from('tax_intelligence_rules').delete().eq('id', ruleId)
-            if (error) {
+            const { success, error } = await deleteTaxRuleAction(ruleId)
+            if (!success) {
                 console.error("Error eliminando regla:", error)
-                alert("No se pudo eliminar la regla: " + error.message)
+                alert("No se pudo eliminar la regla: " + error)
                 return
             }
             setTaxRules(prev => prev.filter(r => r.id !== ruleId))
         } catch (err: any) {
             console.error(err)
-            alert("Error de conexión al eliminar la regla.")
+            alert("Error al eliminar la regla.")
         } finally {
             setSaving(false)
         }
@@ -323,87 +316,30 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         try {
             console.log("Iniciando guardado de configuración para organización:", organizationId)
 
-            // 1. Guardar Config General
-            const { error: errorConfig } = await supabase.from('configuracion_empresa').upsert({
-                organization_id: organizationId,
-                tna: config.tna,
-                limite_descubierto: config.limite_descubierto,
-                modo_tasa: config.modo_tasa,
-                tasa_referencia_auto: config.tasa_referencia_auto,
-                colchon_liquidez: config.colchon_liquidez,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'organization_id' })
-
-            if (errorConfig) throw new Error("Error en Configuración Empresa: " + errorConfig.message)
-
-            // 2. Eliminar legacy convenios si es necesario (opcional, por ahora lo dejamos)
-
-            // 3. GUARDAR CUENTAS
-            const accountsWithId = accounts
-                .filter(acc => acc.banco_nombre.trim() !== '' && acc.id)
+            const accountsToSave = accounts
+                .filter(acc => acc.banco_nombre.trim() !== '')
                 .map(acc => ({
-                    id: acc.id,
-                    organization_id: organizationId,
-                    banco_nombre: acc.banco_nombre,
-                    cbu: acc.cbu,
-                    saldo_inicial: acc.saldo_inicial,
+                    ...acc,
                     colchon_liquidez: acc.colchon_liquidez || 0,
                     limite_descubierto: acc.limite_descubierto || 0,
                     mantenimiento_pactado: acc.mantenimiento_pactado || 0,
-                    comision_cheque: acc.comision_cheque || 0,
-                    updated_at: new Date().toISOString()
+                    comision_cheque: acc.comision_cheque || 0
                 }))
 
-            const accountsNew = accounts
-                .filter(acc => acc.banco_nombre.trim() !== '' && !acc.id)
-                .map(acc => ({
-                    organization_id: organizationId,
-                    banco_nombre: acc.banco_nombre,
-                    cbu: acc.cbu,
-                    saldo_inicial: acc.saldo_inicial,
-                    colchon_liquidez: acc.colchon_liquidez || 0,
-                    limite_descubierto: acc.limite_descubierto || 0,
-                    mantenimiento_pactado: acc.mantenimiento_pactado || 0,
-                    comision_cheque: acc.comision_cheque || 0,
-                    updated_at: new Date().toISOString()
-                }))
+            const { success, error } = await saveCompanySettingsAction({
+                config: {
+                    tna: config.tna,
+                    limite_descubierto: config.limite_descubierto,
+                },
+                bankAccounts: accountsToSave
+            })
 
-            let results: any[] = []
+            if (!success) throw new Error(error || "Error desconocido al guardar")
 
-            if (accountsWithId.length > 0) {
-                console.log("Upserting existing accounts:", accountsWithId)
-                const { data, error } = await supabase
-                    .from('cuentas_bancarias')
-                    .upsert(accountsWithId)
-                    .select()
-                if (error) throw new Error("Error actualizando Cuentas Bancarias: " + error.message)
-                if (data) results = [...results, ...data]
-            }
-
-            if (accountsNew.length > 0) {
-                console.log("Inserting new accounts:", accountsNew)
-                const { data, error } = await supabase
-                    .from('cuentas_bancarias')
-                    .insert(accountsNew)
-                    .select()
-                if (error) throw new Error("Error insertando Cuentas Bancarias: " + error.message)
-                if (data) results = [...results, ...data]
-            }
-
-            if (results.length > 0) {
-                console.log("Cuentas guardadas:", results)
-                // Reconstruimos la lista para mantener el orden visual
-                const updatedAccounts = accounts.map(acc => {
-                    if (acc.id) {
-                        return results.find(r => r.id === acc.id) || acc
-                    } else {
-                        // Match por nombre para las nuevas si hay coincidencia
-                        return results.find(r => r.banco_nombre === acc.banco_nombre && !accountsWithId.some(aw => aw.id === r.id)) || acc
-                    }
-                })
-                setAccounts(updatedAccounts)
-            }
-
+            // Recargamos localmente para tener IDs en nuevas cuentas si es necesario
+            // Aunque la acción revalida, una recarga silenciosa de datos puede ser necesaria
+            // para mantener la UI sincronizada sin reload completo.
+            
             setSuccess(true)
             setTimeout(() => setSuccess(false), 3000)
         } catch (err: any) {
@@ -424,9 +360,9 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         const accountToDelete = accounts[index]
         if (accountToDelete.id) {
             setSaving(true)
-            const { error } = await supabase.from('cuentas_bancarias').delete().eq('id', accountToDelete.id)
+            const { success, error } = await deleteBankAccountAction(accountToDelete.id)
             setSaving(false)
-            if (error) {
+            if (!success) {
                 console.error("Error eliminando cuenta:", error)
                 return
             }
@@ -471,8 +407,8 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
         if (!confirm('¿Seguro que quieres quitar a este miembro de la organización?')) return
         setSaving(true)
         try {
-            const { error } = await supabase.from('organization_members').delete().eq('id', memberId)
-            if (error) throw error
+            const { success, error } = await removeOrganizationMemberAction(memberId)
+            if (!success) throw new Error(error || "Error desconocido")
             setMembers(prev => prev.filter(m => m.id !== memberId))
         } catch (err: any) {
             alert('Error al eliminar miembro: ' + err.message)
