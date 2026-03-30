@@ -29,7 +29,8 @@ export interface ReconciliationResult {
 
 export class ReconciliationEngine {
   /**
-   * Ejecuta el motor de conciliación integral v4.2 (Banking -> Commercial -> Netting)
+   * Ejecuta el motor de conciliación integral v5.0 (The True Circuit)
+   * Orden: 0 (Huérfanos) -> 1 (Administrativo) -> 2 (Bancario) -> 3 (Netting)
    */
   static async executeAuto(
     orgId: string, 
@@ -38,31 +39,39 @@ export class ReconciliationEngine {
     const supabase = options.supabase || await createClient();
 
     try {
-      // 1. Fase Bancaria (Banco <-> Tesorería)
-      const { data: bankData, error: bankError } = await supabase.rpc('reconcile_banking_v4_2', {
+      // 0. Sincronización de Huérfanos
+      const { data: orphanData, error: orphanError } = await supabase.rpc('reconcile_phase_0_orphans', {
+        p_org_id: orgId,
+        p_dry_run: options.dryRun || false
+      });
+      if (orphanError) throw orphanError;
+
+      // 1. Fase Administrativa (Tesorería <-> Facturas)
+      const { data: adminData, error: adminError } = await supabase.rpc('reconcile_phase_1_administrative', {
+        p_org_id: orgId,
+        p_dry_run: options.dryRun || false
+      });
+      if (adminError) throw adminError;
+
+      // 2. Fase Bancaria (Banco <-> Tesorería/Instrumentos)
+      const { data: bankData, error: bankError } = await supabase.rpc('reconcile_phase_2_banking', {
         p_org_id: orgId,
         p_cuenta_id: options.bankAccountId || null,
         p_dry_run: options.dryRun || false
       });
       if (bankError) throw bankError;
 
-      // 2. Fase Comercial (Tesorería <-> Facturas)
-      const { data: commData, error: commError } = await supabase.rpc('reconcile_commercial_v4_2', {
-        p_org_id: orgId,
-        p_dry_run: options.dryRun || false
-      });
-      if (commError) throw commError;
-
       // 3. Fase de Netting (Factura <-> Factura)
-      const { data: netData, error: netError } = await supabase.rpc('reconcile_netting_v4_2', {
+      const { data: netData, error: netError } = await supabase.rpc('reconcile_phase_3_netting', {
         p_org_id: orgId,
         p_dry_run: options.dryRun || false
       });
       if (netError) throw netError;
 
       const results = {
+        orphansSynced: orphanData?.updated_count || 0,
+        commercialMatched: adminData?.matched_count || 0,
         bankMatched: bankData?.matched_count || 0,
-        commercialMatched: commData?.matched_count || 0,
         nettingCount: netData?.netting_count || 0,
         totalCompensated: netData?.total_compensated || 0
       };
@@ -77,16 +86,18 @@ export class ReconciliationEngine {
         nettingCount: results.nettingCount,
         totalCompensated: results.totalCompensated,
         adminCount: results.nettingCount,
-        totalRead: 0, // Not accurately provided by multi-phase yet
+        totalRead: 0, 
         actions: [],
         metadata: {
+          v5_circuit: true,
+          orphans: orphanData,
+          admin: adminData,
           bank: bankData,
-          commercial: commData,
           netting: netData
         }
       };
     } catch (error: any) {
-      console.error('Error in executeAuto v4.2:', error);
+      console.error('Error in executeAuto v5.0:', error);
       return {
         success: false,
         status: 'error',
