@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getTreasuryOverviewAction } from '@/app/actions/treasury'
 import { InvoicePanel } from './invoice-panel'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -35,59 +36,45 @@ export function TreasuryTab({ orgId, liquidityCushion = 0 }: TreasuryTabProps) {
 
     async function fetchData() {
         setLoading(true)
-        const [invRes, bankRes, txRes] = await Promise.all([
-            supabase
-                .from('comprobantes')
-                .select('*')
-                .eq('organization_id', orgId)
-                .order('fecha_vencimiento', { ascending: true }),
-            supabase
-                .from('cuentas_bancarias')
-                .select('saldo_inicial')
-                .eq('organization_id', orgId),
-            supabase
-                .from('transacciones')
-                .select('id, monto, metadata, fecha, created_at, estado, descripcion')
-                .eq('organization_id', orgId)
-                .order('fecha', { ascending: false })
-        ])
-
-        if (invRes.data) setInvoices(invRes.data)
-        if (bankRes.data) setBankAccounts(bankRes.data)
-
-        // Calculate Real Balance (consistent with Dashboard)
-        if (txRes.data) {
-            const allTxs = txRes.data
-            const latestWithSaldo = allTxs.find(t => t.metadata?.saldo !== undefined)
-            let calculatedBalance = 0
-
-            if (latestWithSaldo) {
-                const baseBalance = Number(latestWithSaldo.metadata.saldo)
-                const moreRecent = allTxs.filter(t =>
-                    new Date(t.fecha) > new Date(latestWithSaldo.fecha) ||
-                    (t.fecha === latestWithSaldo.fecha && t.id !== latestWithSaldo.id && new Date(t.created_at || 0) > new Date(latestWithSaldo.created_at || 0))
-                ).reduce((acc: number, curr: any) => acc + (Number(curr.monto) || 0), 0)
-                calculatedBalance = baseBalance + moreRecent
-            } else {
-                const initialSum = bankRes.data?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
-                const txsSum = allTxs.reduce((acc, t) => acc + (Number(t.monto) || 0), 0)
-                calculatedBalance = initialSum + txsSum
+        try {
+            const { data, error } = await getTreasuryOverviewAction()
+            
+            if (error) {
+                console.error('Error fetching treasury data:', error)
+                toast.error('Error al cargar datos financieros')
+                return
             }
-            setRealBalance(calculatedBalance)
+
+            if (data.invoices) setInvoices(data.invoices)
+            if (data.bankAccounts) setBankAccounts(data.bankAccounts)
+
+            // Calculate Real Balance (consistent with Dashboard)
+            if (data.transactions) {
+                const allTxs = data.transactions
+                const latestWithSaldo = allTxs.find(t => t.metadata?.saldo !== undefined)
+                let calculatedBalance = 0
+
+                if (latestWithSaldo) {
+                    const baseBalance = Number(latestWithSaldo.metadata.saldo)
+                    const moreRecent = allTxs.filter(t =>
+                        new Date(t.fecha) > new Date(latestWithSaldo.fecha) ||
+                        (t.fecha === latestWithSaldo.fecha && t.id !== latestWithSaldo.id && new Date(t.created_at || 0) > new Date(latestWithSaldo.created_at || 0))
+                    ).reduce((acc: number, curr: any) => acc + (Number(curr.monto) || 0), 0)
+                    calculatedBalance = baseBalance + moreRecent
+                } else {
+                    const initialSum = data.bankAccounts?.reduce((acc: number, curr: any) => acc + (Number(curr.saldo_inicial) || 0), 0) || 0
+                    const txsSum = allTxs.reduce((acc, t) => acc + (Number(t.monto) || 0), 0)
+                    calculatedBalance = initialSum + txsSum
+                }
+                setRealBalance(calculatedBalance)
+            }
+
+            if (data.pendingTransactions) setPendingTransactions(data.pendingTransactions)
+        } catch (err) {
+            console.error('Unexpected error fetching treasury data:', err)
+        } finally {
+            setLoading(false)
         }
-
-        // Fetch Transactions for Quarantine (Pending + Conciliado for "Ver Todo" toggle)
-        const { data: qData } = await supabase
-            .from('transacciones')
-            .select('*')
-            .eq('organization_id', orgId)
-            .in('estado', ['pendiente', 'conciliado'])
-            .order('fecha', { ascending: false })
-            .limit(200)
-
-        if (qData) setPendingTransactions(qData)
-
-        setLoading(false)
     }
 
     useEffect(() => {

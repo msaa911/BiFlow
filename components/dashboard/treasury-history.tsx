@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 import { exportTreasuryMovementToExcel, downloadTreasuryTemplate } from '@/lib/excel-utils'
 import { exportTreasuryMovementToPDF } from '@/lib/pdf-utils'
 import { TreasuryManualEntry } from './treasury-manual-entry'
+import { getTreasuryMovementsAction } from '@/app/actions/treasury'
 
 interface TreasuryHistoryProps {
     orgId: string
@@ -52,45 +53,35 @@ export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFi
     const supabase = createClient()
 
     async function fetchMovements() {
+        if (!orgId || orgId.length < 30) {
+            console.warn('TreasuryHistory: Invalid orgId provided:', orgId)
+            setLoading(false)
+            setMovements([])
+            return
+        }
+
         setLoading(true)
-        let query = supabase
-            .from('movimientos_tesoreria')
-            .select(`
-                *,
-                entidades (razon_social),
-                instrumentos_pago (*),
-                transacciones (id),
-                aplicaciones_pago (
-                    monto_aplicado,
-                    comprobante_id,
-                    comprobantes (*)
-                )
-            `)
-            .eq('organization_id', orgId)
-            .order('fecha', { ascending: false })
-            .order('created_at', { ascending: false })
+        try {
+            // Usamos el Server Action que maneja "Modo Dios" y resiliencia post-purga
+            const { data, error } = await getTreasuryMovementsAction({
+                typeFilter,
+                accountId,
+                claseDocumentoFilter
+            })
 
-        if (typeFilter) {
-            query = query.eq('tipo', typeFilter)
-        }
+            if (error) {
+                console.error('Error fetching movements via action:', error)
+                toast.error('Error al cargar historial de finanzas')
+                return
+            }
 
-        if (accountId && accountId !== 'all') {
-            query = query.eq('cuenta_id', accountId)
-        }
-
-        if (claseDocumentoFilter && claseDocumentoFilter.length > 0) {
-            query = query.in('clase_documento', claseDocumentoFilter)
-        }
-
-        const { data, error } = await query
-
-        if (error) {
-            console.error('Error fetching movements:', error)
-            toast.error('Error al cargar el historial')
-        } else {
             setMovements(data || [])
+        } catch (err: any) {
+            console.error('Unexpected error fetching treasury movements:', err)
+            toast.error('Error al cargar historial de finanzas')
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
     useEffect(() => {
@@ -291,6 +282,8 @@ export function TreasuryHistory({ orgId, accountId, typeFilter, claseDocumentoFi
                         <tbody className="divide-y divide-gray-800">
                             {loading ? (
                                 <tr className="border-gray-800"><td colSpan={9} className="h-32 text-center text-gray-500">Cargando...</td></tr>
+                            ) : paginatedMovements.length === 0 ? (
+                                <tr className="border-gray-800"><td colSpan={9} className="h-32 text-center text-gray-500 italic">No se encontraron registros en el historial.</td></tr>
                             ) : paginatedMovements.map(mov => {
                                 const isConciliated = mov.transacciones && mov.transacciones.length > 0;
                                 const isExpanded = expandedMov === mov.id;

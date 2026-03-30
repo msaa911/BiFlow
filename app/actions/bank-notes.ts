@@ -19,8 +19,8 @@ export async function getBankNotesAction(accountId?: string) {
     const orgId = await getOrgId(supabase, user.id)
 
     if (!orgId) {
-      console.warn('No orgId found for user:', user.id)
-      return { data: [], error: 'No organization context' }
+      console.log('[getBankNotesAction] No orgId found for user. Returning empty data.');
+      return { data: [], error: null }
     }
 
     // We use the adminClient to bypass RLS when fetching data for the identified orgId.
@@ -33,7 +33,7 @@ export async function getBankNotesAction(accountId?: string) {
       .select(`
         *,
         entidades (
-          nombre,
+          razon_social,
           tipo_entidad
         ),
         transacciones!comprobante_id (
