@@ -37,8 +37,8 @@ BEGIN
           AND ABS(ip.fecha_disponibilidad - v_trans.fecha) <= 10
           -- Matching de referencia (si existe en ambos)
           AND (
-            (ip.referencia IS NOT NULL AND v_trans.descripcion ~* ip.referencia) OR
-            (RIGHT(REGEXP_REPLACE(ip.referencia, '[^0-9]', '', 'g'), 4) = RIGHT(REGEXP_REPLACE(v_trans.descripcion, '[^0-9]', '', 'g'), 4) AND length(REGEXP_REPLACE(ip.referencia, '[^0-9]', '', 'g')) >= 4)
+            (ip.detalle_referencia IS NOT NULL AND v_trans.descripcion ~* ip.detalle_referencia) OR
+            (RIGHT(REGEXP_REPLACE(ip.detalle_referencia, '[^0-9]', '', 'g'), 4) = RIGHT(REGEXP_REPLACE(v_trans.descripcion, '[^0-9]', '', 'g'), 4) AND length(REGEXP_REPLACE(ip.detalle_referencia, '[^0-9]', '', 'g')) >= 4)
           )
         LIMIT 1;
 
@@ -73,7 +73,7 @@ BEGIN
                 )
             WHERE id = v_trans.id;
 
-            -- 2. Marcar instrumento de pago como acreditado
+            -- 2. Marcar instrumento de pago como acreditado (USA detalle_referencia en lógica interna si fuera necesario)
             UPDATE public.instrumentos_pago
             SET estado = 'acreditado'
             WHERE id = v_match_id;
@@ -88,6 +88,10 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Índice para optimizar búsqueda por referencia (trigramas para ILIKE/Regex)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_instrumentos_detalle_ref_trgm ON public.instrumentos_pago USING gin (detalle_referencia gin_trgm_ops);
 
 -- ============================================================
 -- Pilar 2: CONCILIACIÓN COMERCIAL (Tesorería <-> Facturas)
