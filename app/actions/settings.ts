@@ -33,12 +33,13 @@ export async function getCompanySettingsAction() {
 
         const adminClient = createAdminClient()
 
-        const [configRes, bankRes, marketRes, taxRes, membersRes] = await Promise.all([
+        const [configRes, bankRes, marketRes, taxRes, membersRes, logsRes] = await Promise.all([
             adminClient.from('configuracion_empresa').select('*').eq('organization_id', orgId).single(),
             adminClient.from('cuentas_bancarias').select('*').eq('organization_id', orgId).order('created_at'),
-            adminClient.from('indices_mercado').select('*').eq('organization_id', orgId),
+            adminClient.from('indices_mercado').select('*').order('fecha', { ascending: false }).limit(1),
             adminClient.from('tax_intelligence_rules').select('*').eq('organization_id', orgId),
-            adminClient.from('organization_members').select('id, role, user_id, created_at').eq('organization_id', orgId)
+            adminClient.from('organization_members').select('id, role, user_id, created_at').eq('organization_id', orgId),
+            adminClient.from('automation_logs').select('*').limit(5).order('created_at', { ascending: false })
         ])
 
         return {
@@ -47,7 +48,8 @@ export async function getCompanySettingsAction() {
                 bankAccounts: bankRes.data || [],
                 marketIndices: marketRes.data || [],
                 taxRules: taxRes.data || [],
-                members: membersRes.data || []
+                members: membersRes.data || [],
+                automationLogs: logsRes.data || []
             },
             error: null
         }

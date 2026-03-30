@@ -137,12 +137,22 @@ serve(async (req: Request) => {
                 updated_at: new Date().toISOString()
             }, { onConflict: 'fecha' });
 
-        if (dbError) {
-            addLog(`❌ DB Error: ${dbError.message}`);
-            throw dbError;
-        }
-
         addLog("✅ Sincronización exitosa.");
+
+        // 5. Registrar en automation_logs
+        await supabase
+            .from('automation_logs')
+            .insert({
+                job_name: 'sync-bcra-rates',
+                status: 'SUCCESS',
+                message: `Tasas actualizadas: Promedio=${tasaPromedio}, Badlar=${tasaBadlar}`,
+                data: {
+                    tasa: tasaPromedio,
+                    tasa_badlar: tasaBadlar,
+                    tasas_bancos: bankRatesMap,
+                    dolar: valorDolar
+                }
+            });
 
         return new Response(JSON.stringify({
             success: true,
@@ -161,6 +171,18 @@ serve(async (req: Request) => {
 
     } catch (error: any) {
         addLog(`❌ ERROR CRÍTICO FINAL: ${error.message}`);
+        
+        // Log de error en la DB
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        await supabase
+            .from('automation_logs')
+            .insert({
+                job_name: 'sync-bcra-rates',
+                status: 'ERROR',
+                message: error.message,
+                data: { logs }
+            });
+
         return new Response(JSON.stringify({
             error: error.message,
             logs

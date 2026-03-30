@@ -53,7 +53,9 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     // Estado para Cuentas Bancarias
     const [accounts, setAccounts] = useState<BankAccount[]>([])
     const [editingAccountIndex, setEditingAccountIndex] = useState<number | null>(null)
-    const [taxRules, setTaxRules] = useState<TaxRule[]>([])
+    const [taxRules, setTaxRules] = useState<any[]>([])
+    const [members, setMembers] = useState<any[]>([])
+    const [automationLogs, setAutomationLogs] = useState<any[]>([])
 
     const [marketRates, setMarketRates] = useState<{ PLAZO_FIJO: number, BADLAR: number, bancos: Record<string, number>, updatedAt?: string }>({ PLAZO_FIJO: 0, BADLAR: 0, bancos: {} })
     const [loading, setLoading] = useState(true)
@@ -62,7 +64,6 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
     const [syncingRate, setSyncingRate] = useState(false)
 
     // Estado para equipo
-    const [members, setMembers] = useState<any[]>([])
     const [inviteEmail, setInviteEmail] = useState('')
     const [inviting, setInviting] = useState(false)
 
@@ -123,6 +124,11 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                 // Miembros del Equipo
                 if (data?.members) {
                     setMembers(data.members)
+                }
+
+                // Logs de Automatización
+                if (data?.automationLogs) {
+                    setAutomationLogs(data.automationLogs)
                 }
 
             } catch (err) {
@@ -662,6 +668,15 @@ export function CompanySettingsTab({ organizationId }: { organizationId: string 
                                                     })
                                                 } ART
                                             </p>
+                                            
+                                            {automationLogs && automationLogs.length > 0 && (
+                                                <div className="mt-3 pt-3 border-t border-gray-800/40 flex items-center justify-center gap-2">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${automationLogs[0].status === 'SUCCESS' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`} />
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">
+                                                        Sistema Automático: {automationLogs[0].status === 'SUCCESS' ? 'Activo' : 'Error'}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
