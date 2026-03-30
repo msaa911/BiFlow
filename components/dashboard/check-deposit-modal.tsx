@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { getBankAccountsAction, depositChecksAction } from '@/app/actions/banks'
 import {
     Dialog,
     DialogContent,
@@ -42,7 +42,6 @@ export function CheckDepositModal({
     const [loading, setLoading] = useState(false)
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [selectedAccountId, setSelectedAccountId] = useState<string>('')
-    const supabase = createClient()
 
     useEffect(() => {
         if (open && orgId) {
@@ -51,10 +50,7 @@ export function CheckDepositModal({
     }, [open, orgId])
 
     async function fetchBankAccounts() {
-        const { data, error } = await supabase
-            .from('cuentas_bancarias')
-            .select('*')
-            .eq('organization_id', orgId)
+        const { data, error } = await getBankAccountsAction()
 
         if (error) {
             console.error('Error fetching bank accounts:', error)
@@ -75,27 +71,16 @@ export function CheckDepositModal({
 
         setLoading(true)
         try {
-            // Update all selected checks to 'depositado'
-            // We store the bank account ID in metadata if no column exists
-            const { error } = await supabase
-                .from('instrumentos_pago')
-                .update({
-                    estado: 'depositado',
-                    metadata: {
-                        deposito_banco_id: selectedAccountId,
-                        fecha_deposito: new Date().toISOString()
-                    }
-                })
-                .in('id', selectedCheckIds)
+            const { success, error } = await depositChecksAction(selectedCheckIds, selectedAccountId)
 
-            if (error) throw error
+            if (!success) throw new Error(error || 'Error al procesar el depósito')
 
             toast.success(`Lote de ${selectedCheckIds.length} cheques depositado con éxito`)
             onSuccess()
             onOpenChange(false)
         } catch (err: any) {
             console.error('Error depositing checks:', err)
-            toast.error('Error al procesar el depósito')
+            toast.error(err.message || 'Error al procesar el depósito')
         } finally {
             setLoading(false)
         }

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect, useCallback } from 'react'
+import { getBankPortfolioAction, updateCheckStatusAction } from '@/app/actions/banks'
 import { Card } from '@/components/ui/card'
 import {
     Table,
@@ -64,47 +64,36 @@ export function CheckPortfolio({ orgId, accountId }: CheckPortfolioProps) {
     const [selectedCheckForHistory, setSelectedCheckForHistory] = useState<any | null>(null)
     const [checkToReject, setCheckToReject] = useState<any | null>(null)
 
-    const supabase = createClient()
-
-    async function fetchChecks() {
+    const fetchChecks = useCallback(async () => {
         setLoading(true)
         setSelectedChecks([]) // Reset selection on fetch
-        let query = supabase
-            .from('instrumentos_pago')
-            .select(`
-                *,
-                movimientos_tesoreria!inner (
-                    fecha,
-                    entidades (razon_social)
-                )
-            `)
-            .eq('movimientos_tesoreria.organization_id', orgId)
-            .eq('metodo', 'cheque_terceros')
-
-        if (accountId && accountId !== 'all') {
-            query = query.eq('movimientos_tesoreria.cuenta_id', accountId)
-        }
-
-        query = query.order('fecha_disponibilidad', { ascending: true })
-
-        if (statusFilter !== 'all') {
-            query = query.eq('estado', statusFilter)
-        }
-
-        const { data, error } = await query
+        
+        const { data, error } = await getBankPortfolioAction()
 
         if (error) {
             console.error('Error fetching checks:', error)
-            toast.error('Error al cargar la cartera de cheques')
+            // No disparar toast.error si el error es solo por datos vacíos o similar
         } else {
-            setChecks(data || [])
+            // Aplicar filtros locales si es necesario (accountId y statusFilter)
+            let result = data || []
+            
+            // Nota: El filtro de orgId ya se aplica en la Server Action
+            if (accountId && accountId !== 'all') {
+                result = result.filter(c => c.movimientos_tesoreria?.cuenta_id === accountId)
+            }
+            
+            if (statusFilter !== 'all') {
+                result = result.filter(c => c.estado === statusFilter)
+            }
+            
+            setChecks(result)
         }
         setLoading(false)
-    }
+    }, [orgId, statusFilter, accountId])
 
     useEffect(() => {
         fetchChecks()
-    }, [orgId, statusFilter, accountId])
+    }, [fetchChecks])
 
     const filteredChecks = checks.filter(c =>
         (c.movimientos_tesoreria?.entidades?.razon_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -143,17 +132,15 @@ export function CheckPortfolio({ orgId, accountId }: CheckPortfolioProps) {
     const handleUpdateStatus = async (checkId: string, newStatus: string) => {
         setLoading(true)
         try {
-            const { error } = await supabase
-                .from('instrumentos_pago')
-                .update({ estado: newStatus })
-                .eq('id', checkId)
+            const { success, error } = await updateCheckStatusAction(checkId, newStatus)
 
-            if (error) throw error
+            if (!success) throw new Error(error || 'Error al actualizar estado')
+            
             toast.success(`Estado actualizado a ${newStatus}`)
             fetchChecks()
-        } catch (error) {
-            console.error('Error updating status:', error)
-            toast.error("Error al actualizar estado")
+        } catch (err: any) {
+            console.error('Error updating status:', err)
+            toast.error(err.message || "Error al actualizar estado")
         } finally {
             setLoading(false)
         }

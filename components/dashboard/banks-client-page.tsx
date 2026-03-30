@@ -2,7 +2,7 @@
 
 import { BanksTab } from '@/components/dashboard/banks-tab'
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { getBankOverviewAction } from '@/app/actions/banks'
 
 interface BanksClientPageProps {
     orgId: string
@@ -14,34 +14,18 @@ export function BanksClientPage({ orgId, initialTransactions }: BanksClientPageP
     const [pendingTransactions, setPendingTransactions] = useState<any[]>([])
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
-    const supabase = createClient()
 
     const fetchData = useCallback(async () => {
         setLoading(true)
-        const [txRes, pendingRes, bankRes] = await Promise.all([
-            supabase
-                .from('transacciones')
-                .select('*, comprobantes!comprobante_id(nro_factura, entidades(razon_social))')
-                .eq('organization_id', orgId)
-                .order('fecha', { ascending: false }),
-            supabase
-                .from('transacciones')
-                .select('*, comprobantes!comprobante_id(nro_factura, entidades(razon_social))')
-                .eq('organization_id', orgId)
-                .in('estado', ['pendiente', 'parcial'])
-                .order('fecha', { ascending: false })
-                .limit(200),
-            supabase
-                .from('cuentas_bancarias')
-                .select('id, banco_nombre, saldo_inicial, cbu')
-                .eq('organization_id', orgId)
-        ])
+        const { data, error } = await getBankOverviewAction()
 
-        if (txRes.data) setTransactions(txRes.data)
-        if (pendingRes.data) setPendingTransactions(pendingRes.data)
-        if (bankRes.data) setBankAccounts(bankRes.data)
+        if (!error && data) {
+            setTransactions(data.transactions || [])
+            setPendingTransactions(data.pendingTransactions || [])
+            setBankAccounts(data.bankAccounts || [])
+        }
         setLoading(false)
-    }, [orgId, supabase])
+    }, [])
 
     useEffect(() => {
         fetchData()

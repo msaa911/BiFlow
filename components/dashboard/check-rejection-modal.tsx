@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { getBankAccountsAction, rejectCheckAction } from '@/app/actions/banks'
 import {
     Dialog,
     DialogContent,
@@ -44,7 +44,6 @@ export function CheckRejectionModal({
     const [bankAccounts, setBankAccounts] = useState<any[]>([])
     const [selectedAccountId, setSelectedAccountId] = useState<string>('')
     const [feeAmount, setFeeAmount] = useState<string>('0')
-    const supabase = createClient()
 
     useEffect(() => {
         if (open && orgId) {
@@ -53,10 +52,7 @@ export function CheckRejectionModal({
     }, [open, orgId])
 
     async function fetchBankAccounts() {
-        const { data, error } = await supabase
-            .from('cuentas_bancarias')
-            .select('*')
-            .eq('organization_id', orgId)
+        const { data, error } = await getBankAccountsAction()
 
         if (error) {
             console.error('Error fetching bank accounts:', error)
@@ -79,14 +75,13 @@ export function CheckRejectionModal({
 
         setLoading(true)
         try {
-            // Use the atomic RPC
-            const { data, error } = await supabase.rpc('handle_cheque_rejection', {
-                p_instrument_id: check.id,
-                p_fee_amount: Number(feeAmount) || 0,
-                p_transaction_id: transactionId || null
+            const { data, error } = await rejectCheckAction({
+                checkId: check.id,
+                feeAmount: Number(feeAmount) || 0,
+                transactionId: transactionId || null
             })
 
-            if (error) throw error
+            if (error) throw new Error(error)
             if (!data.success) throw new Error(data.error || 'Error desconocido')
 
             toast.success(`Cheque rechazado con éxito. Se reactivaron ${data.affected_invoices} facturas y se registró el circuito administrativo.`)
