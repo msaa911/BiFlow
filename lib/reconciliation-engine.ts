@@ -9,13 +9,19 @@ export interface ReconciliationOptions {
 
 export interface ReconciliationResult {
   success: boolean;
-  matched: number;
-  matchedCount: number;
-  totalRead: number;
-  nettingCount?: number;
-  totalCompensated?: number;
-  adminCount?: number;
   status: 'success' | 'error';
+  // Globals
+  matchedCount: number; // Total matched across all phases
+  totalRead: number;
+  // Breakdown
+  bankMatched: number;
+  commercialMatched: number;
+  nettingCount: number;
+  totalCompensated: number;
+  // Legacy compatibility
+  matched: number;
+  adminCount?: number;
+  
   actions: any[];
   message?: string;
   metadata?: Record<string, unknown>;
@@ -23,7 +29,7 @@ export interface ReconciliationResult {
 
 export class ReconciliationEngine {
   /**
-   * Ejecuta el motor de conciliación automático v4.1 (Bidireccional + Subset Sum)
+   * Ejecuta el motor de conciliación integral v4.2 (Banking -> Commercial -> Netting)
    */
   static async executeAuto(
     orgId: string, 
@@ -31,65 +37,70 @@ export class ReconciliationEngine {
   ): Promise<ReconciliationResult> {
     const supabase = options.supabase || await createClient();
 
-    // 1. Ejecutar Conciliación Bancaria (Motor v4.1 en SQL)
-    const { data: bankData, error: bankError } = await supabase.rpc('reconcile_v4_0', {
-      p_org_id: orgId,
-      p_cuenta_id: options.bankAccountId || null,
-      p_dry_run: options.dryRun || false
-    });
+    try {
+      // 1. Fase Bancaria (Banco <-> Tesorería)
+      const { data: bankData, error: bankError } = await supabase.rpc('reconcile_banking_v4_2', {
+        p_org_id: orgId,
+        p_cuenta_id: options.bankAccountId || null,
+        p_dry_run: options.dryRun || false
+      });
+      if (bankError) throw bankError;
 
-    if (bankError) {
-      console.error('RPC reconcile_v4_0 error:', bankError);
+      // 2. Fase Comercial (Tesorería <-> Facturas)
+      const { data: commData, error: commError } = await supabase.rpc('reconcile_commercial_v4_2', {
+        p_org_id: orgId,
+        p_dry_run: options.dryRun || false
+      });
+      if (commError) throw commError;
+
+      // 3. Fase de Netting (Factura <-> Factura)
+      const { data: netData, error: netError } = await supabase.rpc('reconcile_netting_v4_2', {
+        p_org_id: orgId,
+        p_dry_run: options.dryRun || false
+      });
+      if (netError) throw netError;
+
+      const results = {
+        bankMatched: bankData?.matched_count || 0,
+        commercialMatched: commData?.matched_count || 0,
+        nettingCount: netData?.netting_count || 0,
+        totalCompensated: netData?.total_compensated || 0
+      };
+
+      return {
+        success: true,
+        status: 'success',
+        matchedCount: results.bankMatched + results.commercialMatched + results.nettingCount,
+        matched: results.bankMatched + results.commercialMatched, // Legacy sum
+        bankMatched: results.bankMatched,
+        commercialMatched: results.commercialMatched,
+        nettingCount: results.nettingCount,
+        totalCompensated: results.totalCompensated,
+        adminCount: results.nettingCount,
+        totalRead: 0, // Not accurately provided by multi-phase yet
+        actions: [],
+        metadata: {
+          bank: bankData,
+          commercial: commData,
+          netting: netData
+        }
+      };
+    } catch (error: any) {
+      console.error('Error in executeAuto v4.2:', error);
       return {
         success: false,
-        matched: 0,
-        matchedCount: 0,
-        totalRead: 0,
         status: 'error',
+        matchedCount: 0,
+        matched: 0,
+        bankMatched: 0,
+        commercialMatched: 0,
+        nettingCount: 0,
+        totalCompensated: 0,
+        totalRead: 0,
         actions: [],
-        message: bankError.message
+        message: error.message
       };
     }
-
-    // 2. Ejecutar Netting Automático (Nuevo Motor)
-    const { data: netData, error: netError } = await this.executeNetting(orgId, options);
-    
-    if (netError) {
-      console.warn('RPC reconcile_netting error (ignorado para no bloquear ciclo bank):', netError);
-    }
-
-    return {
-      success: true,
-      matched: bankData?.matched_count || 0,
-      matchedCount: bankData?.matched_count || 0,
-      totalRead: bankData?.total_read || 0,
-      nettingCount: netData?.netting_count || 0,
-      totalCompensated: netData?.total_compensated || 0,
-      adminCount: netData?.netting_count || 0,
-      status: 'success',
-      actions: bankData?.actions || [],
-      metadata: {
-        bank: bankData,
-        netting: netData
-      }
-    };
-  }
-
-  /**
-   * Ejecuta el motor de Netting Inteligente (Compensación Sales vs Purchases)
-   */
-  static async executeNetting(
-    orgId: string,
-    options: ReconciliationOptions = {}
-  ): Promise<{ data: any; error: any }> {
-    const supabase = options.supabase || await createClient();
-
-    const { data, error } = await supabase.rpc('reconcile_netting_v4_0', {
-      p_org_id: orgId,
-      p_dry_run: options.dryRun || false
-    });
-
-    return { data, error };
   }
 
   /**
